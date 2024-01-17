@@ -28,10 +28,12 @@ trait RedisSpec:
 
   private lazy val server: RedisServer = RedisServer
 
-  val withRedis: Fixture[Resource[IO, RedisCommands[IO, String, String]]] =
-    new Fixture[Resource[IO, RedisCommands[IO, String, String]]]("redis") {
+  type Command = RedisCommands[IO, String, String]
 
-      def apply(): Resource[IO, RedisCommands[IO, String, String]] =
+  val withRedis: Fixture[Resource[IO, Command]] =
+    new Fixture[Resource[IO, Command]]("redis") {
+
+      def apply(): Resource[IO, Command] =
         Redis[IO].utf8(server.url)
 
       override def beforeAll(): Unit =
@@ -41,5 +43,4 @@ trait RedisSpec:
         server.stop()
     }
 
-  override def munitFixtures
-      : Seq[Fixture[Resource[IO, RedisCommands[IO, String, String]]]] = List(withRedis)
+  override def munitFixtures: Seq[Fixture[Resource[IO, Command]]] = List(withRedis)

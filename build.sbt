@@ -35,8 +35,22 @@ lazy val root = project
     publishTo := Some(Resolver.file("Unused transient repository", file("target/unusedrepo")))
   )
   .aggregate(
+    commons,
     redisClient
   )
+
+lazy val commons = project
+  .in(file("modules/commons"))
+  .settings(commonSettings)
+  .settings(
+    name := "commons",
+    libraryDependencies ++=
+      Dependencies.catsCore ++
+        Dependencies.catsEffect ++
+        Dependencies.fs2Core ++
+        Dependencies.scribe
+  )
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val redisClient = project
   .in(file("modules/redis-client"))
@@ -78,9 +92,6 @@ lazy val commonSettings = Seq(
   ),
   Compile / console / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
-  libraryDependencies ++= (
-      Dependencies.scribe
-    ),
   libraryDependencies ++= (
       Dependencies.catsEffectMunit ++
       Dependencies.scalacheckEffectMunit

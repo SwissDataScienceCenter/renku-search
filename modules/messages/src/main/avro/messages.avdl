@@ -1,0 +1,11 @@
+@namespace("io.renku.messages")
+protocol Messages {
+
+  /* An example record for a "project-created-event" */
+  record ProjectCreated {
+    string name;
+    string description;
+    string? owner;
+    timestamp_ms createdAt;
+  }
+}

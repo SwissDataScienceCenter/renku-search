@@ -22,5 +22,7 @@ import fs2.Stream
 
 trait QueueClient[F[_]] {
   def enqueue(queueName: QueueName, message: String): F[Unit]
-  def acquireEventsStream(queueName: QueueName): Stream[F, String]
+  def acquireEventsStream(queueName: QueueName, chunkSize: Int): Stream[F, String]
+  def acquireEventsStream(queueName: QueueName): Stream[F, String] =
+    acquireEventsStream(queueName, chunkSize = 1)
 }

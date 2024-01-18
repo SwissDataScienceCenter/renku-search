@@ -39,9 +39,12 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
       )
     createConnection.flatMap(_.append(m)).compile.drain
 
-  override def acquireEventsStream(queueName: QueueName): Stream[F, String] =
+  override def acquireEventsStream(
+      queueName: QueueName,
+      chunkSize: Int
+  ): Stream[F, String] =
     createConnection >>= {
-      _.read(Set(queueName.value), chunkSize = 1)
+      _.read(Set(queueName.value), chunkSize = chunkSize)
         .map(_.body.get(payloadKey))
         .collect { case Some(m) => m }
     }

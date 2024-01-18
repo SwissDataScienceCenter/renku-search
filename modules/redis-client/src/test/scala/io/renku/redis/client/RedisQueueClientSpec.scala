@@ -25,6 +25,8 @@ import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
 import munit.CatsEffectSuite
 
+import java.nio.charset.StandardCharsets.UTF_8
+
 class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
 
   test("can enqueue and dequeue events") {
@@ -34,18 +36,18 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
         dequeued <- SignallingRef.of[IO, List[String]](Nil)
 
         message1 = "message1"
-        _ <- client.enqueue(queue, message1)
+        _ <- client.enqueue(queue, message1.getBytes)
 
         fiber <- client
-          .acquireEventsStream(queue)
-          .evalMap(m => dequeued.update(m :: _))
+          .acquireEventsStream(queue, chunkSize = 1)
+          .evalMap(m => dequeued.update(new String(m, UTF_8) :: _))
           .compile
           .drain
           .start
         _ <- dequeued.waitUntil(_ == List(message1))
 
         message2 = "message2"
-        _ <- client.enqueue(queue, message2)
+        _ <- client.enqueue(queue, message2.getBytes)
         _ <- dequeued.waitUntil(_.toSet == Set(message1, message2))
 
         _ <- fiber.cancel

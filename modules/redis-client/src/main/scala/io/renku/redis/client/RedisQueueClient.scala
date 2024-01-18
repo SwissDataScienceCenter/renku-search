@@ -30,25 +30,33 @@ import io.renku.queue.client.{QueueClient, QueueName}
 
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
 
-  private val payloadKey = "payload"
+  private val payloadKeyEnc = encodeKey("payload")
 
-  override def enqueue(queueName: QueueName, message: String): F[Unit] =
+  override def enqueue(queueName: QueueName, message: Array[Byte]): F[Unit] =
     val m = Stream
-      .emit[F, XAddMessage[String, String]](
-        XAddMessage(queueName.value, Map(payloadKey -> message))
+      .emit[F, XAddMessage[Array[Byte], Array[Byte]]](
+        XAddMessage(encodeKey(queueName.value), Map(payloadKeyEnc -> message))
       )
     createConnection.flatMap(_.append(m)).compile.drain
 
   override def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int
-  ): Stream[F, String] =
+  ): Stream[F, Array[Byte]] =
     createConnection >>= {
-      _.read(Set(queueName.value), chunkSize = chunkSize)
-        .map(_.body.get(payloadKey))
+      _.read(Set(encodeKey(queueName.value)), chunkSize)
+        .map(_.body.find(payloadEntry).map(_._2))
         .collect { case Some(m) => m }
     }
 
+  private lazy val payloadEntry: ((Array[Byte], Array[Byte])) => Boolean = {
+    case (k, _) => k.sameElements(payloadKeyEnc)
+  }
+
   private def createConnection =
-    RedisStream.mkStreamingConnection[F, String, String](client, RedisCodec.Utf8)
+    RedisStream
+      .mkStreamingConnection[F, Array[Byte], Array[Byte]](client, RedisCodec.Bytes)
+
+  private lazy val encodeKey: String => Array[Byte] =
+    RedisCodec.Utf8.underlying.encodeKey(_).array()
 }

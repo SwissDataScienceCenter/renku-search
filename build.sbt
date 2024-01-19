@@ -27,6 +27,13 @@ releaseVersionBump := sbtrelease.Version.Bump.Minor
 releaseIgnoreUntrackedFiles := true
 releaseTagName := (ThisBuild / version).value
 
+addCommandAlias("ci", "; lint; test; publishLocal")
+addCommandAlias(
+  "lint",
+  "; scalafmtSbtCheck; scalafmtCheckAll;" // Compile/scalafix --check; Test/scalafix --check
+)
+addCommandAlias("fix", "; scalafmtSbt; scalafmtAll") // ; Compile/scalafix; Test/scalafix
+
 lazy val root = project
   .in(file("."))
   .withId("renku-search")

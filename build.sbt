@@ -46,7 +46,8 @@ lazy val root = project
   .aggregate(
     commons,
     messages,
-    redisClient
+    redisClient,
+    searchProvision
   )
 
 lazy val commons = project
@@ -110,6 +111,21 @@ lazy val messages = project
   .dependsOn(
     commons % "compile->compile;test->test",
     avroCodec % "compile->compile;test->test"
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
+lazy val searchProvision = project
+  .in(file("modules/search-provision"))
+  .withId("search-provision")
+  .settings(commonSettings)
+  .settings(
+    name := "search-provision"
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    messages % "compile->compile;test->test",
+    avroCodec % "compile->compile;test->test",
+    redisClient % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin)
 

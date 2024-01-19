@@ -24,8 +24,7 @@ import fs2.concurrent.SignallingRef
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
 import munit.CatsEffectSuite
-
-import java.nio.charset.StandardCharsets.UTF_8
+import scodec.bits.ByteVector
 
 class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
 
@@ -36,21 +35,27 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
         dequeued <- SignallingRef.of[IO, List[String]](Nil)
 
         message1 = "message1"
-        _ <- client.enqueue(queue, message1.getBytes)
+        _ <- client.enqueue(queue, toByteVector(message1))
 
         fiber <- client
           .acquireEventsStream(queue, chunkSize = 1)
-          .evalMap(m => dequeued.update(new String(m, UTF_8) :: _))
+          .evalMap(m => dequeued.update(toStringUft8(m) :: _))
           .compile
           .drain
           .start
         _ <- dequeued.waitUntil(_ == List(message1))
 
         message2 = "message2"
-        _ <- client.enqueue(queue, message2.getBytes)
+        _ <- client.enqueue(queue, toByteVector(message2))
         _ <- dequeued.waitUntil(_.toSet == Set(message1, message2))
 
         _ <- fiber.cancel
       yield ()
     }
   }
+
+  private def toByteVector(v: String): ByteVector =
+    ByteVector.encodeUtf8(v).fold(throw _, identity)
+
+  private lazy val toStringUft8: ByteVector => String =
+    _.decodeUtf8.fold(throw _, identity)

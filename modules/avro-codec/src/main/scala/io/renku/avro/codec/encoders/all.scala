@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Swiss Data Science Center (SDSC)
+ * Copyright 2024 Swiss Data Science Center (SDSC)
  * A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
  * Eidgenössische Technische Hochschule Zürich (ETHZ).
  *
@@ -16,9 +16,14 @@
  * limitations under the License.
  */
 
-addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
-addSbtPlugin("com.github.sbt" % "sbt-release" % "1.3.0")
-addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.8.2")
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0")
-addSbtPlugin("io.spray" % "sbt-revolver" % "0.10.0")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
+package io.renku.avro.codec.encoders
+
+object all
+    extends PrimitiveEncoders
+    with StringEncoders
+    with BigDecimalEncoders
+    with DateTimeEncoders
+    with OptionEncoders
+    with CollectionEncoders
+    with ByteArrayEncoders
+    with RecordEncoders

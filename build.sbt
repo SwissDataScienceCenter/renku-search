@@ -27,15 +27,25 @@ releaseVersionBump := sbtrelease.Version.Bump.Minor
 releaseIgnoreUntrackedFiles := true
 releaseTagName := (ThisBuild / version).value
 
+addCommandAlias("ci", "; lint; test; publishLocal")
+addCommandAlias(
+  "lint",
+  "; scalafmtSbtCheck; scalafmtCheckAll;" // Compile/scalafix --check; Test/scalafix --check
+)
+addCommandAlias("fix", "; scalafmtSbt; scalafmtAll") // ; Compile/scalafix; Test/scalafix
+
 lazy val root = project
   .in(file("."))
   .withId("renku-search")
   .settings(
     publish / skip := true,
-    publishTo := Some(Resolver.file("Unused transient repository", file("target/unusedrepo")))
+    publishTo := Some(
+      Resolver.file("Unused transient repository", file("target/unusedrepo"))
+    )
   )
   .aggregate(
     commons,
+    messages,
     redisClient
   )
 
@@ -48,6 +58,7 @@ lazy val commons = project
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
         Dependencies.fs2Core ++
+        Dependencies.scodecBits ++
         Dependencies.scribe
   )
   .enablePlugins(AutomateHeaderPlugin)
@@ -68,10 +79,46 @@ lazy val redisClient = project
   )
   .enablePlugins(AutomateHeaderPlugin)
 
+lazy val avroCodec = project
+  .in(file("modules/avro-codec"))
+  .settings(commonSettings)
+  .settings(
+    name := "avro-codecs",
+    libraryDependencies ++=
+      Dependencies.avro ++
+        Dependencies.scodecBits
+  )
+
+lazy val messages = project
+  .in(file("modules/messages"))
+  .settings(commonSettings)
+  .settings(
+    name := "messages",
+    libraryDependencies ++= Dependencies.avro,
+    Compile / avroScalaCustomTypes := {
+      avrohugger.format.SpecificRecord.defaultTypes.copy(
+        record = avrohugger.types.ScalaCaseClassWithSchema
+      )
+    },
+    Compile / avroScalaSpecificCustomTypes := {
+      avrohugger.format.SpecificRecord.defaultTypes.copy(
+        record = avrohugger.types.ScalaCaseClassWithSchema
+      )
+    },
+    Compile / sourceGenerators += (Compile / avroScalaGenerate).taskValue
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    avroCodec % "compile->compile;test->test"
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
 lazy val commonSettings = Seq(
   organization := "io.renku",
   publish / skip := true,
-  publishTo := Some(Resolver.file("Unused transient repository", file("target/unusedrepo"))),
+  publishTo := Some(
+    Resolver.file("Unused transient repository", file("target/unusedrepo"))
+  ),
   Compile / packageDoc / publishArtifact := false,
   Compile / packageSrc / publishArtifact := false,
   // format: off
@@ -94,12 +141,15 @@ lazy val commonSettings = Seq(
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   libraryDependencies ++= (
       Dependencies.catsEffectMunit ++
-      Dependencies.scalacheckEffectMunit
+        Dependencies.scalacheckEffectMunit ++
+        Dependencies.scribe
     ).map(_ % Test),
   // Format: on
   organizationName := "Swiss Data Science Center (SDSC)",
   startYear := Some(java.time.LocalDate.now().getYear),
-  licenses += ("Apache-2.0", new URI("https://www.apache.org/licenses/LICENSE-2.0.txt").toURL),
+  licenses += ("Apache-2.0", new URI(
+    "https://www.apache.org/licenses/LICENSE-2.0.txt"
+  ).toURL),
   headerLicense := Some(
     HeaderLicense.Custom(
       s"""|Copyright ${java.time.LocalDate.now().getYear} Swiss Data Science Center (SDSC)

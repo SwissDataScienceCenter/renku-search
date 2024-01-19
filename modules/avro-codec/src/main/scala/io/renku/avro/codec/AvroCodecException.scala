@@ -16,24 +16,14 @@
  * limitations under the License.
  */
 
-package io.renku.redis.client.util
+package io.renku.avro.codec
 
-import cats.effect.*
-import cats.implicits.*
-import dev.profunktor.redis4cats.RedisCommands
-import munit.CatsEffectSuite
+sealed abstract class AvroCodecException(msg: String) extends RuntimeException(msg)
 
-class ConnectionTestSpec extends CatsEffectSuite with RedisSpec {
+object AvroCodecException:
+  def encode(msg: String): AvroEncodeError = AvroEncodeError(msg)
+  def decode(msg: String): AvroDecodeError = AvroDecodeError(msg)
 
-  test("connect to Redis") {
-    withRedis().use { (redis: RedisCommands[IO, String, String]) =>
-      for
-        _ <- redis.set("foo", "123")
-        x <- redis.get("foo")
-        _ <- redis.setNx("foo", "should not happen")
-        y <- redis.get("foo")
-        _ <- IO(println(x === y)) // true
-      yield ()
-    }
-  }
-}
+  final class AvroEncodeError(msg: String) extends AvroCodecException(msg)
+
+  final class AvroDecodeError(msg: String) extends AvroCodecException(msg)

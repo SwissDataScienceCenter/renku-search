@@ -16,24 +16,30 @@
  * limitations under the License.
  */
 
-package io.renku.redis.client.util
+package io.renku.messages
 
-import cats.effect.*
-import cats.implicits.*
-import dev.profunktor.redis4cats.RedisCommands
-import munit.CatsEffectSuite
+import io.renku.avro.codec.decoders.all.given
+import io.renku.avro.codec.encoders.all.given
+import io.renku.avro.codec.{AvroDecoder, AvroEncoder, AvroIO}
+import munit.FunSuite
 
-class ConnectionTestSpec extends CatsEffectSuite with RedisSpec {
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
-  test("connect to Redis") {
-    withRedis().use { (redis: RedisCommands[IO, String, String]) =>
-      for
-        _ <- redis.set("foo", "123")
-        x <- redis.get("foo")
-        _ <- redis.setNx("foo", "should not happen")
-        y <- redis.get("foo")
-        _ <- IO(println(x === y)) // true
-      yield ()
-    }
+class SerializeDeserializeTest extends FunSuite {
+
+  test("serialize and deserialize") {
+    val data = ProjectCreated(
+      "my-project",
+      "a description for it",
+      None,
+      Instant.now().truncatedTo(ChronoUnit.MILLIS)
+    )
+    val avro = AvroIO(ProjectCreated.SCHEMA$)
+
+    val bytes = avro.write(Seq(data))
+    val decoded = avro.read[ProjectCreated](bytes)
+
+    assertEquals(decoded, List(data))
   }
 }

@@ -34,8 +34,8 @@ object RedisServer {
   }
 
   private def call(methodName: String): ClassLoader => Unit = classLoader => {
-    val clazz    = classLoader.loadClass("io.renku.redis.client.util.RedisServer$")
-    val method   = clazz.getMethod(methodName)
+    val clazz = classLoader.loadClass("io.renku.redis.client.util.RedisServer$")
+    val method = clazz.getMethod(methodName)
     val instance = clazz.getField("MODULE$").get(null)
     method.invoke(instance)
   }

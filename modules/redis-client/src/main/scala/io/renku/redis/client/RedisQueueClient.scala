@@ -35,7 +35,7 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
   override def enqueue(queueName: QueueName, message: ByteVector): F[Unit] =
     val m = Stream
       .emit[F, XAddMessage[String, ByteVector]](
-        XAddMessage(queueName.value, Map(payloadKey -> message))
+        XAddMessage(queueName.toString, Map(payloadKey -> message))
       )
     createConnection.flatMap(_.append(m)).compile.drain
 
@@ -44,7 +44,7 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
       chunkSize: Int
   ): Stream[F, ByteVector] =
     createConnection >>= {
-      _.read(Set(queueName.value), chunkSize)
+      _.read(Set(queueName.toString), chunkSize)
         .map(_.body.get(payloadKey))
         .collect { case Some(m) => m }
     }

@@ -28,7 +28,7 @@ import scodec.bits.ByteVector
 
 class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
 
-  test("can enqueue and dequeue events") {
+  test("can enqueue and dequeue events"):
     withRedisClient.asQueueClient().use { client =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
       for
@@ -52,7 +52,6 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
         _ <- fiber.cancel
       yield ()
     }
-  }
 
   private def toByteVector(v: String): ByteVector =
     ByteVector.encodeUtf8(v).fold(throw _, identity)

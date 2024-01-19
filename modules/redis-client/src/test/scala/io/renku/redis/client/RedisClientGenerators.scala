@@ -27,7 +27,7 @@ object RedisClientGenerators:
   val queueNameGen: Gen[QueueName] =
     Gen
       .chooseNum(3, 10)
-      .flatMap(Gen.stringOfN(_, alphaLowerChar).map(QueueName.apply))
+      .flatMap(Gen.stringOfN(_, alphaLowerChar).map(QueueName(_)))
 
   given Gen[QueueName] = queueNameGen
 

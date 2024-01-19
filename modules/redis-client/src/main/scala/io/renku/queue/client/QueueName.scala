@@ -18,5 +18,7 @@
 
 package io.renku.queue.client
 
-case class QueueName(value: String):
-  override lazy val toString: String = value
+opaque type QueueName = String
+object QueueName {
+  def apply(v: String): QueueName = new QueueName(v)
+}

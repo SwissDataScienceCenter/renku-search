@@ -13,10 +13,16 @@ object AvroIO:
       override def write[A: AvroEncoder](values: Seq[A]): ByteVector =
         writer.write(values)
 
+      override def writeJson[A: AvroEncoder](values: Seq[A]): ByteVector =
+        writer.writeJson(values)
+
       override def writeContainer[A: AvroEncoder](values: Seq[A]): ByteVector =
         writer.writeContainer(values)
 
       override def read[T: AvroDecoder](input: ByteVector): Seq[T] = reader.read(input)
+
+      override def readJson[T: AvroDecoder](input: ByteVector): Seq[T] =
+        reader.readJson(input)
 
       override def readContainer[T: AvroDecoder](input: ByteVector): Seq[T] =
         reader.readContainer(input)

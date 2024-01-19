@@ -8,4 +8,20 @@ protocol Messages {
     string? owner;
     timestamp_ms createdAt;
   }
+
+  /* A project got updated */
+  record ProjectUpdated {
+    string name;
+    string @aliases(["oldDescription"]) description;
+    timestamp_ms updatedAt;
+  }
+
+  record ProjectDeleted {
+    string name;
+    timestamp_ms deletedAt;
+  }
+
+/*  record ProjectMsg {
+    union { ProjectCreated, ProjectUpdated, ProjectDeleted } message;
+  } */
 }

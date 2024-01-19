@@ -21,17 +21,24 @@ class AvroReaderTest extends FunSuite {
 
   val avro = AvroIO(fooSchema)
 
-  test("read/write single") {
+  test("read/write binary single") {
     val data = Foo("eddi", 55)
     val wire = avro.write(Seq(data))
     val result = avro.read[Foo](wire)
     assertEquals(result, List(data))
   }
 
-  test("read/write multiple values") {
+  test("read/write binary multiple values") {
     val values = (1 to 10).toList.map(n => Foo("eddi", 50 + n))
     val wire = avro.write(values)
     val result = avro.read[Foo](wire)
+    assertEquals(result, values)
+  }
+
+  test("read/write json values") {
+    val values = (1 to 10).toList.map(n => Foo("eddi", 50 + n))
+    val wire = avro.writeJson(values)
+    val result = avro.readJson[Foo](wire)
     assertEquals(result, values)
   }
 

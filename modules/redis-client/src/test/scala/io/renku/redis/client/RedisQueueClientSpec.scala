@@ -19,6 +19,7 @@
 package io.renku.redis.client
 
 import cats.effect.IO
+import cats.syntax.all.*
 import fs2.*
 import fs2.concurrent.SignallingRef
 import io.renku.redis.client.RedisClientGenerators.*
@@ -51,6 +52,22 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
 
         _ <- fiber.cancel
       yield ()
+    }
+
+  test("allow marking event as processed"):
+    withRedisClient().flatMap(c => createRedisCommands(c).tupleLeft(c)).use {
+      case (client, commands) =>
+        val queue = RedisClientGenerators.queueNameGen.generateOne
+        val clientId = RedisClientGenerators.clientIdGen.generateOne
+        val messageId = RedisClientGenerators.messageIdGen.generateOne
+        val key = s"$queue.$clientId"
+        for
+          _ <- commands.get(key).map(v => assert(v.isEmpty))
+
+          _ <- new RedisQueueClient[IO](client).markProcessed(clientId, queue, messageId)
+
+          _ <- commands.get(key).map(v => assert(v contains messageId.value))
+        yield ()
     }
 
   private def toByteVector(v: String): ByteVector =

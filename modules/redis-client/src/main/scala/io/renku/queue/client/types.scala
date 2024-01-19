@@ -22,3 +22,8 @@ opaque type QueueName = String
 object QueueName {
   def apply(v: String): QueueName = new QueueName(v)
 }
+
+opaque type ClientId = String
+object ClientId {
+  def apply(v: String): ClientId = new ClientId(v)
+}

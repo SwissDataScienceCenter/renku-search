@@ -18,9 +18,9 @@
 
 package io.renku.redis.client
 
-import io.renku.queue.client.QueueName
+import io.renku.queue.client.*
 import org.scalacheck.Gen
-import org.scalacheck.Gen.alphaLowerChar
+import org.scalacheck.Gen.{alphaLowerChar, alphaNumChar}
 
 object RedisClientGenerators:
 
@@ -29,6 +29,15 @@ object RedisClientGenerators:
       .chooseNum(3, 10)
       .flatMap(Gen.stringOfN(_, alphaLowerChar).map(QueueName(_)))
 
-  given Gen[QueueName] = queueNameGen
+  val clientIdGen: Gen[ClientId] =
+    Gen
+      .chooseNum(3, 10)
+      .flatMap(Gen.stringOfN(_, alphaNumChar).map(ClientId(_)))
+
+  val messageIdGen: Gen[MessageId] =
+    for
+      part1 <- Gen.chooseNum(3, 10)
+      part2 <- Gen.chooseNum(3, 10)
+    yield MessageId(s"$part1.$part2")
 
   extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

@@ -18,14 +18,16 @@
 
 package io.renku.redis.client
 
-import cats.effect.Async
+import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.RedisClient
+import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log
 import dev.profunktor.redis4cats.streams.RedisStream
 import dev.profunktor.redis4cats.streams.data.{XAddMessage, XReadMessage}
+import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import fs2.Stream
-import io.renku.queue.client.{Message, MessageId, QueueClient, QueueName}
+import io.renku.queue.client.*
 import scodec.bits.ByteVector
 
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
@@ -57,4 +59,17 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
   private def createConnection =
     RedisStream
       .mkStreamingConnection[F, String, ByteVector](client, StringBytesCodec.instance)
+
+  def markProcessed(
+      clientId: ClientId,
+      queueName: QueueName,
+      messageId: MessageId
+  ): F[Unit] =
+    stringCommands.use(_.set(formProcessedKey(clientId, queueName), messageId.value))
+
+  private def stringCommands: Resource[F, RedisCommands[F, String, String]] =
+    Redis[F].fromClient(client, RedisCodec.Utf8)
+
+  private def formProcessedKey(clientId: ClientId, queueName: QueueName) =
+    s"$queueName.$clientId"
 }

@@ -1,14 +1,16 @@
 package io.renku.avro.codec
 
 import org.apache.avro.Schema
-import org.apache.avro.file.{DataFileReader, SeekableByteArrayInput}
+import org.apache.avro.file.DataFileReader
 import org.apache.avro.generic.GenericDatumReader
+import org.apache.avro.io.{DatumReader, Decoder, DecoderFactory}
 import scodec.bits.ByteVector
 
-import scala.util.Using
+import java.io.EOFException
 
 trait AvroReader:
-  def read[T: AvroDecoder](input: ByteVector): Either[Throwable, (Seq[T], Option[Long])]
+  def read[T: AvroDecoder](input: ByteVector): Seq[T]
+  def readContainer[T: AvroDecoder](input: ByteVector): Seq[T]
 
 object AvroReader:
   def apply(schema: Schema): AvroReader = new Impl(schema)
@@ -16,22 +18,38 @@ object AvroReader:
   private class Impl(schema: Schema) extends AvroReader:
     private[this] val reader = new GenericDatumReader[Any](schema)
 
-    override def read[T: AvroDecoder](
-        input: ByteVector
-    ): Either[Throwable, (Seq[T], Option[Long])] =
-      val sin = new SeekableByteArrayInput(input.toArray)
-      val len = sin.length()
-
-      @annotation.tailrec
-      def go(r: DataFileReader[Any], pos: Long, result: List[T]): (Seq[T], Option[Long]) =
-        if (r.hasNext) {
-          val newPos = sin.tell()
-          val data = r.next()
-          val decoded = AvroDecoder[T].decode(schema)(data)
-          go(r, newPos, decoded :: result)
-        } else {
-          println(s"pos=$pos  len=${sin.length()}")
-          (result, Option(pos).filter(_ < len))
+    extension (self: DatumReader[Any])
+      def readOpt[A: AvroDecoder](decoder: Decoder): Option[A] =
+        try Option(self.read(null, decoder)).map(AvroDecoder[A].decode(schema))
+        catch {
+          case _: EOFException => None
         }
 
-      Using(new DataFileReader[Any](sin, reader))(go(_, 0, Nil)).toEither
+    override def read[T: AvroDecoder](
+        input: ByteVector
+    ): Seq[T] =
+      val in = ByteVectorInput(input)
+      val decoder = DecoderFactory.get().binaryDecoder(in, null)
+
+      @annotation.tailrec
+      def go(r: GenericDatumReader[Any], result: List[T]): Seq[T] =
+        if (decoder.isEnd) result.reverse
+        else
+          r.readOpt(decoder) match
+            case None     => result.reverse
+            case Some(el) => go(r, el :: result)
+
+      go(reader, Nil)
+
+    def readContainer[T: AvroDecoder](input: ByteVector): Seq[T] =
+      val sin = ByteVectorInput(input)
+
+      @annotation.tailrec
+      def go(r: DataFileReader[Any], result: List[T]): Seq[T] =
+        if (r.hasNext) {
+          val data = r.next()
+          val decoded = AvroDecoder[T].decode(schema)(data)
+          go(r, decoded :: result)
+        } else result.reverse
+
+      go(new DataFileReader[Any](sin, reader), Nil)

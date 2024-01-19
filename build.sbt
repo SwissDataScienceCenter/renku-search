@@ -51,6 +51,7 @@ lazy val commons = project
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
         Dependencies.fs2Core ++
+        Dependencies.scodecBits ++
         Dependencies.scribe
   )
   .enablePlugins(AutomateHeaderPlugin)
@@ -133,7 +134,8 @@ lazy val commonSettings = Seq(
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   libraryDependencies ++= (
       Dependencies.catsEffectMunit ++
-      Dependencies.scalacheckEffectMunit
+        Dependencies.scalacheckEffectMunit ++
+        Dependencies.scribe
     ).map(_ % Test),
   // Format: on
   organizationName := "Swiss Data Science Center (SDSC)",

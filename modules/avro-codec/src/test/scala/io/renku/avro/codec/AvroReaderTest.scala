@@ -1,14 +1,9 @@
 package io.renku.avro.codec
 
-import io.renku.avro.codec.encoders.all.given
 import io.renku.avro.codec.decoders.all.given
+import io.renku.avro.codec.encoders.all.given
 import munit.FunSuite
 import org.apache.avro.SchemaBuilder
-import org.apache.avro.file.{CodecFactory, DataFileWriter}
-import org.apache.avro.generic.GenericDatumWriter
-import scodec.bits.ByteVector
-
-import java.io.ByteArrayOutputStream
 
 class AvroReaderTest extends FunSuite {
 
@@ -24,31 +19,26 @@ class AvroReaderTest extends FunSuite {
     .noDefault()
     .endRecord()
 
-  test("test read single") {
+  val avro = AvroIO(fooSchema)
+
+  test("read/write single") {
     val data = Foo("eddi", 55)
-    val wire = createData(data)
-    val (result, pos) = AvroReader(fooSchema).read[Foo](wire).toOption.get
+    val wire = avro.write(Seq(data))
+    val result = avro.read[Foo](wire)
     assertEquals(result, List(data))
-    assertEquals(pos, None)
   }
 
-  test("read return remaining position") {
-    val data = Foo("eddi", 56)
-    val wire = createData(data) ++ createData(data).take(5)
-    val result = AvroReader(fooSchema).read[Foo](wire)
-    println(result)
-
+  test("read/write multiple values") {
+    val values = (1 to 10).toList.map(n => Foo("eddi", 50 + n))
+    val wire = avro.write(values)
+    val result = avro.read[Foo](wire)
+    assertEquals(result, values)
   }
 
-  def createData(foo: Foo) = {
-    val writer = new GenericDatumWriter[Any](fooSchema)
-    val dw = new DataFileWriter[Any](writer)
-    val baos = new ByteArrayOutputStream()
-    dw.setCodec(CodecFactory.bzip2Codec())
-    dw.create(fooSchema, baos)
-    val encoded = AvroEncoder[Foo].encode(fooSchema).apply(foo)
-    dw.append(encoded)
-    dw.close()
-    ByteVector.view(baos.toByteArray)
+  test("read/write container") {
+    val values = (1 to 10).toList.map(n => Foo("eddi", 50 + n))
+    val wire = avro.writeContainer(values)
+    val result = avro.readContainer[Foo](wire)
+    assertEquals(result, values)
   }
 }

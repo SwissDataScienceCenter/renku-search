@@ -20,48 +20,26 @@ package io.renku.messages
 
 import io.renku.avro.codec.decoders.all.given
 import io.renku.avro.codec.encoders.all.given
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.renku.avro.codec.{AvroDecoder, AvroEncoder, AvroIO}
 import munit.FunSuite
-import org.apache.avro.file.{
-  CodecFactory,
-  DataFileReader,
-  DataFileWriter,
-  SeekableByteArrayInput
-}
-import org.apache.avro.generic.{GenericDatumReader, GenericDatumWriter}
-import scodec.bits.ByteVector
 
-import java.io.ByteArrayOutputStream
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 class SerializeDeserializeTest extends FunSuite {
 
   test("serialize and deserialize") {
-    val data = ProjectCreated("my-project", "a description for it", None, Instant.EPOCH)
-    val writer = new GenericDatumWriter[Any](ProjectCreated.SCHEMA$)
+    val data = ProjectCreated(
+      "my-project",
+      "a description for it",
+      None,
+      Instant.now().truncatedTo(ChronoUnit.MILLIS)
+    )
+    val avro = AvroIO(ProjectCreated.SCHEMA$)
 
-    val dw = new DataFileWriter[Any](writer)
-    val baos = new ByteArrayOutputStream()
-    dw.setCodec(CodecFactory.bzip2Codec())
-    dw.create(ProjectCreated.SCHEMA$, baos)
-    val encoded = AvroEncoder[ProjectCreated].encode(ProjectCreated.SCHEMA$).apply(data)
-    dw.append(encoded)
-    dw.close()
+    val bytes = avro.write(Seq(data))
+    val decoded = avro.read[ProjectCreated](bytes)
 
-    println(s"got data: ${ByteVector.view(baos.toByteArray).toHex}")
-
-    val reader = new GenericDatumReader[Any](ProjectCreated.SCHEMA$)
-    val input = new SeekableByteArrayInput(baos.toByteArray)
-    val dr = new DataFileReader[Any](input, reader)
-    if (dr.hasNext) {
-      val project = dr.next()
-      val decoded =
-        AvroDecoder[ProjectCreated].decode(ProjectCreated.SCHEMA$).apply(project)
-      println(decoded)
-      assertEquals(decoded, data)
-    } else {
-      fail("No data")
-    }
-    dr.close()
+    assertEquals(decoded, List(data))
   }
 }

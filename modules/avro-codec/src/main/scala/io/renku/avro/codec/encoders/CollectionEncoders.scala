@@ -48,5 +48,4 @@ trait CollectionEncoders {
   given [T](using encoder: AvroEncoder[T]): AvroEncoder[Vector[T]] = iterableEncoder(
     encoder
   )
-
 }

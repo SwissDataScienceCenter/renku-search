@@ -39,7 +39,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
 
         fiber <- client
           .acquireEventsStream(queue, chunkSize = 1)
-          .evalMap(m => dequeued.update(toStringUft8(m) :: _))
+          .evalMap(event => dequeued.update(toStringUft8(event.payload) :: _))
           .compile
           .drain
           .start

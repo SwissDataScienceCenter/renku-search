@@ -23,9 +23,9 @@ import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.effect.Log
 import dev.profunktor.redis4cats.streams.RedisStream
-import dev.profunktor.redis4cats.streams.data.XAddMessage
+import dev.profunktor.redis4cats.streams.data.{XAddMessage, XReadMessage}
 import fs2.Stream
-import io.renku.queue.client.{QueueClient, QueueName}
+import io.renku.queue.client.{Message, MessageId, QueueClient, QueueName}
 import scodec.bits.ByteVector
 
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
@@ -42,12 +42,17 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
   override def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int
-  ): Stream[F, ByteVector] =
+  ): Stream[F, Message] =
     createConnection >>= {
       _.read(Set(queueName.toString), chunkSize)
-        .map(_.body.get(payloadKey))
+        .map(toMessage)
         .collect { case Some(m) => m }
     }
+
+  private def toMessage(m: XReadMessage[String, ByteVector]): Option[Message] =
+    m.body
+      .get(payloadKey)
+      .map(Message(MessageId(m.id.value), _))
 
   private def createConnection =
     RedisStream

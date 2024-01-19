@@ -18,10 +18,8 @@
 
 package io.renku.queue.client
 
-import fs2.Stream
 import scodec.bits.ByteVector
 
-trait QueueClient[F[_]] {
-  def enqueue(queueName: QueueName, message: ByteVector): F[Unit]
-  def acquireEventsStream(queueName: QueueName, chunkSize: Int): Stream[F, Message]
-}
+final case class Message(id: MessageId, payload: ByteVector)
+
+final case class MessageId(value: String) extends AnyVal

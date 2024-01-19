@@ -16,27 +16,19 @@
  * limitations under the License.
  */
 
-import java.util.concurrent.atomic.AtomicInteger
-import scala.util.Try
+package io.renku.redis.client
 
-object RedisServer {
+import io.renku.queue.client.QueueName
+import org.scalacheck.Gen
+import org.scalacheck.Gen.alphaLowerChar
 
-  private val startRequests = new AtomicInteger(0)
+object RedisClientGenerators:
 
-  def start: ClassLoader => Unit = { cl =>
-    if (startRequests.getAndIncrement() == 0) call("start")(cl)
-  }
+  val queueNameGen: Gen[QueueName] =
+    Gen
+      .chooseNum(3, 10)
+      .flatMap(Gen.stringOfN(_, alphaLowerChar).map(QueueName(_)))
 
-  def stop: ClassLoader => Unit = { cl =>
-    if (startRequests.decrementAndGet() == 0)
-      Try(call("forceStop")(cl))
-        .recover { case err => err.printStackTrace() }
-  }
+  given Gen[QueueName] = queueNameGen
 
-  private def call(methodName: String): ClassLoader => Unit = classLoader => {
-    val clazz = classLoader.loadClass("io.renku.redis.client.util.RedisServer$")
-    val method = clazz.getMethod(methodName)
-    val instance = clazz.getField("MODULE$").get(null)
-    method.invoke(instance)
-  }
-}
+  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

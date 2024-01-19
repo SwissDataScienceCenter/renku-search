@@ -19,27 +19,39 @@
 package io.renku.redis.client.util
 
 import cats.effect.*
+import dev.profunktor.redis4cats.connection.RedisClient
+import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log.Stdout.*
 import dev.profunktor.redis4cats.effect.MkRedis.forAsync
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
+import io.renku.queue.client.QueueClient
+import io.renku.redis.client.RedisQueueClient
 
 trait RedisSpec:
   self: munit.Suite =>
 
   private lazy val server: RedisServer = RedisServer
 
-  val withRedis: Fixture[Resource[IO, RedisCommands[IO, String, String]]] =
-    new Fixture[Resource[IO, RedisCommands[IO, String, String]]]("redis") {
+  abstract class RedisFixture extends Fixture[Resource[IO, RedisClient]]("redis"):
+    def asRedisCommand(): Resource[IO, RedisCommands[IO, String, String]]
+    def asQueueClient(): Resource[IO, QueueClient[IO]]
 
-      def apply(): Resource[IO, RedisCommands[IO, String, String]] =
-        Redis[IO].utf8(server.url)
+  val withRedisClient: RedisFixture = new RedisFixture:
 
-      override def beforeAll(): Unit =
-        server.start()
+    def apply(): Resource[IO, RedisClient] =
+      RedisClient[IO].from(server.url)
 
-      override def afterAll(): Unit =
-        server.stop()
-    }
+    override def asRedisCommand(): Resource[IO, RedisCommands[IO, String, String]] =
+      apply().flatMap(Redis[IO].fromClient(_, RedisCodec.Utf8))
 
-  override def munitFixtures
-      : Seq[Fixture[Resource[IO, RedisCommands[IO, String, String]]]] = List(withRedis)
+    override def asQueueClient(): Resource[IO, QueueClient[IO]] =
+      apply().map(new RedisQueueClient[IO](_))
+
+    override def beforeAll(): Unit =
+      server.start()
+
+    override def afterAll(): Unit =
+      server.stop()
+
+  override def munitFixtures: Seq[Fixture[Resource[IO, RedisClient]]] =
+    List(withRedisClient)

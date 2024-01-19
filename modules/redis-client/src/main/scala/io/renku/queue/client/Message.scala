@@ -16,27 +16,10 @@
  * limitations under the License.
  */
 
-import java.util.concurrent.atomic.AtomicInteger
-import scala.util.Try
+package io.renku.queue.client
 
-object RedisServer {
+import scodec.bits.ByteVector
 
-  private val startRequests = new AtomicInteger(0)
+final case class Message(id: MessageId, payload: ByteVector)
 
-  def start: ClassLoader => Unit = { cl =>
-    if (startRequests.getAndIncrement() == 0) call("start")(cl)
-  }
-
-  def stop: ClassLoader => Unit = { cl =>
-    if (startRequests.decrementAndGet() == 0)
-      Try(call("forceStop")(cl))
-        .recover { case err => err.printStackTrace() }
-  }
-
-  private def call(methodName: String): ClassLoader => Unit = classLoader => {
-    val clazz = classLoader.loadClass("io.renku.redis.client.util.RedisServer$")
-    val method = clazz.getMethod(methodName)
-    val instance = clazz.getField("MODULE$").get(null)
-    method.invoke(instance)
-  }
-}
+final case class MessageId(value: String) extends AnyVal

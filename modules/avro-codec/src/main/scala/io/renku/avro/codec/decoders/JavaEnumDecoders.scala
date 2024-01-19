@@ -16,16 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.avro.codec.encoders
+package io.renku.avro.codec.decoders
 
-object all
-    extends PrimitiveEncoders
-    with StringEncoders
-    with BigDecimalEncoders
-    with DateTimeEncoders
-    with OptionEncoders
-    with EitherEncoders
-    with CollectionEncoders
-    with ByteArrayEncoders
-    with JavaEnumEncoders
-    with RecordEncoders
+import io.renku.avro.codec.AvroDecoder
+import org.apache.avro.generic.GenericEnumSymbol
+
+import scala.reflect.ClassTag
+
+trait JavaEnumDecoders {
+
+  given [E <: Enum[E]](using ctag: ClassTag[E]): AvroDecoder[E] = AvroDecoder.basic {
+    case e: Enum[?] => e.asInstanceOf[E]
+    case e: GenericEnumSymbol[?] =>
+      Enum.valueOf[E](ctag.runtimeClass.asInstanceOf[Class[E]], e.toString)
+  }
+}

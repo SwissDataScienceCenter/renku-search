@@ -26,4 +26,6 @@ object all
     with OptionDecoders
     with CollectionDecoders
     with ByteArrayDecoders
+    with JavaEnumDecoders
+    with EitherDecoders
     with RecordDecoders

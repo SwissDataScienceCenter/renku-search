@@ -28,7 +28,7 @@ import java.time.temporal.ChronoUnit
 
 class SerializeDeserializeTest extends FunSuite {
 
-  test("serialize and deserialize") {
+  test("serialize and deserialize ProjectCreated") {
     val data = ProjectCreated(
       "my-project",
       "a description for it",
@@ -41,5 +41,22 @@ class SerializeDeserializeTest extends FunSuite {
     val decoded = avro.read[ProjectCreated](bytes)
 
     assertEquals(decoded, List(data))
+  }
+
+  test("serialize and deserialize ProjectUpdated") {
+    val data1 = ProjectUpdated(
+      "my-project",
+      "a description for it",
+      Shapes.CIRCLE,
+      Right(42),
+      Instant.now().truncatedTo(ChronoUnit.MILLIS)
+    )
+    val data2 = data1.copy(index = Left("fourtytwo"))
+    val avro = AvroIO(ProjectUpdated.SCHEMA$)
+
+    val bytes = avro.write(Seq(data1, data2))
+    val decoded = avro.read[ProjectUpdated](bytes)
+
+    assertEquals(decoded, List(data1, data2))
   }
 }

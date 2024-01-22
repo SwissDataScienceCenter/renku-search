@@ -19,7 +19,6 @@
 package io.renku.redis.client
 
 import cats.effect.IO
-import cats.syntax.all.*
 import fs2.*
 import fs2.concurrent.SignallingRef
 import io.renku.redis.client.RedisClientGenerators.*
@@ -54,20 +53,20 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
       yield ()
     }
 
-  test("allow marking event as processed"):
-    withRedisClient().flatMap(c => createRedisCommands(c).tupleLeft(c)).use {
-      case (client, commands) =>
-        val queue = RedisClientGenerators.queueNameGen.generateOne
-        val clientId = RedisClientGenerators.clientIdGen.generateOne
-        val messageId = RedisClientGenerators.messageIdGen.generateOne
-        val key = s"$queue.$clientId"
-        for
-          _ <- commands.get(key).map(v => assert(v.isEmpty))
+  test("allow marking and retrieve a processed event"):
+    withRedisClient.asQueueClient().use { client =>
+      val queue = RedisClientGenerators.queueNameGen.generateOne
+      val clientId = RedisClientGenerators.clientIdGen.generateOne
+      val messageId = RedisClientGenerators.messageIdGen.generateOne
+      for
+        _ <- client.findLastProcessed(clientId, queue).map(v => assert(v.isEmpty))
 
-          _ <- new RedisQueueClient[IO](client).markProcessed(clientId, queue, messageId)
+        _ <- client.markProcessed(clientId, queue, messageId)
 
-          _ <- commands.get(key).map(v => assert(v contains messageId.value))
-        yield ()
+        _ <- client
+          .findLastProcessed(clientId, queue)
+          .map(v => assert(v contains messageId))
+      yield ()
     }
 
   private def toByteVector(v: String): ByteVector =

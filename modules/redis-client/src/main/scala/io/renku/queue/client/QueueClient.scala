@@ -29,4 +29,5 @@ trait QueueClient[F[_]] {
       queueName: QueueName,
       messageId: MessageId
   ): F[Unit]
+  def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
 }

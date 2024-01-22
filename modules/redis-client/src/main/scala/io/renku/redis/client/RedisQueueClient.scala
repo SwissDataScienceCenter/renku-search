@@ -60,12 +60,22 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
     RedisStream
       .mkStreamingConnection[F, String, ByteVector](client, StringBytesCodec.instance)
 
-  def markProcessed(
+  override def markProcessed(
       clientId: ClientId,
       queueName: QueueName,
       messageId: MessageId
   ): F[Unit] =
-    stringCommands.use(_.set(formProcessedKey(clientId, queueName), messageId.value))
+    stringCommands.use {
+      _.set(formProcessedKey(clientId, queueName), messageId.value)
+    }
+
+  override def findLastProcessed(
+      clientId: ClientId,
+      queueName: QueueName
+  ): F[Option[MessageId]] =
+    stringCommands.use {
+      _.get(formProcessedKey(clientId, queueName)).map(_.map(MessageId.apply))
+    }
 
   private def stringCommands: Resource[F, RedisCommands[F, String, String]] =
     Redis[F].fromClient(client, RedisCodec.Utf8)

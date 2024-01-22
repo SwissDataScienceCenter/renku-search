@@ -33,9 +33,9 @@ import scodec.bits.ByteVector
 import scribe.Scribe
 
 object RedisQueueClient:
-  def apply[F[_]: Async: Scribe]: Resource[F, QueueClient[F]] =
+  def apply[F[_]: Async: Scribe](redisUrl: RedisUrl): Resource[F, QueueClient[F]] =
     given Log[F] = RedisLogger[F]
-    RedisClient[F].from("url").map(new RedisQueueClient[F](_))
+    RedisClient[F].from(redisUrl.toString).map(new RedisQueueClient[F](_))
 
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
 

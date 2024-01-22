@@ -19,11 +19,13 @@
 package io.renku.redis.client.util
 
 import cats.effect.*
+import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log.Stdout.instance
 import dev.profunktor.redis4cats.effect.MkRedis.forAsync
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
+import io.lettuce.core.RedisConnectionException
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.RedisQueueClient
 
@@ -41,7 +43,12 @@ trait RedisSpec:
   val withRedisClient: RedisFixture = new RedisFixture:
 
     def apply(): Resource[IO, RedisClient] =
-      RedisClient[IO].from(server.url)
+      RedisClient[IO]
+        .from(server.url)
+        .recoverWith {
+          case _: RedisConnectionException => apply()
+          case ex => Resource.raiseError[IO, RedisClient, Throwable](ex)
+        }
 
     override def asRedisCommands(): Resource[IO, RedisCommands[IO, String, String]] =
       apply().flatMap(createRedisCommands)

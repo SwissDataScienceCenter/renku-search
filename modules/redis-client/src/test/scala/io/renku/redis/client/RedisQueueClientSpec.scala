@@ -19,6 +19,7 @@
 package io.renku.redis.client
 
 import cats.effect.IO
+import cats.syntax.all.*
 import fs2.*
 import fs2.concurrent.SignallingRef
 import io.renku.redis.client.RedisClientGenerators.*
@@ -37,8 +38,8 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
         message1 = "message1"
         _ <- client.enqueue(queue, toByteVector(message1))
 
-        fiber <- client
-          .acquireEventsStream(queue, chunkSize = 1)
+        streamingProcFiber <- client
+          .acquireEventsStream(queue, chunkSize = 1, maybeOffset = None)
           .evalMap(event => dequeued.update(toStringUft8(event.payload) :: _))
           .compile
           .drain
@@ -49,11 +50,39 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
         _ <- client.enqueue(queue, toByteVector(message2))
         _ <- dequeued.waitUntil(_.toSet == Set(message1, message2))
 
-        _ <- fiber.cancel
+        _ <- streamingProcFiber.cancel
       yield ()
     }
 
-  test("allow marking and retrieve a processed event"):
+  test("can start enqueueing events from the given messageId excluding"):
+    withRedisClient.asQueueClient().use { client =>
+      val queue = RedisClientGenerators.queueNameGen.generateOne
+      for
+        dequeued <- SignallingRef.of[IO, List[String]](Nil)
+
+        message1 = "message1"
+        message1Id <- client.enqueue(queue, toByteVector(message1))
+
+        streamingProcFiber <- client
+          .acquireEventsStream(queue, chunkSize = 1, maybeOffset = message1Id.some)
+          .evalMap(event => dequeued.update(toStringUft8(event.payload) :: _))
+          .compile
+          .drain
+          .start
+
+        message2 = "message2"
+        _ <- client.enqueue(queue, toByteVector(message2))
+        _ <- dequeued.waitUntil(_.toSet == Set(message2))
+
+        message3 = "message3"
+        _ <- client.enqueue(queue, toByteVector(message3))
+        _ <- dequeued.waitUntil(_.toSet == Set(message2, message3))
+
+        _ <- streamingProcFiber.cancel
+      yield ()
+    }
+
+  test("allow marking and retrieving a processed event"):
     withRedisClient.asQueueClient().use { client =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
       val clientId = RedisClientGenerators.clientIdGen.generateOne

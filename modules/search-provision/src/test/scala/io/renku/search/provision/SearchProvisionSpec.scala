@@ -47,8 +47,8 @@ class SearchProvisionSpec extends CatsEffectSuite with RedisSpec:
         message1 = ProjectCreated("my project", "my description", Some("myself"), now)
         _ <- client.enqueue(queue, avro.write[ProjectCreated](Seq(message1)))
 
-        fiber <- client
-          .acquireEventsStream(queue, chunkSize = 1)
+        streamingProcFiber <- client
+          .acquireEventsStream(queue, chunkSize = 1, maybeOffset = None)
           .evalTap(m => IO.println(avro.read[ProjectCreated](m.payload)))
           .evalMap(event =>
             dequeued.update(avro.read[ProjectCreated](event.payload).toList ::: _)
@@ -62,6 +62,6 @@ class SearchProvisionSpec extends CatsEffectSuite with RedisSpec:
         _ <- client.enqueue(queue, avro.write(Seq(message2)))
         _ <- dequeued.waitUntil(_.toSet == Set(message1, message2))
 
-        _ <- fiber.cancel
+        _ <- streamingProcFiber.cancel
       yield ()
     }

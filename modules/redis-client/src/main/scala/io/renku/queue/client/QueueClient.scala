@@ -22,6 +22,20 @@ import fs2.Stream
 import scodec.bits.ByteVector
 
 trait QueueClient[F[_]] {
-  def enqueue(queueName: QueueName, message: ByteVector): F[Unit]
-  def acquireEventsStream(queueName: QueueName, chunkSize: Int): Stream[F, Message]
+
+  def enqueue(queueName: QueueName, message: ByteVector): F[MessageId]
+
+  def acquireEventsStream(
+      queueName: QueueName,
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  ): Stream[F, Message]
+
+  def markProcessed(
+      clientId: ClientId,
+      queueName: QueueName,
+      messageId: MessageId
+  ): F[Unit]
+
+  def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
 }

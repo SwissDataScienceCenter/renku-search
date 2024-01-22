@@ -119,7 +119,9 @@ lazy val searchProvision = project
   .withId("search-provision")
   .settings(commonSettings)
   .settings(
-    name := "search-provision"
+    name := "search-provision",
+    Test / testOptions += Tests.Setup(RedisServer.start),
+    Test / testOptions += Tests.Cleanup(RedisServer.stop)
   )
   .dependsOn(
     commons % "compile->compile;test->test",

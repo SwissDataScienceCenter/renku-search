@@ -23,12 +23,19 @@ import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log
+import dev.profunktor.redis4cats.effect.MkRedis.forAsync
 import dev.profunktor.redis4cats.streams.RedisStream
 import dev.profunktor.redis4cats.streams.data.{StreamingOffset, XAddMessage, XReadMessage}
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import fs2.Stream
 import io.renku.queue.client.*
 import scodec.bits.ByteVector
+import scribe.Scribe
+
+object RedisQueueClient:
+  def apply[F[_]: Async: Scribe]: Resource[F, QueueClient[F]] =
+    given Log[F] = RedisLogger[F]
+    RedisClient[F].from("url").map(new RedisQueueClient[F](_))
 
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
 

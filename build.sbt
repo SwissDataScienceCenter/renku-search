@@ -158,9 +158,11 @@ lazy val commonSettings = Seq(
   Compile / console / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
   libraryDependencies ++= (
+      Dependencies.scribe
+    ),
+  libraryDependencies ++= (
       Dependencies.catsEffectMunit ++
-        Dependencies.scalacheckEffectMunit ++
-        Dependencies.scribe
+        Dependencies.scalacheckEffectMunit
     ).map(_ % Test),
   // Format: on
   organizationName := "Swiss Data Science Center (SDSC)",

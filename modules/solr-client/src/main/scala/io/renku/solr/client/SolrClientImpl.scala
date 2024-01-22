@@ -1,0 +1,49 @@
+/*
+ * Copyright 2024 Swiss Data Science Center (SDSC)
+ * A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+ * Eidgenössische Technische Hochschule Zürich (ETHZ).
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.renku.solr.client
+
+import cats.effect.Async
+import cats.syntax.all.*
+import org.http4s.Method.POST
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.client.Client
+import org.http4s.client.dsl.Http4sClientDsl
+
+private class SolrClientImpl[F[_]: Async](solrUrl: SolrUrl, underlying: Client[F])
+    extends SolrClient[F]
+    with Http4sClientDsl[F]:
+
+  override def createCollection(name: CollectionName): F[Unit] =
+    underlying
+      .run(
+        POST(
+          (solrUrl.value / "solr" / "admin" / "collections")
+            .withQueryParam("name", name.toString)
+            .withQueryParam("numShards", "1")
+            .withQueryParam("collection.configName", "_default")
+        )
+      )
+      .use { resp =>
+        if (resp.status.isSuccess) ().pure[F]
+        else
+          resp.as[String] >>= { body =>
+            new Exception(s"Collection creation failed with ${resp.status}; ${}")
+              .raiseError[F, Unit]
+          }
+      }

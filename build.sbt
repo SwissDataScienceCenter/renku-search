@@ -47,6 +47,7 @@ lazy val root = project
     commons,
     messages,
     redisClient,
+    solrClient,
     searchProvision
   )
 
@@ -77,6 +78,22 @@ lazy val redisClient = project
         Dependencies.catsEffect ++
         Dependencies.redis4Cats ++
         Dependencies.redis4CatsStreams
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
+lazy val solrClient = project
+  .in(file("modules/solr-client"))
+  .withId("solr-client")
+  .settings(commonSettings)
+  .settings(
+    name := "solr-client",
+    Test / testOptions += Tests.Setup(SolrServer.start),
+    Test / testOptions += Tests.Cleanup(SolrServer.stop),
+    libraryDependencies ++=
+      Dependencies.catsCore ++
+        Dependencies.catsEffect ++
+        Dependencies.http4sClient ++
+        Dependencies.circeLiteral
   )
   .enablePlugins(AutomateHeaderPlugin)
 

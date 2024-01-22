@@ -9,7 +9,9 @@ object Dependencies {
     val catsCore = "2.10.0"
     val catsEffect = "3.5.3"
     val catsEffectMunit = "1.0.7"
+    val circe = "0.14.6"
     val fs2 = "3.9.3"
+    val http4sEmber = "0.23.25"
     val redis4Cats = "1.5.2"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"
@@ -50,8 +52,17 @@ object Dependencies {
     "org.typelevel" %% "munit-cats-effect-3" % V.catsEffectMunit
   )
 
+  val circeLiteral = Seq(
+    "io.circe" %% "circe-literal" % V.circe
+  )
+
   val fs2Core = Seq(
     "co.fs2" %% "fs2-core" % V.fs2
+  )
+
+  val http4sClient = Seq(
+    "org.http4s" %% "http4s-ember-client" % V.http4sEmber,
+    "org.http4s" %% "http4s-circe" % V.http4sEmber
   )
 
   val scribe = Seq(

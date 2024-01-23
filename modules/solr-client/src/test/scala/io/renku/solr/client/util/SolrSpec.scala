@@ -19,7 +19,7 @@
 package io.renku.solr.client.util
 
 import cats.effect.*
-import io.renku.solr.client.{SolrClient, SolrUrl}
+import io.renku.solr.client.{SolrClient, SolrConfig}
 
 trait SolrSpec:
   self: munit.Suite =>
@@ -30,7 +30,7 @@ trait SolrSpec:
     new Fixture[Resource[IO, SolrClient[IO]]]("solr"):
 
       def apply(): Resource[IO, SolrClient[IO]] =
-        SolrClient[IO](SolrUrl(server.url))
+        SolrClient[IO](SolrConfig(server.url / "solr", server.coreName))
 
       override def beforeAll(): Unit =
         server.start()

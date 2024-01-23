@@ -18,16 +18,9 @@
 
 package io.renku.solr.client
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.ember.client.EmberClientBuilder.default
+import org.http4s.Uri
 
-trait SolrClient[F[_]]:
-  def initialize: F[Unit]
-
-  def query(q: QueryString): F[Unit]
-
-object SolrClient:
-  def apply[F[_]: Async: Network](config: SolrConfig): Resource[F, SolrClient[F]] =
-    EmberClientBuilder.default[F].build.map(new SolrClientImpl[F](config, _))
+final case class SolrConfig(
+    baseUrl: Uri,
+    core: String
+)

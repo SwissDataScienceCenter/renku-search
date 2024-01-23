@@ -18,13 +18,16 @@
 
 package io.renku.avro.codec.decoders
 
-import io.renku.avro.codec.{AvroDecoder, AvroCodecException}
+import io.renku.avro.codec.{AvroCodecException, AvroDecoder}
 import org.apache.avro.Schema
 
 import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
 trait CollectionDecoders:
+  given [T: ClassTag](using decoder: AvroDecoder[T]): AvroDecoder[Array[T]] =
+    CollectionDecoders.ArrayDecoder[T](decoder)
+
   given [T](using dec: AvroDecoder[T]): AvroDecoder[List[T]] =
     CollectionDecoders.iterableDecoder[T, List](dec, _.toList)
 
@@ -34,8 +37,12 @@ trait CollectionDecoders:
   given [T](using dec: AvroDecoder[T]): AvroDecoder[Set[T]] =
     CollectionDecoders.iterableDecoder[T, Set](dec, _.toSet)
 
+  given [T](using dec: AvroDecoder[T]): AvroDecoder[Map[String, T]] =
+    CollectionDecoders.MapDecoder[T](dec)
+
 object CollectionDecoders:
-  class ArrayDecoder[T: ClassTag](decoder: AvroDecoder[T]) extends AvroDecoder[Array[T]]:
+  private class ArrayDecoder[T: ClassTag](decoder: AvroDecoder[T])
+      extends AvroDecoder[Array[T]]:
     def decode(schema: Schema): Any => Array[T] = {
       require(
         schema.getType == Schema.Type.ARRAY,
@@ -48,6 +55,16 @@ object CollectionDecoders:
         case list: Iterable[_]             => list.map(decodeT).toArray
         case other =>
           throw AvroCodecException.decode(s"Unsupported array: $other")
+      }
+    }
+
+  private class MapDecoder[T](decoder: AvroDecoder[T])
+      extends AvroDecoder[Map[String, T]]:
+    override def decode(schema: Schema): Any => Map[String, T] = {
+      require(schema.getType == Schema.Type.MAP)
+      val decode = decoder.decode(schema.getValueType)
+      { case map: java.util.Map[_, _] =>
+        map.asScala.toMap.map { case (k, v) => k.toString -> decode(v) }
       }
     }
 

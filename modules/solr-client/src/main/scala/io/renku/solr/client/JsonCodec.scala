@@ -18,30 +18,14 @@
 
 package io.renku.solr.client
 
-import cats.effect.Async
-import cats.syntax.all.*
+import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
+import io.renku.avro.codec.all.given
 import io.renku.solr.client.messages.QueryData
-import org.http4s.{Method, Uri}
-import org.http4s.Method.POST
-import org.http4s.client.Client
-import org.http4s.client.dsl.Http4sClientDsl
 
-private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
-    extends SolrClient[F]
-    with Http4sClientDsl[F]
-    with JsonCodec
-    with SolrEntityCodec:
-  private[this] val solrUrl: Uri = config.baseUrl / config.core
+private[client] trait JsonCodec {
 
-  override def initialize: F[Unit] =
-    ().pure[F]
+  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
+  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
+}
 
-  override def query(q: QueryString): F[Unit] =
-    val req = Method.POST(
-      QueryData(q.q, Nil, q.limit, q.offset, Nil, Map.empty),
-      solrUrl / "query"
-    )
-    underlying
-      .expect[String](req)
-      .flatMap(r => Async[F].blocking(println(r)))
-      .void
+private[client] object JsonCodec extends JsonCodec

@@ -18,17 +18,18 @@
 
 package io.renku.solr.client.util
 
-import cats.syntax.all._
+import cats.syntax.all.*
+import org.http4s.Uri
 
 import java.util.concurrent.atomic.AtomicBoolean
-import scala.sys.process._
+import scala.sys.process.*
 import scala.util.Try
 
 object SolrServer extends SolrServer("graph", port = 8983)
 
 class SolrServer(module: String, port: Int) {
 
-  val url: String = s"redis://localhost:$port"
+  val url: Uri = Uri.unsafeFromString(s"redis://localhost:$port")
 
   // When using a local Solr for development, use this env variable
   // to not start a Solr server via docker for the tests
@@ -36,7 +37,7 @@ class SolrServer(module: String, port: Int) {
 
   private val containerName = s"$module-test-solr"
   private val image = "solr:9.4.1-slim"
-  private val coreName = "renku-search-test"
+  val coreName = "renku-search-test"
   private val startCmd = s"""|docker run --rm
                              |--name $containerName
                              |-p $port:8983

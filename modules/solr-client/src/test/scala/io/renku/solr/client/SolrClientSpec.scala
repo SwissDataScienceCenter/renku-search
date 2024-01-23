@@ -18,7 +18,6 @@
 
 package io.renku.solr.client
 
-import io.renku.solr.client.SolrClientGenerator.*
 import io.renku.solr.client.util.SolrSpec
 import munit.CatsEffectSuite
 
@@ -26,11 +25,5 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec:
 
   test("query something"):
     withSolrClient().use { client =>
-      client.initialize
-    }
-
-  test("can create a collection".ignore):
-    val collection = collectionNameGen.generateOne
-    withSolrClient().use { client =>
-      client.createCollection(collection)
+      client.query(QueryString("*"))
     }

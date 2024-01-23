@@ -18,16 +18,24 @@
 
 package io.renku.solr.client
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.ember.client.EmberClientBuilder.default
+import cats.data.EitherT
+import cats.effect.Concurrent
+import fs2.Chunk
+import io.renku.avro.codec.json.AvroJsonEncoder
+import org.http4s.{EntityDecoder, EntityEncoder, MediaType}
+import org.http4s.headers.`Content-Type`
 
-trait SolrClient[F[_]]:
-  def initialize: F[Unit]
+trait SolrEntityCodec {
 
-  def query(q: QueryString): F[Unit]
+  given jsonEntityEncoder[F[_], A](using enc: AvroJsonEncoder[A]): EntityEncoder[F, A] =
+    EntityEncoder.simple(`Content-Type`(MediaType.application.json))(a =>
+      Chunk.byteVector(enc.encode(a))
+    )
 
-object SolrClient:
-  def apply[F[_]: Async: Network](config: SolrConfig): Resource[F, SolrClient[F]] =
-    EmberClientBuilder.default[F].build.map(new SolrClientImpl[F](config, _))
+  given jsonStringDecoder[F[_]: Concurrent]: EntityDecoder[F, String] =
+    EntityDecoder.decodeBy(MediaType.application.json)(m =>
+      EitherT.liftF(EntityDecoder.decodeText(m))
+    )
+}
+
+object SolrEntityCodec extends SolrEntityCodec

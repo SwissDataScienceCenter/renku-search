@@ -1,0 +1,12 @@
+@namespace("io.renku.solr.client.messages")
+protocol SolrMessages {
+
+	record QueryData {
+		string query;
+		array<string> filter;
+		int limit;
+		int offset;
+		array<string> fields;
+		map<string> params;
+	}
+}

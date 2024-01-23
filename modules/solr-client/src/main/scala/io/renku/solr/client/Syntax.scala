@@ -18,12 +18,22 @@
 
 package io.renku.solr.client
 
-import org.http4s.Uri
+import io.renku.solr.client.messages.QueryData
 
-final case class SolrUrl(value: Uri)
-object SolrUrl:
-  def apply(v: String): SolrUrl = new SolrUrl(Uri.unsafeFromString(v))
+object Syntax {
 
-opaque type CollectionName = String
-object CollectionName:
-  def apply(v: String): CollectionName = new CollectionName(v)
+  extension (self: QueryData)
+    def nextPage: QueryData =
+      self.copy(offset = self.offset + self.limit)
+
+    def withHighLight(fields: List[Field], pre: String, post: String): QueryData =
+      self.copy(params =
+        self.params ++ Map(
+          "hl" -> "on",
+          "hl.requireFieldMatch" -> "true",
+          "hl.fl" -> fields.map(_.name).mkString(","),
+          "hl.simple.pre" -> pre,
+          "hl.simple.post" -> post
+        )
+      )
+}

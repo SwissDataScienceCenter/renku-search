@@ -84,6 +84,7 @@ lazy val redisClient = project
 lazy val solrClient = project
   .in(file("modules/solr-client"))
   .withId("solr-client")
+  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
   .settings(commonSettings)
   .settings(
     name := "solr-client",
@@ -96,7 +97,9 @@ lazy val solrClient = project
         Dependencies.circeLiteral ++
         Dependencies.circe
   )
-  .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(
+    avroCodec % "compile->compile;test->test"
+  )
 
 lazy val avroCodec = project
   .in(file("modules/avro-codec"))
@@ -112,25 +115,13 @@ lazy val messages = project
   .in(file("modules/messages"))
   .settings(commonSettings)
   .settings(
-    name := "messages",
-    libraryDependencies ++= Dependencies.avro,
-    Compile / avroScalaCustomTypes := {
-      avrohugger.format.SpecificRecord.defaultTypes.copy(
-        record = avrohugger.types.ScalaCaseClassWithSchema
-      )
-    },
-    Compile / avroScalaSpecificCustomTypes := {
-      avrohugger.format.SpecificRecord.defaultTypes.copy(
-        record = avrohugger.types.ScalaCaseClassWithSchema
-      )
-    },
-    Compile / sourceGenerators += (Compile / avroScalaGenerate).taskValue
+    name := "messages"
   )
   .dependsOn(
     commons % "compile->compile;test->test",
     avroCodec % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
 
 lazy val searchProvision = project
   .in(file("modules/search-provision"))

@@ -19,13 +19,7 @@
 package io.renku.solr.client
 
 import org.scalacheck.Gen
-import org.scalacheck.Gen.alphaLowerChar
 
 object SolrClientGenerator:
-
-  val collectionNameGen: Gen[CollectionName] =
-    Gen
-      .chooseNum(3, 10)
-      .flatMap(Gen.stringOfN(_, alphaLowerChar).map(CollectionName(_)))
 
   extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

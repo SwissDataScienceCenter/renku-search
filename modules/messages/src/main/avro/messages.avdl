@@ -30,4 +30,10 @@ protocol Messages {
 /*  record ProjectMsg {
     union { ProjectCreated, ProjectUpdated, ProjectDeleted } message;
   } */
+
+  /* An example record for a Project document in Solr */
+  record ProjectDocument {
+    string name;
+    string description;
+  }
 }

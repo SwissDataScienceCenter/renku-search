@@ -28,7 +28,7 @@ trait CollectionEncoders {
   private def iterableEncoder[T, C[X] <: Iterable[X]](
       encoder: AvroEncoder[T]
   ): AvroEncoder[C[T]] = (schema: Schema) => {
-    require(schema.getType == Schema.Type.ARRAY)
+    require(schema.getType == Schema.Type.ARRAY, s"Expected array schema, got: $schema")
     val elementEncoder = encoder.encode(schema.getElementType)
     { t => t.map(elementEncoder.apply).toList.asJava }
   }

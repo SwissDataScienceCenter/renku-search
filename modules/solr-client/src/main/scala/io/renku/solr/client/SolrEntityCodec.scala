@@ -20,10 +20,12 @@ package io.renku.solr.client
 
 import cats.data.EitherT
 import cats.effect.Concurrent
+import cats.syntax.all.*
 import fs2.Chunk
-import io.renku.avro.codec.json.AvroJsonEncoder
-import org.http4s.{EntityDecoder, EntityEncoder, MediaType}
+import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
 import org.http4s.headers.`Content-Type`
+import org.http4s.{EntityDecoder, EntityEncoder, MalformedMessageBodyFailure, MediaType}
+import scodec.bits.ByteVector
 
 trait SolrEntityCodec {
 
@@ -32,10 +34,19 @@ trait SolrEntityCodec {
       Chunk.byteVector(enc.encode(a))
     )
 
-  given jsonStringDecoder[F[_]: Concurrent]: EntityDecoder[F, String] =
-    EntityDecoder.decodeBy(MediaType.application.json)(m =>
-      EitherT.liftF(EntityDecoder.decodeText(m))
-    )
+  given jsonEntityDecoder[F[_]: Concurrent, A](using
+      decoder: AvroJsonDecoder[A]
+  ): EntityDecoder[F, A] =
+    EntityDecoder.decodeBy(MediaType.application.json) { m =>
+      EitherT(
+        m.body.chunks
+          .map(_.toByteVector)
+          .compile
+          .fold(ByteVector.empty)(_ ++ _)
+          .map(decoder.decode)
+          .map(_.leftMap(err => MalformedMessageBodyFailure(err)))
+      )
+    }
 }
 
 object SolrEntityCodec extends SolrEntityCodec

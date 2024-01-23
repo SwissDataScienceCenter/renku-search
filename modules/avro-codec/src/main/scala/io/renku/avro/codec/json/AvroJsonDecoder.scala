@@ -19,8 +19,9 @@ object AvroJsonDecoder:
   def apply[A](f: ByteVector => Either[String, A]): AvroJsonDecoder[A] =
     (json: ByteVector) => f(json)
 
-  def create[A: AvroDecoder](schema: Schema): AvroJsonDecoder[A] =
-    json =>
-      Try(AvroReader(schema).readJson[A](json)).toEither.left
-        .map(_.getMessage)
-        .flatMap(_.headOption.toRight(s"Empty json"))
+  def create[A: AvroDecoder](schema: Schema): AvroJsonDecoder[A] = { json =>
+    // println(s"JSON: ${json.decodeUtf8}")
+    Try(AvroReader(schema).readJson[A](json)).toEither.left
+      .map(_.getMessage)
+      .flatMap(_.headOption.toRight(s"Empty json"))
+  }

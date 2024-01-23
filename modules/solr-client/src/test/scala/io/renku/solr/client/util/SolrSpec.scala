@@ -21,6 +21,8 @@ package io.renku.solr.client.util
 import cats.effect.*
 import io.renku.solr.client.{SolrClient, SolrConfig}
 
+import scala.concurrent.duration.Duration
+
 trait SolrSpec:
   self: munit.Suite =>
 
@@ -30,7 +32,9 @@ trait SolrSpec:
     new Fixture[Resource[IO, SolrClient[IO]]]("solr"):
 
       def apply(): Resource[IO, SolrClient[IO]] =
-        SolrClient[IO](SolrConfig(server.url / "solr", server.coreName))
+        SolrClient[IO](
+          SolrConfig(server.url / "solr", server.coreName, Some(Duration.Zero))
+        )
 
       override def beforeAll(): Unit =
         server.start()

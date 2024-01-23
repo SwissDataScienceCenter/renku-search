@@ -18,21 +18,24 @@
 
 package io.renku.solr.client
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
-import io.renku.solr.client.messages.InsertResponse
-import org.apache.avro.Schema
-import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.ember.client.EmberClientBuilder.default
+import org.apache.avro.{Schema, SchemaBuilder}
 
-trait SolrClient[F[_]]:
-  def initialize: F[Unit]
+final case class ResponseBody[A](
+    numFound: Long,
+    start: Long,
+    numFoundExact: Boolean,
+    docs: Seq[A]
+)
 
-  def query[A: AvroDecoder](schema: Schema, q: QueryString): F[QueryResponse[A]]
-
-  def insert[A: AvroEncoder](schema: Schema, docs: Seq[A]): F[InsertResponse]
-
-object SolrClient:
-  def apply[F[_]: Async: Network](config: SolrConfig): Resource[F, SolrClient[F]] =
-    EmberClientBuilder.default[F].build.map(new SolrClientImpl[F](config, _))
+object ResponseBody:
+  // format: off
+  private[client] def bodySchema(docSchema: Schema): Schema =
+    SchemaBuilder
+      .record("ResponseBody")
+      .fields()
+        .name("numFound").`type`("long").noDefault()
+        .name("start").`type`("long").noDefault()
+        .name("numFoundExact").`type`("boolean").noDefault()
+        .name("docs").`type`(SchemaBuilder.array().items(docSchema)).noDefault()
+      .endRecord()
+  // format: on

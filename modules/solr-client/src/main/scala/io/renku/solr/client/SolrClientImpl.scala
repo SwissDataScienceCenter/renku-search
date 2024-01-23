@@ -20,11 +20,14 @@ package io.renku.solr.client
 
 import cats.effect.Async
 import cats.syntax.all.*
-import io.renku.solr.client.messages.QueryData
-import org.http4s.{Method, Uri}
-import org.http4s.Method.POST
+import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
+import io.renku.solr.client.messages.{InsertResponse, QueryData}
+import org.apache.avro.{Schema, SchemaBuilder}
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
+import org.http4s.{Method, Uri}
+import scala.concurrent.duration.Duration
 
 private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]
@@ -36,12 +39,31 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
   override def initialize: F[Unit] =
     ().pure[F]
 
-  override def query(q: QueryString): F[Unit] =
+  def query[A: AvroDecoder](schema: Schema, q: QueryString): F[QueryResponse[A]] =
     val req = Method.POST(
       QueryData(q.q, Nil, q.limit, q.offset, Nil, Map.empty),
       solrUrl / "query"
     )
+    given decoder: AvroJsonDecoder[QueryResponse[A]] = QueryResponse.makeDecoder(schema)
     underlying
-      .expect[String](req)
-      .flatMap(r => Async[F].blocking(println(r)))
-      .void
+      .expect[QueryResponse[A]](req)
+      .flatTap(r => Async[F].blocking(println(r)))
+
+  def insert[A: AvroEncoder](schema: Schema, docs: Seq[A]): F[InsertResponse] =
+    import io.renku.avro.codec.all.given
+    given AvroJsonEncoder[Seq[A]] =
+      AvroJsonEncoder.create[Seq[A]](SchemaBuilder.array().items(schema))
+
+    given AvroJsonDecoder[InsertResponse] = AvroJsonDecoder.create(InsertResponse.SCHEMA$)
+    val req = Method.POST(docs, makeUpdateUrl)
+    underlying
+      .expect[InsertResponse](req)
+      .flatTap(r => Async[F].blocking(println(s"Inserted: $r")))
+
+  private def makeUpdateUrl = {
+    val base = solrUrl / "update"
+    config.commitWithin match
+      case Some(d) if d == Duration.Zero => base.withQueryParam("commit", "true")
+      case Some(d) => base.withQueryParam("commitWithin", d.toMillis)
+      case None    => base
+  }

@@ -9,4 +9,19 @@ protocol SolrMessages {
 		array<string> fields;
 		map<string> params;
 	}
+
+	record ResponseHeader {
+		int status;
+		long @aliases(["QTime"]) queryTime;
+		map<string> params = {};
+	}
+
+	record UpdateResponseHeader {
+		int status;
+		long @aliases(["QTime"]) queryTime;
+	}
+
+	record InsertResponse {
+		UpdateResponseHeader responseHeader;
+	}
 }

@@ -18,12 +18,43 @@
 
 package io.renku.solr.client
 
+import cats.effect.IO
+import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.renku.avro.codec.all.given
+import io.renku.solr.client.SolrClientSpec.Person
 import io.renku.solr.client.util.SolrSpec
 import munit.CatsEffectSuite
+import org.apache.avro.{Schema, SchemaBuilder}
 
 class SolrClientSpec extends CatsEffectSuite with SolrSpec:
 
   test("query something"):
     withSolrClient().use { client =>
-      client.query(QueryString("*"))
+      client.query[Person](Person.schema, QueryString("*:*"))
     }
+
+  test("insert something"):
+    withSolrClient().use { client =>
+      val data = Person("Hugo", 34)
+      for {
+        _ <- client.insert(Person.schema, Seq(data))
+        r <- client.query[Person](Person.schema, QueryString("*:*"))
+        _ <- IO.println(r)
+      } yield ()
+    }
+
+object SolrClientSpec:
+  // the List[…] is temporary until a proper solr schema is defined. by default it uses arrays
+  case class Person(name: List[String], age: List[Int]) derives AvroDecoder, AvroEncoder
+  object Person:
+    def apply(name: String, age: Int): Person = Person(List(name), List(age))
+    val schema: Schema = SchemaBuilder
+      .record("Person")
+      .fields()
+      .name("name")
+      .`type`(SchemaBuilder.array().items().`type`("string"))
+      .noDefault()
+      .name("age")
+      .`type`(SchemaBuilder.array().items().`type`("int"))
+      .noDefault()
+      .endRecord()

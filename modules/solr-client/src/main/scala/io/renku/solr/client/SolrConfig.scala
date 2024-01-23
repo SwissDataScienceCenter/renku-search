@@ -20,7 +20,10 @@ package io.renku.solr.client
 
 import org.http4s.Uri
 
+import scala.concurrent.duration.FiniteDuration
+
 final case class SolrConfig(
     baseUrl: Uri,
-    core: String
+    core: String,
+    commitWithin: Option[FiniteDuration]
 )

@@ -36,6 +36,7 @@ class SolrServer(module: String, port: Int) {
 
   private val containerName = s"$module-test-solr"
   private val image = "solr:9.4.1-slim"
+  private val coreName = "renku-search-test"
   private val startCmd = s"""|docker run --rm
                              |--name $containerName
                              |-p $port:8983
@@ -43,7 +44,9 @@ class SolrServer(module: String, port: Int) {
   private val isRunningCmd = s"docker container ls --filter 'name=$containerName'"
   private val stopCmd = s"docker stop -t5 $containerName"
   private val readyCmd = "solr status"
+  private val createCore = s"precreate-core $coreName"
   private val isReadyCmd = s"docker exec $containerName sh -c '$readyCmd'"
+  private val createCoreCmd = s"docker exec $containerName sh -c '$createCore'"
   private val wasRunning = new AtomicBoolean(false)
 
   def start(): Unit = synchronized {
@@ -75,6 +78,8 @@ class SolrServer(module: String, port: Int) {
       case ex => throw ex
     }
     Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => ())
+    val rc = createCoreCmd.!
+    println(s"Created solr core $coreName ($rc)")
 
 //    val anotherNodeCmd = "bin/solr -c -z localhost:8983 -p 8984"
 //    val runCmd = s"docker exec $containerName sh -c '$anotherNodeCmd'"

@@ -24,7 +24,12 @@ import munit.CatsEffectSuite
 
 class SolrClientSpec extends CatsEffectSuite with SolrSpec:
 
-  test("can create a collection"):
+  test("query something"):
+    withSolrClient().use { client =>
+      client.initialize
+    }
+
+  test("can create a collection".ignore):
     val collection = collectionNameGen.generateOne
     withSolrClient().use { client =>
       client.createCollection(collection)

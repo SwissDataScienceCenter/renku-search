@@ -24,6 +24,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.client.EmberClientBuilder.default
 
 trait SolrClient[F[_]]:
+  def initialize: F[Unit]
 
   def createCollection(name: CollectionName): F[Unit]
 

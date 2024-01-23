@@ -93,7 +93,8 @@ lazy val solrClient = project
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
         Dependencies.http4sClient ++
-        Dependencies.circeLiteral
+        Dependencies.circeLiteral ++
+        Dependencies.circe
   )
   .enablePlugins(AutomateHeaderPlugin)
 

@@ -20,6 +20,8 @@ package io.renku.solr.client
 
 import cats.effect.Async
 import cats.syntax.all.*
+import io.circe.syntax.*
+import org.http4s.Method
 import org.http4s.Method.POST
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.client.Client
@@ -28,6 +30,15 @@ import org.http4s.client.dsl.Http4sClientDsl
 private class SolrClientImpl[F[_]: Async](solrUrl: SolrUrl, underlying: Client[F])
     extends SolrClient[F]
     with Http4sClientDsl[F]:
+
+  override def initialize: F[Unit] =
+    val queryUrl = solrUrl.value / "solr" / "renku-search-test" / "query"
+    val query = QueryData.selectAll
+    val req = Method.POST(query.asJson, queryUrl)
+    underlying
+      .expect[io.circe.Json](req)
+      .flatMap(r => Async[F].blocking(println(r.spaces2)))
+      .void
 
   override def createCollection(name: CollectionName): F[Unit] =
     underlying

@@ -55,6 +55,9 @@ object Dependencies {
   val circeLiteral = Seq(
     "io.circe" %% "circe-literal" % V.circe
   )
+  val circe = Seq(
+    "io.circe" %% "circe-generic" % V.circe
+  )
 
   val fs2Core = Seq(
     "co.fs2" %% "fs2-core" % V.fs2

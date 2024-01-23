@@ -48,13 +48,12 @@ object SolrClientSpec:
   case class Person(name: List[String], age: List[Int]) derives AvroDecoder, AvroEncoder
   object Person:
     def apply(name: String, age: Int): Person = Person(List(name), List(age))
+
+    // format: off
     val schema: Schema = SchemaBuilder
       .record("Person")
-      .fields()
-      .name("name")
-      .`type`(SchemaBuilder.array().items().`type`("string"))
-      .noDefault()
-      .name("age")
-      .`type`(SchemaBuilder.array().items().`type`("int"))
-      .noDefault()
+        .fields()
+          .name("name").`type`(SchemaBuilder.array().items().`type`("string")).noDefault()
+          .name("age").`type`(SchemaBuilder.array().items().`type`("int")).noDefault()
       .endRecord()
+    // format: on

@@ -81,11 +81,6 @@ class SolrServer(module: String, port: Int) {
     Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => ())
     val rc = createCoreCmd.!
     println(s"Created solr core $coreName ($rc)")
-
-//    val anotherNodeCmd = "bin/solr -c -z localhost:8983 -p 8984"
-//    val runCmd = s"docker exec $containerName sh -c '$anotherNodeCmd'"
-//    runCmd.!!
-//    ()
   }
 
   def stop(): Unit =

@@ -39,7 +39,7 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec:
       for {
         _ <- client.insert(Person.schema, Seq(data))
         r <- client.query[Person](Person.schema, QueryString("*:*"))
-        _ <- IO.println(r)
+        _ = assert(r.responseBody.docs contains data)
       } yield ()
     }
 

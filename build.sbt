@@ -93,19 +93,35 @@ lazy val solrClient = project
     libraryDependencies ++=
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
-        Dependencies.http4sClient ++
-        Dependencies.circeLiteral ++
-        Dependencies.circe
+        Dependencies.http4sClient
   )
   .dependsOn(
     avroCodec % "compile->compile;test->test"
+  )
+
+lazy val searchSolrClient = project
+  .in(file("modules/search-solr-client"))
+  .withId("search-solr-client")
+  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "search-solr-client",
+    Test / testOptions += Tests.Setup(SolrServer.start),
+    Test / testOptions += Tests.Cleanup(SolrServer.stop),
+    libraryDependencies ++=
+      Dependencies.catsCore ++
+        Dependencies.catsEffect
+  )
+  .dependsOn(
+    avroCodec % "compile->compile;test->test",
+    solrClient % "compile->compile;test->test"
   )
 
 lazy val avroCodec = project
   .in(file("modules/avro-codec"))
   .settings(commonSettings)
   .settings(
-    name := "avro-codecs",
+    name := "avro-codec",
     libraryDependencies ++=
       Dependencies.avro ++
         Dependencies.scodecBits

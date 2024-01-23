@@ -9,7 +9,6 @@ object Dependencies {
     val catsCore = "2.10.0"
     val catsEffect = "3.5.3"
     val catsEffectMunit = "1.0.7"
-    val circe = "0.14.6"
     val fs2 = "3.9.3"
     val http4sEmber = "0.23.25"
     val redis4Cats = "1.5.2"
@@ -50,13 +49,6 @@ object Dependencies {
 
   val catsEffectMunit = Seq(
     "org.typelevel" %% "munit-cats-effect-3" % V.catsEffectMunit
-  )
-
-  val circeLiteral = Seq(
-    "io.circe" %% "circe-literal" % V.circe
-  )
-  val circe = Seq(
-    "io.circe" %% "circe-generic" % V.circe
   )
 
   val fs2Core = Seq(

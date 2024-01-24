@@ -22,7 +22,7 @@ import cats.effect.Async
 import cats.syntax.all.*
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
-import io.renku.messages.ProjectDocument
+import io.renku.search.solr.documents.ProjectDocument
 import io.renku.solr.client.{QueryString, SolrClient}
 
 class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])

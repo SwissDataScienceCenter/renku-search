@@ -6,6 +6,7 @@ protocol Messages {
 
   /* An example record for a "project-created-event" */
   record ProjectCreated {
+    string id;
     string name;
     string description;
     string? owner;
@@ -14,6 +15,7 @@ protocol Messages {
 
   /* A project got updated */
   record ProjectUpdated {
+    string id;
     string name;
     string @aliases(["oldDescription"]) description;
     Shapes icon;
@@ -22,6 +24,7 @@ protocol Messages {
   }
 
   record ProjectDeleted {
+    string id;
     string name;
     timestamp_ms deletedAt;
   }
@@ -31,8 +34,9 @@ protocol Messages {
     union { ProjectCreated, ProjectUpdated, ProjectDeleted } message;
   } */
 
-  /* An example record for a Project document in Solr */
-  record ProjectDocument {
+  /* An example record for a Project Entity returned from the Search API */
+  record ProjectEntity {
+    string id;
     string name;
     string description;
   }

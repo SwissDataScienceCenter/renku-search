@@ -18,19 +18,14 @@
 
 package io.renku.search.solr.client
 
-import cats.effect.IO
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
-import munit.CatsEffectSuite
+import io.renku.search.solr.documents.ProjectDocument
+import org.scalacheck.Gen
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
+object SearchSolrClientGenerators:
 
-  test("be able to insert and fetch the project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.insertProject(project)
-        all <- client.findAll
-        _ = assert(all contains project)
-      } yield ()
-    }
+  def projectDocumentGen(name: String, desc: String): Gen[ProjectDocument] =
+    Gen.uuid.map(uuid =>
+      ProjectDocument(uuid.toString, "solr-project", "solr project description")
+    )
+
+  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

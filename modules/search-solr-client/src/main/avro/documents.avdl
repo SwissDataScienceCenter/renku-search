@@ -1,0 +1,10 @@
+@namespace("io.renku.search.solr.documents")
+protocol Documents {
+
+  /* An example record for a Project document in Solr */
+  record ProjectDocument {
+    string id;
+    string name;
+    string description;
+  }
+}

@@ -114,7 +114,6 @@ lazy val searchSolrClient = project
         Dependencies.catsEffect
   )
   .dependsOn(
-    messages % "compile->compile;test->test",
     avroCodec % "compile->compile;test->test",
     solrClient % "compile->compile;test->test"
   )

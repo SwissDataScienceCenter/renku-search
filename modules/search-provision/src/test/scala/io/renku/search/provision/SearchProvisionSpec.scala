@@ -22,9 +22,9 @@ import cats.effect.{Clock, IO}
 import fs2.*
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroIO
-import io.renku.messages.ProjectCreated
-import io.renku.avro.codec.encoders.all.given
 import io.renku.avro.codec.decoders.all.given
+import io.renku.avro.codec.encoders.all.given
+import io.renku.messages.ProjectCreated
 import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
@@ -34,7 +34,7 @@ import java.time.temporal.ChronoUnit
 
 class SearchProvisionSpec extends CatsEffectSuite with RedisSpec:
 
-  val avro = AvroIO(ProjectCreated.SCHEMA$)
+  private val avro = AvroIO(ProjectCreated.SCHEMA$)
 
   test("can enqueue and dequeue events"):
     withRedisClient.asQueueClient().use { client =>
@@ -42,9 +42,7 @@ class SearchProvisionSpec extends CatsEffectSuite with RedisSpec:
       for
         dequeued <- SignallingRef.of[IO, List[ProjectCreated]](Nil)
 
-        now <- Clock[IO].realTimeInstant.map(_.truncatedTo(ChronoUnit.MILLIS))
-
-        message1 = ProjectCreated("my project", "my description", Some("myself"), now)
+        message1 <- generateProjectCreated("my project", "my description", Some("myself"))
         _ <- client.enqueue(queue, avro.write[ProjectCreated](Seq(message1)))
 
         streamingProcFiber <- client
@@ -65,3 +63,13 @@ class SearchProvisionSpec extends CatsEffectSuite with RedisSpec:
         _ <- streamingProcFiber.cancel
       yield ()
     }
+
+  private def generateProjectCreated(
+      name: String,
+      description: String,
+      owner: Option[String]
+  ): IO[ProjectCreated] =
+    for
+      now <- Clock[IO].realTimeInstant.map(_.truncatedTo(ChronoUnit.MILLIS))
+      uuid <- IO.randomUUID
+    yield ProjectCreated(uuid.toString, name, description, owner, now)

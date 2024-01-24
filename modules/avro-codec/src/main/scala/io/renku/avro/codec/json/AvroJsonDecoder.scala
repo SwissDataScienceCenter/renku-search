@@ -20,7 +20,6 @@ object AvroJsonDecoder:
     (json: ByteVector) => f(json)
 
   def create[A: AvroDecoder](schema: Schema): AvroJsonDecoder[A] = { json =>
-    // println(s"JSON: ${json.decodeUtf8}")
     Try(AvroReader(schema).readJson[A](json)).toEither.left
       .map(_.getMessage)
       .flatMap(_.headOption.toRight(s"Empty json"))

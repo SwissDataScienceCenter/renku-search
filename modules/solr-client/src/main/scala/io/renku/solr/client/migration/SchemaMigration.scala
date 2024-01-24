@@ -16,16 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.migration
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+import io.renku.solr.client.schema.SchemaCommand
 
-private[client] trait JsonCodec extends schema.JsonCodec {
+final case class SchemaMigration(
+    version: Long,
+    commands: Seq[SchemaCommand]
+)
 
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
-
-private[client] object JsonCodec extends JsonCodec
+object SchemaMigration:
+  def apply(version: Long, cmd: SchemaCommand, more: SchemaCommand*): SchemaMigration =
+    SchemaMigration(version, cmd +: more)

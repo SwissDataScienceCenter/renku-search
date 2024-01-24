@@ -18,14 +18,19 @@
 
 package io.renku.solr.client
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
+import io.renku.avro.codec.json.AvroJsonEncoder
 import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+import org.apache.avro.SchemaBuilder
+import scodec.bits.ByteVector
 
-private[client] trait JsonCodec extends schema.JsonCodec {
+final private[client] case class DeleteRequest(query: String)
 
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
+private[client] object DeleteRequest:
+  given AvroJsonEncoder[DeleteRequest] = AvroJsonEncoder { v =>
+    val query =
+      AvroJsonEncoder.create[String](SchemaBuilder.builder().stringType()).encode(v.query)
 
-private[client] object JsonCodec extends JsonCodec
+    ByteVector.view("""{"delete": {"query": """.getBytes) ++
+      query ++
+      ByteVector.view("}}".getBytes)
+  }

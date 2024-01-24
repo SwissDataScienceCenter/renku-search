@@ -21,12 +21,15 @@ package io.renku.solr.client
 import cats.effect.Async
 import cats.syntax.all.*
 import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.renku.avro.codec.all.given
 import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
 import io.renku.solr.client.messages.{InsertResponse, QueryData}
+import io.renku.solr.client.schema.SchemaCommand
 import org.apache.avro.{Schema, SchemaBuilder}
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.{Method, Uri}
+
 import scala.concurrent.duration.Duration
 
 private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
@@ -34,10 +37,26 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
     with Http4sClientDsl[F]
     with JsonCodec
     with SolrEntityCodec:
+  private[this] val logger = scribe.cats.effect[F]
   private[this] val solrUrl: Uri = config.baseUrl / config.core
 
-  override def initialize: F[Unit] =
-    ().pure[F]
+  given AvroJsonDecoder[InsertResponse] = AvroJsonDecoder.create(InsertResponse.SCHEMA$)
+
+  def modifySchema(cmds: Seq[SchemaCommand]): F[Unit] =
+    val req = Method.POST(cmds, solrUrl / "schema")
+    underlying
+      .run(req)
+      .use { resp =>
+        resp.bodyText.compile.string
+          .flatTap(b => logger.trace(s"Modify Schema Response: $b"))
+          .flatMap { body =>
+            if (!resp.status.isSuccess)
+              Async[F].raiseError(
+                new Exception(s"Unexpected status: ${resp.status}: $body")
+              )
+            else ().pure[F]
+          }
+      }
 
   def query[A: AvroDecoder](schema: Schema, q: QueryString): F[QueryResponse[A]] =
     val req = Method.POST(
@@ -47,18 +66,23 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
     given decoder: AvroJsonDecoder[QueryResponse[A]] = QueryResponse.makeDecoder(schema)
     underlying
       .expect[QueryResponse[A]](req)
-      .flatTap(r => Async[F].blocking(println(r)))
+      .flatTap(r => logger.trace(s"Query response: $r"))
+
+  def delete(q: QueryString): F[Unit] =
+    val req = Method.POST(DeleteRequest(q.q), makeUpdateUrl)
+    underlying
+      .expect[InsertResponse](req)
+      .flatTap(r => logger.trace(s"Solr delete response: $r"))
+      .void
 
   def insert[A: AvroEncoder](schema: Schema, docs: Seq[A]): F[InsertResponse] =
-    import io.renku.avro.codec.all.given
     given AvroJsonEncoder[Seq[A]] =
       AvroJsonEncoder.create[Seq[A]](SchemaBuilder.array().items(schema))
 
-    given AvroJsonDecoder[InsertResponse] = AvroJsonDecoder.create(InsertResponse.SCHEMA$)
     val req = Method.POST(docs, makeUpdateUrl)
     underlying
       .expect[InsertResponse](req)
-      .flatTap(r => Async[F].blocking(println(s"Inserted: $r")))
+      .flatTap(r => logger.trace(s"Solr inserted response: $r"))
 
   private def makeUpdateUrl = {
     val base = solrUrl / "update"

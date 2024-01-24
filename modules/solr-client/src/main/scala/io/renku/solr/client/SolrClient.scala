@@ -22,14 +22,17 @@ import cats.effect.{Async, Resource}
 import fs2.io.net.Network
 import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
 import io.renku.solr.client.messages.InsertResponse
+import io.renku.solr.client.schema.SchemaCommand
 import org.apache.avro.Schema
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.client.EmberClientBuilder.default
 
 trait SolrClient[F[_]]:
-  def initialize: F[Unit]
+  def modifySchema(cmds: Seq[SchemaCommand]): F[Unit]
 
   def query[A: AvroDecoder](schema: Schema, q: QueryString): F[QueryResponse[A]]
+
+  def delete(q: QueryString): F[Unit]
 
   def insert[A: AvroEncoder](schema: Schema, docs: Seq[A]): F[InsertResponse]
 

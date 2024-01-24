@@ -31,7 +31,9 @@ trait SolrEntityCodec {
 
   given jsonEntityEncoder[F[_], A](using enc: AvroJsonEncoder[A]): EntityEncoder[F, A] =
     EntityEncoder.simple(`Content-Type`(MediaType.application.json))(a =>
-      Chunk.byteVector(enc.encode(a))
+      val bytes = enc.encode(a)
+      scribe.trace(s"Solr request payload: ${bytes.decodeUtf8Lenient}")
+      Chunk.byteVector(bytes)
     )
 
   given jsonEntityDecoder[F[_]: Concurrent, A](using

@@ -16,16 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.schema
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+import io.renku.avro.codec.AvroEncoder
+import io.renku.avro.codec.encoders.StringEncoders
 
-private[client] trait JsonCodec extends schema.JsonCodec {
+opaque type FieldName = String
+object FieldName:
+  def apply(name: String): FieldName = name
 
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
+  extension (self: FieldName) def name: String = self
 
-private[client] object JsonCodec extends JsonCodec
+  given AvroEncoder[FieldName] =
+    StringEncoders.StringEncoder.contramap(_.name)

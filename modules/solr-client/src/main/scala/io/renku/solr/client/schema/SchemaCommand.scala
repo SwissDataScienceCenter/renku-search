@@ -16,16 +16,14 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.schema
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+enum SchemaCommand:
+  case Add(element: SchemaCommand.Element)
+  case DeleteField(name: FieldName)
+  case DeleteType(name: TypeName)
+  case DeleteDynamicField(name: FieldName)
+  case Raw(content: String)
 
-private[client] trait JsonCodec extends schema.JsonCodec {
-
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
-
-private[client] object JsonCodec extends JsonCodec
+object SchemaCommand:
+  type Element = FieldType | Field | DynamicFieldRule | CopyFieldRule

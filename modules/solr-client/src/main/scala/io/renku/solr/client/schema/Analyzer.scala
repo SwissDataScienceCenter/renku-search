@@ -16,16 +16,24 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.schema
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+// see https://solr.apache.org/guide/solr/latest/indexing-guide/analyzers.html
 
-private[client] trait JsonCodec extends schema.JsonCodec {
+final case class Analyzer(
+    tokenizer: Tokenizer,
+    `type`: Analyzer.AnalyzerType = Analyzer.AnalyzerType.None,
+    filter: Seq[Filter] = Nil
+)
 
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
+object Analyzer:
+  enum AnalyzerType:
+    case Index
+    case Multiterm
+    case Query
+    case None
 
-private[client] object JsonCodec extends JsonCodec
+  def index(tokenizer: Tokenizer, filters: Filter*): Analyzer =
+    Analyzer(tokenizer, AnalyzerType.Index, filters)
+
+  val classic: Analyzer = Analyzer(Tokenizer.classic, filter = List(Filter.classic))

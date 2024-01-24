@@ -16,16 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.schema
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+// see https://solr.apache.org/guide/solr/latest/indexing-guide/filters.html
 
-private[client] trait JsonCodec extends schema.JsonCodec {
+final case class Filter(name: String)
 
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
-
-private[client] object JsonCodec extends JsonCodec
+object Filter:
+  val lowercase: Filter = Filter("lowercase")
+  val stop: Filter = Filter("stop")
+  val englishPorter: Filter = Filter("englishPorter")
+  val classic: Filter = Filter("classic")
+  val daitchMokotoffSoundex: Filter = Filter("daitchMokotoffSoundex")
+  val doubleMetaphone: Filter = Filter("doubleMetaphone")

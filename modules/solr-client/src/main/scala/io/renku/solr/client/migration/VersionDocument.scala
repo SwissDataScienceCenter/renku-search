@@ -16,16 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.migration
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
+import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
 import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
+import org.apache.avro.{Schema, SchemaBuilder}
 
-private[client] trait JsonCodec extends schema.JsonCodec {
+final private[client] case class VersionDocument(id: String, currentSchemaVersion: Long)
+    derives AvroEncoder,
+      AvroDecoder
 
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
+private[client] object VersionDocument:
+  val schema: Schema =
+    //format: off
+    SchemaBuilder.record("VersionDocument").fields()
+      .name("id").`type`("string").noDefault()
+      .name("currentSchemaVersion").`type`("long").noDefault()
+      .endRecord()
+    //format: on
 
-private[client] object JsonCodec extends JsonCodec
+  given AvroJsonEncoder[VersionDocument] = AvroJsonEncoder.create(schema)
+  given AvroJsonDecoder[VersionDocument] = AvroJsonDecoder.create(schema)

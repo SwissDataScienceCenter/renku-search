@@ -19,6 +19,7 @@
 package io.renku.solr.client
 
 import io.renku.solr.client.messages.QueryData
+import io.renku.solr.client.schema.FieldName
 
 object Syntax {
 
@@ -26,7 +27,7 @@ object Syntax {
     def nextPage: QueryData =
       self.copy(offset = self.offset + self.limit)
 
-    def withHighLight(fields: List[Field], pre: String, post: String): QueryData =
+    def withHighLight(fields: List[FieldName], pre: String, post: String): QueryData =
       self.copy(params =
         self.params ++ Map(
           "hl" -> "on",

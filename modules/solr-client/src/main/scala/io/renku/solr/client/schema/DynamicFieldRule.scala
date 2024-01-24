@@ -16,15 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.schema
 
-import io.circe.{Decoder, Encoder}
-
-opaque type Field = String
-object Field:
-  def apply(name: String): Field = name
-
-  given Encoder[Field] = Encoder.encodeString
-  given Decoder[Field] = Decoder.decodeString
-
-  extension (self: Field) def name: String = self
+final case class DynamicFieldRule(
+    name: FieldName,
+    `type`: TypeName,
+    required: Boolean = false,
+    indexed: Boolean = true,
+    stored: Boolean = true,
+    multiValued: Boolean = false,
+    uninvertible: Boolean = false,
+    docValues: Boolean = false
+)

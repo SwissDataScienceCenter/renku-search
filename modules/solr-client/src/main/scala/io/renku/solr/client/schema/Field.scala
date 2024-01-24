@@ -16,16 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.solr.client.schema
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
-
-private[client] trait JsonCodec extends schema.JsonCodec {
-
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
-
-private[client] object JsonCodec extends JsonCodec
+final case class Field(
+    name: FieldName,
+    `type`: TypeName,
+    required: Boolean = false,
+    indexed: Boolean = true,
+    stored: Boolean = true,
+    multiValued: Boolean = false,
+    uninvertible: Boolean = false,
+    docValues: Boolean = false
+)

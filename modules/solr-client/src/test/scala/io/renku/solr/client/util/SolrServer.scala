@@ -29,7 +29,7 @@ object SolrServer extends SolrServer("graph", port = 8983)
 
 class SolrServer(module: String, port: Int) {
 
-  val url: Uri = Uri.unsafeFromString(s"redis://localhost:$port")
+  val url: Uri = Uri.unsafeFromString(s"http://localhost:$port")
 
   // When using a local Solr for development, use this env variable
   // to not start a Solr server via docker for the tests

@@ -19,13 +19,14 @@
 package io.renku.solr.client.migration
 
 import cats.effect.IO
-import io.renku.solr.client.{QueryString, SolrClient}
-import io.renku.solr.client.schema.{Analyzer, Field, FieldName, FieldType, TypeName}
-import io.renku.solr.client.schema.SchemaCommand.{Add, DeleteField}
-import io.renku.solr.client.util.SolrSpec
+import io.renku.solr.client.SolrClient
+import io.renku.solr.client.schema.*
+import io.renku.solr.client.schema.SchemaCommand.Add
+import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
 
-class SolrMigratiorSpec extends CatsEffectSuite with SolrSpec:
+class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
+  val logger = scribe.cats.io
   val migrations = Seq(
     SchemaMigration(1, Add(FieldType.text(TypeName("text"), Analyzer.classic))),
     SchemaMigration(2, Add(FieldType.int(TypeName("int")))),
@@ -35,12 +36,15 @@ class SolrMigratiorSpec extends CatsEffectSuite with SolrSpec:
   )
 
   def truncate(client: SolrClient[IO]): IO[Unit] =
-    for {
-      _ <- client.delete(QueryString("*:*"))
-      _ <- client
-        .modifySchema(Seq(DeleteField(FieldName("currentSchemaVersion"))))
-        .attempt
-    } yield ()
+    truncateAll(client)(
+      Seq(
+        FieldName("currentSchemaVersion"),
+        FieldName("name"),
+        FieldName("description"),
+        FieldName("seats")
+      ),
+      Seq(TypeName("text"), TypeName("int"))
+    )
 
   test("run sample migrations"):
     withSolrClient().use { client =>
@@ -56,7 +60,7 @@ class SolrMigratiorSpec extends CatsEffectSuite with SolrSpec:
   test("run only remaining migrations"):
     withSolrClient().use { client =>
       val migrator = SchemaMigrator(client)
-      val (first, _) = migrations.span(_.version < 3)
+      val first = migrations.take(2)
       for {
         _ <- truncate(client)
         _ <- migrator.migrate(first)

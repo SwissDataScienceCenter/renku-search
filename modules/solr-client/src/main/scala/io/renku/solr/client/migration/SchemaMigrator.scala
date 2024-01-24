@@ -56,7 +56,6 @@ object SchemaMigrator:
       logger.info("Initialize schema migration version document") >>
         client.modifySchema(
           Seq(
-            // SchemaCommand.Add(FieldType.long(versionTypeName)),
             SchemaCommand.Add(
               Field(
                 FieldName("currentSchemaVersion"),

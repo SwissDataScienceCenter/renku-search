@@ -43,7 +43,7 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
   given AvroJsonDecoder[InsertResponse] = AvroJsonDecoder.create(InsertResponse.SCHEMA$)
 
   def modifySchema(cmds: Seq[SchemaCommand]): F[Unit] =
-    val req = Method.POST(cmds, solrUrl / "schema")
+    val req = Method.POST(cmds, (solrUrl / "schema").withQueryParam("commit", "true"))
     underlying
       .run(req)
       .use { resp =>

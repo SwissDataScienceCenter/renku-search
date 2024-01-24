@@ -30,11 +30,11 @@ import io.renku.solr.client.schema.{
   SchemaCommand,
   TypeName
 }
-import io.renku.solr.client.util.SolrSpec
+import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
 import org.apache.avro.{Schema, SchemaBuilder}
 
-class SolrClientSpec extends CatsEffectSuite with SolrSpec:
+class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
 
   test("query something"):
     withSolrClient().use { client =>
@@ -51,6 +51,10 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec:
     )
     withSolrClient().use { client =>
       for {
+        _ <- truncateAll(client)(
+          Seq(FieldName("name"), FieldName("description"), FieldName("seats")),
+          Seq(TypeName("text"), TypeName("int"))
+        )
         _ <- client.modifySchema(cmds)
         _ <- client
           .insert[Room](Room.schema, Seq(Room("meeting room", "room for meetings", 56)))
@@ -63,6 +67,10 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec:
     withSolrClient().use { client =>
       val data = Person("Hugo", 34)
       for {
+        _ <- truncateAll(client)(
+          Seq(FieldName("name"), FieldName("description"), FieldName("seats")),
+          Seq(TypeName("text"), TypeName("int"))
+        )
         _ <- client.insert(Person.schema, Seq(data))
         r <- client.query[Person](Person.schema, QueryString("*:*"))
         _ = assert(r.responseBody.docs contains data)

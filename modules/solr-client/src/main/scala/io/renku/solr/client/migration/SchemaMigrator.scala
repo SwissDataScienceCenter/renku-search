@@ -60,8 +60,7 @@ object SchemaMigrator:
             SchemaCommand.Add(
               Field(
                 FieldName("currentSchemaVersion"),
-                versionTypeName,
-                required = true
+                versionTypeName
               )
             )
           )

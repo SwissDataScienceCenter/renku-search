@@ -19,6 +19,8 @@
 package io.renku.search.solr.client
 
 import cats.effect.{IO, Resource}
+import io.renku.search.solr.schema.Migrations
+import io.renku.solr.client.migration.SchemaMigrator
 import io.renku.solr.client.util.SolrSpec
 
 trait SearchSolrSpec extends SolrSpec:
@@ -28,7 +30,9 @@ trait SearchSolrSpec extends SolrSpec:
     new Fixture[Resource[IO, SearchSolrClient[IO]]]("search-solr"):
 
       def apply(): Resource[IO, SearchSolrClient[IO]] =
-        withSolrClient().map(new SearchSolrClientImpl[IO](_))
+        withSolrClient()
+          .evalTap(SchemaMigrator[IO](_).migrate(Migrations.all))
+          .map(new SearchSolrClientImpl[IO](_))
 
       override def beforeAll(): Unit =
         withSolrClient.beforeAll()

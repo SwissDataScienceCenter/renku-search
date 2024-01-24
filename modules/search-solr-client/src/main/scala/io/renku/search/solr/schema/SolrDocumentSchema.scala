@@ -16,22 +16,9 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.solr.schema
 
-import cats.effect.Async
-import cats.syntax.all.*
-import io.renku.avro.codec.AvroEncoder
-import io.renku.avro.codec.all.given
-import io.renku.search.solr.documents.ProjectDocument
-import io.renku.solr.client.{QueryString, SolrClient}
+import io.renku.solr.client.schema.SchemaCommand
 
-class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
-    extends SearchSolrClient[F]:
-
-  override def insertProject(project: ProjectDocument): F[Unit] =
-    solrClient.insert(ProjectDocument.SCHEMA$, Seq(project)).void
-
-  override def findAll: F[List[ProjectDocument]] =
-    solrClient
-      .query[ProjectDocument](ProjectDocument.SCHEMA$, QueryString("name:*"))
-      .map(_.responseBody.docs.toList)
+trait SolrDocumentSchema:
+  val commands: Seq[SchemaCommand]

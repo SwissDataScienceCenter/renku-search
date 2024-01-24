@@ -25,25 +25,25 @@ import io.renku.solr.client.schema.SchemaCommand.Add
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
 
-class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
-  val logger = scribe.cats.io
-  val migrations = Seq(
-    SchemaMigration(1, Add(FieldType.text(TypeName("text"), Analyzer.classic))),
-    SchemaMigration(2, Add(FieldType.int(TypeName("int")))),
-    SchemaMigration(3, Add(Field(FieldName("name"), TypeName("text")))),
-    SchemaMigration(4, Add(Field(FieldName("description"), TypeName("text")))),
-    SchemaMigration(5, Add(Field(FieldName("seats"), TypeName("int"))))
+class SolrMigratiorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
+  private val logger = scribe.cats.io
+  private val migrations = Seq(
+    SchemaMigration(1, Add(FieldType.text(TypeName("testText"), Analyzer.classic))),
+    SchemaMigration(2, Add(FieldType.int(TypeName("testInt")))),
+    SchemaMigration(3, Add(Field(FieldName("testName"), TypeName("testText")))),
+    SchemaMigration(4, Add(Field(FieldName("testDescription"), TypeName("testText")))),
+    SchemaMigration(5, Add(Field(FieldName("testSeats"), TypeName("testInt"))))
   )
 
   def truncate(client: SolrClient[IO]): IO[Unit] =
     truncateAll(client)(
       Seq(
         FieldName("currentSchemaVersion"),
-        FieldName("name"),
-        FieldName("description"),
-        FieldName("seats")
+        FieldName("testName"),
+        FieldName("testDescription"),
+        FieldName("testSeats")
       ),
-      Seq(TypeName("text"), TypeName("int"))
+      Seq(TypeName("testText"), TypeName("testInt"))
     )
 
   test("run sample migrations"):

@@ -18,7 +18,10 @@
 
 package io.renku.search.solr.schema
 
-import io.renku.solr.client.schema.SchemaCommand
+opaque type Discriminator = String
+object Discriminator:
+  def apply(name: String): Discriminator = name
 
-trait SolrDocumentSchema:
-  val commands: Seq[SchemaCommand]
+  extension (self: Discriminator) def name: String = self
+
+  val project: Discriminator = "project"

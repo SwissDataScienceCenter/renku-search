@@ -3,6 +3,7 @@ protocol Documents {
 
   /* An example record for a Project document in Solr */
   record ProjectDocument {
+    string discriminator = "project";
     string id;
     string name;
     string description;

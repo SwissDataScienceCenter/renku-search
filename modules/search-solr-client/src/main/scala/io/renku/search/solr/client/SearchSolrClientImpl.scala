@@ -23,6 +23,7 @@ import cats.syntax.all.*
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.search.solr.documents.ProjectDocument
+import io.renku.search.solr.schema.{Discriminator, EntityDocumentSchema}
 import io.renku.solr.client.{QueryString, SolrClient}
 
 class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
@@ -31,7 +32,12 @@ class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   override def insertProject(project: ProjectDocument): F[Unit] =
     solrClient.insert(ProjectDocument.SCHEMA$, Seq(project)).void
 
-  override def findAll: F[List[ProjectDocument]] =
+  override def findAllProjects: F[List[ProjectDocument]] =
     solrClient
-      .query[ProjectDocument](ProjectDocument.SCHEMA$, QueryString("name:*"))
+      .query[ProjectDocument](
+        ProjectDocument.SCHEMA$,
+        QueryString(
+          s"${EntityDocumentSchema.Fields.discriminator}:${Discriminator.project}"
+        )
+      )
       .map(_.responseBody.docs.toList)

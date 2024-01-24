@@ -20,10 +20,18 @@ package io.renku.search.solr.schema
 
 import io.renku.solr.client.schema.*
 
-object ProjectDocumentSchema extends SolrDocumentSchema:
+object EntityDocumentSchema:
 
-  override val commands: Seq[SchemaCommand] = Seq(
-    SchemaCommand.Add(FieldType.text(TypeName("text"), Analyzer.classic)),
-    SchemaCommand.Add(Field(FieldName("name"), TypeName("text"))),
-    SchemaCommand.Add(Field(FieldName("description"), TypeName("text")))
+  object Fields:
+    val discriminator: FieldName = FieldName("discriminator")
+    val name: FieldName = FieldName("name")
+    val description: FieldName = FieldName("description")
+
+  val initialEntityDocumentAdd: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(FieldType.str(TypeName("discriminator"))),
+    SchemaCommand.Add(FieldType.str(TypeName("name"))),
+    SchemaCommand.Add(FieldType.text(TypeName("description"), Analyzer.classic)),
+    SchemaCommand.Add(Field(Fields.discriminator, TypeName("discriminator"))),
+    SchemaCommand.Add(Field(Fields.name, TypeName("name"))),
+    SchemaCommand.Add(Field(Fields.description, TypeName("description")))
   )

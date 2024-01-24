@@ -24,13 +24,12 @@ import munit.CatsEffectSuite
 
 class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
 
-  test("be able to insert and fetch the project document"):
+  test("be able to insert and fetch a project document"):
     withSearchSolrClient().use { client =>
       val project =
         projectDocumentGen("solr-project", "solr project description").generateOne
       for {
         _ <- client.insertProject(project)
-        all <- client.findAll
-        _ = assert(all contains project)
+        _ <- client.findAllProjects.map(all => assert(all contains project))
       } yield ()
     }

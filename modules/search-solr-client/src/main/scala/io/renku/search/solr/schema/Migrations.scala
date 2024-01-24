@@ -23,6 +23,6 @@ import io.renku.solr.client.migration.SchemaMigration
 object Migrations {
 
   val all: Seq[SchemaMigration] = Seq(
-    SchemaMigration(version = 1L, commands = ProjectDocumentSchema.commands)
+    SchemaMigration(version = 1L, EntityDocumentSchema.initialEntityDocumentAdd)
   )
 }

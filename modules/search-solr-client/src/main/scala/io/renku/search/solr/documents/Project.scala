@@ -16,16 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.solr.documents
 
-import io.renku.search.solr.documents.Project
-import org.scalacheck.Gen
+import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
+import io.bullet.borer.{Decoder, Encoder}
+import io.renku.solr.client.EncoderSupport.deriveWithDiscriminator
 
-object SearchSolrClientGenerators:
+final case class Project(id: String, name: String, description: String)
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    Gen.uuid.map(uuid =>
-      Project(uuid.toString, "solr-project", "solr project description")
-    )
+object Project:
+  val entityType: String = "Project"
 
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+  given Encoder[Project] = deriveWithDiscriminator
+  given Decoder[Project] = deriveDecoder

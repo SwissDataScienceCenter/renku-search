@@ -20,14 +20,14 @@ package io.renku.search.solr.client
 
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-import io.renku.search.solr.documents.ProjectDocument
+import io.renku.search.solr.documents.Project
 import io.renku.solr.client.{SolrClient, SolrConfig}
 
 trait SearchSolrClient[F[_]]:
 
-  def insertProject(project: ProjectDocument): F[Unit]
+  def insertProject(project: Project): F[Unit]
 
-  def findAllProjects: F[List[ProjectDocument]]
+  def findAllProjects: F[List[Project]]
 
 object SearchSolrClient:
   def apply[F[_]: Async: Network](

@@ -46,7 +46,7 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
       Seq(TypeName("testText"), TypeName("testInt"))
     )
 
-  test("run sample migrations".ignore):
+  test("run sample migrations"):
     withSolrClient().use { client =>
       val migrator = SchemaMigrator[IO](client)
       for {

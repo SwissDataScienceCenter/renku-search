@@ -30,6 +30,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
         projectDocumentGen("solr-project", "solr project description").generateOne
       for {
         _ <- client.insertProject(project)
-        _ <- client.findAllProjects.map(all => assert(all contains project))
+        r <- client.findAllProjects
+        _ = assert(r contains project)
       } yield ()
     }

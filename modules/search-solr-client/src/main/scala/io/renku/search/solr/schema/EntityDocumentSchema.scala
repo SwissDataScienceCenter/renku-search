@@ -24,15 +24,15 @@ object EntityDocumentSchema:
 
   object Fields:
     val id: FieldName = FieldName("id")
-    val discriminator: FieldName = FieldName("discriminator")
+    val entityType: FieldName = FieldName("_type")
     val name: FieldName = FieldName("name")
     val description: FieldName = FieldName("description")
 
   val initialEntityDocumentAdd: Seq[SchemaCommand] = Seq(
-    SchemaCommand.Add(FieldType.str(TypeName("discriminator"))),
+    SchemaCommand.Add(FieldType.str(TypeName("entityType"))),
     SchemaCommand.Add(FieldType.str(TypeName("name"))),
     SchemaCommand.Add(FieldType.text(TypeName("description"), Analyzer.classic)),
-    SchemaCommand.Add(Field(Fields.discriminator, TypeName("discriminator"))),
+    SchemaCommand.Add(Field(Fields.entityType, TypeName("entityType"))),
     SchemaCommand.Add(Field(Fields.name, TypeName("name"))),
     SchemaCommand.Add(Field(Fields.description, TypeName("description")))
   )

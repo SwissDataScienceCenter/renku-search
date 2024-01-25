@@ -28,7 +28,7 @@ import io.renku.messages.ProjectCreated
 import io.renku.queue.client.{Message, QueueClient, QueueName}
 import io.renku.redis.client.RedisUrl
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.ProjectDocument
+import io.renku.search.solr.documents.Project
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
@@ -68,5 +68,5 @@ private class SearchProvisionerImpl[F[_]: Async](
   private def pushToSolr(pc: ProjectCreated): F[Unit] =
     solrClient
       .insertProject(
-        ProjectDocument(id = pc.id, name = pc.name, description = pc.description)
+        Project(id = pc.id, name = pc.name, description = pc.description)
       )

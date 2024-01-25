@@ -29,7 +29,7 @@ import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.ProjectDocument
+import io.renku.search.solr.documents.Project
 import munit.CatsEffectSuite
 
 import java.time.temporal.ChronoUnit
@@ -46,7 +46,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
       .use { case (queueClient, solrClient) =>
         val provisioner = new SearchProvisionerImpl(queue, queueClient, solrClient)
         for
-          solrDocs <- SignallingRef.of[IO, Set[ProjectDocument]](Set.empty)
+          solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 
           provisioningFiber <- provisioner.provisionSolr.start
 
@@ -81,12 +81,8 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
       uuid <- IO.randomUUID
     yield ProjectCreated(uuid.toString, name, description, owner, now)
 
-  private def toSolrDocument(created: ProjectCreated): ProjectDocument =
-    ProjectDocument(
-      id = created.id,
-      name = created.name,
-      description = created.description
-    )
+  private def toSolrDocument(created: ProjectCreated): Project =
+    Project(created.id, created.name, created.description)
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withSearchSolrClient)

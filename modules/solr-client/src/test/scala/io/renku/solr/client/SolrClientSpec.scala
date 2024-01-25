@@ -38,14 +38,6 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
     )
     withSolrClient().use { client =>
       for {
-        _ <- truncateAll(client)(
-          Seq(
-            FieldName("roomName"),
-            FieldName("roomDescription"),
-            FieldName("roomSeats")
-          ),
-          Seq(TypeName("roomText"), TypeName("roomInt"))
-        )
         _ <- client.modifySchema(cmds)
         _ <- client
           .insert[Room](Seq(Room("meeting room", "room for meetings", 56)))

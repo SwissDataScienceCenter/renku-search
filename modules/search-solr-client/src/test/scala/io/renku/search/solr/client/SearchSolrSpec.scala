@@ -20,6 +20,7 @@ package io.renku.search.solr.client
 
 import cats.effect.{IO, Resource}
 import io.renku.search.solr.schema.Migrations
+import io.renku.solr.client.SolrClient
 import io.renku.solr.client.migration.SchemaMigrator
 import io.renku.solr.client.util.SolrSpec
 
@@ -30,15 +31,15 @@ trait SearchSolrSpec extends SolrSpec:
     new Fixture[Resource[IO, SearchSolrClient[IO]]]("search-solr"):
 
       def apply(): Resource[IO, SearchSolrClient[IO]] =
-        withSolrClient()
-          .evalTap(SchemaMigrator[IO](_).migrate(Migrations.all))
+        SolrClient[IO](solrConfig.copy(core = server.searchCoreName))
+          .evalTap(SchemaMigrator[IO](_).migrate(Migrations.all).attempt.void)
           .map(new SearchSolrClientImpl[IO](_))
 
       override def beforeAll(): Unit =
-        withSolrClient.beforeAll()
+        server.start()
 
       override def afterAll(): Unit =
-        withSolrClient.afterAll()
+        server.stop()
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withSearchSolrClient)

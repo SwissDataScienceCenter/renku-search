@@ -26,15 +26,19 @@ import scala.concurrent.duration.Duration
 trait SolrSpec:
   self: munit.Suite =>
 
-  private lazy val server: SolrServer = SolrServer
+  protected lazy val server: SolrServer = SolrServer
+  protected lazy val solrConfig: SolrConfig = SolrConfig(
+    server.url / "solr",
+    server.genericCoreName,
+    commitWithin = Some(Duration.Zero),
+    logMessageBodies = true
+  )
 
   val withSolrClient: Fixture[Resource[IO, SolrClient[IO]]] =
     new Fixture[Resource[IO, SolrClient[IO]]]("solr"):
 
       def apply(): Resource[IO, SolrClient[IO]] =
-        SolrClient[IO](
-          SolrConfig(server.url / "solr", server.coreName, Some(Duration.Zero), true)
-        )
+        SolrClient[IO](solrConfig)
 
       override def beforeAll(): Unit =
         server.start()

@@ -35,7 +35,7 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
     SchemaMigration(-1, Add(Field(FieldName("testSeats"), TypeName("testInt"))))
   )
 
-  def truncate(client: SolrClient[IO]): IO[Unit] =
+  private def truncate(client: SolrClient[IO]): IO[Unit] =
     truncateAll(client)(
       Seq(
         FieldName("currentSchemaVersion"),
@@ -57,7 +57,7 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
       } yield ()
     }
 
-  test("run only remaining migrations".ignore):
+  test("run migrations"):
     withSolrClient().use { client =>
       val migrator = SchemaMigrator(client)
       val first = migrations.take(2)

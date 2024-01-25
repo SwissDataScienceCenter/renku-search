@@ -37,18 +37,22 @@ class SolrServer(module: String, port: Int) {
 
   private val containerName = s"$module-test-solr"
   private val image = "solr:9.4.1-slim"
-  val coreName = "renku-search-test"
+  val genericCoreName = "core-test"
+  val searchCoreName = "search-core-test"
+  private val cores = Set(genericCoreName, searchCoreName)
   private val startCmd = s"""|docker run --rm
                              |--name $containerName
                              |-p $port:8983
                              |-d $image""".stripMargin
   private val isRunningCmd = s"docker container ls --filter 'name=$containerName'"
   private val stopCmd = s"docker stop -t5 $containerName"
-  private val readyCmd =
-    s"curl http://localhost:8983/solr/$coreName/select?q=*:* --no-progress-meter --fail 1> /dev/null"
-  private val isReadyCmd = s"docker exec $containerName sh -c '$readyCmd'"
-  private val createCore = s"precreate-core $coreName"
-  private val createCoreCmd = s"docker exec $containerName sh -c '$createCore'"
+  private def readyCmd(core: String) =
+    s"curl http://localhost:8983/solr/$core/select?q=*:* --no-progress-meter --fail 1> /dev/null"
+  private def isReadyCmd(core: String) =
+    s"docker exec $containerName sh -c '${readyCmd(core)}'"
+  private def createCore(core: String) = s"precreate-core $core"
+  private def createCoreCmd(core: String) =
+    s"docker exec $containerName sh -c '${createCore(core)}'"
   private val wasRunning = new AtomicBoolean(false)
 
   def start(): Unit = synchronized {
@@ -57,19 +61,26 @@ class SolrServer(module: String, port: Int) {
     else {
       println(s"Starting Solr container for '$module' from '$image' image")
       startContainer()
-      var rc = 1
-      while (rc != 0) {
-        Thread.sleep(500)
-        rc = isReadyCmd.!
-        if (rc == 0) println(s"Solr container for '$module' started on port $port")
-      }
+      waitForCoresToBeReady()
     }
   }
+
+  private def waitForCoresToBeReady(): Unit =
+    var rc = 1
+    while (rc != 0) {
+      Thread.sleep(500)
+      rc = checkCoresReady
+      if (rc == 0) println(s"Solr container for '$module' ready on port $port")
+    }
+
+  private def checkCoresReady =
+    cores.foldLeft(0)((rc, core) => if (rc == 0) isReadyCmd(core).! else rc)
 
   private def checkRunning: Boolean = {
     val out = isRunningCmd.lazyLines.toList
     val isRunning = out.exists(_ contains containerName)
     wasRunning.set(isRunning)
+    if (isRunning) waitForCoresToBeReady()
     isRunning
   }
 
@@ -80,8 +91,10 @@ class SolrServer(module: String, port: Int) {
       case ex => throw ex
     }
     Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => ())
-    val rc = createCoreCmd.!
-    println(s"Created solr core $coreName ($rc)")
+    val rcs = cores.map(c => c -> createCoreCmd(c).!)
+    println(
+      s"Created solr cores: ${rcs.map { case (core, rc) => s"'$core' ($rc)" }.mkString(", ")}"
+    )
   }
 
   def stop(): Unit =

@@ -44,9 +44,10 @@ class SolrServer(module: String, port: Int) {
                              |-d $image""".stripMargin
   private val isRunningCmd = s"docker container ls --filter 'name=$containerName'"
   private val stopCmd = s"docker stop -t5 $containerName"
-  private val readyCmd = "solr status"
-  private val createCore = s"precreate-core $coreName"
+  private val readyCmd =
+    s"curl http://localhost:8983/solr/$coreName/select?q=*:* --no-progress-meter --fail 1> /dev/null"
   private val isReadyCmd = s"docker exec $containerName sh -c '$readyCmd'"
+  private val createCore = s"precreate-core $coreName"
   private val createCoreCmd = s"docker exec $containerName sh -c '$createCore'"
   private val wasRunning = new AtomicBoolean(false)
 

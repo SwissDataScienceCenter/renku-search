@@ -19,13 +19,12 @@
 package io.renku.solr.client
 
 import cats.effect.IO
-import io.renku.avro.codec.all.given
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.bullet.borer.{Decoder, Encoder}
+import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
 import io.renku.solr.client.SolrClientSpec.Room
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
-import org.apache.avro.{Schema, SchemaBuilder}
 
 class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
 
@@ -45,26 +44,18 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
             FieldName("roomDescription"),
             FieldName("roomSeats")
           ),
-          Seq(TypeName("roomRext"), TypeName("roomInt"))
+          Seq(TypeName("roomText"), TypeName("roomInt"))
         )
         _ <- client.modifySchema(cmds)
         _ <- client
-          .insert[Room](Room.schema, Seq(Room("meeting room", "room for meetings", 56)))
-        r <- client.query[Room](Room.schema, QueryString("roomSeats > 10"))
+          .insert[Room](Seq(Room("meeting room", "room for meetings", 56)))
+        r <- client.query[Room](QueryString("roomName:*"))
         _ <- IO.println(r)
       } yield ()
     }
 
 object SolrClientSpec:
-  case class Room(name: String, description: String, seats: Int)
-      derives AvroEncoder,
-        AvroDecoder
+  case class Room(roomName: String, roomDescription: String, roomSeats: Int)
   object Room:
-    val schema: Schema =
-      //format: off
-      SchemaBuilder.record("Room").fields()
-        .name("name").aliases("roomName").`type`("string").noDefault()
-        .name("description").aliases("roomDescription").`type`("string").noDefault()
-        .name("seats").aliases("roomSeats").`type`("int").withDefault(0)
-        .endRecord()
-      //format: on
+    given Decoder[Room] = deriveDecoder
+    given Encoder[Room] = deriveEncoder

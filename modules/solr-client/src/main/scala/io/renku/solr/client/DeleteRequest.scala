@@ -18,14 +18,15 @@
 
 package io.renku.solr.client
 
-import io.renku.avro.codec.json.AvroJsonEncoder
-import scodec.bits.ByteVector
+import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
+import io.bullet.borer.{Encoder, Writer}
 
 final private[client] case class DeleteRequest(query: String)
 
 private[client] object DeleteRequest:
-  given AvroJsonEncoder[DeleteRequest] = AvroJsonEncoder { v =>
-    ByteVector.view("""{"delete": {"query": """.getBytes) ++
-      AvroJsonEncoder[String].encode(v.query) ++
-      ByteVector.view("}}".getBytes)
+  given Encoder[DeleteRequest] = {
+    val e: Encoder[DeleteRequest] = deriveEncoder[DeleteRequest]
+    new Encoder[DeleteRequest]:
+      override def write(w: Writer, value: DeleteRequest) =
+        w.writeMap(Map("delete" -> value))(Encoder[String], e)
   }

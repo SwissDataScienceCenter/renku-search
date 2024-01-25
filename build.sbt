@@ -67,6 +67,20 @@ lazy val commons = project
   )
   .enablePlugins(AutomateHeaderPlugin)
 
+lazy val http4sBorer = project
+  .in(file("modules/http4s-borer"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .withId("http4s-borer")
+  .settings(commonSettings)
+  .settings(
+    name := "http4s-borer",
+    description := "Use borer codecs with http4s",
+    libraryDependencies ++=
+      Dependencies.borer ++
+        Dependencies.http4sCore ++
+        Dependencies.fs2Core
+  )
+
 lazy val httpClient = project
   .in(file("modules/http-client"))
   .withId("http-client")
@@ -79,6 +93,9 @@ lazy val httpClient = project
       Dependencies.http4sClient ++
         Dependencies.fs2Core ++
         Dependencies.scribe
+  )
+  .dependsOn(
+    http4sBorer % "compile->compile;test->test"
   )
 
 lazy val redisClient = project
@@ -112,7 +129,6 @@ lazy val solrClient = project
         Dependencies.http4sClient
   )
   .dependsOn(
-    avroCodec % "compile->compile;test->test",
     httpClient % "compile->compile;test->test"
   )
 

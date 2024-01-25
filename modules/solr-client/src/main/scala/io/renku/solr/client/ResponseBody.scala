@@ -18,7 +18,8 @@
 
 package io.renku.solr.client
 
-import org.apache.avro.{Schema, SchemaBuilder}
+import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 
 final case class ResponseBody[A](
     numFound: Long,
@@ -28,14 +29,4 @@ final case class ResponseBody[A](
 )
 
 object ResponseBody:
-  // format: off
-  private[client] def bodySchema(docSchema: Schema): Schema =
-    SchemaBuilder
-      .record("ResponseBody")
-      .fields()
-        .name("numFound").`type`("long").noDefault()
-        .name("start").`type`("long").noDefault()
-        .name("numFoundExact").`type`("boolean").noDefault()
-        .name("docs").`type`(SchemaBuilder.array().items(docSchema)).noDefault()
-      .endRecord()
-  // format: on
+  given [A](using Decoder[A]): Decoder[ResponseBody[A]] = deriveDecoder

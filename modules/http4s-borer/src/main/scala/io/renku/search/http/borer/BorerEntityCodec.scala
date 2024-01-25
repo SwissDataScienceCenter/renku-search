@@ -16,16 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.http.borer
 
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.solr.client.messages.QueryData
+import cats.effect.Async
+import io.bullet.borer.{Decoder, Encoder}
+import org.http4s.{EntityDecoder, EntityEncoder}
 
-private[client] trait JsonCodec extends schema.JsonCodec {
+trait BorerEntityCodec:
+  given [F[_]: Async, A: Decoder]: EntityDecoder[F, A] =
+    BorerEntities.decodeEntity[F, A]
 
-  given AvroJsonDecoder[QueryData] = AvroJsonDecoder.create(QueryData.SCHEMA$)
-  given AvroJsonEncoder[QueryData] = AvroJsonEncoder.create(QueryData.SCHEMA$)
-}
+  given [F[_], A: Encoder]: EntityEncoder[F, A] =
+    BorerEntities.encodeEntity[F, A]
 
-private[client] object JsonCodec extends JsonCodec
+object BorerEntityCodec extends BorerEntityCodec

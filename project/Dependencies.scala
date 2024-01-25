@@ -6,17 +6,25 @@ object Dependencies {
   object V {
     val avro = "1.11.1"
     val avro4s = "5.0.9"
+    val borer = "1.13.0"
     val catsCore = "2.10.0"
     val catsEffect = "3.5.3"
     val catsEffectMunit = "1.0.7"
     val fs2 = "3.9.3"
-    val http4sEmber = "0.23.25"
+    val http4s = "0.23.25"
     val redis4Cats = "1.5.2"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"
     val scodecBits = "1.1.38"
     val scribe = "3.13.0"
   }
+
+  val borer = Seq(
+    "io.bullet" %% "borer-core" % V.borer,
+    "io.bullet" %% "borer-derivation" % V.borer,
+    "io.bullet" %% "borer-compat-cats" % V.borer,
+    "io.bullet" %% "borer-compat-scodec" % V.borer
+  )
 
   val scodec = Seq(
     "org.scodec" %% "scodec-core" % V.scodec
@@ -55,9 +63,11 @@ object Dependencies {
     "co.fs2" %% "fs2-core" % V.fs2
   )
 
+  val http4sCore = Seq(
+    "org.http4s" %% "http4s-core" % V.http4s
+  )
   val http4sClient = Seq(
-    "org.http4s" %% "http4s-ember-client" % V.http4sEmber,
-    "org.http4s" %% "http4s-circe" % V.http4sEmber
+    "org.http4s" %% "http4s-ember-client" % V.http4s
   )
 
   val scribe = Seq(

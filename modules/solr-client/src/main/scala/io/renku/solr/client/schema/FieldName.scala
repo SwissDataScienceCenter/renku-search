@@ -18,8 +18,7 @@
 
 package io.renku.solr.client.schema
 
-import io.renku.avro.codec.AvroEncoder
-import io.renku.avro.codec.encoders.StringEncoders
+import io.bullet.borer.Encoder
 
 opaque type FieldName = String
 object FieldName:
@@ -27,5 +26,4 @@ object FieldName:
 
   extension (self: FieldName) def name: String = self
 
-  given AvroEncoder[FieldName] =
-    StringEncoders.StringEncoder.contramap(_.name)
+  given Encoder[FieldName] = Encoder.forString

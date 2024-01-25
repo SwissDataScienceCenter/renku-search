@@ -16,15 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.search.http.borer
 
-import io.bullet.borer.Encoder
+import io.bullet.borer.*
+import org.http4s.*
 
-opaque type TypeName = String
+trait Http4sJsonCodec:
+  given Encoder[Uri] = Encoder.forString.contramap(_.renderString)
 
-object TypeName:
-  def apply(name: String): TypeName = name
-
-  extension (self: TypeName) def name: String = self
-
-  given Encoder[TypeName] = Encoder.forString
+object Http4sJsonCodec extends Http4sJsonCodec

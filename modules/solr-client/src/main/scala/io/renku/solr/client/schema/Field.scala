@@ -18,13 +18,32 @@
 
 package io.renku.solr.client.schema
 
+import io.bullet.borer.Encoder
+import io.bullet.borer.derivation.key
+import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
+
 final case class Field(
     name: FieldName,
-    `type`: TypeName,
-    required: Boolean = false,
-    indexed: Boolean = true,
-    stored: Boolean = true,
-    multiValued: Boolean = false,
-    uninvertible: Boolean = false,
-    docValues: Boolean = false
+    @key("type") typeName: TypeName,
+    required: Boolean,
+    indexed: Boolean,
+    stored: Boolean,
+    multiValued: Boolean,
+    uninvertible: Boolean,
+    docValues: Boolean
 )
+
+object Field:
+  def apply(name: FieldName, typeName: TypeName): Field =
+    Field(
+      name = name,
+      typeName = typeName,
+      required = false,
+      indexed = true,
+      stored = true,
+      multiValued = false,
+      uninvertible = true,
+      docValues = false
+    )
+
+  given Encoder[Field] = deriveEncoder

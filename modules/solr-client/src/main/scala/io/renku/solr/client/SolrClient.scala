@@ -20,11 +20,9 @@ package io.renku.solr.client
 
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.http.{ClientBuilder, ResponseLogging, RetryConfig}
-import io.renku.solr.client.messages.InsertResponse
 import io.renku.solr.client.schema.SchemaCommand
-import org.apache.avro.Schema
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.client.EmberClientBuilder.default
 
@@ -34,11 +32,11 @@ trait SolrClient[F[_]]:
       onErrorLog: ResponseLogging = ResponseLogging.Error
   ): F[Unit]
 
-  def query[A: AvroDecoder](schema: Schema, q: QueryString): F[QueryResponse[A]]
+  def query[A: Decoder](q: QueryString): F[QueryResponse[A]]
 
   def delete(q: QueryString): F[Unit]
 
-  def insert[A: AvroEncoder](schema: Schema, docs: Seq[A]): F[InsertResponse]
+  def insert[A: Encoder](docs: Seq[A]): F[InsertResponse]
 
 object SolrClient:
   def apply[F[_]: Async: Network](config: SolrConfig): Resource[F, SolrClient[F]] =

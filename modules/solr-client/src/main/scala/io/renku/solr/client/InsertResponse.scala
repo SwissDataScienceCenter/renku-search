@@ -16,15 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client
 
-import io.bullet.borer.Encoder
+import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 
-opaque type TypeName = String
+final case class InsertResponse(responseHeader: ResponseHeader)
 
-object TypeName:
-  def apply(name: String): TypeName = name
-
-  extension (self: TypeName) def name: String = self
-
-  given Encoder[TypeName] = Encoder.forString
+object InsertResponse:
+  given Decoder[InsertResponse] = deriveDecoder

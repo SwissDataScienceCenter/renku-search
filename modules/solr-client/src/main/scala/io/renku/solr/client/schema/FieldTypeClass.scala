@@ -18,8 +18,7 @@
 
 package io.renku.solr.client.schema
 
-import io.renku.avro.codec.AvroEncoder
-import io.renku.avro.codec.encoders.StringEncoders
+import io.bullet.borer.Encoder
 
 opaque type FieldTypeClass = String
 
@@ -41,5 +40,4 @@ object FieldTypeClass:
     val boolField: FieldTypeClass = "BoolField"
     val binaryField: FieldTypeClass = "BinaryField"
 
-  given AvroEncoder[FieldTypeClass] =
-    StringEncoders.StringEncoder.contramap(_.name)
+  given Encoder[FieldTypeClass] = Encoder.forString

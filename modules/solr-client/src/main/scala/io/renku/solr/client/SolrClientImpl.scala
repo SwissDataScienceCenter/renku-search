@@ -20,13 +20,9 @@ package io.renku.solr.client
 
 import cats.effect.Async
 import cats.syntax.all.*
-import io.renku.avro.codec.all.given
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.http.{HttpClientDsl, ResponseLogging}
-import io.renku.solr.client.messages.{InsertResponse, QueryData}
-import io.renku.solr.client.schema.SchemaCommand
-import org.apache.avro.{Schema, SchemaBuilder}
+import io.renku.solr.client.schema.{BorerJsonCodec, SchemaCommand}
 import org.http4s.client.Client
 import org.http4s.{Method, Uri}
 
@@ -35,23 +31,20 @@ import scala.concurrent.duration.Duration
 private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]
     with HttpClientDsl[F]
-    with JsonCodec
+    with BorerJsonCodec
     with SolrEntityCodec:
   private[this] val logger = scribe.cats.effect[F]
   private[this] val solrUrl: Uri = config.baseUrl / config.core
 
-  given AvroJsonDecoder[InsertResponse] = AvroJsonDecoder.create(InsertResponse.SCHEMA$)
-
   def modifySchema(cmds: Seq[SchemaCommand], onErrorLog: ResponseLogging): F[Unit] =
     val req = Method.POST(cmds, (solrUrl / "schema").withQueryParam("commit", "true"))
-    underlying.expectOr[Unit](req)(onErrorLog(logger, req))
+    underlying.expectOr[String](req)(onErrorLog(logger, req)).void
 
-  def query[A: AvroDecoder](schema: Schema, q: QueryString): F[QueryResponse[A]] =
+  def query[A: Decoder](q: QueryString): F[QueryResponse[A]] =
     val req = Method.POST(
-      QueryData(q.q, Nil, q.limit, q.offset, Nil, Map.empty),
+      io.renku.solr.client.QueryData(q.q, Nil, q.limit, q.offset, Nil, Map.empty),
       solrUrl / "query"
     )
-    given decoder: AvroJsonDecoder[QueryResponse[A]] = QueryResponse.makeDecoder(schema)
     underlying
       .expectOr[QueryResponse[A]](req)(ResponseLogging.Error(logger, req))
       .flatTap(r => logger.trace(s"Query response: $r"))
@@ -63,10 +56,7 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
       .flatTap(r => logger.trace(s"Solr delete response: $r"))
       .void
 
-  def insert[A: AvroEncoder](schema: Schema, docs: Seq[A]): F[InsertResponse] =
-    given AvroJsonEncoder[Seq[A]] =
-      AvroJsonEncoder.create[Seq[A]](SchemaBuilder.array().items(schema))
-
+  def insert[A: Encoder](docs: Seq[A]): F[InsertResponse] =
     val req = Method.POST(docs, makeUpdateUrl)
     underlying
       .expectOr[InsertResponse](req)(ResponseLogging.Error(logger, req))

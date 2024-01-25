@@ -18,11 +18,12 @@
 
 package io.renku.search.http
 
+import io.renku.search.http.borer.BorerEntityCodec
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.headers.Authorization
 import org.http4s.{AuthScheme, BasicCredentials, Request}
 
-trait HttpClientDsl[F[_]] extends Http4sClientDsl[F] {
+trait HttpClientDsl[F[_]] extends Http4sClientDsl[F] with BorerEntityCodec {
 
   implicit final class MoreRequestDsl(req: Request[F]) {
     def withBasicAuth(cred: Option[BasicCredentials]): Request[F] =

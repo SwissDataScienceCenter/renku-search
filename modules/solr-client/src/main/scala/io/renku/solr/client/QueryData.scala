@@ -16,15 +16,33 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client
 
 import io.bullet.borer.Encoder
+import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
+import io.renku.solr.client.schema.FieldName
 
-opaque type TypeName = String
+final case class QueryData(
+    query: String,
+    filter: Seq[String],
+    limit: Int,
+    offset: Int,
+    fields: Seq[FieldName],
+    params: Map[String, String]
+):
+  def nextPage: QueryData =
+    copy(offset = offset + limit)
 
-object TypeName:
-  def apply(name: String): TypeName = name
+  def withHighLight(fields: List[FieldName], pre: String, post: String): QueryData =
+    copy(params =
+      params ++ Map(
+        "hl" -> "on",
+        "hl.requireFieldMatch" -> "true",
+        "hl.fl" -> fields.map(_.name).mkString(","),
+        "hl.simple.pre" -> pre,
+        "hl.simple.post" -> post
+      )
+    )
 
-  extension (self: TypeName) def name: String = self
-
-  given Encoder[TypeName] = Encoder.forString
+object QueryData:
+  given Encoder[QueryData] = deriveEncoder

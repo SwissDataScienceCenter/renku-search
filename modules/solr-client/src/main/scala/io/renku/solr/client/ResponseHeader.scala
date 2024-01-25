@@ -18,23 +18,15 @@
 
 package io.renku.solr.client
 
-import io.renku.solr.client.messages.QueryData
-import io.renku.solr.client.schema.FieldName
+import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
+import io.bullet.borer.derivation.key
 
-object Syntax {
+final case class ResponseHeader(
+    status: Int,
+    @key("QTime") queryTime: Long,
+    params: Map[String, String] = Map()
+)
 
-  extension (self: QueryData)
-    def nextPage: QueryData =
-      self.copy(offset = self.offset + self.limit)
-
-    def withHighLight(fields: List[FieldName], pre: String, post: String): QueryData =
-      self.copy(params =
-        self.params ++ Map(
-          "hl" -> "on",
-          "hl.requireFieldMatch" -> "true",
-          "hl.fl" -> fields.map(_.name).mkString(","),
-          "hl.simple.pre" -> pre,
-          "hl.simple.post" -> post
-        )
-      )
-}
+object ResponseHeader:
+  given Decoder[ResponseHeader] = deriveDecoder

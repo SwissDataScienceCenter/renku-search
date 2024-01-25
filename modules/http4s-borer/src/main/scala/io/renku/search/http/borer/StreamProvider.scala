@@ -16,15 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.search.http.borer
 
-import io.bullet.borer.Encoder
+import cats.effect.*
+import cats.syntax.all.*
+import fs2.Stream
 
-opaque type TypeName = String
+import io.bullet.borer.*
+import scodec.bits.ByteVector
 
-object TypeName:
-  def apply(name: String): TypeName = name
+object StreamProvider:
 
-  extension (self: TypeName) def name: String = self
-
-  given Encoder[TypeName] = Encoder.forString
+  def apply[F[_]: Sync](
+      in: Stream[F, Byte]
+  ): F[Input[Array[Byte]]] =
+    in.compile.to(ByteVector).map(bv => Input.fromByteArray(bv.toArray))

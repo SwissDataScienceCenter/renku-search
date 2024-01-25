@@ -18,28 +18,15 @@
 
 package io.renku.solr.client
 
-import io.renku.avro.codec.AvroDecoder
-import io.renku.avro.codec.all.given
-import io.renku.avro.codec.json.AvroJsonDecoder
-import io.renku.solr.client.messages.ResponseHeader
-import org.apache.avro.{Schema, SchemaBuilder}
+import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
+import io.bullet.borer.derivation.key
 
 final case class QueryResponse[A](
     responseHeader: ResponseHeader,
-    responseBody: ResponseBody[A]
+    @key("response") responseBody: ResponseBody[A]
 )
 
 object QueryResponse:
-  // format: off
-  private def makeSchema(docSchema: Schema) =
-    SchemaBuilder.record("QueryResponse")
-      .fields()
-        .name("responseHeader").`type`(ResponseHeader.SCHEMA$).noDefault()
-        .name("response").`type`(ResponseBody.bodySchema(docSchema)).noDefault()
-      .endRecord()
-  // format: on
-
-  def makeDecoder[A](docSchema: Schema)(using
-      AvroDecoder[A]
-  ): AvroJsonDecoder[QueryResponse[A]] =
-    AvroJsonDecoder.create[QueryResponse[A]](makeSchema(docSchema))
+  given [A](using Decoder[A]): Decoder[QueryResponse[A]] =
+    deriveDecoder

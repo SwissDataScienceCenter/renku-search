@@ -40,7 +40,7 @@ object SchemaMigrator:
 
     override def currentVersion: F[Option[Long]] =
       client
-        .query[VersionDocument](VersionDocument.schema, QueryString(s"id:$versionDocId"))
+        .query[VersionDocument](QueryString(s"id:$versionDocId"))
         .map(_.responseBody.docs.headOption.map(_.currentSchemaVersion))
 
     override def migrate(migrations: Seq[SchemaMigration]): F[Unit] = for {
@@ -69,5 +69,5 @@ object SchemaMigrator:
 
     private def upsertVersion(n: Long) =
       logger.info(s"Set schema migration version to $n") >>
-        client.insert(VersionDocument.schema, Seq(version(n)))
+        client.insert(Seq(version(n)))
   }

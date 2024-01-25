@@ -18,23 +18,11 @@
 
 package io.renku.solr.client.migration
 
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
-import io.renku.avro.codec.all.given
-import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
-import org.apache.avro.{Schema, SchemaBuilder}
+import io.bullet.borer.{Decoder, Encoder}
+import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
 
 final private[client] case class VersionDocument(id: String, currentSchemaVersion: Long)
-    derives AvroEncoder,
-      AvroDecoder
 
 private[client] object VersionDocument:
-  val schema: Schema =
-    //format: off
-    SchemaBuilder.record("VersionDocument").fields()
-      .name("id").`type`("string").noDefault()
-      .name("currentSchemaVersion").`type`("long").noDefault()
-      .endRecord()
-    //format: on
-
-  given AvroJsonEncoder[VersionDocument] = AvroJsonEncoder.create(schema)
-  given AvroJsonDecoder[VersionDocument] = AvroJsonDecoder.create(schema)
+  given Encoder[VersionDocument] = deriveEncoder
+  given Decoder[VersionDocument] = deriveDecoder

@@ -22,11 +22,11 @@ import cats.effect.Async
 import io.bullet.borer.{Decoder, Encoder}
 import org.http4s.{EntityDecoder, EntityEncoder}
 
-trait BorerEntityCodec:
+trait BorerEntityCborCodec:
   given [F[_]: Async, A: Decoder]: EntityDecoder[F, A] =
-    BorerEntities.decodeEntity[F, A]
+    BorerEntities.decodeEntityCbor[F, A]
 
   given [F[_], A: Encoder]: EntityEncoder[F, A] =
-    BorerEntities.encodeEntity[F, A]
+    BorerEntities.encodeEntityCbor[F, A]
 
-object BorerEntityCodec extends BorerEntityCodec
+object BorerEntityCborCodec extends BorerEntityCborCodec

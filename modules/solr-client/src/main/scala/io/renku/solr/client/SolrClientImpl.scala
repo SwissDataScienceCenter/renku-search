@@ -21,8 +21,9 @@ package io.renku.solr.client
 import cats.effect.Async
 import cats.syntax.all.*
 import io.bullet.borer.{Decoder, Encoder}
+import io.renku.search.http.borer.BorerEntityJsonCodec
 import io.renku.search.http.{HttpClientDsl, ResponseLogging}
-import io.renku.solr.client.schema.{BorerJsonCodec, SchemaCommand}
+import io.renku.solr.client.schema.{SchemaCommand, SchemaJsonCodec}
 import org.http4s.client.Client
 import org.http4s.{Method, Uri}
 
@@ -31,7 +32,8 @@ import scala.concurrent.duration.Duration
 private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]
     with HttpClientDsl[F]
-    with BorerJsonCodec
+    with SchemaJsonCodec
+    with BorerEntityJsonCodec
     with SolrEntityCodec:
   private[this] val logger = scribe.cats.effect[F]
   private[this] val solrUrl: Uri = config.baseUrl / config.core

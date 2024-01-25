@@ -18,23 +18,15 @@
 
 package io.renku.search.http.borer
 
-import io.bullet.borer.derivation.MapBasedCodecs.*
-import io.bullet.borer.{Borer, Encoder}
-import org.http4s._
+import cats.effect.Async
+import io.bullet.borer.{Decoder, Encoder}
+import org.http4s.{EntityDecoder, EntityEncoder}
 
-final case class BorerDecodeFailure(respString: String, error: Borer.Error[?])
-    extends DecodeFailure {
+trait BorerEntityJsonCodec:
+  given [F[_]: Async, A: Decoder]: EntityDecoder[F, A] =
+    BorerEntities.decodeEntityJson[F, A]
 
-  override val message: String = s"${error.getMessage}: $respString"
+  given [F[_], A: Encoder]: EntityEncoder[F, A] =
+    BorerEntities.encodeEntityJson[F, A]
 
-  override val cause: Option[Throwable] = Option(error.getCause)
-
-  def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
-    Response(status = Status.BadRequest).withEntity(this)
-}
-
-object BorerDecodeFailure:
-  given Encoder[Borer.Error[?]] = Encoder.forString.contramap(_.getMessage)
-  given Encoder[BorerDecodeFailure] = deriveEncoder
-  given [F[_]]: EntityEncoder[F, BorerDecodeFailure] =
-    BorerEntities.encodeEntityJson[F, BorerDecodeFailure]
+object BorerEntityJsonCodec extends BorerEntityJsonCodec

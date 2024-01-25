@@ -22,7 +22,7 @@ import io.bullet.borer.Json
 import io.renku.solr.client.schema.SchemaCommand.DeleteType
 import munit.FunSuite
 
-class BorerJsonCodecTest extends FunSuite with BorerJsonCodec {
+class BorerJsonCodecTest extends FunSuite with SchemaJsonCodec {
 
   test("encode schema command: delete type"):
     val v = DeleteType(TypeName("integer"))

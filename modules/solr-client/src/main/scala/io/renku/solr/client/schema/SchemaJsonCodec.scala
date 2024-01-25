@@ -23,7 +23,7 @@ import io.bullet.borer.NullOptions.*
 import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
 import io.renku.solr.client.schema.SchemaCommand.Element
 
-trait BorerJsonCodec {
+trait SchemaJsonCodec {
 
   given Encoder[Tokenizer] = deriveEncoder
   given Encoder[Filter] = deriveEncoder
@@ -78,4 +78,4 @@ trait BorerJsonCodec {
     Encoder[Seq[SchemaCommand]].contramap(Seq(_))
 }
 
-object BorerJsonCodec extends BorerJsonCodec
+object SchemaJsonCodec extends SchemaJsonCodec

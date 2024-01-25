@@ -45,6 +45,7 @@ lazy val root = project
   )
   .aggregate(
     commons,
+    httpClient,
     messages,
     redisClient,
     solrClient,
@@ -65,6 +66,20 @@ lazy val commons = project
         Dependencies.scribe
   )
   .enablePlugins(AutomateHeaderPlugin)
+
+lazy val httpClient = project
+  .in(file("modules/http-client"))
+  .withId("http-client")
+  .enablePlugins(AutomateHeaderPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "http-client",
+    description := "Utilities for the http client in http4s",
+    libraryDependencies ++=
+      Dependencies.http4sClient ++
+        Dependencies.fs2Core ++
+        Dependencies.scribe
+  )
 
 lazy val redisClient = project
   .in(file("modules/redis-client"))
@@ -97,7 +112,8 @@ lazy val solrClient = project
         Dependencies.http4sClient
   )
   .dependsOn(
-    avroCodec % "compile->compile;test->test"
+    avroCodec % "compile->compile;test->test",
+    httpClient % "compile->compile;test->test"
   )
 
 lazy val searchSolrClient = project

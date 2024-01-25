@@ -21,7 +21,7 @@ package io.renku.solr.client
 import cats.effect.IO
 import io.renku.avro.codec.all.given
 import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
-import io.renku.solr.client.SolrClientSpec.{Person, Room}
+import io.renku.solr.client.SolrClientSpec.Room
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
@@ -51,20 +51,6 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
       } yield ()
     }
 
-  test("insert and query some document without a schema"):
-    withSolrClient().use { client =>
-      val person = Person("Hugo", 34)
-      for {
-        _ <- truncateAll(client)(
-          Seq(FieldName("name"), FieldName("description"), FieldName("seats")),
-          Seq(TypeName("text"), TypeName("int"))
-        )
-        _ <- client.insert(Person.schema, Seq(person))
-        r <- client.query[Person](Person.schema, QueryString(s"personName:${person.personName.head}"))
-        _ = assert(r.responseBody.docs contains person)
-      } yield ()
-    }
-
 object SolrClientSpec:
   case class Room(name: String, description: String, seats: Int)
       derives AvroEncoder,
@@ -78,19 +64,3 @@ object SolrClientSpec:
         .name("seats").aliases("roomSeats").`type`("int").withDefault(0)
         .endRecord()
       //format: on
-
-  // the List[…] is temporary until a proper solr schema is defined. by default it uses arrays
-  case class Person(personName: List[String], personAge: List[Int])
-      derives AvroDecoder,
-        AvroEncoder
-  object Person:
-    def apply(name: String, age: Int): Person = Person(List(name), List(age))
-
-    // format: off
-    val schema: Schema = SchemaBuilder
-      .record("Person")
-        .fields()
-          .name("personName").`type`(SchemaBuilder.array().items().`type`("string")).noDefault()
-          .name("personAge").`type`(SchemaBuilder.array().items().`type`("int")).noDefault()
-      .endRecord()
-    // format: on

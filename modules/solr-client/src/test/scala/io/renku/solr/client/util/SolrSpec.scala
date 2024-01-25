@@ -33,7 +33,7 @@ trait SolrSpec:
 
       def apply(): Resource[IO, SolrClient[IO]] =
         SolrClient[IO](
-          SolrConfig(server.url / "solr", server.coreName, Some(Duration.Zero))
+          SolrConfig(server.url / "solr", server.coreName, Some(Duration.Zero), true)
         )
 
       override def beforeAll(): Unit =

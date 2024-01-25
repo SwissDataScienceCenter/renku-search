@@ -16,15 +16,11 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.http
 
-import org.http4s.Uri
+import scala.concurrent.duration.*
 
-import scala.concurrent.duration.FiniteDuration
+final case class RetryConfig(maxWait: Duration, maxRetries: Int)
 
-final case class SolrConfig(
-    baseUrl: Uri,
-    core: String,
-    commitWithin: Option[FiniteDuration],
-    logMessageBodies: Boolean
-)
+object RetryConfig:
+  val default: RetryConfig = RetryConfig(50.seconds, 4)

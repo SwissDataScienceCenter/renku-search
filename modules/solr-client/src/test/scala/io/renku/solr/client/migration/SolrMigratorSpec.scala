@@ -25,7 +25,7 @@ import io.renku.solr.client.schema.SchemaCommand.Add
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
 
-class SolrMigratiorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
+class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
   private val logger = scribe.cats.io
   private val migrations = Seq(
     SchemaMigration(1, Add(FieldType.text(TypeName("testText"), Analyzer.classic))),

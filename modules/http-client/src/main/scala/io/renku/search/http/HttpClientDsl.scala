@@ -16,15 +16,24 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.http
 
-import org.http4s.Uri
+import org.http4s.client.dsl.Http4sClientDsl
+import org.http4s.headers.Authorization
+import org.http4s.{AuthScheme, BasicCredentials, Request}
 
-import scala.concurrent.duration.FiniteDuration
+trait HttpClientDsl[F[_]] extends Http4sClientDsl[F] {
 
-final case class SolrConfig(
-    baseUrl: Uri,
-    core: String,
-    commitWithin: Option[FiniteDuration],
-    logMessageBodies: Boolean
-)
+  implicit final class MoreRequestDsl(req: Request[F]) {
+    def withBasicAuth(cred: Option[BasicCredentials]): Request[F] =
+      cred.map(c => req.putHeaders(Authorization(c))).getOrElse(req)
+
+    def withBearerToken(token: Option[String]): Request[F] =
+      token match
+        case Some(t) =>
+          req.putHeaders(
+            Authorization(org.http4s.Credentials.Token(AuthScheme.Bearer, t))
+          )
+        case None => req
+  }
+}

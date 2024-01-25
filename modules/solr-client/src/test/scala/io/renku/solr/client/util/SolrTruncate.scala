@@ -20,8 +20,9 @@ package io.renku.solr.client.util
 
 import cats.effect.IO
 import cats.syntax.all.*
-import io.renku.solr.client.{QueryString, SolrClient}
+import io.renku.search.http.ResponseLogging
 import io.renku.solr.client.schema.{FieldName, SchemaCommand, TypeName}
+import io.renku.solr.client.{QueryString, SolrClient}
 
 trait SolrTruncate {
 
@@ -40,11 +41,7 @@ trait SolrTruncate {
 
   private def modifyIgnoreError(client: SolrClient[IO])(c: SchemaCommand) =
     client
-      .modifySchema(Seq(c))
+      .modifySchema(Seq(c), ResponseLogging.Ignore)
       .attempt
-      .flatTap {
-        case Left(ex) => scribe.cats.io.warn(s"Error from schema change $c", ex)
-        case Right(_) => IO.unit
-      }
       .void
 }

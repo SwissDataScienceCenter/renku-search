@@ -21,6 +21,7 @@ package io.renku.solr.client
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
 import io.renku.avro.codec.{AvroDecoder, AvroEncoder}
+import io.renku.search.http.{ClientBuilder, ResponseLogging, RetryConfig}
 import io.renku.solr.client.messages.InsertResponse
 import io.renku.solr.client.schema.SchemaCommand
 import org.apache.avro.Schema
@@ -28,7 +29,10 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.client.EmberClientBuilder.default
 
 trait SolrClient[F[_]]:
-  def modifySchema(cmds: Seq[SchemaCommand]): F[Unit]
+  def modifySchema(
+      cmds: Seq[SchemaCommand],
+      onErrorLog: ResponseLogging = ResponseLogging.Error
+  ): F[Unit]
 
   def query[A: AvroDecoder](schema: Schema, q: QueryString): F[QueryResponse[A]]
 
@@ -38,4 +42,8 @@ trait SolrClient[F[_]]:
 
 object SolrClient:
   def apply[F[_]: Async: Network](config: SolrConfig): Resource[F, SolrClient[F]] =
-    EmberClientBuilder.default[F].build.map(new SolrClientImpl[F](config, _))
+    ClientBuilder(EmberClientBuilder.default[F])
+      .withDefaultRetry(RetryConfig.default)
+      .withLogging(logBody = config.logMessageBodies, scribe.cats.effect[F])
+      .build
+      .map(new SolrClientImpl[F](config, _))

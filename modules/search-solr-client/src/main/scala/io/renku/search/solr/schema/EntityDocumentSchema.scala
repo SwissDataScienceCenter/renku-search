@@ -23,6 +23,7 @@ import io.renku.solr.client.schema.*
 object EntityDocumentSchema:
 
   object Fields:
+    val id: FieldName = FieldName("id")
     val discriminator: FieldName = FieldName("discriminator")
     val name: FieldName = FieldName("name")
     val description: FieldName = FieldName("description")

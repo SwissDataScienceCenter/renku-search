@@ -42,5 +42,5 @@ trait SolrSpec:
       override def afterAll(): Unit =
         server.stop()
 
-  override def munitFixtures: Seq[Fixture[Resource[IO, SolrClient[IO]]]] =
+  override def munitFixtures: Seq[Fixture[_]] =
     List(withSolrClient)

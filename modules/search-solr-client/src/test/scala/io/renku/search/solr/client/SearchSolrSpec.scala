@@ -39,3 +39,6 @@ trait SearchSolrSpec extends SolrSpec:
 
       override def afterAll(): Unit =
         withSolrClient.afterAll()
+
+  override def munitFixtures: Seq[Fixture[_]] =
+    List(withSearchSolrClient)

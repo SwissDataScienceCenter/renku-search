@@ -162,14 +162,18 @@ lazy val searchProvision = project
   .settings(commonSettings)
   .settings(
     name := "search-provision",
-    Test / testOptions += Tests.Setup(RedisServer.start),
-    Test / testOptions += Tests.Cleanup(RedisServer.stop)
+    Test / testOptions += Tests.Setup { cl =>
+      RedisServer.start(cl); SolrServer.start(cl)
+    },
+    Test / testOptions += Tests.Cleanup { cl =>
+      RedisServer.stop(cl); SolrServer.stop(cl)
+    }
   )
   .dependsOn(
     commons % "compile->compile;test->test",
     messages % "compile->compile;test->test",
-    avroCodec % "compile->compile;test->test",
-    redisClient % "compile->compile;test->test"
+    redisClient % "compile->compile;test->test",
+    searchSolrClient % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin)
 

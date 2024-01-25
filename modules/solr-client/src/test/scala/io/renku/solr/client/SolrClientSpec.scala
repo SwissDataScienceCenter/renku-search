@@ -20,7 +20,7 @@ package io.renku.solr.client
 
 import cats.effect.IO
 import io.bullet.borer.{Decoder, Encoder}
-import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
+import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.solr.client.SolrClientSpec.Room
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
@@ -49,7 +49,7 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
         _ <- client.modifySchema(cmds)
         _ <- client
           .insert[Room](Seq(Room("meeting room", "room for meetings", 56)))
-        r <- client.query[Room](QueryString("roomName:*"))
+        r <- client.query[Room](QueryString("_type:Room"))
         _ <- IO.println(r)
       } yield ()
     }
@@ -58,4 +58,4 @@ object SolrClientSpec:
   case class Room(roomName: String, roomDescription: String, roomSeats: Int)
   object Room:
     given Decoder[Room] = deriveDecoder
-    given Encoder[Room] = deriveEncoder
+    given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]

@@ -25,11 +25,13 @@ import munit.FunSuite
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 class SerializeDeserializeTest extends FunSuite {
 
   test("serialize and deserialize ProjectCreated") {
     val data = ProjectCreated(
+      UUID.randomUUID().toString,
       "my-project",
       "a description for it",
       None,
@@ -45,6 +47,7 @@ class SerializeDeserializeTest extends FunSuite {
 
   test("serialize and deserialize ProjectUpdated") {
     val data1 = ProjectUpdated(
+      UUID.randomUUID().toString,
       "my-project",
       "a description for it",
       Shapes.CIRCLE,

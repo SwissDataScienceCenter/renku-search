@@ -18,7 +18,7 @@
 
 package io.renku.avro.codec.decoders
 
-object all
+trait all
     extends PrimitiveDecoders
     with StringDecoders
     with BigDecimalDecoders
@@ -29,3 +29,5 @@ object all
     with JavaEnumDecoders
     with EitherDecoders
     with RecordDecoders
+
+object all extends all

@@ -28,6 +28,7 @@ import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import io.lettuce.core.RedisConnectionException
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.RedisQueueClient
+import io.renku.servers.RedisServer
 
 trait RedisSpec:
   self: munit.Suite =>
@@ -66,5 +67,5 @@ trait RedisSpec:
       : RedisClient => Resource[IO, RedisCommands[IO, String, String]] =
     Redis[IO].fromClient(_, RedisCodec.Utf8)
 
-  override def munitFixtures: Seq[Fixture[Resource[IO, RedisClient]]] =
+  override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient)

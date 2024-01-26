@@ -27,7 +27,7 @@ releaseVersionBump := sbtrelease.Version.Bump.Minor
 releaseIgnoreUntrackedFiles := true
 releaseTagName := (ThisBuild / version).value
 
-addCommandAlias("ci", "; lint; test; publishLocal")
+addCommandAlias("ci", "; lint; dbTests; publishLocal")
 addCommandAlias(
   "lint",
   "; scalafmtSbtCheck; scalafmtCheckAll;" // Compile/scalafix --check; Test/scalafix --check
@@ -37,6 +37,7 @@ addCommandAlias("fix", "; scalafmtSbt; scalafmtAll") // ; Compile/scalafix; Test
 lazy val root = project
   .in(file("."))
   .withId("renku-search")
+  .enablePlugins(DbTestPlugin)
   .settings(
     publish / skip := true,
     publishTo := Some(
@@ -45,8 +46,11 @@ lazy val root = project
   )
   .aggregate(
     commons,
+    httpClient,
     messages,
     redisClient,
+    solrClient,
+    searchSolrClient,
     searchProvision
   )
 
@@ -60,9 +64,57 @@ lazy val commons = project
         Dependencies.catsEffect ++
         Dependencies.fs2Core ++
         Dependencies.scodecBits ++
-        Dependencies.scribe
+        Dependencies.scribe,
+    Test / sourceGenerators += Def.task {
+      val sourceDir =
+        (LocalRootProject / baseDirectory).value / "project"
+      val sources = Seq(
+        sourceDir / "RedisServer.scala",
+        sourceDir / "SolrServer.scala"
+      ) // IO.listFiles(sourceDir)
+      val targetDir = (Test / sourceManaged).value / "servers"
+      IO.createDirectory(targetDir)
+
+      val targets = sources.map(s => targetDir / s.name)
+      IO.copy(sources.zip(targets))
+      targets
+    }.taskValue
   )
   .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
+
+lazy val http4sBorer = project
+  .in(file("modules/http4s-borer"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
+  .withId("http4s-borer")
+  .settings(commonSettings)
+  .settings(
+    name := "http4s-borer",
+    description := "Use borer codecs with http4s",
+    libraryDependencies ++=
+      Dependencies.borer ++
+        Dependencies.http4sCore ++
+        Dependencies.fs2Core
+  )
+
+lazy val httpClient = project
+  .in(file("modules/http-client"))
+  .withId("http-client")
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "http-client",
+    description := "Utilities for the http client in http4s",
+    libraryDependencies ++=
+      Dependencies.http4sClient ++
+        Dependencies.fs2Core ++
+        Dependencies.scribe
+  )
+  .dependsOn(
+    http4sBorer % "compile->compile;test->test"
+  )
 
 lazy val redisClient = project
   .in(file("modules/redis-client"))
@@ -70,8 +122,6 @@ lazy val redisClient = project
   .settings(commonSettings)
   .settings(
     name := "redis-client",
-    Test / testOptions += Tests.Setup(RedisServer.start),
-    Test / testOptions += Tests.Cleanup(RedisServer.stop),
     libraryDependencies ++=
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
@@ -79,12 +129,50 @@ lazy val redisClient = project
         Dependencies.redis4CatsStreams
   )
   .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(
+    commons % "test->test"
+  )
+
+lazy val solrClient = project
+  .in(file("modules/solr-client"))
+  .withId("solr-client")
+  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "solr-client",
+    libraryDependencies ++=
+      Dependencies.catsCore ++
+        Dependencies.catsEffect ++
+        Dependencies.http4sClient
+  )
+  .dependsOn(
+    httpClient % "compile->compile;test->test",
+    commons % "test->test"
+  )
+
+lazy val searchSolrClient = project
+  .in(file("modules/search-solr-client"))
+  .withId("search-solr-client")
+  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "search-solr-client",
+    libraryDependencies ++=
+      Dependencies.catsCore ++
+        Dependencies.catsEffect
+  )
+  .dependsOn(
+    avroCodec % "compile->compile;test->test",
+    solrClient % "compile->compile;test->test",
+    commons % "test->test"
+  )
 
 lazy val avroCodec = project
   .in(file("modules/avro-codec"))
+  .disablePlugins(DbTestPlugin)
   .settings(commonSettings)
   .settings(
-    name := "avro-codecs",
+    name := "avro-codec",
     libraryDependencies ++=
       Dependencies.avro ++
         Dependencies.scodecBits
@@ -94,40 +182,27 @@ lazy val messages = project
   .in(file("modules/messages"))
   .settings(commonSettings)
   .settings(
-    name := "messages",
-    libraryDependencies ++= Dependencies.avro,
-    Compile / avroScalaCustomTypes := {
-      avrohugger.format.SpecificRecord.defaultTypes.copy(
-        record = avrohugger.types.ScalaCaseClassWithSchema
-      )
-    },
-    Compile / avroScalaSpecificCustomTypes := {
-      avrohugger.format.SpecificRecord.defaultTypes.copy(
-        record = avrohugger.types.ScalaCaseClassWithSchema
-      )
-    },
-    Compile / sourceGenerators += (Compile / avroScalaGenerate).taskValue
+    name := "messages"
   )
   .dependsOn(
     commons % "compile->compile;test->test",
     avroCodec % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
 
 lazy val searchProvision = project
   .in(file("modules/search-provision"))
   .withId("search-provision")
   .settings(commonSettings)
   .settings(
-    name := "search-provision",
-    Test / testOptions += Tests.Setup(RedisServer.start),
-    Test / testOptions += Tests.Cleanup(RedisServer.stop)
+    name := "search-provision"
   )
   .dependsOn(
     commons % "compile->compile;test->test",
     messages % "compile->compile;test->test",
-    avroCodec % "compile->compile;test->test",
-    redisClient % "compile->compile;test->test"
+    redisClient % "compile->compile;test->test",
+    searchSolrClient % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin)
 

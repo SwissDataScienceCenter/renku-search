@@ -27,7 +27,7 @@ releaseVersionBump := sbtrelease.Version.Bump.Minor
 releaseIgnoreUntrackedFiles := true
 releaseTagName := (ThisBuild / version).value
 
-addCommandAlias("ci", "; lint; test; publishLocal")
+addCommandAlias("ci", "; lint; dbTests; publishLocal")
 addCommandAlias(
   "lint",
   "; scalafmtSbtCheck; scalafmtCheckAll;" // Compile/scalafix --check; Test/scalafix --check
@@ -37,6 +37,7 @@ addCommandAlias("fix", "; scalafmtSbt; scalafmtAll") // ; Compile/scalafix; Test
 lazy val root = project
   .in(file("."))
   .withId("renku-search")
+  .enablePlugins(DbTestPlugin)
   .settings(
     publish / skip := true,
     publishTo := Some(
@@ -63,13 +64,29 @@ lazy val commons = project
         Dependencies.catsEffect ++
         Dependencies.fs2Core ++
         Dependencies.scodecBits ++
-        Dependencies.scribe
+        Dependencies.scribe,
+    Test / sourceGenerators += Def.task {
+      val sourceDir =
+        (LocalRootProject / baseDirectory).value / "project"
+      val sources = Seq(
+        sourceDir / "RedisServer.scala",
+        sourceDir / "SolrServer.scala"
+      ) // IO.listFiles(sourceDir)
+      val targetDir = (Test / sourceManaged).value / "servers"
+      IO.createDirectory(targetDir)
+
+      val targets = sources.map(s => targetDir / s.name)
+      IO.copy(sources.zip(targets))
+      targets
+    }.taskValue
   )
   .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
 
 lazy val http4sBorer = project
   .in(file("modules/http4s-borer"))
   .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
   .withId("http4s-borer")
   .settings(commonSettings)
   .settings(
@@ -85,6 +102,7 @@ lazy val httpClient = project
   .in(file("modules/http-client"))
   .withId("http-client")
   .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
   .settings(commonSettings)
   .settings(
     name := "http-client",
@@ -104,8 +122,6 @@ lazy val redisClient = project
   .settings(commonSettings)
   .settings(
     name := "redis-client",
-    Test / testOptions += Tests.Setup(RedisServer.start),
-    Test / testOptions += Tests.Cleanup(RedisServer.stop),
     libraryDependencies ++=
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
@@ -113,6 +129,9 @@ lazy val redisClient = project
         Dependencies.redis4CatsStreams
   )
   .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(
+    commons % "test->test"
+  )
 
 lazy val solrClient = project
   .in(file("modules/solr-client"))
@@ -121,15 +140,14 @@ lazy val solrClient = project
   .settings(commonSettings)
   .settings(
     name := "solr-client",
-    Test / testOptions += Tests.Setup(SolrServer.start),
-    Test / testOptions += Tests.Cleanup(SolrServer.stop),
     libraryDependencies ++=
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
         Dependencies.http4sClient
   )
   .dependsOn(
-    httpClient % "compile->compile;test->test"
+    httpClient % "compile->compile;test->test",
+    commons % "test->test"
   )
 
 lazy val searchSolrClient = project
@@ -139,19 +157,19 @@ lazy val searchSolrClient = project
   .settings(commonSettings)
   .settings(
     name := "search-solr-client",
-    Test / testOptions += Tests.Setup(SolrServer.start),
-    Test / testOptions += Tests.Cleanup(SolrServer.stop),
     libraryDependencies ++=
       Dependencies.catsCore ++
         Dependencies.catsEffect
   )
   .dependsOn(
     avroCodec % "compile->compile;test->test",
-    solrClient % "compile->compile;test->test"
+    solrClient % "compile->compile;test->test",
+    commons % "test->test"
   )
 
 lazy val avroCodec = project
   .in(file("modules/avro-codec"))
+  .disablePlugins(DbTestPlugin)
   .settings(commonSettings)
   .settings(
     name := "avro-codec",
@@ -171,19 +189,14 @@ lazy val messages = project
     avroCodec % "compile->compile;test->test"
   )
   .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
 
 lazy val searchProvision = project
   .in(file("modules/search-provision"))
   .withId("search-provision")
   .settings(commonSettings)
   .settings(
-    name := "search-provision",
-    Test / testOptions += Tests.Setup { cl =>
-      RedisServer.start(cl); SolrServer.start(cl)
-    },
-    Test / testOptions += Tests.Cleanup { cl =>
-      RedisServer.stop(cl); SolrServer.stop(cl)
-    }
+    name := "search-provision"
   )
   .dependsOn(
     commons % "compile->compile;test->test",

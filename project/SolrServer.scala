@@ -16,27 +16,97 @@
  * limitations under the License.
  */
 
-import java.util.concurrent.atomic.AtomicInteger
+package io.renku.servers
+
+import java.util.concurrent.atomic.AtomicBoolean
+import scala.sys.process.*
 import scala.util.Try
 
-object SolrServer {
+object SolrServer extends SolrServer("graph", port = 8983)
 
-  private val startRequests = new AtomicInteger(0)
+@annotation.nowarn()
+class SolrServer(module: String, port: Int) {
 
-  def start: ClassLoader => Unit = { cl =>
-    if (startRequests.getAndIncrement() == 0) call("start")(cl)
+  val url: String = s"http://localhost:$port"
+
+  // When using a local Solr for development, use this env variable
+  // to not start a Solr server via docker for the tests
+  private val skipServer: Boolean = sys.env.contains("NO_SOLR")
+
+  private val containerName = s"$module-test-solr"
+  private val image = "solr:9.4.1-slim"
+  val genericCoreName = "core-test"
+  val searchCoreName = "search-core-test"
+  private val cores = Set(genericCoreName, searchCoreName)
+  private val startCmd = s"""|docker run --rm
+                             |--name $containerName
+                             |-p $port:8983
+                             |-d $image""".stripMargin
+  private val isRunningCmd =
+    Seq("docker", "container", "ls", "--filter", s"name=$containerName")
+  private val stopCmd = s"docker stop -t5 $containerName"
+  private def readyCmd(core: String) =
+    s"curl http://localhost:8983/solr/$core/select?q=*:* --no-progress-meter --fail 1> /dev/null"
+  private def isReadyCmd(core: String) =
+    Seq("docker", "exec", containerName, "sh", "-c", readyCmd(core))
+  private def createCore(core: String) = s"precreate-core $core"
+  private def createCoreCmd(core: String) =
+    Seq("docker", "exec", containerName, "sh", "-c", createCore(core))
+  private val wasStartedHere = new AtomicBoolean(false)
+
+  def start(): Unit =
+    if (skipServer) println("Not starting Solr via docker")
+    else if (checkRunning) ()
+    else {
+      println(s"Starting Solr container for '$module' from '$image' image")
+      startContainer()
+      waitForCoresToBeReady()
+    }
+
+  private def waitForCoresToBeReady(): Unit = {
+    var rc = 1
+    while (rc != 0) {
+      Thread.sleep(500)
+      rc = checkCoresReady
+      if (rc == 0) println(s"Solr container for '$module' ready on port $port")
+    }
   }
 
-  def stop: ClassLoader => Unit = { cl =>
-    if (startRequests.decrementAndGet() == 0)
-      Try(call("forceStop")(cl))
-        .recover { case err => err.printStackTrace() }
+  private def checkCoresReady =
+    cores.foldLeft(0)((rc, core) => if (rc == 0) isReadyCmd(core).! else rc)
+
+  private def checkRunning: Boolean = {
+    val out = isRunningCmd.lineStream_!.take(20).toList
+    val isRunning = out.exists(_ contains containerName)
+    if (isRunning) waitForCoresToBeReady()
+    isRunning
   }
 
-  private def call(methodName: String): ClassLoader => Unit = classLoader => {
-    val clazz = classLoader.loadClass("io.renku.solr.client.util.SolrServer$")
-    val method = clazz.getMethod(methodName)
-    val instance = clazz.getField("MODULE$").get(null)
-    method.invoke(instance)
+  private def startContainer(): Unit = {
+    val retryOnContainerFailedToRun: Throwable => Unit = {
+      case ex if ex.getMessage contains "Nonzero exit value: 125" =>
+        Thread.sleep(500); start()
+      case ex => throw ex
+    }
+    Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => wasStartedHere.set(true))
+    val rcs = cores.map(c => c -> createCoreCmd(c).!)
+    println(
+      s"Created solr cores: ${rcs.map { case (core, rc) => s"'$core' ($rc)" }.mkString(", ")}"
+    )
   }
+
+  def stop(): Unit =
+    if (!skipServer && !wasStartedHere.get()) ()
+    else {
+      println(s"Stopping Solr container for '$module'")
+      stopCmd.!!
+      ()
+    }
+
+  def forceStop(): Unit =
+    if (!skipServer) {
+      println(s"Stopping Solr container for '$module'")
+      stopCmd.!!
+      ()
+    }
 }

@@ -19,7 +19,9 @@
 package io.renku.solr.client.util
 
 import cats.effect.*
+import io.renku.servers.SolrServer
 import io.renku.solr.client.{SolrClient, SolrConfig}
+import org.http4s.Uri
 
 import scala.concurrent.duration.Duration
 
@@ -28,7 +30,7 @@ trait SolrSpec:
 
   protected lazy val server: SolrServer = SolrServer
   protected lazy val solrConfig: SolrConfig = SolrConfig(
-    server.url / "solr",
+    Uri.unsafeFromString(server.url) / "solr",
     server.genericCoreName,
     commitWithin = Some(Duration.Zero),
     logMessageBodies = true

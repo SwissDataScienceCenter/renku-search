@@ -49,7 +49,8 @@ object Microservice extends IOApp:
 
   private def startProvisioning: IO[Unit] =
     SearchProvisioner[IO](queueName, redisUrl, solrConfig)
-      .use(_.provisionSolr)
+      .evalMap(_.provisionSolr.start)
+      .use(_ => IO.never)
       .handleErrorWith { err =>
         Scribe[IO].error("Starting provisioning failure, retrying", err) >>
           Temporal[IO].delayBy(startProvisioning, retryOnErrorDelay)

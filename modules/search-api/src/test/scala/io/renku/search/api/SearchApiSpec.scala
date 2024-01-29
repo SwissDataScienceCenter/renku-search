@@ -29,8 +29,11 @@ import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project as SolrProject
 import munit.CatsEffectSuite
+import scribe.Scribe
 
 class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
+
+  private given Scribe[IO] = scribe.cats[IO]
 
   test("do a lookup in Solr to find entities matching the given phrase"):
     withSearchSolrClient().use { client =>

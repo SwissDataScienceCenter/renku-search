@@ -19,17 +19,20 @@
 package io.renku.search.api
 
 import cats.effect.{Async, Resource}
+import com.comcast.ip4s.{Port, ipv4, port}
 import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.solr.client.SolrConfig
-import org.http4s.Response
-import scribe.Scribe
+import org.http4s.HttpApp
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.Server
 
-trait SearchApi[F[_]]:
-  def find(phrase: String): F[Response[F]]
+object HttpServer:
 
-object SearchApi:
-  def apply[F[_]: Async: Network: Scribe](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))
+  val port: Port = port"8080"
+
+  def build[F[_]: Async: Network](app: HttpApp[F]): Resource[F, Server] =
+    EmberServerBuilder
+      .default[F]
+      .withHost(ipv4"0.0.0.0")
+      .withPort(port)
+      .withHttpApp(app)
+      .build

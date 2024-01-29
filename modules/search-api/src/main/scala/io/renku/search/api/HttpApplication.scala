@@ -18,18 +18,27 @@
 
 package io.renku.search.api
 
+import cats.Monad
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
 import io.renku.solr.client.SolrConfig
-import org.http4s.Response
+import org.http4s.dsl.Http4sDsl
+import org.http4s.server.Router
+import org.http4s.{HttpApp, HttpRoutes, Request, Response}
 import scribe.Scribe
 
-trait SearchApi[F[_]]:
-  def find(phrase: String): F[Response[F]]
-
-object SearchApi:
+object HttpApplication:
   def apply[F[_]: Async: Network: Scribe](
       solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))
+  ): Resource[F, HttpApp[F]] =
+    SearchApi[F](solrConfig).map(new HttpApplication[F](_).router)
+
+class HttpApplication[F[_]: Monad](searchApi: SearchApi[F]) extends Http4sDsl[F]:
+
+  lazy val router: HttpApp[F] =
+    Router[F]("/" -> routes).orNotFound
+
+  private lazy val routes: HttpRoutes[F] = HttpRoutes.of[F] {
+    case GET -> Root / "api" / phrase => searchApi.find(phrase)
+    case GET -> Root / "ping"         => Ok("pong")
+  }

@@ -18,18 +18,26 @@
 
 package io.renku.search.api
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
+import cats.effect.{ExitCode, IO, IOApp}
+import cats.syntax.all.*
 import io.renku.solr.client.SolrConfig
-import org.http4s.Response
+import org.http4s.implicits.*
 import scribe.Scribe
 
-trait SearchApi[F[_]]:
-  def find(phrase: String): F[Response[F]]
+import scala.concurrent.duration.Duration
 
-object SearchApi:
-  def apply[F[_]: Async: Network: Scribe](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))
+object Microservice extends IOApp:
+
+  private given Scribe[IO] = scribe.cats[IO]
+
+  private val solrConfig = SolrConfig(
+    baseUrl = uri"http://localhost:8983" / "solr",
+    core = "search-core-test",
+    commitWithin = Some(Duration.Zero),
+    logMessageBodies = true
+  )
+
+  override def run(args: List[String]): IO[ExitCode] =
+    (createHttpApp >>= HttpServer.build).use(_ => IO.never).as(ExitCode.Success)
+
+  private def createHttpApp = HttpApplication[IO](solrConfig)

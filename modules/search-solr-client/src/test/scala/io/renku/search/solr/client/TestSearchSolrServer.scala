@@ -16,20 +16,13 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.solr.client
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.solr.client.SolrConfig
-import org.http4s.Response
-import scribe.Scribe
+import cats.effect.{ExitCode, IO, IOApp}
+import io.renku.servers.SolrServer
 
-trait SearchApi[F[_]]:
-  def find(phrase: String): F[Response[F]]
+/** This is a utility to start a Solr server for manual testing */
+object TestSearchSolrServer extends IOApp:
 
-object SearchApi:
-  def apply[F[_]: Async: Network: Scribe](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))
+  override def run(args: List[String]): IO[ExitCode] =
+    (IO(SolrServer.start()) >> IO.never[ExitCode]).as(ExitCode.Success)

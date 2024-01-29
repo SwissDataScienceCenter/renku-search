@@ -28,13 +28,18 @@ import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Project as SolrProject
 import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
+import scribe.Scribe
 
-private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
+private class SearchApiImpl[F[_]: Async: Scribe](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
     with SearchApi[F]:
 
   override def find(phrase: String): F[Response[F]] =
-    solrClient.findProjects(phrase).map(toApiModel).map(toAvroResponse)
+    solrClient
+      .findProjects(phrase)
+      .map(toApiModel)
+      .map(toAvroResponse)
+      .handleErrorWith(errorResponse(phrase))
 
   private given AvroJsonEncoder[List[ApiProject]] =
     AvroJsonEncoder.encodeList[ApiProject](ApiProject.SCHEMA$)
@@ -42,6 +47,12 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
   private def toAvroResponse(entities: List[ApiProject]): Response[F] =
     Response[F](Ok)
       .withEntity(entities)
+
+  private def errorResponse(phrase: String): Throwable => F[Response[F]] =
+    err =>
+      Scribe[F]
+        .error(s"Finding by '$phrase' phrase failed", err)
+        .map(_ => Response[F](InternalServerError).withEntity(err.getMessage))
 
   private def toApiModel(entities: List[SolrProject]): List[ApiProject] =
     entities.map(p => ApiProject(p.id, p.name, p.description))

@@ -51,7 +51,8 @@ lazy val root = project
     redisClient,
     solrClient,
     searchSolrClient,
-    searchProvision
+    searchProvision,
+    searchApi
   )
 
 lazy val commons = project

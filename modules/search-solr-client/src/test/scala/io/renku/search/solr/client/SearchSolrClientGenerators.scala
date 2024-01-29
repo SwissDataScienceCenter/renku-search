@@ -25,7 +25,7 @@ object SearchSolrClientGenerators:
 
   def projectDocumentGen(name: String, desc: String): Gen[Project] =
     Gen.uuid.map(uuid =>
-      Project(uuid.toString, "solr-project", "solr project description")
+      Project(uuid.toString, name, desc)
     )
 
   extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

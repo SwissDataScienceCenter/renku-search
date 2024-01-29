@@ -27,7 +27,7 @@ trait SearchSolrClient[F[_]]:
 
   def insertProject(project: Project): F[Unit]
 
-  def findAllProjects: F[List[Project]]
+  def findProjects(phrase: String): F[List[Project]]
 
 object SearchSolrClient:
   def apply[F[_]: Async: Network](

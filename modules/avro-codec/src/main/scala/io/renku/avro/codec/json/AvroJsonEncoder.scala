@@ -1,7 +1,7 @@
 package io.renku.avro.codec.json
 
-import io.renku.avro.codec.{AvroEncoder, AvroWriter}
 import io.renku.avro.codec.encoders.all.given
+import io.renku.avro.codec.{AvroEncoder, AvroWriter}
 import org.apache.avro.{Schema, SchemaBuilder}
 import scodec.bits.ByteVector
 
@@ -17,7 +17,10 @@ object AvroJsonEncoder:
     (a: A) => f(a)
 
   def create[A: AvroEncoder](schema: Schema): AvroJsonEncoder[A] =
-    a => AvroWriter(schema).writeJson(Seq(a))
+    encodeList(schema).contramap(List(_))
+
+  def encodeList[A: AvroEncoder](schema: Schema): AvroJsonEncoder[List[A]] =
+    AvroWriter(schema).writeJson(_)
 
   given AvroJsonEncoder[String] =
     create[String](SchemaBuilder.builder().stringType())

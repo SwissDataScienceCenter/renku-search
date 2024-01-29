@@ -56,7 +56,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
           docsCollectorFiber <-
             Stream
               .awakeEvery[IO](500 millis)
-              .evalMap(_ => solrClient.findAllProjects)
+              .evalMap(_ => solrClient.findProjects("*"))
               .flatMap(Stream.emits(_))
               .evalTap(IO.println)
               .evalMap(d => solrDocs.update(_ + d))

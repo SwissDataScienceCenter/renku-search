@@ -206,6 +206,23 @@ lazy val searchProvision = project
   )
   .enablePlugins(AutomateHeaderPlugin)
 
+lazy val searchApi = project
+  .in(file("modules/search-api"))
+  .withId("search-api")
+  .settings(commonSettings)
+  .settings(
+    name := "search-api",
+    libraryDependencies ++=
+      Dependencies.http4sServer
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    messages % "compile->compile;test->test",
+    http4sBorer % "compile->compile;test->test",
+    searchSolrClient % "compile->compile;test->test"
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
 lazy val commonSettings = Seq(
   organization := "io.renku",
   publish / skip := true,

@@ -69,6 +69,9 @@ object Dependencies {
   val http4sClient = Seq(
     "org.http4s" %% "http4s-ember-client" % V.http4s
   )
+  val http4sServer = Seq(
+    "org.http4s" %% "http4s-ember-server" % V.http4s
+  )
 
   val scribe = Seq(
     "com.outr" %% "scribe" % V.scribe,

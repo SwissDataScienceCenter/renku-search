@@ -18,10 +18,12 @@
 
 package io.renku.solr.client.migration
 
-import cats.effect.Sync
+import cats.effect.kernel.Resource
+import cats.effect.{Async, Sync}
 import cats.syntax.all.*
+import fs2.io.net.Network
 import io.renku.solr.client.schema.{Field, FieldName, SchemaCommand, TypeName}
-import io.renku.solr.client.{QueryString, SolrClient}
+import io.renku.solr.client.{QueryString, SolrClient, SolrConfig}
 
 trait SchemaMigrator[F[_]] {
 
@@ -31,7 +33,13 @@ trait SchemaMigrator[F[_]] {
 }
 
 object SchemaMigrator:
+
   def apply[F[_]: Sync](client: SolrClient[F]): SchemaMigrator[F] = Impl[F](client)
+
+  def apply[F[_]: Async: Network](
+      solrConfig: SolrConfig
+  ): Resource[F, SchemaMigrator[F]] =
+    SolrClient[F](solrConfig).map(apply[F])
 
   private class Impl[F[_]: Sync](client: SolrClient[F]) extends SchemaMigrator[F] {
     private[this] val logger = scribe.cats.effect[F]

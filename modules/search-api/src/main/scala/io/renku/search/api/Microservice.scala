@@ -22,13 +22,10 @@ import cats.effect.{ExitCode, IO, IOApp}
 import cats.syntax.all.*
 import io.renku.solr.client.SolrConfig
 import org.http4s.implicits.*
-import scribe.Scribe
 
 import scala.concurrent.duration.Duration
 
 object Microservice extends IOApp:
-
-  private given Scribe[IO] = scribe.cats[IO]
 
   private val solrConfig = SolrConfig(
     baseUrl = uri"http://localhost:8983" / "solr",

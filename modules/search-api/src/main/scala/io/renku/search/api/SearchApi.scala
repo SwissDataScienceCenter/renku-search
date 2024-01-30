@@ -23,13 +23,12 @@ import fs2.io.net.Network
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.solr.client.SolrConfig
 import org.http4s.Response
-import scribe.Scribe
 
 trait SearchApi[F[_]]:
   def find(phrase: String): F[Response[F]]
 
 object SearchApi:
-  def apply[F[_]: Async: Network: Scribe](
+  def apply[F[_]: Async: Network](
       solrConfig: SolrConfig
   ): Resource[F, SearchApi[F]] =
     SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))

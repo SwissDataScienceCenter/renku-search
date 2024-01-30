@@ -25,10 +25,9 @@ import io.renku.solr.client.SolrConfig
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.http4s.{HttpApp, HttpRoutes, Request, Response}
-import scribe.Scribe
 
 object HttpApplication:
-  def apply[F[_]: Async: Network: Scribe](
+  def apply[F[_]: Async: Network](
       solrConfig: SolrConfig
   ): Resource[F, HttpApp[F]] =
     SearchApi[F](solrConfig).map(new HttpApplication[F](_).router)

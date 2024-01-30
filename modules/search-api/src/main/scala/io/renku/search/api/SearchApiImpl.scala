@@ -30,9 +30,11 @@ import org.http4s.Response
 import org.http4s.dsl.Http4sDsl
 import scribe.Scribe
 
-private class SearchApiImpl[F[_]: Async: Scribe](solrClient: SearchSolrClient[F])
+private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
     with SearchApi[F]:
+
+  private given Scribe[F] = scribe.cats[F]
 
   override def find(phrase: String): F[Response[F]] =
     solrClient

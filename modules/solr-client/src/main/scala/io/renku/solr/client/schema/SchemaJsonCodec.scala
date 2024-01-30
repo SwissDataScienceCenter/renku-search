@@ -19,7 +19,7 @@
 package io.renku.solr.client.schema
 
 import io.bullet.borer.{Encoder, Writer}
-import io.bullet.borer.NullOptions.*
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
 import io.renku.solr.client.schema.SchemaCommand.Element
 

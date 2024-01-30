@@ -31,8 +31,11 @@ import io.renku.redis.client.util.RedisSpec
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project
 import munit.CatsEffectSuite
+import org.scalacheck.Gen
+import org.scalacheck.Gen.alphaNumChar
 
 import java.time.temporal.ChronoUnit
+import java.time.temporal.ChronoUnit.MILLIS
 import scala.concurrent.duration.*
 
 class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSolrSpec:
@@ -49,11 +52,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
 
         provisioningFiber <- provisioner.provisionSolr.start
 
-        message1 <- generateProjectCreated(
-          "project-binary",
-          "description binary",
-          Some("myself binary")
-        )
+        message1 <- generateProjectCreated(prefix = "binary")
         _ <- queueClient.enqueue(queue, avro.write[ProjectCreated](Seq(message1)))
 
         docsCollectorFiber <-
@@ -84,11 +83,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
 
         provisioningFiber <- provisioner.provisionSolr.start
 
-        message1 <- generateProjectCreated(
-          "project-json",
-          "description json",
-          Some("myself json")
-        )
+        message1 <- generateProjectCreated(prefix = "json")
         _ <- queueClient.enqueue(queue, avro.writeJson[ProjectCreated](Seq(message1)))
 
         docsCollectorFiber <-
@@ -112,15 +107,19 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
   private def redisAndSolrClients =
     withRedisClient.asQueueClient() >>= withSearchSolrClient().tupleLeft
 
-  private def generateProjectCreated(
-      name: String,
-      description: String,
-      owner: Option[String]
-  ): IO[ProjectCreated] =
+  private def generateProjectCreated(prefix: String): IO[ProjectCreated] =
+    def generateString(max: Int): Gen[String] =
+      Gen
+        .chooseNum(3, max)
+        .flatMap(Gen.stringOfN(_, alphaNumChar))
+
     for
-      now <- Clock[IO].realTimeInstant.map(_.truncatedTo(ChronoUnit.MILLIS))
+      now <- Clock[IO].realTimeInstant.map(_.truncatedTo(MILLIS))
       uuid <- IO.randomUUID
-    yield ProjectCreated(uuid.toString, name, description, owner, now)
+      name = prefix + generateString(max = 5).sample.get
+      desc = prefix + generateString(max = 10).sample.get
+      ownerGen = generateString(max = 5).map(prefix + _)
+    yield ProjectCreated(uuid.toString, name, desc, Gen.option(ownerGen).sample.get, now)
 
   private def toSolrDocument(created: ProjectCreated): Project =
     Project(created.id, created.name, created.description)

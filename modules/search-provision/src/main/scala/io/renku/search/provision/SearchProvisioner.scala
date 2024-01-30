@@ -36,7 +36,7 @@ trait SearchProvisioner[F[_]]:
   def provisionSolr: F[Unit]
 
 object SearchProvisioner:
-  def apply[F[_]: Async: Network: Scribe](
+  def apply[F[_]: Async: Network](
       queueName: QueueName,
       redisUrl: RedisUrl,
       solrConfig: SolrConfig
@@ -45,11 +45,13 @@ object SearchProvisioner:
       .flatMap(qc => SearchSolrClient[F](solrConfig).tupleLeft(qc))
       .map { case (qc, sc) => new SearchProvisionerImpl[F](queueName, qc, sc) }
 
-private class SearchProvisionerImpl[F[_]: Async: Scribe](
+private class SearchProvisionerImpl[F[_]: Async](
     queueName: QueueName,
     queueClient: QueueClient[F],
     solrClient: SearchSolrClient[F]
 ) extends SearchProvisioner[F]:
+
+  private given Scribe[F] = scribe.cats[F]
 
   override def provisionSolr: F[Unit] =
     queueClient

@@ -22,7 +22,6 @@ import cats.effect.{Async, Resource}
 import fs2.Stream
 import io.renku.redis.client.{RedisQueueClient, RedisUrl}
 import scodec.bits.ByteVector
-import scribe.Scribe
 
 trait QueueClient[F[_]] {
 
@@ -44,5 +43,5 @@ trait QueueClient[F[_]] {
 }
 
 object QueueClient:
-  def apply[F[_]: Async: Scribe](redisUrl: RedisUrl): Resource[F, QueueClient[F]] =
+  def apply[F[_]: Async](redisUrl: RedisUrl): Resource[F, QueueClient[F]] =
     RedisQueueClient[F](redisUrl)

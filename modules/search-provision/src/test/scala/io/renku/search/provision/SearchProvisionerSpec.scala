@@ -31,47 +31,86 @@ import io.renku.redis.client.util.RedisSpec
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project
 import munit.CatsEffectSuite
-import scribe.Scribe
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.*
 
 class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSolrSpec:
 
-  private given Scribe[IO] = scribe.cats[IO]
   private val avro = AvroIO(ProjectCreated.SCHEMA$)
 
-  test("can fetch events and send them to Solr"):
+  test("can fetch events binary encoded, decode them, and send them to Solr"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
 
-    (withRedisClient.asQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .use { case (queueClient, solrClient) =>
-        val provisioner = new SearchProvisionerImpl(queue, queueClient, solrClient)
-        for
-          solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
+    redisAndSolrClients.use { case (queueClient, solrClient) =>
+      val provisioner = new SearchProvisionerImpl(queue, queueClient, solrClient)
+      for
+        solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 
-          provisioningFiber <- provisioner.provisionSolr.start
+        provisioningFiber <- provisioner.provisionSolr.start
 
-          message1 <- generateProjectCreated("project", "description", Some("myself"))
-          _ <- queueClient.enqueue(queue, avro.write[ProjectCreated](Seq(message1)))
+        message1 <- generateProjectCreated(
+          "project-binary",
+          "description binary",
+          Some("myself binary")
+        )
+        _ <- queueClient.enqueue(queue, avro.write[ProjectCreated](Seq(message1)))
 
-          docsCollectorFiber <-
-            Stream
-              .awakeEvery[IO](500 millis)
-              .evalMap(_ => solrClient.findProjects("*"))
-              .flatMap(Stream.emits(_))
-              .evalTap(IO.println)
-              .evalMap(d => solrDocs.update(_ + d))
-              .compile
-              .drain
-              .start
+        docsCollectorFiber <-
+          Stream
+            .awakeEvery[IO](500 millis)
+            .evalMap(_ => solrClient.findProjects("*"))
+            .flatMap(Stream.emits(_))
+            .evalTap(IO.println)
+            .evalMap(d => solrDocs.update(_ + d))
+            .compile
+            .drain
+            .start
 
-          _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
+        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
 
-          _ <- provisioningFiber.cancel
-          _ <- docsCollectorFiber.cancel
-        yield ()
-      }
+        _ <- provisioningFiber.cancel
+        _ <- docsCollectorFiber.cancel
+      yield ()
+    }
+
+  test("can fetch events JSON encoded, decode them, and send them to Solr"):
+    val queue = RedisClientGenerators.queueNameGen.generateOne
+
+    redisAndSolrClients.use { case (queueClient, solrClient) =>
+      val provisioner = new SearchProvisionerImpl(queue, queueClient, solrClient)
+      for
+        solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
+
+        provisioningFiber <- provisioner.provisionSolr.start
+
+        message1 <- generateProjectCreated(
+          "project-json",
+          "description json",
+          Some("myself json")
+        )
+        _ <- queueClient.enqueue(queue, avro.writeJson[ProjectCreated](Seq(message1)))
+
+        docsCollectorFiber <-
+          Stream
+            .awakeEvery[IO](500 millis)
+            .evalMap(_ => solrClient.findProjects("*"))
+            .flatMap(Stream.emits(_))
+            .evalTap(IO.println)
+            .evalMap(d => solrDocs.update(_ + d))
+            .compile
+            .drain
+            .start
+
+        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
+
+        _ <- provisioningFiber.cancel
+        _ <- docsCollectorFiber.cancel
+      yield ()
+    }
+
+  private def redisAndSolrClients =
+    withRedisClient.asQueueClient() >>= withSearchSolrClient().tupleLeft
 
   private def generateProjectCreated(
       name: String,

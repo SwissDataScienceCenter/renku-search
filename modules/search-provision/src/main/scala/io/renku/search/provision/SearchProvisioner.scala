@@ -18,6 +18,7 @@
 
 package io.renku.search.provision
 
+import cats.MonadThrow
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -30,6 +31,7 @@ import io.renku.redis.client.RedisUrl
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Project
 import io.renku.solr.client.SolrConfig
+import org.apache.avro.AvroRuntimeException
 import scribe.Scribe
 
 trait SearchProvisioner[F[_]]:
@@ -56,7 +58,7 @@ private class SearchProvisionerImpl[F[_]: Async](
   override def provisionSolr: F[Unit] =
     queueClient
       .acquireEventsStream(queueName, chunkSize = 1, maybeOffset = None)
-      .map(decodeEvent)
+      .evalMap(decodeEvent)
       .evalTap(decoded => Scribe[F].info(s"Received $decoded"))
       .flatMap(decoded => Stream.emits[F, ProjectCreated](decoded))
       .evalMap(pushToSolr)
@@ -65,8 +67,18 @@ private class SearchProvisionerImpl[F[_]: Async](
 
   private val avro = AvroReader(ProjectCreated.SCHEMA$)
 
-  private def decodeEvent(message: Message): Seq[ProjectCreated] =
-    avro.read[ProjectCreated](message.payload)
+  private def decodeEvent(message: Message): F[Seq[ProjectCreated]] =
+    decodeBinary(message).orElse(decodeJson(message))
+
+  private def decodeBinary(message: Message): F[Seq[ProjectCreated]] =
+    MonadThrow[F].catchOnly[AvroRuntimeException](
+      avro.read[ProjectCreated](message.payload)
+    )
+
+  private def decodeJson(message: Message): F[Seq[ProjectCreated]] =
+    MonadThrow[F].catchOnly[AvroRuntimeException](
+      avro.readJson[ProjectCreated](message.payload)
+    )
 
   private def pushToSolr(pc: ProjectCreated): F[Unit] =
     solrClient

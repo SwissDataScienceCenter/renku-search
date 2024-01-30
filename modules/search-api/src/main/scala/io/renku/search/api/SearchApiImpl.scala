@@ -40,15 +40,11 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     solrClient
       .findProjects(phrase)
       .map(toApiModel)
-      .map(toAvroResponse)
+      .flatMap(Ok(_))
       .handleErrorWith(errorResponse(phrase))
 
   private given AvroJsonEncoder[List[ApiProject]] =
     AvroJsonEncoder.encodeList[ApiProject](ApiProject.SCHEMA$)
-
-  private def toAvroResponse(entities: List[ApiProject]): Response[F] =
-    Response[F](Ok)
-      .withEntity(entities)
 
   private def errorResponse(phrase: String): Throwable => F[Response[F]] =
     err =>

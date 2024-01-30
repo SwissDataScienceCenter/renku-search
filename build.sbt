@@ -34,6 +34,8 @@ addCommandAlias(
 )
 addCommandAlias("fix", "; scalafmtSbt; scalafmtAll") // ; Compile/scalafix; Test/scalafix
 
+val writeVersion = taskKey[Unit]("Write version into a file for CI to pick up")
+
 lazy val root = project
   .in(file("."))
   .withId("renku-search")
@@ -42,7 +44,12 @@ lazy val root = project
     publish / skip := true,
     publishTo := Some(
       Resolver.file("Unused transient repository", file("target/unusedrepo"))
-    )
+    ),
+    writeVersion := {
+      val out = (LocalRootProject / target).value / "version.txt"
+      val versionStr = version.value
+      IO.write(out, versionStr)
+    }
   )
   .aggregate(
     commons,
@@ -222,7 +229,7 @@ lazy val searchProvision = project
     redisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin)
 
 lazy val searchApi = project
   .in(file("modules/search-api"))
@@ -240,7 +247,7 @@ lazy val searchApi = project
     http4sAvro % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin)
 
 lazy val commonSettings = Seq(
   organization := "io.renku",

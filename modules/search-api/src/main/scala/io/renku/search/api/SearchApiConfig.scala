@@ -18,16 +18,14 @@
 
 package io.renku.search.api
 
-import cats.effect.{ExitCode, IO, IOApp}
+import ciris.{ConfigValue, Effect}
+import io.renku.search.config.ConfigValues
+import io.renku.solr.client.SolrConfig
 
-object Microservice extends IOApp:
+final case class SearchApiConfig(
+    solrConfig: SolrConfig
+)
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- HttpApplication[IO](config.solrConfig)
-        .flatMap(HttpServer.build)
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+object SearchApiConfig:
+  val config: ConfigValue[Effect, SearchApiConfig] =
+    ConfigValues.solrConfig.map(SearchApiConfig.apply)

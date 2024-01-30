@@ -10,6 +10,7 @@ object Dependencies {
     val catsCore = "2.10.0"
     val catsEffect = "3.5.3"
     val catsEffectMunit = "1.0.7"
+    val ciris = "3.5.0"
     val fs2 = "3.9.4"
     val http4s = "0.23.25"
     val redis4Cats = "1.5.2"
@@ -18,6 +19,10 @@ object Dependencies {
     val scodecBits = "1.1.38"
     val scribe = "3.13.0"
   }
+
+  val ciris = Seq(
+    "is.cir" %% "ciris" % V.ciris
+  )
 
   val borer = Seq(
     "io.bullet" %% "borer-core" % V.borer,

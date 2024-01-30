@@ -23,13 +23,13 @@ import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Chunk
 import io.renku.avro.codec.json.{AvroJsonDecoder, AvroJsonEncoder}
+import org.http4s.*
 import org.http4s.MediaType.application
 import org.http4s.headers.`Content-Type`
-import org.http4s.{DecodeFailure, DecodeResult, EntityDecoder, EntityEncoder, MalformedMessageBodyFailure, Media, MediaType}
 import scodec.bits.ByteVector
 
 object AvroEntityCodec extends AvroEntityCodec:
-  export Implicits.*
+  export Implicits.given
 
 trait AvroEntityCodec:
 
@@ -59,10 +59,10 @@ trait AvroEntityCodec:
 
   trait Implicits:
 
-    implicit def entityDecoder[F[_]: Async, A: AvroJsonDecoder]: EntityDecoder[F, A] =
+    given entityDecoder[F[_]: Async, A: AvroJsonDecoder]: EntityDecoder[F, A] =
       decodeEntity[F, A]
 
-    implicit def entityEncoder[F[_], A: AvroJsonEncoder]: EntityEncoder[F, A] =
+    given entityEncoder[F[_], A: AvroJsonEncoder]: EntityEncoder[F, A] =
       encodeEntity[F, A]
 
   object Implicits extends Implicits

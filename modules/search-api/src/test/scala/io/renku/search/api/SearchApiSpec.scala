@@ -24,7 +24,7 @@ import io.renku.api.Project as ApiProject
 import io.renku.avro.codec.AvroDecoder
 import io.renku.avro.codec.all.given
 import io.renku.avro.codec.json.AvroJsonDecoder
-import io.renku.search.http.avro.AvroEntityCodec.*
+import io.renku.search.http.avro.AvroEntityCodec.given
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project as SolrProject

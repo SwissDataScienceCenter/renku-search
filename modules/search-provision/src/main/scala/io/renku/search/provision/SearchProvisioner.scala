@@ -45,7 +45,7 @@ object SearchProvisioner:
       .flatMap(qc => SearchSolrClient[F](solrConfig).tupleLeft(qc))
       .map { case (qc, sc) => new SearchProvisionerImpl[F](queueName, qc, sc) }
 
-private class SearchProvisionerImpl[F[_]: Async](
+private class SearchProvisionerImpl[F[_]: Async: Scribe](
     queueName: QueueName,
     queueClient: QueueClient[F],
     solrClient: SearchSolrClient[F]
@@ -55,6 +55,7 @@ private class SearchProvisionerImpl[F[_]: Async](
     queueClient
       .acquireEventsStream(queueName, chunkSize = 1, maybeOffset = None)
       .map(decodeEvent)
+      .evalTap(decoded => Scribe[F].info(s"Received $decoded"))
       .flatMap(decoded => Stream.emits[F, ProjectCreated](decoded))
       .evalMap(pushToSolr)
       .compile

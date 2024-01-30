@@ -51,7 +51,8 @@ lazy val root = project
     redisClient,
     solrClient,
     searchSolrClient,
-    searchProvision
+    searchProvision,
+    searchApi
   )
 
 lazy val commons = project
@@ -178,6 +179,23 @@ lazy val avroCodec = project
         Dependencies.scodecBits
   )
 
+lazy val http4sAvro = project
+  .in(file("modules/http4s-avro"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin)
+  .withId("http4s-avro")
+  .settings(commonSettings)
+  .settings(
+    name := "http4s-avro",
+    description := "Avro codecs for http4s",
+    libraryDependencies ++=
+      Dependencies.http4sCore ++
+        Dependencies.fs2Core
+  )
+  .dependsOn(
+    avroCodec % "compile->compile;test->test"
+  )
+
 lazy val messages = project
   .in(file("modules/messages"))
   .settings(commonSettings)
@@ -202,6 +220,24 @@ lazy val searchProvision = project
     commons % "compile->compile;test->test",
     messages % "compile->compile;test->test",
     redisClient % "compile->compile;test->test",
+    searchSolrClient % "compile->compile;test->test"
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
+lazy val searchApi = project
+  .in(file("modules/search-api"))
+  .withId("search-api")
+  .settings(commonSettings)
+  .settings(
+    name := "search-api",
+    libraryDependencies ++=
+      Dependencies.http4sDsl ++
+        Dependencies.http4sServer
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    messages % "compile->compile;test->test",
+    http4sAvro % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin)

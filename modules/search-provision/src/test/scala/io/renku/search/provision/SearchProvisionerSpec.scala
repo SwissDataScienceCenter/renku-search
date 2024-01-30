@@ -31,12 +31,14 @@ import io.renku.redis.client.util.RedisSpec
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project
 import munit.CatsEffectSuite
+import scribe.Scribe
 
 import java.time.temporal.ChronoUnit
 import scala.concurrent.duration.*
 
 class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSolrSpec:
 
+  private given Scribe[IO] = scribe.cats[IO]
   private val avro = AvroIO(ProjectCreated.SCHEMA$)
 
   test("can fetch events and send them to Solr"):
@@ -56,7 +58,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
           docsCollectorFiber <-
             Stream
               .awakeEvery[IO](500 millis)
-              .evalMap(_ => solrClient.findAllProjects)
+              .evalMap(_ => solrClient.findProjects("*"))
               .flatMap(Stream.emits(_))
               .evalTap(IO.println)
               .evalMap(d => solrDocs.update(_ + d))

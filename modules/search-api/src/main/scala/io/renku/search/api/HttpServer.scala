@@ -16,14 +16,23 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.api
 
-import io.renku.search.solr.documents.Project
-import org.scalacheck.Gen
+import cats.effect.{Async, Resource}
+import com.comcast.ip4s.{Port, ipv4, port}
+import fs2.io.net.Network
+import org.http4s.HttpApp
+import org.http4s.ember.server.EmberServerBuilder
+import org.http4s.server.Server
 
-object SearchSolrClientGenerators:
+object HttpServer:
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    Gen.uuid.map(uuid => Project(uuid.toString, name, desc))
+  val port: Port = port"8080"
 
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+  def build[F[_]: Async: Network](app: HttpApp[F]): Resource[F, Server] =
+    EmberServerBuilder
+      .default[F]
+      .withHost(ipv4"0.0.0.0")
+      .withPort(port)
+      .withHttpApp(app)
+      .build

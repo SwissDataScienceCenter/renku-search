@@ -16,14 +16,13 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.redis.client.util
 
-import io.renku.search.solr.documents.Project
-import org.scalacheck.Gen
+import cats.effect.{ExitCode, IO, IOApp}
+import io.renku.servers.RedisServer
 
-object SearchSolrClientGenerators:
+/** This is a utility to start a Redis server for manual testing */
+object TestSearchRedisServer extends IOApp:
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    Gen.uuid.map(uuid => Project(uuid.toString, name, desc))
-
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+  override def run(args: List[String]): IO[ExitCode] =
+    (IO(RedisServer.start()) >> IO.never[ExitCode]).as(ExitCode.Success)

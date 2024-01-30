@@ -23,7 +23,7 @@ import io.renku.avro.codec.encoders.all.given
 import munit.FunSuite
 import org.apache.avro.SchemaBuilder
 
-class AvroReaderTest extends FunSuite {
+class AvroReaderSpec extends FunSuite {
 
   case class Foo(name: String, age: Int) derives AvroDecoder, AvroEncoder
   val fooSchema = SchemaBuilder

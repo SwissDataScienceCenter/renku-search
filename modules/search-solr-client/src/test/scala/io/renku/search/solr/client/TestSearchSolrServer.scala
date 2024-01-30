@@ -18,12 +18,11 @@
 
 package io.renku.search.solr.client
 
-import io.renku.search.solr.documents.Project
-import org.scalacheck.Gen
+import cats.effect.{ExitCode, IO, IOApp}
+import io.renku.servers.SolrServer
 
-object SearchSolrClientGenerators:
+/** This is a utility to start a Solr server for manual testing */
+object TestSearchSolrServer extends IOApp:
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    Gen.uuid.map(uuid => Project(uuid.toString, name, desc))
-
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+  override def run(args: List[String]): IO[ExitCode] =
+    (IO(SolrServer.start()) >> IO.never[ExitCode]).as(ExitCode.Success)

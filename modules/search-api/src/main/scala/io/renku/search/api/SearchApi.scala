@@ -16,14 +16,19 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.api
 
-import io.renku.search.solr.documents.Project
-import org.scalacheck.Gen
+import cats.effect.{Async, Resource}
+import fs2.io.net.Network
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.solr.client.SolrConfig
+import org.http4s.Response
 
-object SearchSolrClientGenerators:
+trait SearchApi[F[_]]:
+  def find(phrase: String): F[Response[F]]
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    Gen.uuid.map(uuid => Project(uuid.toString, name, desc))
-
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+object SearchApi:
+  def apply[F[_]: Async: Network](
+      solrConfig: SolrConfig
+  ): Resource[F, SearchApi[F]] =
+    SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))

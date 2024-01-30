@@ -24,15 +24,17 @@ import io.renku.search.solr.documents.Project
 import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.{QueryString, SolrClient}
 
-class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
+private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
 
   override def insertProject(project: Project): F[Unit] =
     solrClient.insert(Seq(project)).void
 
-  override def findAllProjects: F[List[Project]] =
+  override def findProjects(phrase: String): F[List[Project]] =
     solrClient
       .query[Project](
-        QueryString(s"${EntityDocumentSchema.Fields.entityType}:${Project.entityType}")
+        QueryString(
+          s"${EntityDocumentSchema.Fields.entityType}:${Project.entityType} AND (name:$phrase OR description:$phrase)"
+        )
       )
       .map(_.responseBody.docs.toList)

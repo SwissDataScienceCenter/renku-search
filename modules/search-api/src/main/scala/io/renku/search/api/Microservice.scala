@@ -16,14 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.api
 
-import io.renku.search.solr.documents.Project
-import org.scalacheck.Gen
+import cats.effect.{ExitCode, IO, IOApp}
+import cats.syntax.all.*
+import io.renku.solr.client.SolrConfig
+import org.http4s.implicits.*
 
-object SearchSolrClientGenerators:
+import scala.concurrent.duration.Duration
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    Gen.uuid.map(uuid => Project(uuid.toString, name, desc))
+object Microservice extends IOApp:
 
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+  private val solrConfig = SolrConfig(
+    baseUrl = uri"http://localhost:8983" / "solr",
+    core = "search-core-test",
+    commitWithin = Some(Duration.Zero),
+    logMessageBodies = true
+  )
+
+  override def run(args: List[String]): IO[ExitCode] =
+    (createHttpApp >>= HttpServer.build).use(_ => IO.never).as(ExitCode.Success)
+
+  private def createHttpApp = HttpApplication[IO](solrConfig)

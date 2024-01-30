@@ -28,16 +28,4 @@ protocol Messages {
     string name;
     timestamp_ms deletedAt;
   }
-
-
-/*  record ProjectMsg {
-    union { ProjectCreated, ProjectUpdated, ProjectDeleted } message;
-  } */
-
-  /* An example record for a Project Entity returned from the Search API */
-  record ProjectEntity {
-    string id;
-    string name;
-    string description;
-  }
 }

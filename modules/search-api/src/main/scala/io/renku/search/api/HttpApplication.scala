@@ -16,21 +16,28 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.api
 
+import cats.Monad
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-import io.renku.search.solr.documents.Project
-import io.renku.solr.client.{SolrClient, SolrConfig}
+import io.renku.solr.client.SolrConfig
+import org.http4s.dsl.Http4sDsl
+import org.http4s.server.Router
+import org.http4s.{HttpApp, HttpRoutes, Request, Response}
 
-trait SearchSolrClient[F[_]]:
-
-  def insertProject(project: Project): F[Unit]
-
-  def findProjects(phrase: String): F[List[Project]]
-
-object SearchSolrClient:
+object HttpApplication:
   def apply[F[_]: Async: Network](
       solrConfig: SolrConfig
-  ): Resource[F, SearchSolrClient[F]] =
-    SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))
+  ): Resource[F, HttpApp[F]] =
+    SearchApi[F](solrConfig).map(new HttpApplication[F](_).router)
+
+class HttpApplication[F[_]: Monad](searchApi: SearchApi[F]) extends Http4sDsl[F]:
+
+  lazy val router: HttpApp[F] =
+    Router[F]("/" -> routes).orNotFound
+
+  private lazy val routes: HttpRoutes[F] = HttpRoutes.of[F] {
+    case GET -> Root / "api" / phrase => searchApi.find(phrase)
+    case GET -> Root / "ping"         => Ok("pong")
+  }

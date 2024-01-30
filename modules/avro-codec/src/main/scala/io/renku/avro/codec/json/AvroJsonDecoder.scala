@@ -1,5 +1,6 @@
 package io.renku.avro.codec.json
 
+import cats.syntax.all.*
 import io.renku.avro.codec.{AvroDecoder, AvroReader}
 import org.apache.avro.Schema
 import scodec.bits.ByteVector
@@ -19,8 +20,11 @@ object AvroJsonDecoder:
   def apply[A](f: ByteVector => Either[String, A]): AvroJsonDecoder[A] =
     (json: ByteVector) => f(json)
 
-  def create[A: AvroDecoder](schema: Schema): AvroJsonDecoder[A] = { json =>
-    Try(AvroReader(schema).readJson[A](json)).toEither.left
-      .map(_.getMessage)
+  def create[A: AvroDecoder](schema: Schema): AvroJsonDecoder[A] = json =>
+    Try(AvroReader(schema).readJson[A](json)).toEither
+      .leftMap(_.getMessage)
       .flatMap(_.headOption.toRight(s"Empty json"))
-  }
+
+  def decodeList[A: AvroDecoder](schema: Schema): AvroJsonDecoder[List[A]] = json =>
+    Try(AvroReader(schema).readJson[A](json)).toEither
+      .bimap(_.getMessage, _.toList)

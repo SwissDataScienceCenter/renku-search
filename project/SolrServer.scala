@@ -65,11 +65,15 @@ class SolrServer(module: String, port: Int) {
 
   private def waitForCoresToBeReady(): Unit = {
     var rc = 1
-    while (rc != 0) {
+    val maxTries = 500
+    var counter = 0
+    while (rc != 0 && counter < maxTries) {
+      counter += 1
       Thread.sleep(500)
       rc = checkCoresReady
       if (rc == 0) println(s"Solr container for '$module' ready on port $port")
     }
+    if (rc != 0) sys.error("Solr container for '$module' could not be started")
   }
 
   private def checkCoresReady =

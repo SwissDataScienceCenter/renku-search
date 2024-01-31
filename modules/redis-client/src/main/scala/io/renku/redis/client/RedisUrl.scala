@@ -20,5 +20,5 @@ package io.renku.redis.client
 
 opaque type RedisUrl = String
 object RedisUrl {
-  def apply(v: String): RedisUrl = new RedisUrl(v)
+  def apply(v: String): RedisUrl = v
 }

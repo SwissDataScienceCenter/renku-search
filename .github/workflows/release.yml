@@ -1,0 +1,72 @@
+name: Release
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        java: [ 17 ]
+    steps:
+      - uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+      - uses: olafurpg/setup-scala@v14
+        with:
+          java-version: ${{ matrix.java }}
+
+      - name: Set current version
+        id: version
+        shell: bash
+        run: |
+          sbt 'renku-search/writeVersion'
+          RS_VERSION=$(cat target/version.txt)
+          echo "RS_VERSION=${RS_VERSION}" >> $GITHUB_ENV
+
+          if [ -z "${RS_VERSION}" ]; then
+            echo "Version not set!"
+            exit 1
+          fi
+
+      - name: Create zip packages
+        run: sbt -mem 2048 search-provision/Universal/packageBin search-api/Universal/packageBin
+
+      - name: Publish Release (${{ env.RS_VERSION }})
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          files: |
+            modules/search-provision/target/universal/search-provision-${{ env.RS_VERSION }}.zip
+            modules/search-api/target/universal/search-api-${{ env.RS_VERSION }}.zip
+      - name: Publish Pre-Release
+        uses: ncipollo/release-action@v1
+        if: ${{ github.ref }} == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: true
+          allowUpdates: true
+          tag: "nightly"
+          commit: "main"
+          body: "Floating tag associating the latest build from the main branch"
+          name: "renku search nightly"
+          replacesArtifacts: true
+          removeArtifacts: true
+          artifacts: |
+            modules/search-provision/target/universal/search-provision-${{ env.RS_VERSION }}.zip,
+            modules/search-api/target/universal/search-api-${{ env.RS_VERSION }}.zip
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.RENKU_DOCKER_USERNAME }}
+          password: ${{ secrets.RENKU_DOCKER_PASSWORD }}
+      - name: sbt Docker/publish
+        run: sbt -mem 2048 search-provision/Docker/publish search-api/Docker/publish

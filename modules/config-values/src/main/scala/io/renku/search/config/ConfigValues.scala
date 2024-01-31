@@ -44,7 +44,10 @@ object ConfigValues extends ConfigDecoders:
     val url = env(s"${prefix}_SOLR_URL").default("http://localhost:8983/solr").as[Uri]
     val core = env(s"${prefix}_SOLR_CORE").default("search-core-test")
     val defaultCommit =
-      env(s"${prefix}_SOLR_DEFAULT_COMMIT_WITHIN").default("0").as[FiniteDuration].option
+      env(s"${prefix}_SOLR_DEFAULT_COMMIT_WITHIN")
+        .default("0 seconds")
+        .as[FiniteDuration]
+        .option
     val logMessageBodies =
       env(s"${prefix}_SOLR_LOG_MESSAGE_BODIES").default("false").as[Boolean]
     (url, core, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)

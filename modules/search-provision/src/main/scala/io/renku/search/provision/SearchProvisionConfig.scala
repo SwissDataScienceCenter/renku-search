@@ -16,18 +16,32 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.provision
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.syntax.all.*
+import ciris.{ConfigValue, Effect}
+import io.renku.queue.client.QueueName
+import io.renku.redis.client.RedisUrl
+import io.renku.search.config.ConfigValues
+import io.renku.solr.client.SolrConfig
 
-object Microservice extends IOApp:
+import scala.concurrent.duration.FiniteDuration
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
+final case class SearchProvisionConfig(
+    redisUrl: RedisUrl,
+    queueName: QueueName,
+    solrConfig: SolrConfig,
+    retryOnErrorDelay: FiniteDuration
+)
 
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- HttpApplication[IO](config.solrConfig)
-        .flatMap(HttpServer.build)
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+object SearchProvisionConfig:
+
+  val config: ConfigValue[Effect, SearchProvisionConfig] =
+    (
+      ConfigValues.redisUrl,
+      ConfigValues.eventsQueueName,
+      ConfigValues.solrConfig,
+      ConfigValues.retryOnErrorDelay
+    ).mapN(
+      SearchProvisionConfig.apply
+    )

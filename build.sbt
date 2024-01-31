@@ -34,6 +34,8 @@ addCommandAlias(
 )
 addCommandAlias("fix", "; scalafmtSbt; scalafmtAll") // ; Compile/scalafix; Test/scalafix
 
+val writeVersion = taskKey[Unit]("Write version into a file for CI to pick up")
+
 lazy val root = project
   .in(file("."))
   .withId("renku-search")
@@ -42,7 +44,12 @@ lazy val root = project
     publish / skip := true,
     publishTo := Some(
       Resolver.file("Unused transient repository", file("target/unusedrepo"))
-    )
+    ),
+    writeVersion := {
+      val out = (LocalRootProject / target).value / "version.txt"
+      val versionStr = version.value
+      IO.write(out, versionStr)
+    }
   )
   .aggregate(
     commons,
@@ -209,12 +216,13 @@ lazy val messages = project
   .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin)
 
-lazy val searchProvision = project
-  .in(file("modules/search-provision"))
-  .withId("search-provision")
+lazy val configValues = project
+  .in(file("modules/config-values"))
+  .withId("config-values")
   .settings(commonSettings)
   .settings(
-    name := "search-provision"
+    name := "config-values",
+    libraryDependencies ++= Dependencies.ciris
   )
   .dependsOn(
     commons % "compile->compile;test->test",
@@ -222,7 +230,23 @@ lazy val searchProvision = project
     redisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin)
+
+lazy val searchProvision = project
+  .in(file("modules/search-provision"))
+  .withId("search-provision")
+  .settings(commonSettings)
+  .settings(
+    name := "search-provision",
+    libraryDependencies ++= Dependencies.ciris
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    messages % "compile->compile;test->test",
+    redisClient % "compile->compile;test->test",
+    searchSolrClient % "compile->compile;test->test",
+    configValues % "compile->compile;test->test"
+  )
+  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin)
 
 lazy val searchApi = project
   .in(file("modules/search-api"))
@@ -232,15 +256,17 @@ lazy val searchApi = project
     name := "search-api",
     libraryDependencies ++=
       Dependencies.http4sDsl ++
-        Dependencies.http4sServer
+        Dependencies.http4sServer ++
+        Dependencies.ciris
   )
   .dependsOn(
     commons % "compile->compile;test->test",
     messages % "compile->compile;test->test",
     http4sAvro % "compile->compile;test->test",
-    searchSolrClient % "compile->compile;test->test"
+    searchSolrClient % "compile->compile;test->test",
+    configValues % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin)
 
 lazy val commonSettings = Seq(
   organization := "io.renku",

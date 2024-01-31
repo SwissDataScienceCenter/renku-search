@@ -19,47 +19,36 @@
 package io.renku.search.provision
 
 import cats.effect.{ExitCode, IO, IOApp, Temporal}
-import io.renku.queue.client.QueueName
-import io.renku.redis.client.RedisUrl
 import io.renku.search.solr.schema.Migrations
-import io.renku.solr.client.SolrConfig
 import io.renku.solr.client.migration.SchemaMigrator
-import org.http4s.Uri
-import org.http4s.implicits.*
 import scribe.Scribe
 import scribe.cats.*
 
-import scala.concurrent.duration.*
-
 object Microservice extends IOApp:
 
-  private val queueName = QueueName("events")
-  private val redisUrl = RedisUrl("redis://localhost:6379")
-  private val solrConfig = SolrConfig(
-    baseUrl = uri"http://localhost:8983" / "solr",
-    core = "search-core-test",
-    commitWithin = Some(Duration.Zero),
-    logMessageBodies = true
-  )
-  private val retryOnErrorDelay = 2 seconds
+  private val loadConfig: IO[SearchProvisionConfig] =
+    SearchProvisionConfig.config.load[IO]
 
   override def run(args: List[String]): IO[ExitCode] =
-    (runSolrMigrations >> startProvisioning)
-      .as(ExitCode.Success)
+    for {
+      config <- loadConfig
+      _ <- runSolrMigrations(config)
+      _ <- startProvisioning(config)
+    } yield ExitCode.Success
 
-  private def startProvisioning: IO[Unit] =
-    SearchProvisioner[IO](queueName, redisUrl, solrConfig)
+  private def startProvisioning(cfg: SearchProvisionConfig): IO[Unit] =
+    SearchProvisioner[IO](cfg.queueName, cfg.redisUrl, cfg.solrConfig)
       .evalMap(_.provisionSolr.start)
       .use(_ => IO.never)
       .handleErrorWith { err =>
         Scribe[IO].error("Starting provisioning failure, retrying", err) >>
-          Temporal[IO].delayBy(startProvisioning, retryOnErrorDelay)
+          Temporal[IO].delayBy(startProvisioning(cfg), cfg.retryOnErrorDelay)
       }
 
-  private def runSolrMigrations: IO[Unit] =
-    SchemaMigrator[IO](solrConfig)
+  private def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =
+    SchemaMigrator[IO](cfg.solrConfig)
       .use(_.migrate(Migrations.all))
       .handleErrorWith { err =>
         Scribe[IO].error("Running solr migrations failure, retrying", err) >>
-          Temporal[IO].delayBy(runSolrMigrations, retryOnErrorDelay)
+          Temporal[IO].delayBy(runSolrMigrations(cfg), cfg.retryOnErrorDelay)
       }

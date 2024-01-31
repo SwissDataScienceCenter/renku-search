@@ -53,12 +53,17 @@ class RedisServer(module: String, port: Int) {
       println(s"Starting Redis container for '$module' from '$image' image")
       startContainer()
       var rc = 1
-      while (rc != 0) {
+      val maxTries = 500
+      var counter = 0
+      while (rc != 0 && counter < maxTries) {
+        counter += 1
         Thread.sleep(500)
         rc = Process(isReadyCmd).!
         if (rc == 0) println(s"Redis container for '$module' started on port $port")
         else println(s"IsReadyCmd returned $rc")
       }
+      if (rc != 0)
+        sys.error(s"Redis container for '$module' could not be started on port $port")
     }
   }
 

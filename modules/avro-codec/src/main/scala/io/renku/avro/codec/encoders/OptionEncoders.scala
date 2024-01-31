@@ -37,7 +37,10 @@ object OptionEncoders:
         schema.getTypes.size() >= 2,
         "Options can only be encoded with a union schema with 2 or more types"
       )
-      require(schema.getTypes.get(0).getType == Schema.Type.NULL)
+      require(
+        schema.getTypes.get(0).getType == Schema.Type.NULL,
+        s"First schema of option was not null, but: ${schema.getTypes.get(0).getType}"
+      )
       val schemaSize = schema.getTypes.size()
       val elementSchema = schemaSize match
         case 2 => schema.getTypes.get(1)

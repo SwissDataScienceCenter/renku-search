@@ -61,7 +61,10 @@ object CollectionDecoders:
   private class MapDecoder[T](decoder: AvroDecoder[T])
       extends AvroDecoder[Map[String, T]]:
     override def decode(schema: Schema): Any => Map[String, T] = {
-      require(schema.getType == Schema.Type.MAP)
+      require(
+        schema.getType == Schema.Type.MAP,
+        s"Unexpected schema ${schema.getType}, expected MAP"
+      )
       val decode = decoder.decode(schema.getValueType)
       { case map: java.util.Map[_, _] =>
         map.asScala.toMap.map { case (k, v) => k.toString -> decode(v) }

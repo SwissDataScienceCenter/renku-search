@@ -64,7 +64,7 @@ object AvroReader:
       read0(decoder)
     }
 
-    def read0[T: AvroDecoder](
+    private def read0[T: AvroDecoder](
         decoder: BinaryDecoder | JsonDecoder
     ): Seq[T] =
       @annotation.tailrec

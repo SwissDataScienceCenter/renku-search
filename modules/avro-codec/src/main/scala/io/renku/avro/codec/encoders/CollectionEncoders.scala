@@ -35,7 +35,10 @@ trait CollectionEncoders {
 
   given [T](using encoder: AvroEncoder[T], tag: ClassTag[T]): AvroEncoder[Array[T]] =
     (schema: Schema) => {
-      require(schema.getType == Schema.Type.ARRAY)
+      require(
+        schema.getType == Schema.Type.ARRAY,
+        s"Unexpected schema type ${schema.getType}, expected ARRAY"
+      )
       val elementEncoder = encoder.encode(schema.getElementType)
       { t => t.map(elementEncoder.apply).toList.asJava }
     }

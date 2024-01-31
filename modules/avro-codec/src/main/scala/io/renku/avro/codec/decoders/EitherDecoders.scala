@@ -29,8 +29,11 @@ trait EitherDecoders {
       tb: TypeGuardedDecoding[B]
   ): AvroDecoder[Either[A, B]] =
     AvroDecoder.curried[Either[A, B]] { schema =>
-      require(schema.isUnion)
-      require(schema.getTypes.size() == 2)
+      require(schema.isUnion, s"Expected union type, but schema is not a union")
+      require(
+        schema.getTypes.size() == 2,
+        s"Expected schema size 2, but got ${schema.getTypes.size()}"
+      )
 
       val leftSchema = schema.getTypes.get(0)
       val rightSchema = schema.getTypes.get(1)

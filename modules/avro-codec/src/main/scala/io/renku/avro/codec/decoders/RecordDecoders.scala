@@ -18,7 +18,7 @@
 
 package io.renku.avro.codec.decoders
 
-import io.renku.avro.codec.{AvroDecoder, AvroCodecException}
+import io.renku.avro.codec.{AvroCodecException, AvroDecoder}
 import org.apache.avro.Schema
 import org.apache.avro.generic.IndexedRecord
 
@@ -44,7 +44,10 @@ object RecordDecoders:
     ): AvroDecoder[A] =
       val decoders = summonAll[m.MirroredElemTypes]
       AvroDecoder { (schema, a) =>
-        require(schema.getType == Schema.Type.RECORD)
+        require(
+          schema.getType == Schema.Type.RECORD,
+          s"Unexpected schema type ${schema.getType}, expected RECORD"
+        )
         a match
           case r: IndexedRecord =>
             val len = decoders.length

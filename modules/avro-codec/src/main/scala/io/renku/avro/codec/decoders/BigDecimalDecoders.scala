@@ -18,7 +18,7 @@
 
 package io.renku.avro.codec.decoders
 
-import io.renku.avro.codec.{AvroDecoder, AvroCodecException}
+import io.renku.avro.codec.{AvroCodecException, AvroDecoder}
 import org.apache.avro.LogicalTypes.Decimal
 import org.apache.avro.generic.GenericFixed
 import org.apache.avro.{Conversions, Schema}
@@ -39,7 +39,10 @@ trait BigDecimalDecoders:
 
 object BigDecimalDecoders:
   val forBytes: AvroDecoder[BigDecimal] = AvroDecoder { (schema, n) =>
-    require(schema.getType == Schema.Type.BYTES)
+    require(
+      schema.getType == Schema.Type.BYTES,
+      s"Unexpected schema ${schema.getType}, expected BYTES"
+    )
     val logical = schema.getLogicalType.asInstanceOf[Decimal]
     val converter = new Conversions.DecimalConversion()
 
@@ -62,7 +65,10 @@ object BigDecimalDecoders:
 
   val forFixed: AvroDecoder[BigDecimal] =
     AvroDecoder[BigDecimal] { (schema, n) =>
-      require(schema.getType == Schema.Type.FIXED)
+      require(
+        schema.getType == Schema.Type.FIXED,
+        s"Unexpected schema ${schema.getType}, expected FIXED"
+      )
 
       val logical = schema.getLogicalType.asInstanceOf[Decimal]
       val converter = new Conversions.DecimalConversion()

@@ -10,7 +10,7 @@ object Dependencies {
     val catsCore = "2.10.0"
     val catsEffect = "3.5.3"
     val catsEffectMunit = "1.0.7"
-    val fs2 = "3.9.3"
+    val fs2 = "3.9.4"
     val http4s = "0.23.25"
     val redis4Cats = "1.5.2"
     val scalacheckEffectMunit = "1.0.4"

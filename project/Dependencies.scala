@@ -4,7 +4,7 @@ import sbt.*
 object Dependencies {
 
   object V {
-    val avro = "1.11.1"
+    val avro = "1.11.3"
     val avro4s = "5.0.9"
     val borer = "1.14.0"
     val catsCore = "2.10.0"

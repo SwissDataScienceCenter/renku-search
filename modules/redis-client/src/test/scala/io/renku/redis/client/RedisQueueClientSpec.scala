@@ -22,6 +22,7 @@ import cats.effect.IO
 import cats.syntax.all.*
 import fs2.*
 import fs2.concurrent.SignallingRef
+import io.renku.queue.client.Encoding
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
 import munit.CatsEffectSuite
@@ -32,23 +33,27 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
   test("can enqueue and dequeue events"):
     withRedisClient.asQueueClient().use { client =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
+      val encoding = RedisClientGenerators.encodingGen.generateOne
       for
-        dequeued <- SignallingRef.of[IO, List[String]](Nil)
+        dequeued <- SignallingRef.of[IO, List[(String, Encoding)]](Nil)
 
         message1 = "message1"
-        _ <- client.enqueue(queue, toByteVector(message1))
+        _ <- client.enqueue(queue, toByteVector(message1), encoding)
 
         streamingProcFiber <- client
           .acquireEventsStream(queue, chunkSize = 1, maybeOffset = None)
-          .evalMap(event => dequeued.update(toStringUft8(event.payload) :: _))
+          .evalMap(event =>
+            dequeued.update(toStringUft8(event.payload) -> event.encoding :: _)
+          )
           .compile
           .drain
           .start
-        _ <- dequeued.waitUntil(_ == List(message1))
+        _ <- dequeued.waitUntil(_ == List(message1 -> encoding))
 
         message2 = "message2"
-        _ <- client.enqueue(queue, toByteVector(message2))
-        _ <- dequeued.waitUntil(_.toSet == Set(message1, message2))
+        _ <- client.enqueue(queue, toByteVector(message2), encoding)
+        _ <- dequeued
+          .waitUntil(_.toSet == Set(message1, message2).zip(List.fill(2)(encoding)))
 
         _ <- streamingProcFiber.cancel
       yield ()
@@ -57,11 +62,12 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
   test("can start enqueueing events from the given messageId excluding"):
     withRedisClient.asQueueClient().use { client =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
+      val encoding = RedisClientGenerators.encodingGen.generateOne
       for
         dequeued <- SignallingRef.of[IO, List[String]](Nil)
 
         message1 = "message1"
-        message1Id <- client.enqueue(queue, toByteVector(message1))
+        message1Id <- client.enqueue(queue, toByteVector(message1), encoding)
 
         streamingProcFiber <- client
           .acquireEventsStream(queue, chunkSize = 1, maybeOffset = message1Id.some)
@@ -71,11 +77,11 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
           .start
 
         message2 = "message2"
-        _ <- client.enqueue(queue, toByteVector(message2))
+        _ <- client.enqueue(queue, toByteVector(message2), encoding)
         _ <- dequeued.waitUntil(_.toSet == Set(message2))
 
         message3 = "message3"
-        _ <- client.enqueue(queue, toByteVector(message3))
+        _ <- client.enqueue(queue, toByteVector(message3), encoding)
         _ <- dequeued.waitUntil(_.toSet == Set(message2, message3))
 
         _ <- streamingProcFiber.cancel

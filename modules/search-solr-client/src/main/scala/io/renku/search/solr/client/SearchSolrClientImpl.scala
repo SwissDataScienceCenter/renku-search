@@ -27,8 +27,8 @@ import io.renku.solr.client.{QueryString, SolrClient}
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
 
-  override def insertProject(project: Project): F[Unit] =
-    solrClient.insert(Seq(project)).void
+  override def insertProjects(projects: Seq[Project]): F[Unit] =
+    solrClient.insert(projects).void
 
   override def findProjects(phrase: String): F[List[Project]] =
     solrClient

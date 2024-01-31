@@ -25,7 +25,7 @@ import io.renku.solr.client.{SolrClient, SolrConfig}
 
 trait SearchSolrClient[F[_]]:
 
-  def insertProject(project: Project): F[Unit]
+  def insertProjects(projects: Seq[Project]): F[Unit]
 
   def findProjects(phrase: String): F[List[Project]]
 

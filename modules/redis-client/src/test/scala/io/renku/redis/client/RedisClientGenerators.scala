@@ -29,6 +29,9 @@ object RedisClientGenerators:
       .chooseNum(3, 10)
       .flatMap(Gen.stringOfN(_, alphaLowerChar).map(QueueName(_)))
 
+  val encodingGen: Gen[Encoding] =
+    Gen.oneOf(Encoding.all)
+
   val clientIdGen: Gen[ClientId] =
     Gen
       .chooseNum(3, 10)

@@ -41,11 +41,19 @@ object RedisQueueClient:
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
 
   private val payloadKey = "payload"
+  private val encodingKey = "encoding"
 
-  override def enqueue(queueName: QueueName, message: ByteVector): F[MessageId] =
+  override def enqueue(
+      queueName: QueueName,
+      message: ByteVector,
+      encoding: Encoding
+  ): F[MessageId] =
     val m = Stream
       .emit[F, XAddMessage[String, ByteVector]](
-        XAddMessage(queueName.toString, Map(payloadKey -> message))
+        XAddMessage(
+          queueName.toString,
+          Map(payloadKey -> message, encodingKey -> encodeEncoding(encoding))
+        )
       )
     createConnection
       .flatMap(_.append(m))
@@ -53,6 +61,12 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
       .compile
       .toList
       .map(_.head)
+
+  private def encodeEncoding(encoding: Encoding): ByteVector =
+    ByteVector.encodeUtf8(encoding.name).fold(throw _, identity)
+
+  private def decodeEncoding(encoding: ByteVector): Encoding =
+    encoding.decodeUtf8.flatMap(Encoding.from).fold(throw _, identity)
 
   override def acquireEventsStream(
       queueName: QueueName,
@@ -71,9 +85,10 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
     }
 
   private def toMessage(m: XReadMessage[String, ByteVector]): Option[Message] =
-    m.body
-      .get(payloadKey)
-      .map(Message(MessageId(m.id.value), _))
+    (m.body.get(payloadKey), m.body.get(encodingKey).map(decodeEncoding))
+      .mapN { case (payload, encoding) =>
+        Message(MessageId(m.id.value), encoding, payload)
+      }
 
   private def createConnection =
     RedisStream

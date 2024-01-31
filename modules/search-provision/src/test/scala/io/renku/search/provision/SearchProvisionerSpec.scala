@@ -25,63 +25,113 @@ import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.messages.ProjectCreated
+import io.renku.queue.client.Encoding
 import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project
 import munit.CatsEffectSuite
-import scribe.Scribe
+import org.scalacheck.Gen
+import org.scalacheck.Gen.alphaNumChar
 
 import java.time.temporal.ChronoUnit
+import java.time.temporal.ChronoUnit.MILLIS
 import scala.concurrent.duration.*
 
 class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSolrSpec:
 
-  private given Scribe[IO] = scribe.cats[IO]
   private val avro = AvroIO(ProjectCreated.SCHEMA$)
 
-  test("can fetch events and send them to Solr"):
+  test("can fetch events binary encoded, decode them, and send them to Solr"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
+    val clientId = RedisClientGenerators.clientIdGen.generateOne
 
-    (withRedisClient.asQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .use { case (queueClient, solrClient) =>
-        val provisioner = new SearchProvisionerImpl(queue, queueClient, solrClient)
-        for
-          solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
+    redisAndSolrClients.use { case (queueClient, solrClient) =>
+      val provisioner =
+        new SearchProvisionerImpl(clientId, queue, queueClient, solrClient)
+      for
+        solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 
-          provisioningFiber <- provisioner.provisionSolr.start
+        provisioningFiber <- provisioner.provisionSolr.start
 
-          message1 <- generateProjectCreated("project", "description", Some("myself"))
-          _ <- queueClient.enqueue(queue, avro.write[ProjectCreated](Seq(message1)))
+        message1 <- generateProjectCreated(prefix = "binary")
+        _ <- queueClient.enqueue(
+          queue,
+          avro.write[ProjectCreated](Seq(message1)),
+          Encoding.Binary
+        )
 
-          docsCollectorFiber <-
-            Stream
-              .awakeEvery[IO](500 millis)
-              .evalMap(_ => solrClient.findProjects("*"))
-              .flatMap(Stream.emits(_))
-              .evalTap(IO.println)
-              .evalMap(d => solrDocs.update(_ + d))
-              .compile
-              .drain
-              .start
+        docsCollectorFiber <-
+          Stream
+            .awakeEvery[IO](500 millis)
+            .evalMap(_ => solrClient.findProjects("*"))
+            .flatMap(Stream.emits(_))
+            .evalMap(d => solrDocs.update(_ + d))
+            .compile
+            .drain
+            .start
 
-          _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
+        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
 
-          _ <- provisioningFiber.cancel
-          _ <- docsCollectorFiber.cancel
-        yield ()
-      }
+        _ <- provisioningFiber.cancel
+        _ <- docsCollectorFiber.cancel
+      yield ()
+    }
 
-  private def generateProjectCreated(
-      name: String,
-      description: String,
-      owner: Option[String]
-  ): IO[ProjectCreated] =
+  test("can fetch events JSON encoded, decode them, and send them to Solr"):
+    val queue = RedisClientGenerators.queueNameGen.generateOne
+    val clientId = RedisClientGenerators.clientIdGen.generateOne
+
+    redisAndSolrClients.use { case (queueClient, solrClient) =>
+      val provisioner =
+        new SearchProvisionerImpl(clientId, queue, queueClient, solrClient)
+      for
+        solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
+
+        provisioningFiber <- provisioner.provisionSolr.start
+
+        message1 <- generateProjectCreated(prefix = "json")
+        _ <- queueClient.enqueue(
+          queue,
+          avro.writeJson[ProjectCreated](Seq(message1)),
+          Encoding.Json
+        )
+
+        docsCollectorFiber <-
+          Stream
+            .awakeEvery[IO](500 millis)
+            .evalMap(_ => solrClient.findProjects("*"))
+            .flatMap(Stream.emits(_))
+            .evalTap(IO.println)
+            .evalMap(d => solrDocs.update(_ + d))
+            .compile
+            .drain
+            .start
+
+        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
+
+        _ <- provisioningFiber.cancel
+        _ <- docsCollectorFiber.cancel
+      yield ()
+    }
+
+  private def redisAndSolrClients =
+    withRedisClient.asQueueClient() >>= withSearchSolrClient().tupleLeft
+
+  private def generateProjectCreated(prefix: String): IO[ProjectCreated] =
+    def generateString(max: Int): Gen[String] =
+      Gen
+        .chooseNum(3, max)
+        .flatMap(Gen.stringOfN(_, alphaNumChar))
+
     for
-      now <- Clock[IO].realTimeInstant.map(_.truncatedTo(ChronoUnit.MILLIS))
+      now <- Clock[IO].realTimeInstant.map(_.truncatedTo(MILLIS))
       uuid <- IO.randomUUID
-    yield ProjectCreated(uuid.toString, name, description, owner, now)
+      name = s"$prefix-${generateString(max = 5).sample.get}"
+      desc = s"$prefix ${generateString(max = 10).sample.get}"
+      ownerGen = generateString(max = 5).map(prefix + _)
+    yield ProjectCreated(uuid.toString, name, desc, Gen.option(ownerGen).sample.get, now)
 
   private def toSolrDocument(created: ProjectCreated): Project =
     Project(created.id, created.name, created.description)

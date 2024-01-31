@@ -29,7 +29,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
       val project =
         projectDocumentGen("solr-project", "solr project description").generateOne
       for {
-        _ <- client.insertProject(project)
+        _ <- client.insertProjects(Seq(project))
         r <- client.findProjects("solr")
         _ = assert(r contains project)
       } yield ()

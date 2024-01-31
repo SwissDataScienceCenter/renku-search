@@ -20,6 +20,21 @@ package io.renku.queue.client
 
 import scodec.bits.ByteVector
 
-final case class Message(id: MessageId, payload: ByteVector)
+final case class Message(id: MessageId, encoding: Encoding, payload: ByteVector)
 
 final case class MessageId(value: String) extends AnyVal
+
+sealed trait Encoding extends Product:
+  lazy val name: String = productPrefix
+
+object Encoding:
+
+  val all: Set[Encoding] = Set(Binary, Json)
+
+  def from(v: String): Either[IllegalArgumentException, Encoding] =
+    all
+      .find(_.productPrefix.equalsIgnoreCase(v))
+      .toRight(new IllegalArgumentException(s"'$v' not a valid payload Encoding"))
+
+  case object Binary extends Encoding
+  case object Json extends Encoding

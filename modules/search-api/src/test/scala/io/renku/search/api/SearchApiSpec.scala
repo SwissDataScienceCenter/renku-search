@@ -19,7 +19,6 @@
 package io.renku.search.api
 
 import cats.effect.IO
-import cats.syntax.all.*
 import io.renku.api.Project as ApiProject
 import io.renku.avro.codec.AvroDecoder
 import io.renku.avro.codec.all.given
@@ -41,7 +40,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       val project2 = projectDocumentGen("disparate", "disparate description").generateOne
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- (project1 :: project2 :: Nil).traverse_(client.insertProject)
+        _ <- client.insertProjects(project1 :: project2 :: Nil)
         response <- searchApi.find("matching")
         results <- response.as[List[ApiProject]]
       } yield assert(results contains toApiProject(project1))

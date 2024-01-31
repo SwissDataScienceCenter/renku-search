@@ -21,22 +21,27 @@ package io.renku.search.provision
 import cats.MonadThrow
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
-import fs2.Stream
+import fs2.Chunk
 import fs2.io.net.Network
 import io.renku.avro.codec.AvroReader
 import io.renku.avro.codec.decoders.all.given
 import io.renku.messages.ProjectCreated
-import io.renku.queue.client.{Message, QueueClient, QueueName}
+import io.renku.queue.client.*
 import io.renku.redis.client.RedisUrl
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Project
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
+import scala.concurrent.duration.*
+
 trait SearchProvisioner[F[_]]:
   def provisionSolr: F[Unit]
 
 object SearchProvisioner:
+
+  private val clientId: ClientId = ClientId("search-provisioner")
+
   def apply[F[_]: Async: Network](
       queueName: QueueName,
       redisUrl: RedisUrl,
@@ -44,9 +49,10 @@ object SearchProvisioner:
   ): Resource[F, SearchProvisioner[F]] =
     QueueClient[F](redisUrl)
       .flatMap(qc => SearchSolrClient[F](solrConfig).tupleLeft(qc))
-      .map { case (qc, sc) => new SearchProvisionerImpl[F](queueName, qc, sc) }
+      .map { case (qc, sc) => new SearchProvisionerImpl[F](clientId, queueName, qc, sc) }
 
 private class SearchProvisionerImpl[F[_]: Async](
+    clientId: ClientId,
     queueName: QueueName,
     queueClient: QueueClient[F],
     solrClient: SearchSolrClient[F]
@@ -55,38 +61,58 @@ private class SearchProvisionerImpl[F[_]: Async](
   private given Scribe[F] = scribe.cats[F]
 
   override def provisionSolr: F[Unit] =
-    queueClient
-      .acquireEventsStream(queueName, chunkSize = 1, maybeOffset = None)
-      .evalMap(decodeMessage)
-      .evalTap(decoded => Scribe[F].info(s"Received $decoded"))
-      .flatMap(decoded => Stream.emits[F, ProjectCreated](decoded))
-      .evalMap(pushToSolr)
-      .compile
-      .drain
+    findLastProcessed >>= { maybeLastProcessed =>
+      queueClient
+        .acquireEventsStream(queueName, chunkSize = 1, maybeLastProcessed)
+        .evalMap(decodeMessage)
+        .evalTap { case (m, v) => Scribe[F].info(s"Received messageId: ${m.id} $v") }
+        .groupWithin(chunkSize = 10, timeout = 500 millis)
+        .evalMap(pushToSolr)
+        .compile
+        .drain
+        .handleErrorWith(logAndRestart)
+    }
+
+  private def findLastProcessed =
+    queueClient.findLastProcessed(clientId, queueName)
 
   private val avro = AvroReader(ProjectCreated.SCHEMA$)
 
-  private def decodeMessage(message: Message): F[Seq[ProjectCreated]] =
-    MonadThrow[F].fromOption(
-      decodeBinary(message).orElse(decodeJson(message)),
-      new Exception("Message encoded neither as binary nor json")
-    )
+  private def decodeMessage(message: Message): F[(Message, Seq[ProjectCreated])] =
+    MonadThrow[F]
+      .catchNonFatal {
+        message.encoding match {
+          case Encoding.Binary => avro.read[ProjectCreated](message.payload)
+          case Encoding.Json   => avro.readJson[ProjectCreated](message.payload)
+        }
+      }
+      .map(message -> _)
+      .onError(markProcessedOnFailure(message))
 
-  private def decodeBinary(message: Message): Option[Seq[ProjectCreated]] =
-    Option.when(!isJsonEncoded(message)) {
-      avro.read[ProjectCreated](message.payload)
+  private def pushToSolr(chunk: Chunk[(Message, Seq[ProjectCreated])]): F[Unit] =
+    chunk.toList match {
+      case Nil => ().pure[F]
+      case tuples =>
+        val allSolrDocs = toSolrDocuments(tuples.flatMap(_._2))
+        val (lastMessage, _) = tuples.last
+        solrClient
+          .insertProjects(allSolrDocs)
+          .flatMap(_ => markProcessed(lastMessage))
+          .onError(markProcessedOnFailure(lastMessage))
     }
 
-  private def decodeJson(message: Message): Option[Seq[ProjectCreated]] =
-    Option.when(isJsonEncoded(message)) {
-      avro.readJson[ProjectCreated](message.payload)
-    }
+  private lazy val toSolrDocuments: Seq[ProjectCreated] => Seq[Project] =
+    _.map(pc => Project(id = pc.id, name = pc.name, description = pc.description))
 
-  private lazy val isJsonEncoded: Message => Boolean =
-    _.payload.headOption.contains(123.toByte) // meaning it's the '{' char
+  private def markProcessedOnFailure(
+      message: Message
+  ): PartialFunction[Throwable, F[Unit]] = err =>
+    markProcessed(message) >>
+      Scribe[F].error(s"Processing messageId: ${message.id} failed", err)
 
-  private def pushToSolr(pc: ProjectCreated): F[Unit] =
-    solrClient
-      .insertProject(
-        Project(id = pc.id, name = pc.name, description = pc.description)
-      )
+  private def markProcessed(message: Message): F[Unit] =
+    queueClient.markProcessed(clientId, queueName, message.id)
+
+  private def logAndRestart: Throwable => F[Unit] = err =>
+    Scribe[F].error("Failure in the provisioning process", err) >>
+      provisionSolr

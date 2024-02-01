@@ -30,7 +30,7 @@ object RedisClientGenerators:
       .flatMap(Gen.stringOfN(_, alphaLowerChar).map(QueueName(_)))
 
   val encodingGen: Gen[Encoding] =
-    Gen.oneOf(Encoding.all)
+    Gen.oneOf(Encoding.values.toSet)
 
   val clientIdGen: Gen[ClientId] =
     Gen

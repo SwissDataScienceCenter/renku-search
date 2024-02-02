@@ -26,9 +26,9 @@ object DockerImagePlugin extends AutoPlugin {
     dockerUsername := Some("renku"),
 
     // temporarily use git hash as image tag
-    Docker / version := git.gitHeadCommit.value
-      .map(_.take(12))
-      .getOrElse((Compile / version).value)
+    Docker / version :=
+      imageTag(dynverGitDescribeOutput.value, git.gitHeadCommit.value)
+        .getOrElse((Compile / version).value)
   )
 
   private def imageTag(out: Option[GitDescribeOutput], headCommit: Option[String]) =

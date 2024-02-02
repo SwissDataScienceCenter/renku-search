@@ -45,24 +45,6 @@ jobs:
           files: |
             modules/search-provision/target/universal/search-provision-${{ env.RS_VERSION }}.zip
             modules/search-api/target/universal/search-api-${{ env.RS_VERSION }}.zip
-      - name: Publish Pre-Release
-        uses: ncipollo/release-action@v1
-        if: ${{ github.ref }} == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: true
-          allowUpdates: true
-          tag: "nightly"
-          commit: "main"
-          body: "Floating tag associating the latest build from the main branch"
-          name: "renku search nightly"
-          replacesArtifacts: true
-          removeArtifacts: true
-          artifacts: |
-            modules/search-provision/target/universal/search-provision-${{ env.RS_VERSION }}.zip,
-            modules/search-api/target/universal/search-api-${{ env.RS_VERSION }}.zip
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:

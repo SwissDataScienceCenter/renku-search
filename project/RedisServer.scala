@@ -82,7 +82,8 @@ class RedisServer(module: String, port: Int) {
   }
 
   def stop(): Unit =
-    if (!skipServer && wasStartedHere.get()) {
+    if (skipServer || !wasStartedHere.get()) ()
+    else {
       println(s"Stopping Redis container for '$module'")
       stopCmd.!!
       ()

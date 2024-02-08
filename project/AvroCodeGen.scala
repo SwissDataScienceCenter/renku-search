@@ -6,7 +6,7 @@ import sbtavrohugger.SbtAvrohugger.autoImport.*
 object AvroCodeGen extends AutoPlugin {
   override def requires = SbtAvrohugger
 
-  override def projectSettings = Seq(
+  def avroHuggerSettings = Seq(
     libraryDependencies ++= Dependencies.avro,
     Compile / avroScalaCustomTypes := {
       avrohugger.format.SpecificRecord.defaultTypes.copy(
@@ -17,7 +17,10 @@ object AvroCodeGen extends AutoPlugin {
       avrohugger.format.SpecificRecord.defaultTypes.copy(
         record = avrohugger.types.ScalaCaseClassWithSchema
       )
-    },
+    }
+  )
+
+  override def projectSettings = avroHuggerSettings ++ Seq(
     Compile / sourceGenerators += (Compile / avroScalaGenerate).taskValue
   )
 }

@@ -214,7 +214,7 @@ lazy val messages = project
     commons % "compile->compile;test->test",
     avroCodec % "compile->compile;test->test"
   )
-  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .enablePlugins(AutomateHeaderPlugin, AvroSchemaDownload)
   .disablePlugins(DbTestPlugin)
 
 lazy val configValues = project

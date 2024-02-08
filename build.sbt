@@ -104,7 +104,7 @@ lazy val http4sBorer = project
       Dependencies.borer ++
         Dependencies.fs2Core ++
         Dependencies.http4sCore ++
-        Dependencies.tapirHttp4sServer
+        Dependencies.tapirCore
   )
 
 lazy val httpClient = project

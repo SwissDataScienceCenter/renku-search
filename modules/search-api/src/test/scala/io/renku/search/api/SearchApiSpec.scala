@@ -19,11 +19,6 @@
 package io.renku.search.api
 
 import cats.effect.IO
-import io.renku.api.Project as ApiProject
-import io.renku.avro.codec.AvroDecoder
-import io.renku.avro.codec.all.given
-import io.renku.avro.codec.json.AvroJsonDecoder
-import io.renku.search.http.avro.AvroEntityCodec.given
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project as SolrProject
@@ -41,13 +36,11 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       val searchApi = new SearchApiImpl[IO](client)
       for {
         _ <- client.insertProjects(project1 :: project2 :: Nil)
-        response <- searchApi.find("matching")
-        results <- response.as[List[ApiProject]]
+        results <- searchApi
+          .find("matching")
+          .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
       } yield assert(results contains toApiProject(project1))
     }
 
-  private given AvroJsonDecoder[List[ApiProject]] =
-    AvroJsonDecoder.decodeList(ApiProject.SCHEMA$)
-
   private def toApiProject(project: SolrProject) =
-    ApiProject(project.id, project.name, project.description)
+    Project(project.id, project.name, project.description)

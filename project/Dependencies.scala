@@ -18,6 +18,7 @@ object Dependencies {
     val scodec = "2.2.2"
     val scodecBits = "1.1.38"
     val scribe = "3.13.0"
+    val tapir = "1.9.9"
   }
 
   val ciris = Seq(
@@ -97,5 +98,12 @@ object Dependencies {
 
   val scalacheckEffectMunit = Seq(
     "org.typelevel" %% "scalacheck-effect-munit" % V.scalacheckEffectMunit
+  )
+
+  val tapirCore = Seq(
+    "com.softwaremill.sttp.tapir" %% "tapir-core" % V.tapir
+  )
+  val tapirHttp4sServer = Seq(
+    "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % V.tapir
   )
 }

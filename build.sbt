@@ -259,7 +259,8 @@ lazy val searchApi = project
       Dependencies.ciris ++
         Dependencies.http4sDsl ++
         Dependencies.http4sServer ++
-        Dependencies.tapirHttp4sServer
+        Dependencies.tapirHttp4sServer ++
+        Dependencies.tapirOpenAPi
   )
   .dependsOn(
     commons % "compile->compile;test->test",

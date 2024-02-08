@@ -106,4 +106,7 @@ object Dependencies {
   val tapirHttp4sServer = Seq(
     "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % V.tapir
   )
+  val tapirOpenAPi = Seq(
+    "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % V.tapir
+  )
 }

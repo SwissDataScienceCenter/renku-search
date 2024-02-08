@@ -30,6 +30,7 @@ import org.http4s.{HttpApp, HttpRoutes, Response}
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 object HttpApplication:
   def apply[F[_]: Async: Network](
@@ -45,7 +46,7 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     Router[F]("/" -> routes).orNotFound
 
   private lazy val routes: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(endpoints)
+    Http4sServerInterpreter[F]().toRoutes(endpoints ::: swaggerEndpoints)
 
   private lazy val endpoints: List[ServerEndpoint[Any, F]] =
     List(
@@ -60,8 +61,13 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
       .in("api" / query)
       .errorOut(borerJsonBody[String])
       .out(borerJsonBody[List[Project]])
+      .description("Search API for searching Renku entities")
 
   private lazy val pingEndpoint: PublicEndpoint[Unit, Unit, String, Any] =
     endpoint.get
       .in("ping")
       .out(stringBody)
+      .description("Ping")
+
+  private lazy val swaggerEndpoints =
+    SwaggerInterpreter().fromServerEndpoints[F](endpoints, "Search API", "0.0.1")

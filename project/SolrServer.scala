@@ -19,6 +19,7 @@
 package io.renku.servers
 
 import java.util.concurrent.atomic.AtomicBoolean
+import scala.annotation.tailrec
 import scala.sys.process.*
 import scala.util.Try
 
@@ -94,10 +95,28 @@ class SolrServer(module: String, port: Int) {
     }
     Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => wasStartedHere.set(true))
     Thread.sleep(500)
+    createCores(cores)
+  }
+
+  @tailrec
+  private def createCores(cores: Set[String], attempt: Int = 1): Unit = {
+    if (attempt > 10)
+      sys.error(
+        s"Solr core(s) ${cores.map(c => s"'$c'").mkString(", ")} couldn't be created"
+      )
+
     val rcs = cores.map(c => c -> createCoreCmd(c).!)
-    println(
-      s"Created solr cores: ${rcs.map { case (core, rc) => s"'$core' ($rc)" }.mkString(", ")}"
-    )
+
+    val toRetry = rcs.foldLeft(Set.empty[String]) {
+      case (toRetry, (c, 0)) =>
+        println(s"Solr '$c' core created")
+        toRetry
+      case (toRetry, (c, rc)) =>
+        println(s"Solr '$c' core creation failed $rc")
+        toRetry + c
+    }
+
+    if (toRetry.nonEmpty) createCores(toRetry)
   }
 
   def stop(): Unit =

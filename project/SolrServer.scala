@@ -47,7 +47,7 @@ class SolrServer(module: String, port: Int) {
   private val stopCmd = s"docker stop -t5 $containerName"
   private def readyCmd(core: String) =
     s"curl http://localhost:8983/solr/$core/select?q=*:* --no-progress-meter --fail 1> /dev/null"
-  private def isReadyCmd(core: String) =
+  private def isCoreReadyCmd(core: String) =
     Seq("docker", "exec", containerName, "sh", "-c", readyCmd(core))
   private def createCore(core: String) = s"precreate-core $core"
   private def createCoreCmd(core: String) =
@@ -71,13 +71,13 @@ class SolrServer(module: String, port: Int) {
       counter += 1
       Thread.sleep(500)
       rc = checkCoresReady
-      if (rc == 0) println(s"Solr container for '$module' ready on port $port")
+      if (rc == 0) println(s"Solr cores for '$module' ready on port $port")
     }
-    if (rc != 0) sys.error("Solr container for '$module' could not be started")
+    if (rc != 0) sys.error(s"Solr cores for '$module' could not be started")
   }
 
   private def checkCoresReady =
-    cores.foldLeft(0)((rc, core) => if (rc == 0) isReadyCmd(core).! else rc)
+    cores.foldLeft(0)((rc, core) => if (rc == 0) isCoreReadyCmd(core).! else rc)
 
   private def checkRunning: Boolean = {
     val out = isRunningCmd.lineStream_!.take(20).toList
@@ -93,6 +93,7 @@ class SolrServer(module: String, port: Int) {
       case ex => throw ex
     }
     Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => wasStartedHere.set(true))
+    Thread.sleep(500)
     val rcs = cores.map(c => c -> createCoreCmd(c).!)
     println(
       s"Created solr cores: ${rcs.map { case (core, rc) => s"'$core' ($rc)" }.mkString(", ")}"

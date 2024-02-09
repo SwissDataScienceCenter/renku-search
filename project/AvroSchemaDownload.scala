@@ -5,6 +5,7 @@ import sbtavrohugger.SbtAvrohugger
 import sbtavrohugger.SbtAvrohugger.autoImport.*
 import java.io.File
 import org.eclipse.jgit.api.ResetCommand.ResetType
+import avrohugger.filesorter.AvscFileSorter
 
 object AvroSchemaDownload extends AutoPlugin {
 
@@ -17,11 +18,14 @@ object AvroSchemaDownload extends AutoPlugin {
     val schemaTargetDirectory = settingKey[File]("The directory to download into")
     val schemaDownloadRepository = taskKey[Seq[File]]("Download the repository")
     val schemaClearDownload = taskKey[Unit]("Removes all downloaded files")
+    val schemaEnableDownload =
+      settingKey[Boolean]("Whether to enable downloading schema repository")
   }
 
   import autoImport._
 
   override def projectSettings = AvroCodeGen.avroHuggerSettings ++ Seq(
+    schemaEnableDownload := true,
     schemaRepository := "https://github.com/SwissDataScienceCenter/renku-schema",
     schemaRef := Some("main"),
     schemaTargetDirectory := (Compile / target).value / "renku-avro-schemas",
@@ -34,14 +38,19 @@ object AvroSchemaDownload extends AutoPlugin {
       val repo = schemaRepository.value
       val refspec = schemaRef.value
       val output = schemaTargetDirectory.value
-      synchronizeSchemaFiles(logger, repo, refspec, output)
+      val enabled = schemaEnableDownload.value
+      if (enabled) {
+        synchronizeSchemaFiles(logger, repo, refspec, output)
+      } else {
+        logger.info("Downloading avro schema files is disabled.")
+      }
       Seq(output)
     },
-    Compile / avroScalaCustomNamespace := Map("*" -> "io.renku.messages"),
-    Compile / avroScalaSpecificCustomNamespace := Map("*" -> "io.renku.messages"),
-    Compile / avroSourceDirectories := Seq(
-      schemaTargetDirectory.value
-    ),
+    Compile / avroSourceDirectories :=
+      AvscFileSorter.sortSchemaFiles(
+        // need to do this weird ordering so dependend files are read in first
+        (schemaTargetDirectory.value ** "*.avsc").get.reverse
+      ),
     Compile / sourceGenerators += Def
       .sequential(
         schemaDownloadRepository,
@@ -51,7 +60,7 @@ object AvroSchemaDownload extends AutoPlugin {
           val pkg = "io.renku.messages"
           val logger = streams.value.log
           evilHackAddPackage(logger, out, pkg)
-          Seq.empty[File]
+          IO.listFiles(out).toSeq
         }
       )
       .taskValue
@@ -104,7 +113,7 @@ object AvroSchemaDownload extends AutoPlugin {
 
     def prependPackage(file: File) = {
       val content = IO.read(file)
-      if (!content.startsWith(pkgLine)) {
+      if (!content.startsWith("package ")) {
         logger.info(s"Add package to: $file")
         IO.write(file, s"$pkgLine;\n\n") // scala & java ...
         IO.append(file, content)

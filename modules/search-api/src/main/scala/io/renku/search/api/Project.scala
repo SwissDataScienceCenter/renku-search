@@ -18,16 +18,14 @@
 
 package io.renku.search.api
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.solr.client.SolrConfig
+import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
+import io.bullet.borer.{Decoder, Encoder}
+import sttp.tapir.Schema
+import sttp.tapir.generic.auto.schemaForCaseClass
 
-trait SearchApi[F[_]]:
-  def find(phrase: String): F[Either[String, List[Project]]]
+final case class Project(id: String, name: String, description: String)
 
-object SearchApi:
-  def apply[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))
+object Project:
+  given Encoder[Project] = deriveEncoder
+  given Decoder[Project] = deriveDecoder
+  given Schema[Project] = Schema.derivedSchema[Project]

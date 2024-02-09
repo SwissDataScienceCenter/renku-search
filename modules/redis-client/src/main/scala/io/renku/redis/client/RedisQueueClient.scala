@@ -66,7 +66,10 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
     ByteVector.encodeUtf8(encoding.name).fold(throw _, identity)
 
   private def decodeEncoding(encoding: ByteVector): Encoding =
-    encoding.decodeUtf8.map(Encoding.valueOf).fold(throw _, identity)
+    encoding.decodeUtf8
+      .map(_.toLowerCase.capitalize)
+      .map(Encoding.valueOf)
+      .fold(throw _, identity)
 
   override def acquireEventsStream(
       queueName: QueueName,

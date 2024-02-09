@@ -102,8 +102,9 @@ lazy val http4sBorer = project
     description := "Use borer codecs with http4s",
     libraryDependencies ++=
       Dependencies.borer ++
+        Dependencies.fs2Core ++
         Dependencies.http4sCore ++
-        Dependencies.fs2Core
+        Dependencies.tapirCore
   )
 
 lazy val httpClient = project
@@ -255,14 +256,15 @@ lazy val searchApi = project
   .settings(
     name := "search-api",
     libraryDependencies ++=
-      Dependencies.http4sDsl ++
+      Dependencies.ciris ++
+        Dependencies.http4sDsl ++
         Dependencies.http4sServer ++
-        Dependencies.ciris
+        Dependencies.tapirHttp4sServer ++
+        Dependencies.tapirOpenAPi
   )
   .dependsOn(
     commons % "compile->compile;test->test",
-    messages % "compile->compile;test->test",
-    http4sAvro % "compile->compile;test->test",
+    http4sBorer % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
   )

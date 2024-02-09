@@ -18,13 +18,19 @@
 
 package io.renku.search.api
 
-import cats.Monad
 import cats.effect.{Async, Resource}
+import cats.syntax.all.*
 import fs2.io.net.Network
+import io.renku.search.api.Project.given
+import io.renku.search.http.borer.TapirBorerJson
 import io.renku.solr.client.SolrConfig
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
-import org.http4s.{HttpApp, HttpRoutes, Request, Response}
+import org.http4s.{HttpApp, HttpRoutes, Response}
+import sttp.tapir.*
+import sttp.tapir.server.ServerEndpoint
+import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 object HttpApplication:
   def apply[F[_]: Async: Network](
@@ -32,12 +38,36 @@ object HttpApplication:
   ): Resource[F, HttpApp[F]] =
     SearchApi[F](solrConfig).map(new HttpApplication[F](_).router)
 
-class HttpApplication[F[_]: Monad](searchApi: SearchApi[F]) extends Http4sDsl[F]:
+class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
+    extends Http4sDsl[F]
+    with TapirBorerJson:
 
   lazy val router: HttpApp[F] =
     Router[F]("/" -> routes).orNotFound
 
-  private lazy val routes: HttpRoutes[F] = HttpRoutes.of[F] {
-    case GET -> Root / "api" / phrase => searchApi.find(phrase)
-    case GET -> Root / "ping"         => Ok("pong")
-  }
+  private lazy val routes: HttpRoutes[F] =
+    Http4sServerInterpreter[F]().toRoutes(endpoints ::: swaggerEndpoints)
+
+  private lazy val endpoints: List[ServerEndpoint[Any, F]] =
+    List(
+      searchEndpoint.serverLogic(searchApi.find),
+      pingEndpoint.serverLogic[F](_ => "pong".asRight[Unit].pure[F])
+    )
+
+  private lazy val searchEndpoint: PublicEndpoint[String, String, List[Project], Any] =
+    val query =
+      path[String].name("user query").description("User defined query e.g. renku~")
+    endpoint.get
+      .in("api" / query)
+      .errorOut(borerJsonBody[String])
+      .out(borerJsonBody[List[Project]])
+      .description("Search API for searching Renku entities")
+
+  private lazy val pingEndpoint: PublicEndpoint[Unit, Unit, String, Any] =
+    endpoint.get
+      .in("ping")
+      .out(stringBody)
+      .description("Ping")
+
+  private lazy val swaggerEndpoints =
+    SwaggerInterpreter().fromServerEndpoints[F](endpoints, "Search API", "0.0.1")

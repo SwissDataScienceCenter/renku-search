@@ -4,6 +4,7 @@ import com.github.sbt.git._
 import sbtavrohugger.SbtAvrohugger
 import sbtavrohugger.SbtAvrohugger.autoImport.*
 import java.io.File
+import org.eclipse.jgit.api.ResetCommand.ResetType
 
 object AvroSchemaDownload extends AutoPlugin {
 
@@ -11,7 +12,8 @@ object AvroSchemaDownload extends AutoPlugin {
 
   object autoImport {
     val schemaRepository = settingKey[String]("The repository to download")
-    val schemaBranch = settingKey[Option[String]]("The branch to checkout")
+    val schemaRef =
+      settingKey[Option[String]]("The branch, tag or commit sha to checkout")
     val schemaTargetDirectory = settingKey[File]("The directory to download into")
     val schemaDownloadRepository = taskKey[Seq[File]]("Download the repository")
     val schemaClearDownload = taskKey[Unit]("Removes all downloaded files")
@@ -21,7 +23,7 @@ object AvroSchemaDownload extends AutoPlugin {
 
   override def projectSettings = AvroCodeGen.avroHuggerSettings ++ Seq(
     schemaRepository := "https://github.com/SwissDataScienceCenter/renku-search",
-    schemaBranch := None,
+    schemaRef := Some("v0.0.1"),
     schemaTargetDirectory := (Compile / target).value / "renku-avro-schemas",
     schemaClearDownload := {
       val target = schemaTargetDirectory.value
@@ -30,55 +32,60 @@ object AvroSchemaDownload extends AutoPlugin {
     schemaDownloadRepository := {
       val logger = streams.value.log
       val repo = schemaRepository.value
-      val branch = schemaBranch.value
+      val refspec = schemaRef.value
       val output = schemaTargetDirectory.value
-      synchronizeSchemaFiles(logger, repo, branch, output)
+      synchronizeSchemaFiles(logger, repo, refspec, output)
       Seq(output)
     },
-
     Compile / avroSourceDirectories := Seq(
       schemaTargetDirectory.value
     ),
-
-    Compile / sourceGenerators += Def.sequential(
-      schemaDownloadRepository, Compile / avroScalaGenerate
-    ).taskValue
+    Compile / sourceGenerators += Def
+      .sequential(
+        schemaDownloadRepository,
+        Compile / avroScalaGenerate
+      )
+      .taskValue
   )
 
   def synchronizeSchemaFiles(
-    logger: Logger,
-    repo: String,
-    branch: Option[String],
-    target: File
+      logger: Logger,
+      repo: String,
+      refspec: Option[String],
+      target: File
   ): Unit =
-    if (target.exists) pullRepository(logger, target, branch)
-    else cloneRepository(logger, repo, branch, target)
+    if (target.exists) updateRepository(logger, target, refspec)
+    else cloneRepository(logger, repo, refspec, target)
 
-
-  def pullRepository(logger: Logger, base: File, branch: Option[String]) = {
+  def updateRepository(logger: Logger, base: File, refspec: Option[String]) = {
     logger.info(s"Updating schema repository at $base")
     val git = JGit(base)
-    val result = git.porcelain.pull().call()
-    if (!result.isSuccessful) {
-      val msg = s"The pull from ${git.remoteOrigin} failed!"
-      logger.error(msg)
-      sys.error(msg)
-    }
-    switchBranch(logger, git, branch)
+    git.porcelain.fetch().call()
+    switchBranch(logger, git, refspec)
   }
 
-  def cloneRepository(logger: Logger, repo: String, branch: Option[String], target: File): Unit = {
+  def cloneRepository(
+      logger: Logger,
+      repo: String,
+      refspec: Option[String],
+      target: File
+  ): Unit = {
     logger.info(s"Downloading repository $repo to $target")
     val jgit = JGit.clone(repo, target)
-    switchBranch(logger, jgit, branch)
+    switchBranch(logger, jgit, refspec)
   }
 
-  //TODO the same for tags
-  def switchBranch(logger: Logger, git: JGit, branch: Option[String]) =
-    branch match {
-      case Some(b) if b != git.branch =>
-        logger.info(s"Changing to branch $b")
-        git.checkoutBranch(b)
+  def switchBranch(logger: Logger, git: JGit, refspec: Option[String]) =
+    refspec match {
+      case Some(ref)
+          if ref != git.branch && !git.currentTags.contains(ref) && !git.headCommitSha
+            .contains(ref) =>
+        logger.info(s"Changing to $ref")
+        val cmd = git.porcelain.reset()
+        cmd.setMode(ResetType.HARD)
+        cmd.setRef(ref)
+        val res = cmd.call()
+        logger.info(s"Repository now on $res")
 
       case _ => ()
     }

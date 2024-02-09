@@ -102,7 +102,9 @@ private class SearchProvisionerImpl[F[_]: Async](
     }
 
   private lazy val toSolrDocuments: Seq[ProjectCreated] => Seq[Project] =
-    _.map(pc => Project(id = pc.id, name = pc.name, description = pc.description))
+    _.map(pc =>
+      Project(id = pc.id, name = pc.name, description = pc.description.getOrElse(""))
+    )
 
   private def markProcessedOnFailure(
       message: Message

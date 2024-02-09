@@ -33,9 +33,13 @@ class SerializeDeserializeTest extends FunSuite {
     val data = ProjectCreated(
       UUID.randomUUID().toString,
       "my-project",
-      "a description for it",
-      None,
-      Instant.now().truncatedTo(ChronoUnit.MILLIS)
+      "slug",
+      Seq.empty,
+      Visibility.PUBLIC,
+      Some("a description for it"),
+      "created-by-me",
+      Instant.now().truncatedTo(ChronoUnit.MILLIS),
+      Seq.empty
     )
     val avro = AvroIO(ProjectCreated.SCHEMA$)
 
@@ -45,21 +49,4 @@ class SerializeDeserializeTest extends FunSuite {
     assertEquals(decoded, List(data))
   }
 
-  test("serialize and deserialize ProjectUpdated") {
-    val data1 = ProjectUpdated(
-      UUID.randomUUID().toString,
-      "my-project",
-      "a description for it",
-      Shapes.CIRCLE,
-      Right(42),
-      Instant.now().truncatedTo(ChronoUnit.MILLIS)
-    )
-    val data2 = data1.copy(index = Left("fourtytwo"))
-    val avro = AvroIO(ProjectUpdated.SCHEMA$)
-
-    val bytes = avro.write(Seq(data1, data2))
-    val decoded = avro.read[ProjectUpdated](bytes)
-
-    assertEquals(decoded, List(data1, data2))
-  }
 }

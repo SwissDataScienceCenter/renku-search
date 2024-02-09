@@ -22,8 +22,8 @@ object AvroSchemaDownload extends AutoPlugin {
   import autoImport._
 
   override def projectSettings = AvroCodeGen.avroHuggerSettings ++ Seq(
-    schemaRepository := "https://github.com/SwissDataScienceCenter/renku-search",
-    schemaRef := Some("v0.0.1"),
+    schemaRepository := "https://github.com/SwissDataScienceCenter/renku-schema",
+    schemaRef := Some("main"),
     schemaTargetDirectory := (Compile / target).value / "renku-avro-schemas",
     schemaClearDownload := {
       val target = schemaTargetDirectory.value
@@ -37,13 +37,22 @@ object AvroSchemaDownload extends AutoPlugin {
       synchronizeSchemaFiles(logger, repo, refspec, output)
       Seq(output)
     },
+    Compile / avroScalaCustomNamespace := Map("*" -> "io.renku.messages"),
+    Compile / avroScalaSpecificCustomNamespace := Map("*" -> "io.renku.messages"),
     Compile / avroSourceDirectories := Seq(
       schemaTargetDirectory.value
     ),
     Compile / sourceGenerators += Def
       .sequential(
         schemaDownloadRepository,
-        Compile / avroScalaGenerate
+        Compile / avroScalaGenerate,
+        Def.task {
+          val out = (Compile / avroScalaSource).value
+          val pkg = "io.renku.messages"
+          val logger = streams.value.log
+          evilHackAddPackage(logger, out, pkg)
+          Seq.empty[File]
+        }
       )
       .taskValue
   )
@@ -89,4 +98,20 @@ object AvroSchemaDownload extends AutoPlugin {
 
       case _ => ()
     }
+
+  def evilHackAddPackage(logger: Logger, dir: File, pkg: String): Unit = {
+    val pkgLine = s"package $pkg"
+
+    def prependPackage(file: File) = {
+      val content = IO.read(file)
+      if (!content.startsWith(pkgLine)) {
+        logger.info(s"Add package to: $file")
+        IO.write(file, s"$pkgLine;\n\n") // scala & java ...
+        IO.append(file, content)
+      }
+    }
+
+    (dir ** "*.scala").get().foreach(prependPackage)
+    (dir ** "*.java").get().foreach(prependPackage)
+  }
 }

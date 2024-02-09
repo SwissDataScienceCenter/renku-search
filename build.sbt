@@ -27,7 +27,7 @@ releaseVersionBump := sbtrelease.Version.Bump.Minor
 releaseIgnoreUntrackedFiles := true
 releaseTagName := (ThisBuild / version).value
 
-addCommandAlias("ci", "; lint; dbTests; publishLocal")
+addCommandAlias("ci", "; lint; compile; Test/compile; dbTests; publishLocal")
 addCommandAlias(
   "lint",
   "; scalafmtSbtCheck; scalafmtCheckAll;" // Compile/scalafix --check; Test/scalafix --check

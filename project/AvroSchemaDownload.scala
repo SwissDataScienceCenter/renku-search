@@ -47,9 +47,12 @@ object AvroSchemaDownload extends AutoPlugin {
       Seq(output)
     },
     Compile / avroSourceDirectories :=
-      AvscFileSorter.sortSchemaFiles(
-        // need to do this weird ordering so dependend files are read in first
-        (schemaTargetDirectory.value ** "*.avsc").get.reverse
+      // need to do this custom correct ordering of inputs so the files are
+      // evaluated in correct "dependency order" (unfortunately, the plugin doesn't sort it out)
+      // must be constant values, because settingKeys are evaluated at project load time
+      Seq(
+        schemaTargetDirectory.value / "common",
+        schemaTargetDirectory.value / "project"
       ),
     Compile / sourceGenerators += Def
       .sequential(
@@ -60,7 +63,6 @@ object AvroSchemaDownload extends AutoPlugin {
           val pkg = "io.renku.messages"
           val logger = streams.value.log
           evilHackAddPackage(logger, out, pkg)
-          IO.listFiles(out).toSeq
         }
       )
       .taskValue
@@ -108,7 +110,7 @@ object AvroSchemaDownload extends AutoPlugin {
       case _ => ()
     }
 
-  def evilHackAddPackage(logger: Logger, dir: File, pkg: String): Unit = {
+  def evilHackAddPackage(logger: Logger, dir: File, pkg: String): Seq[File] = {
     val pkgLine = s"package $pkg"
 
     def prependPackage(file: File) = {
@@ -118,9 +120,10 @@ object AvroSchemaDownload extends AutoPlugin {
         IO.write(file, s"$pkgLine;\n\n") // scala & java ...
         IO.append(file, content)
       }
+      file
     }
 
-    (dir ** "*.scala").get().foreach(prependPackage)
-    (dir ** "*.java").get().foreach(prependPackage)
+    (dir ** "*.scala").get().map(prependPackage) ++
+      (dir ** "*.java").get().map(prependPackage)
   }
 }

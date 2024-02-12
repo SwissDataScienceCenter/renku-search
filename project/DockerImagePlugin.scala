@@ -20,7 +20,8 @@ object DockerImagePlugin extends AutoPlugin {
     dockerUpdateLatest := true,
     // dockerEntrypoint    := Seq(s"bin/${executableScriptName.value}", "-Duser.timezone=UTC", "$JAVA_OPTS"),
     dockerBaseImage := s"eclipse-temurin:21-jre",
-    Docker / daemonUserUid := Some("1000"), // uuid 1000 required by renku pod security context
+    // deamon uuid 1000 required by renku pod security context
+    Docker / daemonUserUid := Some("1000"),
     Docker / daemonUser := "searchuser",
     // derive a package name
     Docker / packageName := (Compile / name).value,

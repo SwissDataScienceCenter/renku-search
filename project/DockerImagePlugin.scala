@@ -19,8 +19,9 @@ object DockerImagePlugin extends AutoPlugin {
   val dockerSettings = Seq(
     dockerUpdateLatest := true,
     // dockerEntrypoint    := Seq(s"bin/${executableScriptName.value}", "-Duser.timezone=UTC", "$JAVA_OPTS"),
-    dockerAdditionalPermissions += (DockerChmodType.UserGroupWriteExecute, "/opt/docker"),
     dockerBaseImage := s"eclipse-temurin:21-jre",
+    Docker / daemonUserUid := Some("1000"), // uuid 1000 required by renku pod security context
+    Docker / daemonUser := "searchuser",
     // derive a package name
     Docker / packageName := (Compile / name).value,
     dockerRepository := Some("docker.io"),

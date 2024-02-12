@@ -30,6 +30,7 @@ import org.http4s.{HttpApp, HttpRoutes, Response}
 import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.swagger.SwaggerUIOptions
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 object HttpApplication:
@@ -42,32 +43,42 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     extends Http4sDsl[F]
     with TapirBorerJson:
 
+  private val businessRoot = "search"
+
   lazy val router: HttpApp[F] =
-    Router[F]("/" -> routes).orNotFound
+    Router[F](
+      s"/$businessRoot" -> businessRoutes,
+      "/" -> operationsRoutes
+    ).orNotFound
 
-  private lazy val routes: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(endpoints ::: swaggerEndpoints)
+  private lazy val businessRoutes: HttpRoutes[F] =
+    Http4sServerInterpreter[F]().toRoutes(swaggerEndpoints ::: businessEndpoints)
 
-  private lazy val endpoints: List[ServerEndpoint[Any, F]] =
+  private lazy val businessEndpoints: List[ServerEndpoint[Any, F]] =
     List(
-      searchEndpoint.serverLogic(searchApi.find),
-      pingEndpoint.serverLogic[F](_ => "pong".asRight[Unit].pure[F])
+      searchEndpoint.serverLogic(searchApi.find)
     )
 
   private lazy val searchEndpoint: PublicEndpoint[String, String, List[Project], Any] =
     val query =
       path[String].name("user query").description("User defined query e.g. renku~")
     endpoint.get
-      .in("api" / query)
+      .in(query)
       .errorOut(borerJsonBody[String])
       .out(borerJsonBody[List[Project]])
       .description("Search API for searching Renku entities")
 
-  private lazy val pingEndpoint: PublicEndpoint[Unit, Unit, String, Any] =
+  private lazy val swaggerEndpoints =
+    SwaggerInterpreter(
+      swaggerUIOptions = SwaggerUIOptions.default.copy(contextPath = List(businessRoot))
+    ).fromServerEndpoints[F](businessEndpoints, "Search API", "0.0.1")
+
+  private lazy val operationsRoutes: HttpRoutes[F] =
+    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))
+
+  private lazy val pingEndpoint =
     endpoint.get
       .in("ping")
       .out(stringBody)
       .description("Ping")
-
-  private lazy val swaggerEndpoints =
-    SwaggerInterpreter().fromServerEndpoints[F](endpoints, "Search API", "0.0.1")
+      .serverLogic[F](_ => "pong".asRight[Unit].pure[F])

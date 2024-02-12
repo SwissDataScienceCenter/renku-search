@@ -24,7 +24,7 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
-import io.renku.messages.{ProjectCreated, Visibility}
+import io.renku.events.v1.{ProjectCreated, Visibility}
 import io.renku.queue.client.Encoding
 import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*

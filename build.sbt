@@ -54,7 +54,7 @@ lazy val root = project
   .aggregate(
     commons,
     httpClient,
-    messages,
+    events,
     redisClient,
     solrClient,
     searchSolrClient,
@@ -204,11 +204,11 @@ lazy val http4sAvro = project
     avroCodec % "compile->compile;test->test"
   )
 
-lazy val messages = project
-  .in(file("modules/messages"))
+lazy val events = project
+  .in(file("modules/events"))
   .settings(commonSettings)
   .settings(
-    name := "messages"
+    name := "events"
   )
   .dependsOn(
     commons % "compile->compile;test->test",
@@ -227,7 +227,7 @@ lazy val configValues = project
   )
   .dependsOn(
     commons % "compile->compile;test->test",
-    messages % "compile->compile;test->test",
+    events % "compile->compile;test->test",
     redisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
@@ -242,7 +242,7 @@ lazy val searchProvision = project
   )
   .dependsOn(
     commons % "compile->compile;test->test",
-    messages % "compile->compile;test->test",
+    events % "compile->compile;test->test",
     redisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"

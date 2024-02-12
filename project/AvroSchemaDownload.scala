@@ -57,13 +57,7 @@ object AvroSchemaDownload extends AutoPlugin {
     Compile / sourceGenerators += Def
       .sequential(
         schemaDownloadRepository,
-        Compile / avroScalaGenerate,
-        Def.task {
-          val out = (Compile / avroScalaSource).value
-          val pkg = "io.renku.messages"
-          val logger = streams.value.log
-          evilHackAddPackage(logger, out, pkg)
-        }
+        Compile / avroScalaGenerate
       )
       .taskValue
   )

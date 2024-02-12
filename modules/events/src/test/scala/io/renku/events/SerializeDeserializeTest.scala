@@ -16,11 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.messages
+package io.renku.events
 
 import io.renku.avro.codec.decoders.all.given
 import io.renku.avro.codec.encoders.all.given
 import io.renku.avro.codec.{AvroDecoder, AvroEncoder, AvroIO}
+import io.renku.events.v1.{ProjectCreated, Visibility}
 import munit.FunSuite
 
 import java.time.Instant

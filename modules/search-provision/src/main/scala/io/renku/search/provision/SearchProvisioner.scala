@@ -25,7 +25,7 @@ import fs2.Chunk
 import fs2.io.net.Network
 import io.renku.avro.codec.AvroReader
 import io.renku.avro.codec.decoders.all.given
-import io.renku.messages.ProjectCreated
+import io.renku.events.v1.ProjectCreated
 import io.renku.queue.client.*
 import io.renku.redis.client.RedisUrl
 import io.renku.search.solr.client.SearchSolrClient

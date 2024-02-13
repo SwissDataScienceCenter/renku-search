@@ -104,20 +104,4 @@ object AvroSchemaDownload extends AutoPlugin {
       case _ => ()
     }
 
-  def evilHackAddPackage(logger: Logger, dir: File, pkg: String): Seq[File] = {
-    val pkgLine = s"package $pkg"
-
-    def prependPackage(file: File) = {
-      val content = IO.read(file)
-      if (!content.startsWith("package ")) {
-        logger.info(s"Add package to: $file")
-        IO.write(file, s"$pkgLine;\n\n") // scala & java ...
-        IO.append(file, content)
-      }
-      file
-    }
-
-    (dir ** "*.scala").get().map(prependPackage) ++
-      (dir ** "*.java").get().map(prependPackage)
-  }
 }

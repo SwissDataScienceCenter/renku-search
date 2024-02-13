@@ -57,6 +57,7 @@ lazy val root = project
     events,
     redisClient,
     solrClient,
+    searchQuery,
     searchSolrClient,
     searchProvision,
     searchApi
@@ -232,6 +233,20 @@ lazy val configValues = project
     redisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
+
+lazy val searchQuery = project
+  .in(file("modules/search-query"))
+  .withId("search-query")
+  .settings(commonSettings)
+  .settings(
+    name := "search-query",
+    libraryDependencies ++= Dependencies.catsParse ++
+      Dependencies.borer
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test"
+  )
+  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val searchProvision = project
   .in(file("modules/search-provision"))

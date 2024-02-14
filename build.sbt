@@ -57,6 +57,7 @@ lazy val root = project
     events,
     redisClient,
     solrClient,
+    searchQuery,
     searchSolrClient,
     searchProvision,
     searchApi
@@ -233,6 +234,20 @@ lazy val configValues = project
     searchSolrClient % "compile->compile;test->test"
   )
 
+lazy val searchQuery = project
+  .in(file("modules/search-query"))
+  .withId("search-query")
+  .settings(commonSettings)
+  .settings(
+    name := "search-query",
+    libraryDependencies ++= Dependencies.catsParse ++
+      Dependencies.borer
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test"
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+
 lazy val searchProvision = project
   .in(file("modules/search-provision"))
   .withId("search-provision")
@@ -284,7 +299,7 @@ lazy val commonSettings = Seq(
     "-language:postfixOps", // enabling postfixes
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-encoding", "utf-8", // Specify character encoding used by source files.
-    "-explaintypes", // Explain type errors in more detail.
+    //"-explaintypes", // Explain type errors in more detail.
     "-feature", // Emit warning and location for usages of features that should be imported explicitly.
     "-unchecked", // Enable additional warnings where generated code depends on assumptions.
     "-language:higherKinds", // Allow higher-kinded types
@@ -301,7 +316,8 @@ lazy val commonSettings = Seq(
     Dependencies.scribe,
   libraryDependencies ++= (
       Dependencies.catsEffectMunit ++
-        Dependencies.scalacheckEffectMunit
+        Dependencies.scalacheckEffectMunit ++
+        Dependencies.catsScalaCheck
     ).map(_ % Test),
   // Format: on
   organizationName := "Swiss Data Science Center (SDSC)",

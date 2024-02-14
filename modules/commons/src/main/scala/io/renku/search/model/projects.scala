@@ -18,6 +18,7 @@
 
 package io.renku.search.model
 
+import cats.kernel.Order
 import io.bullet.borer.derivation.MapBasedCodecs.*
 import io.bullet.borer.{Codec, Decoder, Encoder}
 import io.renku.search.borer.codecs.all.given
@@ -70,9 +71,13 @@ object projects:
     given Codec[CreationDate] = Codec.of[Instant]
 
   enum Visibility derives Codec:
-    lazy val name: String = productPrefix
+    lazy val name: String = productPrefix.toLowerCase
     case Public, Private
 
   object Visibility:
-    def fromCaseInsensitive(v: String): Visibility =
+    given Order[Visibility] = Order.by(_.ordinal)
+    given Decoder[Visibility] = Decoder.forString.map(Visibility.unsafeFromString)
+    given Encoder[Visibility] = Encoder.forString.contramap(_.name)
+
+    def unsafeFromString(v: String): Visibility =
       valueOf(v.toLowerCase.capitalize)

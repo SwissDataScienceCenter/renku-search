@@ -20,12 +20,42 @@ package io.renku.search.api
 
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
 import io.bullet.borer.{Decoder, Encoder}
+import io.renku.search.model.*
 import sttp.tapir.Schema
-import sttp.tapir.generic.auto.schemaForCaseClass
+import sttp.tapir.Schema.SName
+import sttp.tapir.SchemaType.SDateTime
 
-final case class Project(id: String, name: String, description: String)
+final case class Project(
+    id: projects.Id,
+    name: projects.Name,
+    slug: projects.Slug,
+    repositories: Seq[projects.Repository],
+    visibility: projects.Visibility,
+    description: Option[projects.Description] = None,
+    createdBy: User,
+    creationDate: projects.CreationDate,
+    members: Seq[User]
+)
+
+final case class User(
+    id: users.Id
+)
 
 object Project:
+  given Encoder[User] = deriveEncoder
+  given Decoder[User] = deriveDecoder
   given Encoder[Project] = deriveEncoder
   given Decoder[Project] = deriveDecoder
-  given Schema[Project] = Schema.derivedSchema[Project]
+  private given Schema[projects.Id] = Schema.string[projects.Id]
+  private given Schema[projects.Name] = Schema.string[projects.Name]
+  private given Schema[projects.Slug] = Schema.string[projects.Slug]
+  private given Schema[projects.Repository] = Schema.string[projects.Repository]
+  private given Schema[projects.Visibility] =
+    Schema.derivedEnumeration[projects.Visibility].defaultStringBased
+  private given Schema[projects.Description] = Schema.string[projects.Description]
+  private given Schema[projects.CreationDate] = Schema(SDateTime())
+  given Schema[User] = {
+    given Schema[users.Id] = Schema.string[users.Id]
+    Schema.derived[User]
+  }
+  given Schema[Project] = Schema.derived[Project]

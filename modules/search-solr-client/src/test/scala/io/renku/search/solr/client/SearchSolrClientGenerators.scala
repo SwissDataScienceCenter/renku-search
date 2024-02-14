@@ -18,12 +18,47 @@
 
 package io.renku.search.solr.client
 
-import io.renku.search.solr.documents.Project
+import io.renku.search.model.*
+import io.renku.search.solr.documents.*
 import org.scalacheck.Gen
+
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 object SearchSolrClientGenerators:
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    Gen.uuid.map(uuid => Project(uuid.toString, name, desc))
+  private def projectIdGen: Gen[projects.Id] =
+    Gen.uuid.map(uuid => projects.Id(uuid.toString))
 
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+  def projectDocumentGen(name: String, desc: String): Gen[Project] =
+    projectIdGen.map(projectId =>
+      val creator = userDocumentGen.generateOne
+      Project(
+        projectId,
+        projects.Name(name),
+        projects.Slug(name),
+        Seq(projects.Repository(s"http://github.com/$name")),
+        Gen.oneOf(projects.Visibility.values.toList).generateOne,
+        Option(projects.Description(desc)),
+        creator,
+        instantGen().generateAs(projects.CreationDate.apply),
+        Seq(creator)
+      )
+    )
+
+  def userDocumentGen: Gen[User] =
+    userIdGen.map(id => User(id))
+
+  private def userIdGen: Gen[users.Id] = Gen.uuid.map(uuid => users.Id(uuid.toString))
+
+  private def instantGen(
+      min: Instant = Instant.EPOCH,
+      max: Instant = Instant.now()
+  ): Gen[Instant] =
+    Gen
+      .chooseNum(min.toEpochMilli, max.toEpochMilli)
+      .map(Instant.ofEpochMilli(_).truncatedTo(ChronoUnit.MILLIS))
+
+  extension [V](gen: Gen[V])
+    def generateOne: V = gen.sample.getOrElse(generateOne)
+    def generateAs[D](f: V => D): D = f(generateOne)

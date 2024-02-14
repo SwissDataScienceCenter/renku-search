@@ -34,6 +34,8 @@ trait SolrClient[F[_]]:
 
   def query[A: Decoder](q: QueryString): F[QueryResponse[A]]
 
+  def query[A: Decoder](q: QueryData): F[QueryResponse[A]]
+
   def delete(q: QueryString): F[Unit]
 
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse]

@@ -18,31 +18,15 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.bullet.borer.{Decoder, Encoder}
-import io.renku.search.model.*
+import io.renku.search.model.users
 import io.renku.solr.client.EncoderSupport.deriveWithDiscriminator
 
-final case class Project(
-    id: projects.Id,
-    name: projects.Name,
-    slug: projects.Slug,
-    repositories: Seq[projects.Repository],
-    visibility: projects.Visibility,
-    description: Option[projects.Description] = None,
-    createdBy: User,
-    creationDate: projects.CreationDate,
-    members: Seq[User]
-)
+final case class User(id: users.Id)
 
-object Project:
-  val entityType: String = "Project"
+object User:
+  val entityType: String = "User"
 
-  given Encoder[Project] = deriveWithDiscriminator
-  given Decoder[Seq[User]] =
-    Decoder[Seq[User]] { reader =>
-      if reader.hasArrayStart then Decoder.forArray[User].map(_.toSeq).read(reader)
-      else Decoder[User].map(Seq(_)).read(reader)
-    }
-  given Decoder[Project] = deriveDecoder
+  given Encoder[User] = deriveWithDiscriminator
+  given Decoder[User] = deriveDecoder

@@ -68,7 +68,8 @@ lazy val commons = project
   .settings(
     name := "commons",
     libraryDependencies ++=
-      Dependencies.catsCore ++
+      Dependencies.borer ++
+        Dependencies.catsCore ++
         Dependencies.catsEffect ++
         Dependencies.fs2Core ++
         Dependencies.scodecBits ++
@@ -173,7 +174,7 @@ lazy val searchSolrClient = project
   .dependsOn(
     avroCodec % "compile->compile;test->test",
     solrClient % "compile->compile;test->test",
-    commons % "test->test"
+    commons % "compile->compile;test->test"
   )
 
 lazy val avroCodec = project
@@ -296,9 +297,8 @@ lazy val commonSettings = Seq(
   ),
   Compile / console / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
-  libraryDependencies ++= (
-      Dependencies.scribe
-    ),
+  libraryDependencies ++=
+    Dependencies.scribe,
   libraryDependencies ++= (
       Dependencies.catsEffectMunit ++
         Dependencies.scalacheckEffectMunit

@@ -36,8 +36,10 @@ object FieldTypeClass:
     val strField: FieldTypeClass = "StrField"
     val uuidField: FieldTypeClass = "UUIDField"
     val rankField: FieldTypeClass = "RankField"
+    val datePointField: FieldTypeClass = "DatePointField"
     val dateRangeField: FieldTypeClass = "DateRangeField"
     val boolField: FieldTypeClass = "BoolField"
     val binaryField: FieldTypeClass = "BinaryField"
+    val nestedPath: FieldTypeClass = "solr.NestPathField"
 
   given Encoder[FieldTypeClass] = Encoder.forString

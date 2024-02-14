@@ -18,7 +18,7 @@
 
 package io.renku.search.provision
 
-import cats.effect.{Clock, IO, Resource}
+import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
@@ -29,14 +29,12 @@ import io.renku.queue.client.Encoding
 import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
+import io.renku.search.model.{projects, users}
+import io.renku.search.provision.Generators.projectCreatedGen
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.Project
+import io.renku.search.solr.documents.{Project, User}
 import munit.CatsEffectSuite
-import org.scalacheck.Gen
-import org.scalacheck.Gen.alphaNumChar
 
-import java.time.temporal.ChronoUnit
-import java.time.temporal.ChronoUnit.MILLIS
 import scala.concurrent.duration.*
 
 class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSolrSpec:
@@ -55,7 +53,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
 
         provisioningFiber <- provisioner.provisionSolr.start
 
-        message1 <- generateProjectCreated(prefix = "binary")
+        message1 = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queue,
           avro.write[ProjectCreated](Seq(message1)),
@@ -91,7 +89,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
 
         provisioningFiber <- provisioner.provisionSolr.start
 
-        message1 <- generateProjectCreated(prefix = "json")
+        message1 = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queue,
           avro.writeJson[ProjectCreated](Seq(message1)),
@@ -119,32 +117,19 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
   private def redisAndSolrClients =
     withRedisClient.asQueueClient() >>= withSearchSolrClient().tupleLeft
 
-  private def generateProjectCreated(prefix: String): IO[ProjectCreated] =
-    def generateString(max: Int): Gen[String] =
-      Gen
-        .chooseNum(3, max)
-        .flatMap(Gen.stringOfN(_, alphaNumChar))
-
-    for
-      now <- Clock[IO].realTimeInstant.map(_.truncatedTo(MILLIS))
-      uuid <- IO.randomUUID
-      name = s"$prefix-${generateString(max = 5).sample.get}"
-      desc = s"$prefix ${generateString(max = 10).sample.get}"
-      ownerGen = generateString(max = 5).map(prefix + _)
-    yield ProjectCreated(
-      uuid.toString,
-      name,
-      "slug",
-      Seq.empty,
-      Visibility.PUBLIC,
-      Some(desc),
-      ownerGen.sample.get,
-      now,
-      Seq.empty
-    )
-
   private def toSolrDocument(created: ProjectCreated): Project =
-    Project(created.id, created.name, created.description.getOrElse(""))
+    def toUser(id: String): User = User(users.Id(id))
+    Project(
+      projects.Id(created.id),
+      projects.Name(created.name),
+      projects.Slug(created.slug),
+      created.repositories.map(projects.Repository(_)),
+      projects.Visibility.fromCaseInsensitive(created.visibility.name()),
+      created.description.map(projects.Description(_)),
+      toUser(created.createdBy),
+      projects.CreationDate(created.creationDate),
+      created.members.map(toUser)
+    )
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withSearchSolrClient)

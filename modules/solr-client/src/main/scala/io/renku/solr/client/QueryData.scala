@@ -45,4 +45,11 @@ final case class QueryData(
     )
 
 object QueryData:
+
+  def apply(query: QueryString): QueryData =
+    QueryData(query.q, Nil, query.limit, query.offset, Nil, Map.empty)
+
+  def withChildren(query: QueryString): QueryData =
+    QueryData(query.q, Nil, query.limit, query.offset, Nil, Map("fl" -> "*,[child]"))
+
   given Encoder[QueryData] = deriveEncoder

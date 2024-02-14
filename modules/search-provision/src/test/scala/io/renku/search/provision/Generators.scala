@@ -16,38 +16,40 @@
  * limitations under the License.
  */
 
-package io.renku.events
+package io.renku.search.provision
 
-import io.renku.avro.codec.decoders.all.given
-import io.renku.avro.codec.encoders.all.given
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder, AvroIO}
 import io.renku.events.v1.{ProjectCreated, Visibility}
-import munit.FunSuite
+import org.scalacheck.Gen
+import org.scalacheck.Gen.alphaNumChar
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import java.util.UUID
 
-class SerializeDeserializeTest extends FunSuite {
+object Generators:
 
-  test("serialize and deserialize ProjectCreated") {
-    val data = ProjectCreated(
-      UUID.randomUUID().toString,
-      "my-project",
-      "slug",
-      Seq.empty,
-      Visibility.PUBLIC,
-      Some("a description for it"),
-      "created-by-me",
+  def projectCreatedGen(prefix: String): Gen[ProjectCreated] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      name <- stringGen(max = 5).map(v => s"$prefix-$v")
+      repositories <- Gen.listOfN(Gen.choose(1, 3).generateOne, stringGen(10))
+      visibility <- Gen.oneOf(Visibility.values().toList)
+      maybeDesc <- Gen.option(stringGen(20))
+      creator <- Gen.uuid.map(_.toString)
+    yield ProjectCreated(
+      id,
+      name,
+      name,
+      repositories,
+      visibility,
+      maybeDesc,
+      creator,
       Instant.now().truncatedTo(ChronoUnit.MILLIS),
-      Seq.empty
+      Seq(creator)
     )
-    val avro = AvroIO(ProjectCreated.SCHEMA$)
 
-    val bytes = avro.write(Seq(data))
-    val decoded = avro.read[ProjectCreated](bytes)
+  def stringGen(max: Int): Gen[String] =
+    Gen
+      .chooseNum(3, max)
+      .flatMap(Gen.stringOfN(_, alphaNumChar))
 
-    assertEquals(decoded, List(data))
-  }
-
-}
+  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

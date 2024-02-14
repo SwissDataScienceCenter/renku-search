@@ -21,7 +21,7 @@ package io.renku.search.api
 import cats.effect.Async
 import cats.syntax.all.*
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.Project as SolrProject
+import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import org.http4s.dsl.Http4sDsl
 import scribe.Scribe
 
@@ -49,4 +49,17 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
         .map(_.asLeft[List[Project]])
 
   private def toApiModel(entities: List[SolrProject]): List[Project] =
-    entities.map(p => Project(p.id, p.name, p.description))
+    entities.map { p =>
+      def toUser(user: SolrUser): User = User(user.id)
+      Project(
+        p.id,
+        p.name,
+        p.slug,
+        p.repositories,
+        p.visibility,
+        p.description,
+        toUser(p.createdBy),
+        p.creationDate,
+        p.members.map(toUser)
+      )
+    }

@@ -26,13 +26,30 @@ object EntityDocumentSchema:
     val id: FieldName = FieldName("id")
     val entityType: FieldName = FieldName("_type")
     val name: FieldName = FieldName("name")
+    val slug: FieldName = FieldName("slug")
+    val repositories: FieldName = FieldName("repositories")
+    val visibility: FieldName = FieldName("visibility")
     val description: FieldName = FieldName("description")
+    val createdBy: FieldName = FieldName("createdBy")
+    val creationDate: FieldName = FieldName("creationDate")
+    val members: FieldName = FieldName("members")
+
+  object FieldTypes:
+    val string: FieldType = FieldType.str(TypeName("SearchString")).makeDocValue
+    val text: FieldType = FieldType.text(TypeName("SearchText"), Analyzer.classic)
+    val dateTime: FieldType = FieldType.dateTimePoint(TypeName("SearchDateTime"))
 
   val initialEntityDocumentAdd: Seq[SchemaCommand] = Seq(
-    SchemaCommand.Add(FieldType.str(TypeName("entityType"))),
-    SchemaCommand.Add(FieldType.str(TypeName("name"))),
-    SchemaCommand.Add(FieldType.text(TypeName("description"), Analyzer.classic)),
-    SchemaCommand.Add(Field(Fields.entityType, TypeName("entityType"))),
-    SchemaCommand.Add(Field(Fields.name, TypeName("name"))),
-    SchemaCommand.Add(Field(Fields.description, TypeName("description")))
+    SchemaCommand.Add(FieldTypes.string),
+    SchemaCommand.Add(FieldTypes.text),
+    SchemaCommand.Add(FieldTypes.dateTime),
+    SchemaCommand.Add(Field(Fields.entityType, FieldTypes.string)),
+    SchemaCommand.Add(Field(Fields.name, FieldTypes.string)),
+    SchemaCommand.Add(Field(Fields.slug, FieldTypes.string)),
+    SchemaCommand.Add(Field(Fields.repositories, FieldTypes.string).makeMultiValued),
+    SchemaCommand.Add(Field(Fields.visibility, FieldTypes.string)),
+    SchemaCommand.Add(Field(Fields.description, FieldTypes.text)),
+    SchemaCommand.Add(Field(Fields.createdBy, FieldType.nestedPath)),
+    SchemaCommand.Add(Field(Fields.creationDate, FieldTypes.dateTime)),
+    SchemaCommand.Add(Field(Fields.members, FieldType.nestedPath).makeMultiValued)
   )

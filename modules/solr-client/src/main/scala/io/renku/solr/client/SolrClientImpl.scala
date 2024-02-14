@@ -43,10 +43,10 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
     underlying.expectOr[String](req)(onErrorLog(logger, req)).void
 
   def query[A: Decoder](q: QueryString): F[QueryResponse[A]] =
-    val req = Method.POST(
-      io.renku.solr.client.QueryData(q.q, Nil, q.limit, q.offset, Nil, Map.empty),
-      solrUrl / "query"
-    )
+    query[A](QueryData(q))
+
+  def query[A: Decoder](query: QueryData): F[QueryResponse[A]] =
+    val req = Method.POST(query, solrUrl / "query")
     underlying
       .expectOr[QueryResponse[A]](req)(ResponseLogging.Error(logger, req))
       .flatTap(r => logger.trace(s"Query response: $r"))

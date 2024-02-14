@@ -31,9 +31,11 @@ final case class Field(
     multiValued: Boolean,
     uninvertible: Boolean,
     docValues: Boolean
-)
+):
+  def makeMultiValued: Field = copy(multiValued = true)
 
 object Field:
+
   def apply(name: FieldName, typeName: TypeName): Field =
     Field(
       name = name,
@@ -45,5 +47,8 @@ object Field:
       uninvertible = true,
       docValues = false
     )
+
+  def apply(name: FieldName, fieldType: FieldType): Field =
+    apply(name, fieldType.name)
 
   given Encoder[Field] = deriveEncoder

@@ -21,7 +21,7 @@ package io.renku.search.api
 import cats.effect.IO
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.Project as SolrProject
+import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import munit.CatsEffectSuite
 import scribe.Scribe
 
@@ -42,5 +42,16 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       } yield assert(results contains toApiProject(project1))
     }
 
-  private def toApiProject(project: SolrProject) =
-    Project(project.id, project.name, project.description)
+  private def toApiProject(p: SolrProject) =
+    def toUser(user: SolrUser): User = User(user.id)
+    Project(
+      p.id,
+      p.name,
+      p.slug,
+      p.repositories,
+      p.visibility,
+      p.description,
+      toUser(p.createdBy),
+      p.creationDate,
+      p.members.map(toUser)
+    )

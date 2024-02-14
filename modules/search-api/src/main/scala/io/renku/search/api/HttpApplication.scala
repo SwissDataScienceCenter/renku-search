@@ -28,6 +28,7 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.http4s.{HttpApp, HttpRoutes, Response}
 import sttp.tapir.*
+import sttp.tapir.docs.openapi.OpenAPIDocsOptions
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import sttp.tapir.swagger.SwaggerUIOptions

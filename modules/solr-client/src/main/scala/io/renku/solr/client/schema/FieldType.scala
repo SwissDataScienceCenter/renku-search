@@ -29,7 +29,8 @@ final case class FieldType(
     uninvertible: Boolean = false,
     docValues: Boolean = false,
     sortMissingLast: Boolean = true
-)
+):
+  lazy val makeDocValue: FieldType = copy(docValues = true)
 
 object FieldType:
 
@@ -48,5 +49,11 @@ object FieldType:
   def double(name: TypeName): FieldType =
     FieldType(name, FieldTypeClass.Defaults.doublePointField)
 
-  def dateTime(name: TypeName): FieldType =
+  def dateTimeRange(name: TypeName): FieldType =
     FieldType(name, FieldTypeClass.Defaults.dateRangeField)
+
+  def dateTimePoint(name: TypeName): FieldType =
+    FieldType(name, FieldTypeClass.Defaults.datePointField)
+
+  lazy val nestedPath: FieldType =
+    FieldType(TypeName("_nest_path_"), FieldTypeClass.Defaults.nestedPath)

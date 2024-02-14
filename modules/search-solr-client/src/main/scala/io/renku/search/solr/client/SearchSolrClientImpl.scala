@@ -22,7 +22,7 @@ import cats.effect.Async
 import cats.syntax.all.*
 import io.renku.search.solr.documents.Project
 import io.renku.search.solr.schema.EntityDocumentSchema
-import io.renku.solr.client.{QueryString, SolrClient}
+import io.renku.solr.client.{QueryData, QueryString, SolrClient}
 
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
@@ -33,8 +33,10 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   override def findProjects(phrase: String): F[List[Project]] =
     solrClient
       .query[Project](
-        QueryString(
-          s"${EntityDocumentSchema.Fields.entityType}:${Project.entityType} AND (name:$phrase OR description:$phrase)"
+        QueryData.withChildren(
+          QueryString(
+            s"${EntityDocumentSchema.Fields.entityType}:${Project.entityType} AND (name:$phrase OR description:$phrase)"
+          )
         )
       )
       .map(_.responseBody.docs.toList)

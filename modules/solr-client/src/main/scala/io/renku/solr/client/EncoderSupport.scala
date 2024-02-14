@@ -18,9 +18,11 @@
 
 package io.renku.solr.client
 
+import io.bullet.borer.NullOptions.*
 import io.bullet.borer.{Encoder, Writer}
-import scala.deriving.*
+
 import scala.compiletime.*
+import scala.deriving.*
 
 object EncoderSupport {
 
@@ -58,5 +60,4 @@ object EncoderSupport {
         case _: EmptyTuple => Nil
         case _: (t *: ts)  => constValue[t].toString :: summonLabels[ts]
   }
-
 }

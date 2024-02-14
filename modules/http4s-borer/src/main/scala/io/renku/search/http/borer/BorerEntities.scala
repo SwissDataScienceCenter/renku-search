@@ -22,12 +22,12 @@ import cats.data.EitherT
 import cats.effect.*
 import cats.syntax.all.*
 import fs2.Chunk
-
 import io.bullet.borer.*
 import org.http4s.*
 import org.http4s.headers.*
 
 object BorerEntities:
+
   def decodeEntityJson[F[_]: Async, A: Decoder]: EntityDecoder[F, A] =
     EntityDecoder.decodeBy(MediaType.application.json)(decodeJson)
 

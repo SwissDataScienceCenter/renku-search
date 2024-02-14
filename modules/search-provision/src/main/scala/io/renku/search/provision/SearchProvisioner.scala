@@ -28,8 +28,9 @@ import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectCreated
 import io.renku.queue.client.*
 import io.renku.redis.client.RedisUrl
+import io.renku.search.model.*
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.Project
+import io.renku.search.solr.documents.*
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
@@ -102,9 +103,22 @@ private class SearchProvisionerImpl[F[_]: Async](
     }
 
   private lazy val toSolrDocuments: Seq[ProjectCreated] => Seq[Project] =
-    _.map(pc =>
-      Project(id = pc.id, name = pc.name, description = pc.description.getOrElse(""))
-    )
+    _.map { pc =>
+
+      def toUser(id: String): User = User(users.Id(id))
+
+      Project(
+        projects.Id(pc.id),
+        projects.Name(pc.name),
+        projects.Slug(pc.slug),
+        pc.repositories.map(projects.Repository(_)),
+        projects.Visibility.fromCaseInsensitive(pc.visibility.name()),
+        pc.description.map(projects.Description(_)),
+        toUser(pc.createdBy),
+        projects.CreationDate(pc.creationDate),
+        pc.members.map(toUser)
+      )
+    }
 
   private def markProcessedOnFailure(
       message: Message

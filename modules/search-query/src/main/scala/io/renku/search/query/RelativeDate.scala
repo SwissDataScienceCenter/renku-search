@@ -18,28 +18,17 @@
 
 package io.renku.search.query
 
-import io.bullet.borer.{Decoder, Encoder}
+enum RelativeDate:
+  case Today
+  case Yesterday
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
+  val name: String = productPrefix.toLowerCase
 
-  val name: String = Strings.lowerFirst(productPrefix)
-
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
-
-  private[this] val allNames: String = Field.values.mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
+object RelativeDate:
+  def fromString(str: String): Either[String, RelativeDate] =
+    RelativeDate.values
       .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
+      .toRight(s"Invalid relative date-time: $str")
 
-  def unsafeFromString(str: String): Field =
+  def unsafeFromString(str: String): RelativeDate =
     fromString(str).fold(sys.error, identity)

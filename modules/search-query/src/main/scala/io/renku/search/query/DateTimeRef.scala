@@ -18,28 +18,26 @@
 
 package io.renku.search.query
 
+import cats.syntax.all.*
 import io.bullet.borer.{Decoder, Encoder}
+import io.renku.search.query.parse.DateTimeParser
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
+enum DateTimeRef:
+  case Literal(ref: PartialDateTime)
+  case Relative(ref: RelativeDate)
+  case Calc(ref: DateTimeCalc)
 
-  val name: String = Strings.lowerFirst(productPrefix)
+  val asString: String = this match
+    case Literal(ref)  => ref.asString
+    case Relative(ref) => ref.name
+    case Calc(ref)     => ref.asString
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
+object DateTimeRef:
+  given Encoder[DateTimeRef] = Encoder.forString.contramap(_.asString)
+  given Decoder[DateTimeRef] = Decoder.forString.mapEither { str =>
+    DateTimeParser.dateTimeRef.parseAll(str).leftMap(_.show)
+  }
 
-  private[this] val allNames: String = Field.values.mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+  def apply(ref: PartialDateTime): DateTimeRef = Literal(ref)
+  def apply(ref: RelativeDate): DateTimeRef = Relative(ref)
+  def apply(ref: DateTimeCalc): DateTimeRef = Calc(ref)

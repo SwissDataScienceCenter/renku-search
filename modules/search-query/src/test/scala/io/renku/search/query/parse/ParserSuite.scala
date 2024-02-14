@@ -16,30 +16,24 @@
  * limitations under the License.
  */
 
-package io.renku.search.query
+package io.renku.search.query.parse
 
-import io.bullet.borer.{Decoder, Encoder}
+import cats.data.NonEmptyList
+import cats.syntax.all.*
+import cats.parse.Parser
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
+trait ParserSuite {
 
-  val name: String = Strings.lowerFirst(productPrefix)
+  extension [A](self: Parser[A])
+    def run(str: String): A =
+      self.parseAll(str) match
+        case Left(err) =>
+          Console.err.println(str)
+          Console.err.println(err.show)
+          sys.error("parsing failed")
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
+        case Right(v) => v
 
-  private[this] val allNames: String = Field.values.mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+  def nel[A](a: A, more: A*): NonEmptyList[A] =
+    NonEmptyList(a, more.toList)
+}

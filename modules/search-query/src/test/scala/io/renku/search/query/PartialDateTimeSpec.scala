@@ -18,28 +18,32 @@
 
 package io.renku.search.query
 
-import io.bullet.borer.{Decoder, Encoder}
+import munit.FunSuite
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
+import java.time.{Instant, ZoneOffset}
 
-  val name: String = Strings.lowerFirst(productPrefix)
+class PartialDateTimeSpec extends FunSuite {
+  val utc = ZoneOffset.UTC
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
+  test("minimum") {
+    assertEquals(
+      PartialDateTime.unsafeFromString("2023-01").instantMin(utc),
+      Instant.parse("2023-01-01T00:00:00Z")
+    )
+  }
 
-  private[this] val allNames: String = Field.values.mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+  test("leap year") {
+    assertEquals(
+      PartialDateTime
+        .unsafeFromString("2024-02")
+        .instantMax(utc),
+      Instant.parse("2024-02-29T23:59:59Z")
+    )
+    assertEquals(
+      PartialDateTime
+        .unsafeFromString("2023-02")
+        .instantMax(utc),
+      Instant.parse("2023-02-28T23:59:59Z")
+    )
+  }
+}

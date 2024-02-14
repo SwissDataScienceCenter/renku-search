@@ -18,28 +18,27 @@
 
 package io.renku.search.query
 
-import io.bullet.borer.{Decoder, Encoder}
+import java.time.Period
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
+final case class DateTimeCalc(
+    ref: PartialDateTime | RelativeDate,
+    amount: Period,
+    range: Boolean
+):
+  def asString: String =
+    val period = amount.getDays.abs
+    val sep =
+      if (range) DateTimeCalc.range
+      else if (amount.isNegative) DateTimeCalc.sub
+      else DateTimeCalc.add
+    ref match
+      case d: PartialDateTime =>
+        s"${d.asString}$sep${period}d"
 
-  val name: String = Strings.lowerFirst(productPrefix)
+      case d: RelativeDate =>
+        s"${d.name}$sep${period}d"
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
-
-  private[this] val allNames: String = Field.values.mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+object DateTimeCalc:
+  private[query] val add: String = "+"
+  private[query] val sub: String = "-"
+  private[query] val range: String = "/"

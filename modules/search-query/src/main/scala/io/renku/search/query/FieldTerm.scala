@@ -21,10 +21,6 @@ package io.renku.search.query
 import cats.data.NonEmptyList
 import io.renku.commons.Visibility
 
-import java.time.Instant
-import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
-
 enum FieldTerm(val field: Field, val cmp: Comparison):
   case ProjectIdIs(values: NonEmptyList[String])
       extends FieldTerm(Field.ProjectId, Comparison.Is)
@@ -32,7 +28,7 @@ enum FieldTerm(val field: Field, val cmp: Comparison):
   case SlugIs(values: NonEmptyList[String]) extends FieldTerm(Field.Slug, Comparison.Is)
   case VisibilityIs(values: NonEmptyList[Visibility])
       extends FieldTerm(Field.Visibility, Comparison.Is)
-  case Created(override val cmp: Comparison, value: Instant)
+  case Created(override val cmp: Comparison, values: NonEmptyList[DateTimeRef])
       extends FieldTerm(Field.Created, cmp)
   case CreatedByIs(values: NonEmptyList[String])
       extends FieldTerm(Field.CreatedBy, Comparison.Is)
@@ -45,16 +41,15 @@ enum FieldTerm(val field: Field, val cmp: Comparison):
       case VisibilityIs(values) =>
         val vis = values.toList.distinct.map(_.name)
         vis.mkString(",")
-      case Created(_, value) =>
-        val truncated = value.truncatedTo(ChronoUnit.SECONDS)
-        DateTimeFormatter.ISO_INSTANT.format(truncated)
+      case Created(_, values)  => FieldTerm.nelToString(values.map(_.asString))
       case CreatedByIs(values) => FieldTerm.nelToString(values)
 
     s"${field.name}${cmp.asString}${value}"
 
 object FieldTerm:
   private def quote(s: String): String =
-    if (s.exists(c => c.isWhitespace || c == ',')) s"\"$s\""
+    if (s.exists(c => c.isWhitespace || c == ',' || c == '"'))
+      s"\"${s.replace("\"", "\\\"")}\""
     else s
 
   private def nelToString(nel: NonEmptyList[String]): String =

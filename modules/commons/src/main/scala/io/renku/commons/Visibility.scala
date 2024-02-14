@@ -22,4 +22,8 @@ enum Visibility:
   case Public
   case Private
 
-  def name: String = productPrefix
+  def name: String = productPrefix.toLowerCase
+
+object Visibility:
+  def unsafeFromString(s: String): Visibility =
+    Visibility.valueOf(s.capitalize)

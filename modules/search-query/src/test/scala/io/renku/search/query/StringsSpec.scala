@@ -18,28 +18,15 @@
 
 package io.renku.search.query
 
-import io.bullet.borer.{Decoder, Encoder}
+import munit.FunSuite
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
+class StringsSpec extends FunSuite {
 
-  val name: String = Strings.lowerFirst(productPrefix)
+  extension (s: String) def lowerFirst = Strings.lowerFirst(s)
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
-
-  private[this] val allNames: String = Field.values.mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+  test("make lower") {
+    assertEquals("Cap".lowerFirst, "cap")
+    assertEquals("cup".lowerFirst, "cup")
+    assertEquals("ProductId".lowerFirst, "productId")
+  }
+}

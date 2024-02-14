@@ -18,28 +18,8 @@
 
 package io.renku.search.query
 
-import io.bullet.borer.{Decoder, Encoder}
-
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
-
-  val name: String = Strings.lowerFirst(productPrefix)
-
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
-
-  private[this] val allNames: String = Field.values.mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+private object Strings {
+  def lowerFirst(s: String) =
+    if (s == null || s.isEmpty || s.charAt(0).isLower) s
+    else s.updated(0, s.charAt(0).toLower)
+}

@@ -299,7 +299,7 @@ lazy val commonSettings = Seq(
     "-language:postfixOps", // enabling postfixes
     "-deprecation", // Emit warning and location for usages of deprecated APIs.
     "-encoding", "utf-8", // Specify character encoding used by source files.
-    "-explaintypes", // Explain type errors in more detail.
+    //"-explaintypes", // Explain type errors in more detail.
     "-feature", // Emit warning and location for usages of features that should be imported explicitly.
     "-unchecked", // Enable additional warnings where generated code depends on assumptions.
     "-language:higherKinds", // Allow higher-kinded types
@@ -316,7 +316,8 @@ lazy val commonSettings = Seq(
     Dependencies.scribe,
   libraryDependencies ++= (
       Dependencies.catsEffectMunit ++
-        Dependencies.scalacheckEffectMunit
+        Dependencies.scalacheckEffectMunit ++
+        Dependencies.catsScalaCheck
     ).map(_ % Test),
   // Format: on
   organizationName := "Swiss Data Science Center (SDSC)",

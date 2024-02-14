@@ -16,39 +16,37 @@
  * limitations under the License.
  */
 
-package io.renku.search.query
+package io.renku.search.query.json
 
 import cats.data.NonEmptyList
 import io.bullet.borer.compat.cats.*
 import io.bullet.borer.{Decoder, Encoder, Reader, Writer}
 import io.renku.commons.Visibility
+import io.renku.search.query.*
 import io.renku.search.query.FieldTerm.*
 import io.renku.search.query.Query.Segment
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import scala.collection.mutable.ListBuffer
 
 /** Use these json encoding to have it more convenient json than the derived version with
   * nested objects or discriminator field.
   *
   * {{{
-  * {
-  *   "projectId": "p1",
-  *   "name": "test",
-  *   "_text": "some phrase",
-  *    "creationDate": ["<", "2024-01-29T12:00"]
-  * }
+  *  [
+  *   {
+  *     "projectId": ["p1", "p2"],
+  *     "projectId": "p2",
+  *     "name": "test",
+  *     "_text": "some phrase",
+  *     "creationDate": ["<", "2024-01-29T12:00"]
+  *   }
+  *   ]
   * }}}
   */
-private object QueryJsonCodec:
+private[query] object QueryJsonCodec:
   // temporary
   given Decoder[Visibility] = Decoder.forString.map(Visibility.valueOf)
   given Encoder[Visibility] = Encoder.forString.contramap(_.name)
-  given Decoder[Instant] =
-    Decoder.forString.map(Instant.parse).map(_.truncatedTo(ChronoUnit.SECONDS))
-  given Encoder[Instant] =
-    Encoder.forString.contramap(_.truncatedTo(ChronoUnit.SECONDS).toString)
 
   private[this] val freeTextField = "_text"
 
@@ -84,7 +82,7 @@ private object QueryJsonCodec:
         writeNelValue(w, values)
 
       case FieldTerm.Created(cmp, date) =>
-        Encoder.forTuple[(Comparison, Instant)].write(w, (cmp, date))
+        Encoder.forTuple[(Comparison, List[DateTimeRef])].write(w, (cmp, date.toList))
 
   def encoder: Encoder[List[Segment]] =
     new Encoder[List[Segment]] {
@@ -130,7 +128,8 @@ private object QueryJsonCodec:
         Segment.Field(CreatedByIs(values))
 
       case Name.FieldName(Field.Created) =>
-        val (cmp, date) = Decoder.forTuple[(Comparison, Instant)].read(r)
+        val (cmp, date) =
+          Decoder.forTuple[(Comparison, NonEmptyList[DateTimeRef])].read(r)
         Segment.Field(Created(cmp, date))
 
   val decoder: Decoder[List[Segment]] =

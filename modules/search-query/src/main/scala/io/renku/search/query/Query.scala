@@ -19,12 +19,13 @@
 package io.renku.search.query
 
 import cats.data.NonEmptyList
+import cats.syntax.all.*
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.commons.Visibility
+import io.renku.search.query.FieldTerm.Created
 import io.renku.search.query.Query.Segment
-
-import java.time.Instant
-import java.time.temporal.ChronoUnit
+import io.renku.search.query.json.QueryJsonCodec
+import io.renku.search.query.parse.QueryParser
 
 final case class Query(
     segments: List[Query.Segment]
@@ -42,6 +43,11 @@ final case class Query(
 object Query:
   given Encoder[Query] = QueryJsonCodec.encoder.contramap(_.segments)
   given Decoder[Query] = QueryJsonCodec.decoder.map(Query.apply)
+
+  def parse(str: String): Either[String, Query] =
+    val trimmed = str.trim
+    if (trimmed.isEmpty) Right(empty)
+    else QueryParser.query.parseAll(trimmed).leftMap(_.show)
 
   enum Segment:
     case Field(value: FieldTerm)
@@ -63,20 +69,23 @@ object Query:
     def visibilityIs(value: Visibility, more: Visibility*): Segment =
       Segment.Field(FieldTerm.VisibilityIs(NonEmptyList(value, more.toList)))
 
-    def creationDateIs(date: Instant): Segment =
-      Segment.Field(
-        FieldTerm.Created(Comparison.Is, date.truncatedTo(ChronoUnit.SECONDS))
-      )
+    def creationDateIs(date: DateTimeRef, dates: DateTimeRef*): Segment =
+      Segment.Field(Created(Comparison.Is, NonEmptyList(date, dates.toList)))
 
-    def creationDateGreater(date: Instant): Segment =
-      Segment.Field(
-        FieldTerm.Created(Comparison.GreaterThan, date.truncatedTo(ChronoUnit.SECONDS))
-      )
+    def creationDateLt(date: DateTimeRef, dates: DateTimeRef*): Segment =
+      Segment.Field(Created(Comparison.LowerThan, NonEmptyList(date, dates.toList)))
 
-    def creationDateLower(date: Instant): Segment =
-      Segment.Field(
-        FieldTerm.Created(Comparison.LowerThan, date.truncatedTo(ChronoUnit.SECONDS))
-      )
+    def creationDateGt(date: DateTimeRef, dates: DateTimeRef*): Segment =
+      Segment.Field(Created(Comparison.GreaterThan, NonEmptyList(date, dates.toList)))
+
+    def creationDateIs(date: PartialDateTime, dates: PartialDateTime*): Segment =
+      creationDateIs(DateTimeRef(date), dates.map(DateTimeRef.apply): _*)
+
+    def creationDateGt(date: PartialDateTime, dates: PartialDateTime*): Segment =
+      creationDateGt(DateTimeRef(date), dates.map(DateTimeRef.apply): _*)
+
+    def creationDateLt(date: PartialDateTime, dates: PartialDateTime*): Segment =
+      creationDateLt(DateTimeRef(date), dates.map(DateTimeRef.apply): _*)
 
   val empty: Query = Query(Nil)
 

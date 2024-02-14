@@ -11,6 +11,7 @@ object Dependencies {
     val catsEffect = "3.5.3"
     val catsEffectMunit = "1.0.7"
     val catsParse = "1.0.0"
+    val catsScalaCheck = "0.3.2"
     val ciris = "3.5.0"
     val fs2 = "3.9.4"
     val http4s = "0.23.25"
@@ -21,6 +22,10 @@ object Dependencies {
     val scribe = "3.13.0"
     val tapir = "1.9.9"
   }
+
+  val catsScalaCheck = Seq(
+    "io.chrisdavenport" %% "cats-scalacheck" % V.catsScalaCheck
+  )
 
   val catsParse = Seq(
     "org.typelevel" %% "cats-parse" % V.catsParse

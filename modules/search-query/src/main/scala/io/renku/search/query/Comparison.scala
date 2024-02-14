@@ -36,3 +36,6 @@ object Comparison:
 
   private[query] def fromString(str: String): Either[String, Comparison] =
     Comparison.values.find(_.asString == str).toRight(s"Invalid comparison: $str")
+
+  private[query] def unsafeFromString(str: String): Comparison =
+    fromString(str).fold(sys.error, identity)

@@ -25,7 +25,7 @@ import io.renku.commons.Visibility
 import io.renku.search.query.FieldTerm.Created
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.json.QueryJsonCodec
-import io.renku.search.query.parse.QueryParser
+import io.renku.search.query.parse.{QueryParser, QueryUtil}
 
 final case class Query(
     segments: List[Query.Segment]
@@ -47,13 +47,23 @@ object Query:
   def parse(str: String): Either[String, Query] =
     val trimmed = str.trim
     if (trimmed.isEmpty) Right(empty)
-    else QueryParser.query.parseAll(trimmed).leftMap(_.show)
+    else
+      QueryParser.query
+        .parseAll(trimmed)
+        .leftMap(_.show)
+        .map(QueryUtil.collapse)
 
   enum Segment:
     case Field(value: FieldTerm)
     case Text(value: String)
 
   object Segment:
+    extension (self: Segment.Text)
+      def ++(other: Segment.Text): Segment.Text =
+        if (other.value.isEmpty) self
+        else if (self.value.isEmpty) other
+        else Segment.Text(s"${self.value} ${other.value}")
+
     def text(phrase: String): Segment =
       Segment.Text(phrase)
 

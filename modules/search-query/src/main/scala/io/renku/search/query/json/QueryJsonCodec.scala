@@ -45,7 +45,7 @@ import scala.collection.mutable.ListBuffer
   */
 private[query] object QueryJsonCodec:
   // temporary
-  given Decoder[Visibility] = Decoder.forString.map(Visibility.valueOf)
+  given Decoder[Visibility] = Decoder.forString.map(Visibility.unsafeFromString)
   given Encoder[Visibility] = Encoder.forString.contramap(_.name)
 
   private[this] val freeTextField = "_text"

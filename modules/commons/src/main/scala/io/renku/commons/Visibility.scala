@@ -18,6 +18,8 @@
 
 package io.renku.commons
 
+import cats.kernel.Order
+
 enum Visibility:
   case Public
   case Private
@@ -25,5 +27,7 @@ enum Visibility:
   def name: String = productPrefix.toLowerCase
 
 object Visibility:
+  given Order[Visibility] = Order.by(_.ordinal)
+
   def unsafeFromString(s: String): Visibility =
     Visibility.valueOf(s.capitalize)

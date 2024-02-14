@@ -19,13 +19,12 @@
 package io.renku.search.query.parse
 
 import cats.data.NonEmptyList as Nel
-import io.renku.search.query.Comparison.{GreaterThan, LowerThan}
 import io.renku.search.query.*
-import munit.FunSuite
+import io.renku.search.query.Comparison.{GreaterThan, LowerThan}
+import munit.{FunSuite, ScalaCheckSuite}
+import org.scalacheck.Prop
 
-import java.util.concurrent.atomic.AtomicInteger
-
-class QueryParserSpec extends FunSuite with ParserSuite {
+class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
 
   test("string list") {
     val p = QueryParser.values
@@ -93,28 +92,21 @@ class QueryParserSpec extends FunSuite with ParserSuite {
     )
   }
 
-  test("example queries") {
+  test("example queries".ignore) {
     val p = QueryParser.query
-    println(p.run("projectId:1 foo name:test foo bar created>today/5d"))
+    println(p.run("name:\"vQgCg mpZU4cCgF3N eVZUMkH7\",JHRt visibility:private WX59P"))
   }
 
-  test("generated queries") {
-    val counter = new AtomicInteger(0)
-    QueryGenerators
-      .nelOfN(20, QueryGenerators.query)
-      .sample
-      .toList
-      .flatMap(_.toList)
-      .foreach { q =>
-        val qStr = q.asString
-        println(s">>: ${qStr}")
-        val parsed = Query.parse(qStr)
-        if (parsed.isLeft) {
-          val _ = counter.incrementAndGet()
-        }
-        println(s"  >> $parsed")
+  property("generated queries") {
+    Prop.forAll(QueryGenerators.query) { q =>
+      val qStr = q.asString
+      val parsed = Query.parse(qStr).fold(sys.error, identity)
+      if (q != parsed) {
+        // this is for better error messages when things fail
+        println(qStr)
+        assertEquals(q, parsed)
       }
-
-    println(s"==== Errors: ${counter.get()}")
+      parsed == q
+    }
   }
 }

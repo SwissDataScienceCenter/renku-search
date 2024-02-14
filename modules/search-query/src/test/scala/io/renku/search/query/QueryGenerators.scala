@@ -21,6 +21,7 @@ package io.renku.search.query
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 import io.renku.commons.Visibility
+import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
 
@@ -34,7 +35,7 @@ object QueryGenerators:
     for {
       h <- Gen.choose(0, 23)
       m <- Gen.option(Gen.choose(0, 59))
-      s <- Gen.option(Gen.choose(0, 59))
+      s <- if (m.isDefined) Gen.option(Gen.choose(0, 59)) else Gen.const(None)
     } yield PartialDateTime.Time(h, m, s)
 
   val partialDate: Gen[PartialDateTime.Date] =
@@ -55,13 +56,14 @@ object QueryGenerators:
     val ref: Gen[PartialDateTime | RelativeDate] =
       Gen.oneOf(partialDateTime, relativeDate)
 
-    val period: Gen[Period] =
+    val periodPos: Gen[Period] = Gen.oneOf(1 to 13).map(n => Period.ofDays(n))
+    val periodNeg: Gen[Period] =
       Gen.oneOf((-8 to -1) ++ (1 to 8)).map(n => Period.ofDays(n))
 
     for {
       date <- ref
-      amount <- period
       range <- Gen.oneOf(true, false)
+      amount <- if (range) periodPos else periodNeg
     } yield DateTimeCalc(date, amount, range)
   }
 
@@ -86,15 +88,28 @@ object QueryGenerators:
       en <- Gen.listOfN(n - 1, gen)
     } yield NonEmptyList(e0, en)
 
-  private val simpleString: Gen[String] = Gen.alphaNumStr
-  private val quotedString: Gen[String] =
-    Gen.alphaNumStr.map(s => s"\"$s\"")
+  private val alphaNumChars = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')
+  private val simpleWord: Gen[String] = {
+    val len = Gen.choose(2, 12)
+    len.flatMap(n => Gen.stringOfN(n, Gen.oneOf(alphaNumChars)))
+  }
 
-  private val valueString: Gen[String] =
-    Gen.oneOf(simpleString, quotedString)
+  private val word: Gen[String] = {
+    val chars = alphaNumChars ++ "/{}*?()-:@…_[]^!<>=&#|~`+%\"'".toSeq
+    val len = Gen.choose(2, 12)
+    len.flatMap(n => Gen.stringOfN(n, Gen.oneOf(chars)))
+  }
+
+  private val phrase: Gen[String] = {
+    val w = Gen.frequency(5 -> simpleWord, 1 -> word)
+    Gen
+      .choose(1, 3)
+      .flatMap(n => Gen.listOfN(n, w))
+      .map(_.mkString(" "))
+  }
 
   private val stringValues: Gen[NonEmptyList[String]] =
-    Gen.choose(1, 4).flatMap(n => nelOfN(n, valueString))
+    Gen.choose(1, 4).flatMap(n => nelOfN(n, phrase))
 
   val projectIdTerm: Gen[FieldTerm] =
     stringValues.map(FieldTerm.ProjectIdIs(_))
@@ -111,7 +126,7 @@ object QueryGenerators:
   val visibilityTerm: Gen[FieldTerm] =
     Gen
       .frequency(10 -> visibility.map(NonEmptyList.one), 1 -> nelOfN(2, visibility))
-      .map(FieldTerm.VisibilityIs(_))
+      .map(vs => FieldTerm.VisibilityIs(vs.distinct))
 
   private val comparison: Gen[Comparison] =
     Gen.oneOf(Comparison.values.toSeq)
@@ -135,7 +150,7 @@ object QueryGenerators:
 
   val freeText: Gen[String] =
     Gen.choose(1, 5).flatMap { len =>
-      Gen.listOfN(len, valueString).map(_.mkString(" "))
+      Gen.listOfN(len, phrase).map(_.mkString(" "))
     }
 
   val segment: Gen[Query.Segment] =
@@ -149,3 +164,4 @@ object QueryGenerators:
       .choose(0, 12)
       .flatMap(n => Gen.listOfN(n, segment))
       .map(Query.apply)
+      .map(QueryUtil.collapse)

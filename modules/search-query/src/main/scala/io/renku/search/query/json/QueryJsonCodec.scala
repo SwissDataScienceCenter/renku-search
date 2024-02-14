@@ -21,7 +21,7 @@ package io.renku.search.query.json
 import cats.data.NonEmptyList
 import io.bullet.borer.compat.cats.*
 import io.bullet.borer.{Decoder, Encoder, Reader, Writer}
-import io.renku.commons.Visibility
+import io.renku.search.model.projects.Visibility
 import io.renku.search.query.*
 import io.renku.search.query.FieldTerm.*
 import io.renku.search.query.Query.Segment
@@ -44,10 +44,6 @@ import scala.collection.mutable.ListBuffer
   * }}}
   */
 private[query] object QueryJsonCodec:
-  // temporary
-  given Decoder[Visibility] = Decoder.forString.map(Visibility.unsafeFromString)
-  given Encoder[Visibility] = Encoder.forString.contramap(_.name)
-
   private[this] val freeTextField = "_text"
 
   enum Name:

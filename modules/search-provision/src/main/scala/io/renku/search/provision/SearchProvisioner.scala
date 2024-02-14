@@ -112,7 +112,7 @@ private class SearchProvisionerImpl[F[_]: Async](
         projects.Name(pc.name),
         projects.Slug(pc.slug),
         pc.repositories.map(projects.Repository(_)),
-        projects.Visibility.fromCaseInsensitive(pc.visibility.name()),
+        projects.Visibility.unsafeFromString(pc.visibility.name()),
         pc.description.map(projects.Description(_)),
         toUser(pc.createdBy),
         projects.CreationDate(pc.creationDate),

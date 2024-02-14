@@ -20,7 +20,7 @@ package io.renku.search.query
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import io.renku.commons.Visibility
+import io.renku.search.model.projects.Visibility
 import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*

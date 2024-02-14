@@ -21,7 +21,7 @@ package io.renku.search.query
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 import io.bullet.borer.{Decoder, Encoder}
-import io.renku.commons.Visibility
+import io.renku.search.model.projects.Visibility
 import io.renku.search.query.FieldTerm.Created
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.json.QueryJsonCodec

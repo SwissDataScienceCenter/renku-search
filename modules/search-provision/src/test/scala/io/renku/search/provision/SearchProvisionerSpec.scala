@@ -124,7 +124,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
       projects.Name(created.name),
       projects.Slug(created.slug),
       created.repositories.map(projects.Repository(_)),
-      projects.Visibility.fromCaseInsensitive(created.visibility.name()),
+      projects.Visibility.unsafeFromString(created.visibility.name()),
       created.description.map(projects.Description(_)),
       toUser(created.createdBy),
       projects.CreationDate(created.creationDate),

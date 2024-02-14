@@ -19,7 +19,7 @@
 package io.renku.search.query
 
 import cats.data.NonEmptyList
-import io.renku.commons.Visibility
+import io.renku.search.model.projects.Visibility
 
 enum FieldTerm(val field: Field, val cmp: Comparison):
   case ProjectIdIs(values: NonEmptyList[String])

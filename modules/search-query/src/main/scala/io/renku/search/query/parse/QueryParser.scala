@@ -20,7 +20,7 @@ package io.renku.search.query.parse
 
 import cats.data.NonEmptyList
 import cats.parse.{Parser as P, Parser0 as P0}
-import io.renku.commons.Visibility
+import io.renku.search.model.projects.Visibility
 import io.renku.search.query.*
 
 private[query] object QueryParser {

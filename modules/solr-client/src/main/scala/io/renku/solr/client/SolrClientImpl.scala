@@ -25,7 +25,7 @@ import io.renku.search.http.borer.BorerEntityJsonCodec
 import io.renku.search.http.{HttpClientDsl, ResponseLogging}
 import io.renku.solr.client.schema.{SchemaCommand, SchemaJsonCodec}
 import org.http4s.client.Client
-import org.http4s.{Method, Uri}
+import org.http4s.{BasicCredentials, Method, Uri}
 
 import scala.concurrent.duration.Duration
 
@@ -39,27 +39,29 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
   private[this] val solrUrl: Uri = config.baseUrl / config.core
 
   def modifySchema(cmds: Seq[SchemaCommand], onErrorLog: ResponseLogging): F[Unit] =
-    val req = Method.POST(cmds, (solrUrl / "schema").withQueryParam("commit", "true"))
+    val req = Method
+      .POST(cmds, (solrUrl / "schema").withQueryParam("commit", "true"))
+      .withBasicAuth(credentials)
     underlying.expectOr[String](req)(onErrorLog(logger, req)).void
 
   def query[A: Decoder](q: QueryString): F[QueryResponse[A]] =
     query[A](QueryData(q))
 
   def query[A: Decoder](query: QueryData): F[QueryResponse[A]] =
-    val req = Method.POST(query, solrUrl / "query")
+    val req = Method.POST(query, solrUrl / "query").withBasicAuth(credentials)
     underlying
       .expectOr[QueryResponse[A]](req)(ResponseLogging.Error(logger, req))
       .flatTap(r => logger.trace(s"Query response: $r"))
 
   def delete(q: QueryString): F[Unit] =
-    val req = Method.POST(DeleteRequest(q.q), makeUpdateUrl)
+    val req = Method.POST(DeleteRequest(q.q), makeUpdateUrl).withBasicAuth(credentials)
     underlying
       .expectOr[InsertResponse](req)(ResponseLogging.Error(logger, req))
       .flatTap(r => logger.trace(s"Solr delete response: $r"))
       .void
 
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse] =
-    val req = Method.POST(docs, makeUpdateUrl)
+    val req = Method.POST(docs, makeUpdateUrl).withBasicAuth(credentials)
     underlying
       .expectOr[InsertResponse](req)(ResponseLogging.Error(logger, req))
       .flatTap(r => logger.trace(s"Solr inserted response: $r"))
@@ -71,3 +73,6 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
       case Some(d) => base.withQueryParam("commitWithin", d.toMillis)
       case None    => base
   }
+
+  private lazy val credentials: Option[BasicCredentials] =
+    config.maybeUser.map(u => BasicCredentials(u.username, u.password))

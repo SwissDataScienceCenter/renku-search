@@ -32,6 +32,7 @@ trait SolrSpec:
   protected lazy val solrConfig: SolrConfig = SolrConfig(
     Uri.unsafeFromString(server.url) / "solr",
     server.genericCoreName,
+    maybeUser = None,
     commitWithin = Some(Duration.Zero),
     logMessageBodies = true
   )

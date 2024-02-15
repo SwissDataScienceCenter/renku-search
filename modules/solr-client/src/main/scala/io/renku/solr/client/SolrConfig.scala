@@ -25,6 +25,9 @@ import scala.concurrent.duration.FiniteDuration
 final case class SolrConfig(
     baseUrl: Uri,
     core: String,
+    maybeUser: Option[SolrUser],
     commitWithin: Option[FiniteDuration],
     logMessageBodies: Boolean
 )
+
+final case class SolrUser(username: String, password: String)

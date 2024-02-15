@@ -22,7 +22,7 @@ import cats.syntax.all.*
 import ciris.*
 import io.renku.queue.client.QueueName
 import io.renku.redis.client.RedisUrl
-import io.renku.solr.client.SolrConfig
+import io.renku.solr.client.{SolrConfig, SolrUser}
 import org.http4s.Uri
 
 import scala.concurrent.duration.FiniteDuration
@@ -43,6 +43,11 @@ object ConfigValues extends ConfigDecoders:
   val solrConfig: ConfigValue[Effect, SolrConfig] = {
     val url = env(s"${prefix}_SOLR_URL").default("http://localhost:8983/solr").as[Uri]
     val core = env(s"${prefix}_SOLR_CORE").default("search-core-test")
+    val maybeUser =
+      (env(s"${prefix}_SOLR_USER").option -> env(s"${prefix}_SOLR_PASS").option)
+        .mapN { case (maybeUsername, maybePass) =>
+          (maybeUsername, maybePass).mapN(SolrUser.apply)
+        }
     val defaultCommit =
       env(s"${prefix}_SOLR_DEFAULT_COMMIT_WITHIN")
         .default("0 seconds")
@@ -50,5 +55,5 @@ object ConfigValues extends ConfigDecoders:
         .option
     val logMessageBodies =
       env(s"${prefix}_SOLR_LOG_MESSAGE_BODIES").default("false").as[Boolean]
-    (url, core, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)
+    (url, core, maybeUser, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)
   }

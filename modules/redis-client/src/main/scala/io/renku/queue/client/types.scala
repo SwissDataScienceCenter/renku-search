@@ -21,6 +21,7 @@ package io.renku.queue.client
 opaque type QueueName = String
 object QueueName:
   def apply(v: String): QueueName = v
+  extension (self: QueueName) def name: String = self
 
 opaque type ClientId = String
 object ClientId:

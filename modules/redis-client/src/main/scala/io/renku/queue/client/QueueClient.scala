@@ -20,7 +20,7 @@ package io.renku.queue.client
 
 import cats.effect.{Async, Resource}
 import fs2.Stream
-import io.renku.redis.client.{RedisQueueClient, RedisUrl}
+import io.renku.redis.client.{RedisConfig, RedisQueueClient}
 import scodec.bits.ByteVector
 
 trait QueueClient[F[_]] {
@@ -43,5 +43,5 @@ trait QueueClient[F[_]] {
 }
 
 object QueueClient:
-  def apply[F[_]: Async](redisUrl: RedisUrl): Resource[F, QueueClient[F]] =
-    RedisQueueClient[F](redisUrl)
+  def apply[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
+    RedisQueueClient[F](redisConfig)

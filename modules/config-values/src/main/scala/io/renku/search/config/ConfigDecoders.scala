@@ -21,12 +21,13 @@ package io.renku.search.config
 import cats.syntax.all.*
 import ciris.{ConfigDecoder, ConfigError}
 import io.renku.queue.client.QueueName
-import io.renku.redis.client.RedisUrl
+import io.renku.redis.client.*
 import org.http4s.Uri
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 
 trait ConfigDecoders:
+
   given ConfigDecoder[String, Uri] =
     ConfigDecoder[String].mapEither { (_, s) =>
       Uri.fromString(s).leftMap(err => ConfigError(err.getMessage))
@@ -37,8 +38,16 @@ trait ConfigDecoders:
       Duration.unapply(s).map(Duration.apply.tupled).filter(_.isFinite)
     }
 
-  given ConfigDecoder[String, RedisUrl] =
-    ConfigDecoder[String].map(s => RedisUrl(s))
+  given ConfigDecoder[String, RedisHost] =
+    ConfigDecoder[String].map(RedisHost.apply)
+  given ConfigDecoder[String, RedisPort] =
+    ConfigDecoder[String, Int].map(RedisPort.apply)
+  given ConfigDecoder[String, RedisDB] =
+    ConfigDecoder[String, Int].map(RedisDB.apply)
+  given ConfigDecoder[String, RedisPassword] =
+    ConfigDecoder[String].map(RedisPassword.apply)
+  given ConfigDecoder[String, RedisMasterSet] =
+    ConfigDecoder[String].map(RedisMasterSet.apply)
 
   given ConfigDecoder[String, QueueName] =
     ConfigDecoder[String].map(s => QueueName(s))

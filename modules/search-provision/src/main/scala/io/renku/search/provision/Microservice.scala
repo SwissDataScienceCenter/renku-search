@@ -37,7 +37,7 @@ object Microservice extends IOApp:
     } yield ExitCode.Success
 
   private def startProvisioning(cfg: SearchProvisionConfig): IO[Unit] =
-    SearchProvisioner[IO](cfg.queueName, cfg.redisUrl, cfg.solrConfig)
+    SearchProvisioner[IO](cfg.queueName, cfg.redisConfig, cfg.solrConfig)
       .evalMap(_.provisionSolr.start)
       .use(_ => IO.never)
       .handleErrorWith { err =>

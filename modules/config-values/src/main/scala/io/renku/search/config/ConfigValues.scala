@@ -21,7 +21,7 @@ package io.renku.search.config
 import cats.syntax.all.*
 import ciris.*
 import io.renku.queue.client.QueueName
-import io.renku.redis.client.RedisUrl
+import io.renku.redis.client.*
 import io.renku.solr.client.{SolrConfig, SolrUser}
 import org.http4s.Uri
 
@@ -31,8 +31,15 @@ object ConfigValues extends ConfigDecoders:
 
   private val prefix = "RS"
 
-  val redisUrl: ConfigValue[Effect, RedisUrl] =
-    env(s"${prefix}_REDIS_URL").default("redis://localhost:6379").as[RedisUrl]
+  val redisConfig: ConfigValue[Effect, RedisConfig] = {
+    val host = env(s"${prefix}_REDIS_HOST").default("localhost").as[RedisHost]
+    val port = env(s"${prefix}_REDIS_PORT").default("6379").as[RedisPort]
+    val maybeDB = env(s"${prefix}_REDIS_DB").as[RedisDB].option
+    val maybePass = env(s"${prefix}_REDIS_PASSWORD").as[RedisPassword].option
+    val maybeMasterSet = env(s"${prefix}_REDIS_MASTER_SET").as[RedisMasterSet].option
+
+    (host, port, maybeDB, maybePass, maybeMasterSet).mapN(RedisConfig.apply)
+  }
 
   val eventsQueueName: ConfigValue[Effect, QueueName] =
     env(s"${prefix}_REDIS_QUEUE_NAME").default("events").as[QueueName]

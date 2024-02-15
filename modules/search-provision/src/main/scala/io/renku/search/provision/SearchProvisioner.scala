@@ -27,7 +27,7 @@ import io.renku.avro.codec.AvroReader
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectCreated
 import io.renku.queue.client.*
-import io.renku.redis.client.RedisUrl
+import io.renku.redis.client.RedisConfig
 import io.renku.search.model.*
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.*
@@ -45,10 +45,10 @@ object SearchProvisioner:
 
   def apply[F[_]: Async: Network](
       queueName: QueueName,
-      redisUrl: RedisUrl,
+      redisConfig: RedisConfig,
       solrConfig: SolrConfig
   ): Resource[F, SearchProvisioner[F]] =
-    QueueClient[F](redisUrl)
+    QueueClient[F](redisConfig)
       .flatMap(qc => SearchSolrClient[F](solrConfig).tupleLeft(qc))
       .map { case (qc, sc) => new SearchProvisionerImpl[F](clientId, queueName, qc, sc) }
 

@@ -27,7 +27,7 @@ import dev.profunktor.redis4cats.effect.MkRedis.forAsync
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import io.lettuce.core.RedisConnectionException
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.RedisQueueClient
+import io.renku.redis.client.*
 import io.renku.servers.RedisServer
 
 trait RedisSpec:
@@ -55,7 +55,15 @@ trait RedisSpec:
       apply().flatMap(createRedisCommands)
 
     override def asQueueClient(): Resource[IO, QueueClient[IO]] =
-      apply().map(new RedisQueueClient[IO](_))
+      RedisQueueClient[IO](
+        RedisConfig(
+          RedisHost(server.host),
+          RedisPort(server.port),
+          maybeDB = None,
+          maybePassword = None,
+          maybeMasterSet = None
+        )
+      )
 
     override def beforeAll(): Unit =
       server.start()

@@ -19,6 +19,7 @@
 package io.renku.solr.client
 
 import cats.effect.IO
+import cats.syntax.all.*
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.solr.client.SolrClientSpec.Room

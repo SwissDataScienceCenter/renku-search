@@ -24,9 +24,10 @@ import scala.util.Try
 object RedisServer extends RedisServer("graph", port = 6379)
 
 @annotation.nowarn()
-class RedisServer(module: String, port: Int) {
+class RedisServer(module: String, val port: Int) {
 
-  val url: String = s"redis://localhost:$port"
+  val host: String = "localhost"
+  val url: String = s"redis://$host:$port"
 
   // When using a local Redis for development, use this env variable
   // to not start a Redis server via docker for the tests

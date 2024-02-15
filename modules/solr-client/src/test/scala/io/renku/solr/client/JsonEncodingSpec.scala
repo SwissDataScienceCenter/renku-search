@@ -20,10 +20,10 @@ package io.renku.solr.client
 
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.bullet.borer.{Decoder, Encoder, Json, Writer}
-import io.renku.solr.client.JsonEncodingTest.Room
+import io.renku.solr.client.JsonEncodingSpec.Room
 import munit.FunSuite
 
-class JsonEncodingTest extends FunSuite {
+class JsonEncodingSpec extends FunSuite {
 
   test("test with discriminator"):
     val r = Room("meeting room", 59)
@@ -33,7 +33,7 @@ class JsonEncodingTest extends FunSuite {
     assertEquals(rr, r)
 }
 
-object JsonEncodingTest:
+object JsonEncodingSpec:
   case class Room(name: String, seats: Int)
   object Room:
     given Decoder[Room] = deriveDecoder

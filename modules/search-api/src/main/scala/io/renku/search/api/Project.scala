@@ -22,7 +22,6 @@ import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.*
 import sttp.tapir.Schema
-import sttp.tapir.Schema.SName
 import sttp.tapir.SchemaType.SDateTime
 
 final case class Project(
@@ -46,16 +45,20 @@ object Project:
   given Decoder[User] = deriveDecoder
   given Encoder[Project] = deriveEncoder
   given Decoder[Project] = deriveDecoder
-  private given Schema[projects.Id] = Schema.string[projects.Id]
-  private given Schema[projects.Name] = Schema.string[projects.Name]
-  private given Schema[projects.Slug] = Schema.string[projects.Slug]
-  private given Schema[projects.Repository] = Schema.string[projects.Repository]
-  private given Schema[projects.Visibility] =
-    Schema.derivedEnumeration[projects.Visibility].defaultStringBased
-  private given Schema[projects.Description] = Schema.string[projects.Description]
-  private given Schema[projects.CreationDate] = Schema(SDateTime())
+
   given Schema[User] = {
     given Schema[users.Id] = Schema.string[users.Id]
     Schema.derived[User]
   }
-  given Schema[Project] = Schema.derived[Project]
+  given Schema[Project] = {
+    given Schema[projects.Id] = Schema.string[projects.Id]
+    given Schema[projects.Name] = Schema.string[projects.Name]
+    given Schema[projects.Slug] = Schema.string[projects.Slug]
+    given Schema[projects.Repository] = Schema.string[projects.Repository]
+    given Schema[projects.Visibility] =
+      Schema.derivedEnumeration[projects.Visibility].defaultStringBased
+    given Schema[projects.Description] = Schema.string[projects.Description]
+    given Schema[projects.CreationDate] = Schema(SDateTime())
+
+    Schema.derived[Project]
+  }

@@ -22,7 +22,7 @@ import cats.ApplicativeThrow
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.{RedisClient, RedisMasterReplica, RedisURI}
-import dev.profunktor.redis4cats.data.{ReadFrom, RedisCodec}
+import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
@@ -89,7 +89,7 @@ private class SingleConnectionCreator[F[_]: Async: Log](client: RedisClient)
 private class SentinelConnectionCreator[F[_]: Async: Log](uris: List[RedisURI])
     extends ConnectionCreator[F]:
 
-  private val maybeReadFrom: Option[JReadFrom] = ReadFrom.UpstreamPreferred.some
+  private val maybeReadFrom: Option[JReadFrom] = None
 
   override def createStreamingConnection
       : Stream[F, Streaming[[A] =>> Stream[F, A], String, ByteVector]] =

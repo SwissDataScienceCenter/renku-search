@@ -43,5 +43,5 @@ trait QueueClient[F[_]] {
 }
 
 object QueueClient:
-  def apply[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
-    RedisQueueClient[F](redisConfig)
+  def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
+    RedisQueueClient.make[F](redisConfig)

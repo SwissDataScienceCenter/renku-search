@@ -30,7 +30,7 @@ trait SearchSolrClient[F[_]]:
   def findProjects(phrase: String): F[List[Project]]
 
 object SearchSolrClient:
-  def apply[F[_]: Async: Network](
+  def make[F[_]: Async: Network](
       solrConfig: SolrConfig
   ): Resource[F, SearchSolrClient[F]] =
     SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))

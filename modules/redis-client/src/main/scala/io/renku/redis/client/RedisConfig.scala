@@ -18,6 +18,9 @@
 
 package io.renku.redis.client
 
+import dev.profunktor.redis4cats.connection.RedisURI
+import io.lettuce.core.RedisURI as JRedisURI
+
 final case class RedisConfig(
     host: RedisHost,
     port: RedisPort,
@@ -25,7 +28,12 @@ final case class RedisConfig(
     maybeDB: Option[RedisDB] = None,
     maybePassword: Option[RedisPassword] = None,
     maybeMasterSet: Option[RedisMasterSet] = None
-)
+):
+  lazy val asRedisUri: RedisURI =
+    val builder = JRedisURI.Builder.redis(host.value, port.value)
+    maybePassword.map(_.value.toCharArray).fold(builder)(builder.withPassword)
+    maybeDB.map(_.value).fold(builder)(builder.withDatabase)
+    RedisURI.fromUnderlying(builder.build())
 
 opaque type RedisHost = String
 object RedisHost {

@@ -19,7 +19,7 @@
 package io.renku.search.provision
 
 import cats.MonadThrow
-import cats.effect.{Async, Resource}
+import cats.effect.{Async, Resource, Temporal}
 import cats.syntax.all.*
 import fs2.Chunk
 import fs2.io.net.Network
@@ -43,43 +43,54 @@ object SearchProvisioner:
 
   private val clientId: ClientId = ClientId("search-provisioner")
 
-  def apply[F[_]: Async: Network](
+  def make[F[_]: Async: Network](
       queueName: QueueName,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
   ): Resource[F, SearchProvisioner[F]] =
-    QueueClient[F](redisConfig)
-      .flatMap(qc => SearchSolrClient[F](solrConfig).tupleLeft(qc))
-      .map { case (qc, sc) => new SearchProvisionerImpl[F](clientId, queueName, qc, sc) }
+    SearchSolrClient.make[F](solrConfig).map {
+      new SearchProvisionerImpl[F](
+        clientId,
+        queueName,
+        QueueClient.make[F](redisConfig),
+        _
+      )
+    }
 
 private class SearchProvisionerImpl[F[_]: Async](
     clientId: ClientId,
     queueName: QueueName,
-    queueClient: QueueClient[F],
+    queueClientResource: Resource[F, QueueClient[F]],
     solrClient: SearchSolrClient[F]
 ) extends SearchProvisioner[F]:
 
   private given Scribe[F] = scribe.cats[F]
 
   override def provisionSolr: F[Unit] =
-    findLastProcessed >>= { maybeLastProcessed =>
-      queueClient
-        .acquireEventsStream(queueName, chunkSize = 1, maybeLastProcessed)
-        .evalMap(decodeMessage)
-        .evalTap { case (m, v) => Scribe[F].info(s"Received messageId: ${m.id} $v") }
-        .groupWithin(chunkSize = 10, timeout = 500 millis)
-        .evalMap(pushToSolr)
-        .compile
-        .drain
-        .handleErrorWith(logAndRestart)
-    }
+    queueClientResource
+      .use { queueClient =>
+        findLastProcessed(queueClient) >>= { maybeLastProcessed =>
+          queueClient
+            .acquireEventsStream(queueName, chunkSize = 1, maybeLastProcessed)
+            .evalMap(decodeMessage(queueClient))
+            .evalTap { case (m, v) => Scribe[F].info(s"Received messageId: ${m.id} $v") }
+            .groupWithin(chunkSize = 10, timeout = 500 millis)
+            .evalMap(pushToSolr(queueClient))
+            .compile
+            .drain
+            .handleErrorWith(logAndRestart)
+        }
+      }
+      .handleErrorWith(logAndRestart)
 
-  private def findLastProcessed =
+  private def findLastProcessed(queueClient: QueueClient[F]) =
     queueClient.findLastProcessed(clientId, queueName)
 
   private val avro = AvroReader(ProjectCreated.SCHEMA$)
 
-  private def decodeMessage(message: Message): F[(Message, Seq[ProjectCreated])] =
+  private def decodeMessage(queueClient: QueueClient[F])(
+      message: Message
+  ): F[(Message, Seq[ProjectCreated])] =
     MonadThrow[F]
       .catchNonFatal {
         message.encoding match {
@@ -88,9 +99,11 @@ private class SearchProvisionerImpl[F[_]: Async](
         }
       }
       .map(message -> _)
-      .onError(markProcessedOnFailure(message))
+      .onError(markProcessedOnFailure(message, queueClient))
 
-  private def pushToSolr(chunk: Chunk[(Message, Seq[ProjectCreated])]): F[Unit] =
+  private def pushToSolr(
+      queueClient: QueueClient[F]
+  )(chunk: Chunk[(Message, Seq[ProjectCreated])]): F[Unit] =
     chunk.toList match {
       case Nil => ().pure[F]
       case tuples =>
@@ -98,8 +111,8 @@ private class SearchProvisionerImpl[F[_]: Async](
         val (lastMessage, _) = tuples.last
         solrClient
           .insertProjects(allSolrDocs)
-          .flatMap(_ => markProcessed(lastMessage))
-          .onError(markProcessedOnFailure(lastMessage))
+          .flatMap(_ => markProcessed(lastMessage, queueClient))
+          .onError(markProcessedOnFailure(lastMessage, queueClient))
     }
 
   private lazy val toSolrDocuments: Seq[ProjectCreated] => Seq[Project] =
@@ -121,14 +134,15 @@ private class SearchProvisionerImpl[F[_]: Async](
     }
 
   private def markProcessedOnFailure(
-      message: Message
+      message: Message,
+      queueClient: QueueClient[F]
   ): PartialFunction[Throwable, F[Unit]] = err =>
-    markProcessed(message) >>
+    markProcessed(message, queueClient) >>
       Scribe[F].error(s"Processing messageId: ${message.id} failed", err)
 
-  private def markProcessed(message: Message): F[Unit] =
+  private def markProcessed(message: Message, queueClient: QueueClient[F]): F[Unit] =
     queueClient.markProcessed(clientId, queueName, message.id)
 
   private def logAndRestart: Throwable => F[Unit] = err =>
     Scribe[F].error("Failure in the provisioning process", err) >>
-      provisionSolr
+      Temporal[F].delayBy(provisionSolr, 30 seconds)

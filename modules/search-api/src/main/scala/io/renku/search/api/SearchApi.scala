@@ -30,4 +30,4 @@ object SearchApi:
   def apply[F[_]: Async: Network](
       solrConfig: SolrConfig
   ): Resource[F, SearchApi[F]] =
-    SearchSolrClient[F](solrConfig).map(new SearchApiImpl[F](_))
+    SearchSolrClient.make[F](solrConfig).map(new SearchApiImpl[F](_))

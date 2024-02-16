@@ -55,7 +55,7 @@ trait RedisSpec:
       apply().flatMap(createRedisCommands)
 
     override def asQueueClient(): Resource[IO, QueueClient[IO]] =
-      RedisQueueClient[IO](
+      RedisQueueClient.make[IO](
         RedisConfig(
           RedisHost(server.host),
           RedisPort(server.port)

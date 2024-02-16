@@ -20,8 +20,12 @@ package io.renku.redis.client
 
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
+import dev.profunktor.redis4cats.connection.RedisClient
+import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log
 import dev.profunktor.redis4cats.streams.data.{StreamingOffset, XAddMessage, XReadMessage}
+import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
+import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import fs2.Stream
 import io.renku.queue.client.*
 import scodec.bits.ByteVector
@@ -29,13 +33,12 @@ import scribe.Scribe
 
 object RedisQueueClient:
 
-  def apply[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
+  def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
     given Scribe[F] = scribe.cats[F]
     given Log[F] = RedisLogger[F]
-    ConnectionCreator.create[F](redisConfig).map(new RedisQueueClient(_))
+    ClientCreator[F](redisConfig).makeClient.map(new RedisQueueClient(_))
 
-class RedisQueueClient[F[_]: Async: Log](cc: ConnectionCreator[F])
-    extends QueueClient[F] {
+class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
 
   private val payloadKey = "payload"
   private val encodingKey = "encoding"
@@ -52,7 +55,7 @@ class RedisQueueClient[F[_]: Async: Log](cc: ConnectionCreator[F])
           Map(payloadKey -> message, encodingKey -> encodeEncoding(encoding))
         )
       )
-    cc.createStreamingConnection
+    createStreamingConnection
       .flatMap(_.append(m))
       .map(id => MessageId(id.value))
       .compile
@@ -78,7 +81,7 @@ class RedisQueueClient[F[_]: Async: Log](cc: ConnectionCreator[F])
         .map(id => StreamingOffset.Custom[String](_, id.value))
         .getOrElse(StreamingOffset.All[String])
 
-    cc.createStreamingConnection >>= {
+    createStreamingConnection >>= {
       _.read(Set(queueName.name), chunkSize, initialOffset)
         .map(toMessage)
         .collect { case Some(m) => m }
@@ -95,7 +98,7 @@ class RedisQueueClient[F[_]: Async: Log](cc: ConnectionCreator[F])
       queueName: QueueName,
       messageId: MessageId
   ): F[Unit] =
-    cc.createStringCommands.use {
+    createStringCommands.use {
       _.set(formProcessedKey(clientId, queueName), messageId.value)
     }
 
@@ -103,10 +106,18 @@ class RedisQueueClient[F[_]: Async: Log](cc: ConnectionCreator[F])
       clientId: ClientId,
       queueName: QueueName
   ): F[Option[MessageId]] =
-    cc.createStringCommands.use {
+    createStringCommands.use {
       _.get(formProcessedKey(clientId, queueName)).map(_.map(MessageId.apply))
     }
 
   private def formProcessedKey(clientId: ClientId, queueName: QueueName) =
     s"$queueName.$clientId"
+
+  private def createStreamingConnection
+      : Stream[F, Streaming[[A] =>> Stream[F, A], String, ByteVector]] =
+    RedisStream
+      .mkStreamingConnection[F, String, ByteVector](client, StringBytesCodec.instance)
+
+  private def createStringCommands: Resource[F, RedisCommands[F, String, String]] =
+    Redis[F].fromClient(client, RedisCodec.Utf8)
 }

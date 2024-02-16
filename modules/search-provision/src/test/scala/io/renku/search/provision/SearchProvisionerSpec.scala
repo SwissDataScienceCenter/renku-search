@@ -47,7 +47,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
 
     redisAndSolrClients.use { case (queueClient, solrClient) =>
       val provisioner =
-        new SearchProvisionerImpl(clientId, queue, queueClient, solrClient)
+        new SearchProvisionerImpl(clientId, queue, Resource.pure(queueClient), solrClient)
       for
         solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 
@@ -83,7 +83,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
 
     redisAndSolrClients.use { case (queueClient, solrClient) =>
       val provisioner =
-        new SearchProvisionerImpl(clientId, queue, queueClient, solrClient)
+        new SearchProvisionerImpl(clientId, queue, Resource.pure(queueClient), solrClient)
       for
         solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 

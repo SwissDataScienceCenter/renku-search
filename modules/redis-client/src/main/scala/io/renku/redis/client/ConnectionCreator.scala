@@ -18,9 +18,7 @@
 
 package io.renku.redis.client
 
-import cats.ApplicativeThrow
 import cats.effect.{Async, Resource}
-import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.{RedisClient, RedisMasterReplica, RedisURI}
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log
@@ -44,13 +42,16 @@ object ConnectionCreator:
   def create[F[_]: Async: Log](cfg: RedisConfig): Resource[F, ConnectionCreator[F]] =
     val uri = redisUri(cfg)
     if cfg.sentinel then
-      Resource.eval[F, ConnectionCreator[F]] {
-        ApplicativeThrow[F]
-          .catchNonFatal {
-            uri.getSentinels.asScala.toList.map(RedisURI.fromUnderlying)
-          }
-          .map(new SentinelConnectionCreator(_))
-      }
+      RedisClient[F]
+        .fromUri(RedisURI.fromUnderlying(uri.getSentinels.asScala.toList.head))
+        .map(new SingleConnectionCreator(_))
+//      Resource.eval[F, ConnectionCreator[F]] {
+//        ApplicativeThrow[F]
+//          .catchNonFatal {
+//            uri.getSentinels.asScala.toList.map(RedisURI.fromUnderlying)
+//          }
+//          .map(new SentinelConnectionCreator(_))
+//      }
     else
       RedisClient[F]
         .fromUri(RedisURI.fromUnderlying(uri))

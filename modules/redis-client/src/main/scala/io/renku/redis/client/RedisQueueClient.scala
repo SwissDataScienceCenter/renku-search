@@ -48,7 +48,7 @@ class RedisQueueClient[F[_]: Async: Log](cc: ConnectionCreator[F])
     val m = Stream
       .emit[F, XAddMessage[String, ByteVector]](
         XAddMessage(
-          queueName.toString,
+          queueName.name,
           Map(payloadKey -> message, encodingKey -> encodeEncoding(encoding))
         )
       )

@@ -18,6 +18,7 @@
 
 package io.renku.redis.client
 
+import cats.ApplicativeThrow
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.{RedisClient, RedisMasterReplica, RedisURI}
@@ -26,12 +27,10 @@ import dev.profunktor.redis4cats.effect.Log
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import fs2.Stream
-import io.lettuce.core.{
-  RedisCredentials,
-  RedisURI as JRedisURI,
-  StaticCredentialsProvider
-}
+import io.lettuce.core.{ReadFrom as JReadFrom, RedisURI as JRedisURI}
 import scodec.bits.ByteVector
+
+import scala.jdk.CollectionConverters.given
 
 sealed private trait ConnectionCreator[F[_]]:
 
@@ -43,28 +42,37 @@ sealed private trait ConnectionCreator[F[_]]:
 object ConnectionCreator:
 
   def create[F[_]: Async: Log](cfg: RedisConfig): Resource[F, ConnectionCreator[F]] =
-    val uri = createRedisUri(cfg)
-    cfg.maybeMasterSet match {
-      case None =>
-        RedisClient[F]
-          .fromUri(RedisURI.fromUnderlying(uri))
-          .map(new SingleConnectionCreator(_))
-      case Some(masterSet) =>
-        uri.setSentinelMasterId(masterSet.value)
-        Resource
-          .pure[F, RedisURI](RedisURI.fromUnderlying(uri))
-          .map(new MasterReplicaConnectionCreator(_))
-    }
+    val uri = redisUri(cfg)
+    if cfg.sentinel then
+      Resource.eval[F, ConnectionCreator[F]] {
+        ApplicativeThrow[F]
+          .catchNonFatal {
+            uri.getSentinels.asScala.toList.map(RedisURI.fromUnderlying)
+          }
+          .map(new SentinelConnectionCreator(_))
+      }
+    else
+      RedisClient[F]
+        .fromUri(RedisURI.fromUnderlying(uri))
+        .map(new SingleConnectionCreator(_))
 
-  private def createRedisUri(cfg: RedisConfig): JRedisURI = {
-    val uri = JRedisURI.create(cfg.host.value, cfg.port.value)
-    cfg.maybeDB.foreach(db => uri.setDatabase(db.value))
-    cfg.maybePassword.foreach(pass =>
-      uri.setCredentialsProvider(
-        new StaticCredentialsProvider(RedisCredentials.just(null, pass.value))
-      )
-    )
-    uri
+  private def redisUri(cfg: RedisConfig): JRedisURI = {
+
+    val uriBuilder = JRedisURI.builder
+    cfg.maybeDB.map(_.value).foreach(uriBuilder.withDatabase)
+
+    if cfg.sentinel then
+      cfg.maybePassword.fold(
+        uriBuilder.withSentinel(cfg.host.value, cfg.port.value)
+      )(pass => uriBuilder.withSentinel(cfg.host.value, cfg.port.value, pass.value))
+      cfg.maybeMasterSet.map(_.value).foreach(uriBuilder.withSentinelMasterId)
+    else
+      uriBuilder
+        .withHost(cfg.host.value)
+        .withPort(cfg.port.value)
+      cfg.maybePassword.foreach(pass => uriBuilder.withPassword(pass.value.toCharArray))
+
+    uriBuilder.build()
   }
 
 private class SingleConnectionCreator[F[_]: Async: Log](client: RedisClient)
@@ -78,17 +86,19 @@ private class SingleConnectionCreator[F[_]: Async: Log](client: RedisClient)
   override def createStringCommands: Resource[F, RedisCommands[F, String, String]] =
     Redis[F].fromClient(client, RedisCodec.Utf8)
 
-private class MasterReplicaConnectionCreator[F[_]: Async: Log](uri: RedisURI)
+private class SentinelConnectionCreator[F[_]: Async: Log](uris: List[RedisURI])
     extends ConnectionCreator[F]:
+
+  private val maybeReadFrom: Option[JReadFrom] = ReadFrom.UpstreamPreferred.some
 
   override def createStreamingConnection
       : Stream[F, Streaming[[A] =>> Stream[F, A], String, ByteVector]] =
-    RedisStream
-      .mkMasterReplicaConnection[F, String, ByteVector](StringBytesCodec.instance, uri)(
-        None
-      )
+    RedisStream.mkMasterReplicaConnection[F, String, ByteVector](
+      StringBytesCodec.instance,
+      uris: _*
+    )(maybeReadFrom)
 
   override def createStringCommands: Resource[F, RedisCommands[F, String, String]] =
     RedisMasterReplica[F]
-      .make(RedisCodec.Utf8, uri)(ReadFrom.UpstreamPreferred.some)
+      .make(RedisCodec.Utf8, uris: _*)(maybeReadFrom)
       .flatMap(Redis[F].masterReplica)

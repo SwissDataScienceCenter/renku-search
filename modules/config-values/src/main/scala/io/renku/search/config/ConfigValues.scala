@@ -34,11 +34,12 @@ object ConfigValues extends ConfigDecoders:
   val redisConfig: ConfigValue[Effect, RedisConfig] = {
     val host = env(s"${prefix}_REDIS_HOST").default("localhost").as[RedisHost]
     val port = env(s"${prefix}_REDIS_PORT").default("6379").as[RedisPort]
+    val sentinel = env(s"${prefix}_REDIS_SENTINEL").as[Boolean].default(false)
     val maybeDB = env(s"${prefix}_REDIS_DB").as[RedisDB].option
     val maybePass = env(s"${prefix}_REDIS_PASSWORD").as[RedisPassword].option
     val maybeMasterSet = env(s"${prefix}_REDIS_MASTER_SET").as[RedisMasterSet].option
 
-    (host, port, maybeDB, maybePass, maybeMasterSet).mapN(RedisConfig.apply)
+    (host, port, sentinel, maybeDB, maybePass, maybeMasterSet).mapN(RedisConfig.apply)
   }
 
   val eventsQueueName: ConfigValue[Effect, QueueName] =

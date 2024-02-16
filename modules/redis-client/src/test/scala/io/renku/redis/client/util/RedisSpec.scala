@@ -58,10 +58,7 @@ trait RedisSpec:
       RedisQueueClient[IO](
         RedisConfig(
           RedisHost(server.host),
-          RedisPort(server.port),
-          maybeDB = None,
-          maybePassword = None,
-          maybeMasterSet = None
+          RedisPort(server.port)
         )
       )
 

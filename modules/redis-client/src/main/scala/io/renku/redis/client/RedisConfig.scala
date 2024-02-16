@@ -21,7 +21,8 @@ package io.renku.redis.client
 final case class RedisConfig(
     host: RedisHost,
     port: RedisPort,
-    maybeDB: Option[RedisDB],
+    sentinel: Boolean = false,
+    maybeDB: Option[RedisDB] = None,
     maybePassword: Option[RedisPassword] = None,
     maybeMasterSet: Option[RedisMasterSet] = None
 )
@@ -35,9 +36,7 @@ object RedisHost {
 opaque type RedisPort = Int
 object RedisPort {
   def apply(v: Int): RedisPort = v
-  extension (self: RedisPort)
-    def value: Int = self
-    def plusOne: RedisPort = self + 1
+  extension (self: RedisPort) def value: Int = self
 }
 
 opaque type RedisDB = Int

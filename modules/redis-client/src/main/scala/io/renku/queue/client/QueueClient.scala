@@ -25,7 +25,11 @@ import scodec.bits.ByteVector
 
 trait QueueClient[F[_]] {
 
-  def enqueue(queueName: QueueName, message: ByteVector, encoding: Encoding): F[MessageId]
+  def enqueue(
+      queueName: QueueName,
+      message: ByteVector,
+      contentType: DataContentType
+  ): F[MessageId]
 
   def acquireEventsStream(
       queueName: QueueName,

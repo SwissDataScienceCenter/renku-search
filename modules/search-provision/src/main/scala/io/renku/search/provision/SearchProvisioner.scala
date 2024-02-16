@@ -93,9 +93,9 @@ private class SearchProvisionerImpl[F[_]: Async](
   ): F[(Message, Seq[ProjectCreated])] =
     MonadThrow[F]
       .catchNonFatal {
-        message.encoding match {
-          case Encoding.Binary => avro.read[ProjectCreated](message.payload)
-          case Encoding.Json   => avro.readJson[ProjectCreated](message.payload)
+        message.contentType match {
+          case DataContentType.Binary => avro.read[ProjectCreated](message.payload)
+          case DataContentType.Json   => avro.readJson[ProjectCreated](message.payload)
         }
       }
       .map(message -> _)

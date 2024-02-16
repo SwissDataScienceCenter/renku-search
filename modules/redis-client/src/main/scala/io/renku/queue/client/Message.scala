@@ -20,11 +20,17 @@ package io.renku.queue.client
 
 import scodec.bits.ByteVector
 
-final case class Message(id: MessageId, encoding: Encoding, payload: ByteVector)
+final case class Message(id: MessageId, contentType: DataContentType, payload: ByteVector)
 
 final case class MessageId(value: String) extends AnyVal
 
-enum Encoding:
+enum DataContentType(val mimeType: String):
   lazy val name: String = productPrefix
-  case Binary
-  case Json
+  case Binary extends DataContentType("application/avro+binary")
+  case Json extends DataContentType("application/avro+json")
+
+object DataContentType:
+  def from(mimeType: String): Either[Throwable, DataContentType] =
+    DataContentType.values.toList
+      .find(_.mimeType == mimeType)
+      .toRight(new IllegalArgumentException(s"'$mimeType' not a valid value"))

@@ -41,18 +41,18 @@ object RedisQueueClient:
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
 
   private val payloadKey = "payload"
-  private val encodingKey = "encoding"
+  private val contentTypeKey = "dataContentType"
 
   override def enqueue(
       queueName: QueueName,
       message: ByteVector,
-      encoding: Encoding
+      contentType: DataContentType
   ): F[MessageId] =
     val m = Stream
       .emit[F, XAddMessage[String, ByteVector]](
         XAddMessage(
           queueName.name,
-          Map(payloadKey -> message, encodingKey -> encodeEncoding(encoding))
+          Map(payloadKey -> message, contentTypeKey -> encodeContentType(contentType))
         )
       )
     createStreamingConnection
@@ -62,13 +62,12 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
       .toList
       .map(_.head)
 
-  private def encodeEncoding(encoding: Encoding): ByteVector =
-    ByteVector.encodeUtf8(encoding.name).fold(throw _, identity)
+  private def encodeContentType(contentType: DataContentType): ByteVector =
+    ByteVector.encodeUtf8(contentType.mimeType).fold(throw _, identity)
 
-  private def decodeEncoding(encoding: ByteVector): Encoding =
+  private def decodeContentType(encoding: ByteVector): DataContentType =
     encoding.decodeUtf8
-      .map(_.toLowerCase.capitalize)
-      .map(Encoding.valueOf)
+      .flatMap(DataContentType.from)
       .fold(throw _, identity)
 
   override def acquireEventsStream(
@@ -88,9 +87,9 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
     }
 
   private def toMessage(m: XReadMessage[String, ByteVector]): Option[Message] =
-    (m.body.get(payloadKey), m.body.get(encodingKey).map(decodeEncoding))
-      .mapN { case (payload, encoding) =>
-        Message(MessageId(m.id.value), encoding, payload)
+    (m.body.get(payloadKey), m.body.get(contentTypeKey).map(decodeContentType))
+      .mapN { case (payload, contentType) =>
+        Message(MessageId(m.id.value), contentType, payload)
       }
 
   override def markProcessed(

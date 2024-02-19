@@ -22,15 +22,30 @@ import io.renku.queue.client.*
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaLowerChar, alphaNumChar}
 
+import java.time.Instant
+
 object RedisClientGenerators:
 
-  val queueNameGen: Gen[QueueName] =
+  val stringGen: Gen[String] =
     Gen
       .chooseNum(3, 10)
-      .flatMap(Gen.stringOfN(_, alphaLowerChar).map(QueueName(_)))
+      .flatMap(Gen.stringOfN(_, alphaLowerChar))
+
+  val queueNameGen: Gen[QueueName] =
+    stringGen.map(QueueName(_))
 
   val dataContentTypeGen: Gen[DataContentType] =
     Gen.oneOf(DataContentType.values.toSet)
+
+  val headerGen: Gen[Header] =
+    for
+      source <- Gen.option(stringGen.map(MessageSource.apply))
+      messageType <- Gen.option(stringGen.map(MessageType.apply))
+      dataContentType <- dataContentTypeGen
+      schemaVersion <- Gen.option(stringGen.map(SchemaVersion.apply))
+      time <- Gen.option(Gen.const(CreationTime(Instant.now())))
+      requestId <- Gen.option(stringGen.map(RequestId.apply))
+    yield Header(source, messageType, dataContentType, schemaVersion, time, requestId)
 
   val clientIdGen: Gen[ClientId] =
     Gen

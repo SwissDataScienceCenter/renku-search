@@ -27,8 +27,8 @@ trait QueueClient[F[_]] {
 
   def enqueue(
       queueName: QueueName,
-      message: ByteVector,
-      contentType: DataContentType
+      header: Header,
+      payload: ByteVector
   ): F[MessageId]
 
   def acquireEventsStream(

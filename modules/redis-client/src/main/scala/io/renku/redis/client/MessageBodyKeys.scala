@@ -16,13 +16,13 @@
  * limitations under the License.
  */
 
-package io.renku.queue.client
+package io.renku.redis.client
 
-import scodec.bits.ByteVector
-
-final case class Message(id: MessageId, contentType: DataContentType, payload: ByteVector)
-
-opaque type MessageId = String
-object MessageId:
-  def apply(v: String): MessageId = v
-  extension (self: MessageId) def value: String = self
+private object MessageBodyKeys:
+  val payload = "payload"
+  val source = "source"
+  val messageType = "type"
+  val contentType = "dataContentType"
+  val schemaVersion = "schemaVersion"
+  val time = "time"
+  val requestId = "requestId"

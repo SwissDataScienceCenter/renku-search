@@ -26,3 +26,4 @@ object QueueName:
 opaque type ClientId = String
 object ClientId:
   def apply(v: String): ClientId = v
+  extension (self: ClientId) def value: String = self

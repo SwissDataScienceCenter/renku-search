@@ -73,7 +73,7 @@ private class SearchProvisionerImpl[F[_]: Async](
           queueClient
             .acquireEventsStream(queueName, chunkSize = 1, maybeLastProcessed)
             .evalMap(decodeMessage(queueClient))
-            .evalTap { case (m, v) => Scribe[F].info(s"Received messageId: ${m.id} $v") }
+            .evalTap(logInfo)
             .groupWithin(chunkSize = 10, timeout = 500 millis)
             .evalMap(pushToSolr(queueClient))
             .compile
@@ -85,6 +85,12 @@ private class SearchProvisionerImpl[F[_]: Async](
 
   private def findLastProcessed(queueClient: QueueClient[F]) =
     queueClient.findLastProcessed(clientId, queueName)
+
+  private lazy val logInfo: ((Message, Seq[ProjectCreated])) => F[Unit] = { case (m, v) =>
+    Scribe[F].info(
+      s"Received messageId: ${m.id} for projects: ${v.map(_.slug).mkString(", ")}"
+    )
+  }
 
   private val avro = AvroReader(ProjectCreated.SCHEMA$)
 

@@ -25,7 +25,7 @@ import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.{ProjectCreated, Visibility}
-import io.renku.queue.client.DataContentType
+import io.renku.queue.client.{DataContentType, Header}
 import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
@@ -56,8 +56,8 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
         message1 = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queue,
-          avro.write[ProjectCreated](Seq(message1)),
-          DataContentType.Binary
+          Header(DataContentType.Binary),
+          avro.write[ProjectCreated](Seq(message1))
         )
 
         docsCollectorFiber <-
@@ -92,8 +92,8 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
         message1 = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queue,
-          avro.writeJson[ProjectCreated](Seq(message1)),
-          DataContentType.Json
+          Header(DataContentType.Json),
+          avro.writeJson[ProjectCreated](Seq(message1))
         )
 
         docsCollectorFiber <-

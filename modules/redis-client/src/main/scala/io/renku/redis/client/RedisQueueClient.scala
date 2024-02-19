@@ -18,6 +18,7 @@
 
 package io.renku.redis.client
 
+import cats.MonadThrow
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.RedisClient
@@ -28,6 +29,7 @@ import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import fs2.Stream
 import io.renku.queue.client.*
+import io.renku.redis.client.RedisMessage.*
 import scodec.bits.ByteVector
 import scribe.Scribe
 
@@ -40,35 +42,23 @@ object RedisQueueClient:
 
 class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
 
-  private val payloadKey = "payload"
-  private val contentTypeKey = "dataContentType"
-
   override def enqueue(
       queueName: QueueName,
-      message: ByteVector,
-      contentType: DataContentType
+      header: Header,
+      payload: ByteVector
   ): F[MessageId] =
-    val m = Stream
-      .emit[F, XAddMessage[String, ByteVector]](
-        XAddMessage(
-          queueName.name,
-          Map(payloadKey -> message, contentTypeKey -> encodeContentType(contentType))
-        )
+    for
+      messageBody <- MonadThrow[F].fromEither(RedisMessage.bodyFrom(header, payload))
+      message = Stream.emit[F, XAddMessage[String, ByteVector]](
+        XAddMessage(queueName.name, messageBody)
       )
-    createStreamingConnection
-      .flatMap(_.append(m))
-      .map(id => MessageId(id.value))
-      .compile
-      .toList
-      .map(_.head)
-
-  private def encodeContentType(contentType: DataContentType): ByteVector =
-    ByteVector.encodeUtf8(contentType.mimeType).fold(throw _, identity)
-
-  private def decodeContentType(encoding: ByteVector): DataContentType =
-    encoding.decodeUtf8
-      .flatMap(DataContentType.from)
-      .fold(throw _, identity)
+      id <- makeStreamingConnection
+        .flatMap(_.append(message))
+        .map(id => MessageId(id.value))
+        .compile
+        .toList
+        .map(_.head)
+    yield id
 
   override def acquireEventsStream(
       queueName: QueueName,
@@ -80,17 +70,16 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
         .map(id => StreamingOffset.Custom[String](_, id.value))
         .getOrElse(StreamingOffset.All[String])
 
-    createStreamingConnection >>= {
+    def logError(rm: XReadMessage[_, _]): Throwable => F[Option[Message]] = err =>
+      Log[F]
+        .error(s"Decoding message ${rm.id} failed: ${err.getMessage}")
+        .as(Option.empty)
+
+    makeStreamingConnection >>= {
       _.read(Set(queueName.name), chunkSize, initialOffset)
-        .map(toMessage)
+        .evalMap(rm => toMessage(rm).fold(logError(rm), _.pure[F]))
         .collect { case Some(m) => m }
     }
-
-  private def toMessage(m: XReadMessage[String, ByteVector]): Option[Message] =
-    (m.body.get(payloadKey), m.body.get(contentTypeKey).map(decodeContentType))
-      .mapN { case (payload, contentType) =>
-        Message(MessageId(m.id.value), contentType, payload)
-      }
 
   override def markProcessed(
       clientId: ClientId,
@@ -112,7 +101,7 @@ class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClien
   private def formProcessedKey(clientId: ClientId, queueName: QueueName) =
     s"$queueName.$clientId"
 
-  private def createStreamingConnection
+  private def makeStreamingConnection
       : Stream[F, Streaming[[A] =>> Stream[F, A], String, ByteVector]] =
     RedisStream
       .mkStreamingConnection[F, String, ByteVector](client, StringBytesCodec.instance)

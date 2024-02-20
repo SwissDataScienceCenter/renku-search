@@ -18,7 +18,7 @@
 
 package io.renku.avro.codec.encoders
 
-import io.renku.avro.codec.{AvroEncoder, AvroCodecException}
+import io.renku.avro.codec.{AvroCodecException, AvroEncoder}
 import org.apache.avro.LogicalTypes.{TimestampMicros, TimestampMillis}
 import org.apache.avro.Schema
 

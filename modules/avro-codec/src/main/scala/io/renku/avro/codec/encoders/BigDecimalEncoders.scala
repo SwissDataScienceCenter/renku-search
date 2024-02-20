@@ -18,7 +18,7 @@
 
 package io.renku.avro.codec.encoders
 
-import io.renku.avro.codec.{AvroEncoder, AvroCodecException}
+import io.renku.avro.codec.{AvroCodecException, AvroEncoder}
 import org.apache.avro.LogicalTypes.Decimal
 import org.apache.avro.{Conversions, Schema}
 

@@ -16,30 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.redis.client
+package io.renku.queue.client
 
-import org.scalacheck.Gen
-import org.scalacheck.Gen.{alphaLowerChar, alphaNumChar}
+enum DataContentType(val mimeType: String):
+  lazy val name: String = productPrefix
+  case Binary extends DataContentType("application/avro+binary")
+  case Json extends DataContentType("application/avro+json")
 
-object RedisClientGenerators:
-
-  val stringGen: Gen[String] =
-    Gen
-      .chooseNum(3, 10)
-      .flatMap(Gen.stringOfN(_, alphaLowerChar))
-
-  val queueNameGen: Gen[QueueName] =
-    stringGen.map(QueueName(_))
-
-  val clientIdGen: Gen[ClientId] =
-    Gen
-      .chooseNum(3, 10)
-      .flatMap(Gen.stringOfN(_, alphaNumChar).map(ClientId(_)))
-
-  val messageIdGen: Gen[MessageId] =
-    for
-      part1 <- Gen.chooseNum(3, 10)
-      part2 <- Gen.chooseNum(3, 10)
-    yield MessageId(s"$part1.$part2")
-
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+object DataContentType:
+  def from(mimeType: String): Either[Throwable, DataContentType] =
+    DataContentType.values.toList
+      .find(_.mimeType == mimeType)
+      .toRight(
+        new IllegalArgumentException(s"'$mimeType' not a valid 'DataContentType' value")
+      )

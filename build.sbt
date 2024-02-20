@@ -56,6 +56,7 @@ lazy val root = project
     httpClient,
     events,
     redisClient,
+    searchRedisClient,
     solrClient,
     searchQuery,
     searchSolrClient,
@@ -144,6 +145,23 @@ lazy val redisClient = project
     commons % "test->test"
   )
 
+lazy val searchRedisClient = project
+  .in(file("modules/search-redis-client"))
+  .withId("search-redis-client")
+  .settings(commonSettings)
+  .settings(
+    name := "search-redis-client",
+    libraryDependencies ++=
+      Dependencies.catsEffect ++
+        Dependencies.redis4Cats ++
+        Dependencies.redis4CatsStreams
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+  .dependsOn(
+    events % "compile->compile;test->test",
+    redisClient % "compile->compile;test->test"
+  )
+
 lazy val solrClient = project
   .in(file("modules/solr-client"))
   .withId("solr-client")
@@ -230,7 +248,7 @@ lazy val configValues = project
   .dependsOn(
     commons % "compile->compile;test->test",
     events % "compile->compile;test->test",
-    redisClient % "compile->compile;test->test",
+    searchRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
 
@@ -259,7 +277,7 @@ lazy val searchProvision = project
   .dependsOn(
     commons % "compile->compile;test->test",
     events % "compile->compile;test->test",
-    redisClient % "compile->compile;test->test",
+    searchRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
   )

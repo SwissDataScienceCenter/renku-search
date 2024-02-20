@@ -20,22 +20,22 @@ package io.renku.queue.client
 
 import cats.effect.{Async, Resource}
 import fs2.Stream
-import io.renku.redis.client.{RedisConfig, RedisQueueClient}
-import scodec.bits.ByteVector
+import io.renku.avro.codec.AvroEncoder
+import io.renku.redis.client.*
 
-trait QueueClient[F[_]] {
+trait QueueClient[F[_]]:
 
-  def enqueue(
+  def enqueue[P: AvroEncoder](
       queueName: QueueName,
-      header: Header,
-      payload: ByteVector
+      header: MessageHeader,
+      payload: P
   ): F[MessageId]
 
   def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int,
       maybeOffset: Option[MessageId]
-  ): Stream[F, Message]
+  ): Stream[F, QueueMessage]
 
   def markProcessed(
       clientId: ClientId,
@@ -44,8 +44,7 @@ trait QueueClient[F[_]] {
   ): F[Unit]
 
   def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
-}
 
 object QueueClient:
   def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
-    RedisQueueClient.make[F](redisConfig)
+    RedisQueueClient.make[F](redisConfig).map(new QueueClientImpl[F](_))

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision
+package io.renku.events
 
 import io.renku.events.v1.{ProjectCreated, Visibility}
 import org.scalacheck.Gen
@@ -25,7 +25,7 @@ import org.scalacheck.Gen.alphaNumChar
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-object Generators:
+object EventsGenerators:
 
   def projectCreatedGen(prefix: String): Gen[ProjectCreated] =
     for

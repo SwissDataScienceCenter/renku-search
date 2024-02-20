@@ -24,20 +24,20 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
+import io.renku.events.EventsGenerators.projectCreatedGen
 import io.renku.events.v1.{ProjectCreated, Visibility}
-import io.renku.queue.client.{DataContentType, Header}
+import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.queue.client.{DataContentType, QueueSpec}
 import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.util.RedisSpec
 import io.renku.search.model.{projects, users}
-import io.renku.search.provision.Generators.projectCreatedGen
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Project, User}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
 
-class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSolrSpec:
+class SearchProvisionerSpec extends CatsEffectSuite with QueueSpec with SearchSolrSpec:
 
   private val avro = AvroIO(ProjectCreated.SCHEMA$)
 
@@ -45,7 +45,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
     val queue = RedisClientGenerators.queueNameGen.generateOne
     val clientId = RedisClientGenerators.clientIdGen.generateOne
 
-    redisAndSolrClients.use { case (queueClient, solrClient) =>
+    queueAndSolrClients.use { case (queueClient, solrClient) =>
       val provisioner =
         new SearchProvisionerImpl(clientId, queue, Resource.pure(queueClient), solrClient)
       for
@@ -56,8 +56,8 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
         message1 = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queue,
-          Header(DataContentType.Binary),
-          avro.write[ProjectCreated](Seq(message1))
+          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
+          message1
         )
 
         docsCollectorFiber <-
@@ -81,7 +81,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
     val queue = RedisClientGenerators.queueNameGen.generateOne
     val clientId = RedisClientGenerators.clientIdGen.generateOne
 
-    redisAndSolrClients.use { case (queueClient, solrClient) =>
+    queueAndSolrClients.use { case (queueClient, solrClient) =>
       val provisioner =
         new SearchProvisionerImpl(clientId, queue, Resource.pure(queueClient), solrClient)
       for
@@ -92,8 +92,8 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
         message1 = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queue,
-          Header(DataContentType.Json),
-          avro.writeJson[ProjectCreated](Seq(message1))
+          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Json).generateOne,
+          message1
         )
 
         docsCollectorFiber <-
@@ -114,8 +114,8 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
       yield ()
     }
 
-  private def redisAndSolrClients =
-    withRedisClient.asQueueClient() >>= withSearchSolrClient().tupleLeft
+  private def queueAndSolrClients =
+    withQueueClient() >>= withSearchSolrClient().tupleLeft
 
   private def toSolrDocument(created: ProjectCreated): Project =
     def toUser(id: String): User = User(users.Id(id))
@@ -132,4 +132,4 @@ class SearchProvisionerSpec extends CatsEffectSuite with RedisSpec with SearchSo
     )
 
   override def munitFixtures: Seq[Fixture[_]] =
-    List(withRedisClient, withSearchSolrClient)
+    List(withQueueClient, withSearchSolrClient)

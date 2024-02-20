@@ -20,7 +20,6 @@ package io.renku.search.config
 
 import cats.syntax.all.*
 import ciris.*
-import io.renku.queue.client.QueueName
 import io.renku.redis.client.*
 import io.renku.solr.client.{SolrConfig, SolrUser}
 import org.http4s.Uri

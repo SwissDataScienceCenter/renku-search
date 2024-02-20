@@ -18,7 +18,6 @@
 
 package io.renku.redis.client
 
-import cats.MonadThrow
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.RedisClient
@@ -28,57 +27,88 @@ import dev.profunktor.redis4cats.streams.data.{StreamingOffset, XAddMessage, XRe
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import fs2.Stream
-import io.renku.queue.client.*
-import io.renku.redis.client.RedisMessage.*
 import scodec.bits.ByteVector
 import scribe.Scribe
 
+trait RedisQueueClient[F[_]] {
+
+  def enqueue(
+      queueName: QueueName,
+      header: ByteVector,
+      payload: ByteVector
+  ): F[MessageId]
+
+  def acquireEventsStream(
+      queueName: QueueName,
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  ): Stream[F, RedisMessage]
+
+  def markProcessed(
+      clientId: ClientId,
+      queueName: QueueName,
+      messageId: MessageId
+  ): F[Unit]
+
+  def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
+}
+
 object RedisQueueClient:
 
-  def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
+  def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, RedisQueueClient[F]] =
     given Scribe[F] = scribe.cats[F]
     given Log[F] = RedisLogger[F]
-    ClientCreator[F](redisConfig).makeClient.map(new RedisQueueClient(_))
+    ClientCreator[F](redisConfig).makeClient.map(new RedisQueueClientImpl(_))
 
-class RedisQueueClient[F[_]: Async: Log](client: RedisClient) extends QueueClient[F] {
+class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
+    extends RedisQueueClient[F] {
 
   override def enqueue(
       queueName: QueueName,
-      header: Header,
+      header: ByteVector,
       payload: ByteVector
   ): F[MessageId] =
-    for
-      messageBody <- MonadThrow[F].fromEither(RedisMessage.bodyFrom(header, payload))
-      message = Stream.emit[F, XAddMessage[String, ByteVector]](
-        XAddMessage(queueName.name, messageBody)
-      )
-      id <- makeStreamingConnection
-        .flatMap(_.append(message))
-        .map(id => MessageId(id.value))
-        .compile
-        .toList
-        .map(_.head)
-    yield id
+    val messageBody = Map(
+      MessageBodyKeys.header -> header,
+      MessageBodyKeys.payload -> payload
+    )
+    val message = Stream.emit[F, XAddMessage[String, ByteVector]](
+      XAddMessage(queueName.name, messageBody)
+    )
+    makeStreamingConnection
+      .flatMap(_.append(message))
+      .map(id => MessageId(id.value))
+      .compile
+      .toList
+      .map(_.head)
 
   override def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int,
       maybeOffset: Option[MessageId]
-  ): Stream[F, Message] =
+  ): Stream[F, RedisMessage] =
     val initialOffset: String => StreamingOffset[String] =
       maybeOffset
         .map(id => StreamingOffset.Custom[String](_, id.value))
         .getOrElse(StreamingOffset.All[String])
 
-    def logError(rm: XReadMessage[_, _]): Throwable => F[Option[Message]] = err =>
-      Log[F]
-        .error(s"Decoding message ${rm.id} failed: ${err.getMessage}")
-        .as(Option.empty)
+    def toMessage(rm: XReadMessage[String, ByteVector]): Option[RedisMessage] =
+      (rm.body.get(MessageBodyKeys.header), rm.body.get(MessageBodyKeys.payload))
+        .mapN(RedisMessage(MessageId(rm.id.value), _, _))
+
+    lazy val logInfo: ((XReadMessage[_, _], Option[RedisMessage])) => F[Unit] = {
+      case (m, None) =>
+        Log[F].info(
+          s"Message '${m.id}' skipped as it has no '${MessageBodyKeys.header}' or '${MessageBodyKeys.payload}'"
+        )
+      case _ => ().pure[F]
+    }
 
     makeStreamingConnection >>= {
       _.read(Set(queueName.name), chunkSize, initialOffset)
-        .evalMap(rm => toMessage(rm).fold(logError(rm), _.pure[F]))
-        .collect { case Some(m) => m }
+        .map(rm => rm -> toMessage(rm))
+        .evalTap(logInfo)
+        .collect { case (_, Some(m)) => m }
     }
 
   override def markProcessed(

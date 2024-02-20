@@ -20,8 +20,7 @@ package io.renku.search.provision
 
 import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
-import io.renku.queue.client.QueueName
-import io.renku.redis.client.RedisConfig
+import io.renku.redis.client.{QueueName, RedisConfig}
 import io.renku.search.config.ConfigValues
 import io.renku.solr.client.SolrConfig
 

@@ -27,7 +27,7 @@ import io.renku.avro.codec.AvroReader
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectCreated
 import io.renku.queue.client.*
-import io.renku.redis.client.RedisConfig
+import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
 import io.renku.search.model.*
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.*
@@ -86,30 +86,35 @@ private class SearchProvisionerImpl[F[_]: Async](
   private def findLastProcessed(queueClient: QueueClient[F]) =
     queueClient.findLastProcessed(clientId, queueName)
 
-  private lazy val logInfo: ((Message, Seq[ProjectCreated])) => F[Unit] = { case (m, v) =>
-    Scribe[F].info(
-      s"Received messageId: ${m.id} for projects: ${v.map(_.slug).mkString(", ")}"
-    )
+  private lazy val logInfo: ((QueueMessage, Seq[ProjectCreated])) => F[Unit] = {
+    case (m, v) =>
+      Scribe[F].info(
+        s"Received messageId: ${m.id} for projects: ${v.map(_.slug).mkString(", ")}"
+      )
   }
 
   private val avro = AvroReader(ProjectCreated.SCHEMA$)
 
   private def decodeMessage(queueClient: QueueClient[F])(
-      message: Message
-  ): F[(Message, Seq[ProjectCreated])] =
+      message: QueueMessage
+  ): F[(QueueMessage, Seq[ProjectCreated])] =
     MonadThrow[F]
-      .catchNonFatal {
-        message.contentType match {
-          case DataContentType.Binary => avro.read[ProjectCreated](message.payload)
-          case DataContentType.Json   => avro.readJson[ProjectCreated](message.payload)
-        }
+      .fromEither(DataContentType.from(message.header.dataContentType))
+      .flatMap { ct =>
+        MonadThrow[F]
+          .catchNonFatal {
+            ct match {
+              case DataContentType.Binary => avro.read[ProjectCreated](message.payload)
+              case DataContentType.Json => avro.readJson[ProjectCreated](message.payload)
+            }
+          }
+          .map(message -> _)
+          .onError(markProcessedOnFailure(message, queueClient))
       }
-      .map(message -> _)
-      .onError(markProcessedOnFailure(message, queueClient))
 
   private def pushToSolr(
       queueClient: QueueClient[F]
-  )(chunk: Chunk[(Message, Seq[ProjectCreated])]): F[Unit] =
+  )(chunk: Chunk[(QueueMessage, Seq[ProjectCreated])]): F[Unit] =
     chunk.toList match {
       case Nil => ().pure[F]
       case tuples =>
@@ -140,13 +145,13 @@ private class SearchProvisionerImpl[F[_]: Async](
     }
 
   private def markProcessedOnFailure(
-      message: Message,
+      message: QueueMessage,
       queueClient: QueueClient[F]
   ): PartialFunction[Throwable, F[Unit]] = err =>
     markProcessed(message, queueClient) >>
       Scribe[F].error(s"Processing messageId: ${message.id} failed", err)
 
-  private def markProcessed(message: Message, queueClient: QueueClient[F]): F[Unit] =
+  private def markProcessed(message: QueueMessage, queueClient: QueueClient[F]): F[Unit] =
     queueClient.markProcessed(clientId, queueName, message.id)
 
   private def logAndRestart: Throwable => F[Unit] = err =>

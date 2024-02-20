@@ -25,7 +25,6 @@ import dev.profunktor.redis4cats.streams.data.XAddMessage
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import fs2.*
 import fs2.concurrent.SignallingRef
-import io.renku.queue.client.{DataContentType, MessageId, QueueName}
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
 import munit.CatsEffectSuite
@@ -34,91 +33,87 @@ import scodec.bits.ByteVector
 class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
 
   test("can enqueue and dequeue events"):
-    withRedisClient.asQueueClient().use { client =>
+    withRedisClient.asRedisQueueClient().use { client =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
       for
-        dequeued <- SignallingRef.of[IO, List[(String, DataContentType)]](Nil)
+        dequeued <- SignallingRef.of[IO, List[(String, String)]](Nil)
 
         message1 = "message1"
-        message1Head = headerGen.generateOne
-        _ <- client.enqueue(queue, message1Head, toByteVector(message1))
+        message1Head = "header1"
+        _ <- client.enqueue(queue, toByteVector(message1Head), toByteVector(message1))
 
         streamingProcFiber <- client
           .acquireEventsStream(queue, chunkSize = 1, maybeOffset = None)
           .evalMap(event =>
-            dequeued.update(toStringUft8(event.payload) -> event.contentType :: _)
+            dequeued.update(event.header.asString -> event.payload.asString :: _)
           )
           .compile
           .drain
           .start
-        _ <- dequeued.waitUntil(_ == List(message1 -> message1Head.dataContentType))
+        _ <- dequeued.waitUntil(_ == List(message1Head -> message1))
 
         message2 = "message2"
-        message2Head = headerGen.generateOne
-        _ <- client.enqueue(queue, message2Head, toByteVector(message2))
+        message2Head = "header2"
+        _ <- client.enqueue(queue, toByteVector(message2Head), toByteVector(message2))
         _ <- dequeued
-          .waitUntil(
-            _.toSet == Set(
-              message1 -> message1Head.dataContentType,
-              message2 -> message2Head.dataContentType
-            )
-          )
+          .waitUntil(_.toSet == Set(message1Head -> message1, message2Head -> message2))
 
         _ <- streamingProcFiber.cancel
       yield ()
     }
 
   test("can start enqueueing events from the given messageId excluding"):
-    withRedisClient.asQueueClient().use { client =>
+    withRedisClient.asRedisQueueClient().use { client =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
       for
         dequeued <- SignallingRef.of[IO, List[String]](Nil)
 
         message1 = "message1"
-        message1Id <- client.enqueue(queue, headerGen.generateOne, toByteVector(message1))
+        message1Id <- client.enqueue(queue, toByteVector("head1"), toByteVector(message1))
 
         streamingProcFiber <- client
           .acquireEventsStream(queue, chunkSize = 1, maybeOffset = message1Id.some)
-          .evalMap(event => dequeued.update(toStringUft8(event.payload) :: _))
+          .evalMap(event => dequeued.update(event.payload.asString :: _))
           .compile
           .drain
           .start
 
         message2 = "message2"
-        _ <- client.enqueue(queue, headerGen.generateOne, toByteVector(message2))
+        _ <- client.enqueue(queue, toByteVector("head2"), toByteVector(message2))
         _ <- dequeued.waitUntil(_.toSet == Set(message2))
 
         message3 = "message3"
-        _ <- client.enqueue(queue, headerGen.generateOne, toByteVector(message3))
+        _ <- client.enqueue(queue, toByteVector("head3"), toByteVector(message3))
         _ <- dequeued.waitUntil(_.toSet == Set(message2, message3))
         _ <- streamingProcFiber.cancel
       yield ()
     }
 
-  test("can skip events that fails decoding"):
-    withRedisClient().flatMap(rc => withRedisClient.asQueueClient().tupleLeft(rc)).use {
-      case (redisClient, queueClient) =>
+  test("can skip events that are wrongly defined"):
+    withRedisClient()
+      .flatMap(rc => withRedisClient.asRedisQueueClient().tupleLeft(rc))
+      .use { case (redisClient, queueClient) =>
         val queue = RedisClientGenerators.queueNameGen.generateOne
         for
           dequeued <- SignallingRef.of[IO, List[String]](Nil)
 
-          _ <- enqueue(redisClient, queue, toByteVector("message1"))
+          _ <- enqueueWithoutHeader(redisClient, queue, toByteVector("message1"))
 
           streamingProcFiber <- queueClient
             .acquireEventsStream(queue, chunkSize = 1, maybeOffset = None)
-            .evalMap(event => dequeued.update(toStringUft8(event.payload) :: _))
+            .evalMap(event => dequeued.update(event.payload.asString :: _))
             .compile
             .drain
             .start
 
           message2 = "message2"
-          _ <- queueClient.enqueue(queue, headerGen.generateOne, toByteVector(message2))
+          _ <- queueClient.enqueue(queue, toByteVector("head2"), toByteVector(message2))
           _ <- dequeued.waitUntil(_.toSet == Set(message2))
         yield ()
-    }
+      }
 
   test("allow marking and retrieving a processed event"):
-    withRedisClient.asQueueClient().use { client =>
+    withRedisClient.asRedisQueueClient().use { client =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
       val clientId = RedisClientGenerators.clientIdGen.generateOne
       val messageId = RedisClientGenerators.messageIdGen.generateOne
@@ -136,10 +131,9 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
   private def toByteVector(v: String): ByteVector =
     ByteVector.encodeUtf8(v).fold(throw _, identity)
 
-  private lazy val toStringUft8: ByteVector => String =
-    _.decodeUtf8.fold(throw _, identity)
+  extension (bv: ByteVector) def asString: String = bv.decodeUtf8.fold(throw _, identity)
 
-  private def enqueue(
+  private def enqueueWithoutHeader(
       client: RedisClient,
       queueName: QueueName,
       payload: ByteVector
@@ -147,10 +141,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
     val message = Stream.emit[IO, XAddMessage[String, ByteVector]](
       XAddMessage(
         queueName.name,
-        Map(
-          MessageBodyKeys.payload -> payload,
-          MessageBodyKeys.contentType -> toByteVector("illegal")
-        )
+        Map(MessageBodyKeys.payload -> payload)
       )
     )
     makeStreamingConnection(client)

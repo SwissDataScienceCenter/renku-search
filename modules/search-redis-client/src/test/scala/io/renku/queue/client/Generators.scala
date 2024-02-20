@@ -18,11 +18,28 @@
 
 package io.renku.queue.client
 
-import scodec.bits.ByteVector
+import org.apache.avro.Schema
+import org.scalacheck.Gen
 
-final case class Message(id: MessageId, contentType: DataContentType, payload: ByteVector)
+object Generators:
 
-opaque type MessageId = String
-object MessageId:
-  def apply(v: String): MessageId = v
-  extension (self: MessageId) def value: String = self
+  val requestIdGen: Gen[RequestId] = Gen.uuid.map(_.toString).map(RequestId(_))
+
+  def messageHeaderGen(schema: Schema, contentType: DataContentType): Gen[MessageHeader] =
+    messageHeaderGen(schema, Gen.const(contentType))
+
+  def messageHeaderGen(
+      schema: Schema,
+      ctGen: Gen[DataContentType] = Gen.oneOf(DataContentType.values.toList)
+  ): Gen[MessageHeader] =
+    for
+      contentType <- ctGen
+      schemaVersion <- Gen.choose(1, 100).map(v => SchemaVersion(s"v$v"))
+      requestId <- requestIdGen
+    yield MessageHeader(
+      MessageSource("test"),
+      schema,
+      contentType,
+      schemaVersion,
+      requestId
+    )

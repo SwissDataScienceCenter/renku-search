@@ -26,7 +26,6 @@ import dev.profunktor.redis4cats.effect.Log.Stdout.instance
 import dev.profunktor.redis4cats.effect.MkRedis.forAsync
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import io.lettuce.core.RedisConnectionException
-import io.renku.queue.client.QueueClient
 import io.renku.redis.client.*
 import io.renku.servers.RedisServer
 
@@ -39,7 +38,7 @@ trait RedisSpec:
 
   abstract class RedisFixture extends Fixture[Resource[IO, RedisClient]]("redis"):
     def asRedisCommands(): Resource[IO, RedisCommands[IO, String, String]]
-    def asQueueClient(): Resource[IO, QueueClient[IO]]
+    def asRedisQueueClient(): Resource[IO, RedisQueueClient[IO]]
 
   val withRedisClient: RedisFixture = new RedisFixture:
 
@@ -54,7 +53,7 @@ trait RedisSpec:
     override def asRedisCommands(): Resource[IO, RedisCommands[IO, String, String]] =
       apply().flatMap(createRedisCommands)
 
-    override def asQueueClient(): Resource[IO, QueueClient[IO]] =
+    override def asRedisQueueClient(): Resource[IO, RedisQueueClient[IO]] =
       RedisQueueClient.make[IO](
         RedisConfig(
           RedisHost(server.host),

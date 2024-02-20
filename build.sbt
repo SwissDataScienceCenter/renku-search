@@ -56,7 +56,7 @@ lazy val root = project
     httpClient,
     events,
     redisClient,
-    searchRedisClient,
+    renkuRedisClient,
     solrClient,
     searchQuery,
     searchSolrClient,
@@ -145,12 +145,12 @@ lazy val redisClient = project
     commons % "test->test"
   )
 
-lazy val searchRedisClient = project
-  .in(file("modules/search-redis-client"))
-  .withId("search-redis-client")
+lazy val renkuRedisClient = project
+  .in(file("modules/renku-redis-client"))
+  .withId("renku-redis-client")
   .settings(commonSettings)
   .settings(
-    name := "search-redis-client",
+    name := "renku-redis-client",
     libraryDependencies ++=
       Dependencies.catsEffect ++
         Dependencies.redis4Cats ++
@@ -248,7 +248,7 @@ lazy val configValues = project
   .dependsOn(
     commons % "compile->compile;test->test",
     events % "compile->compile;test->test",
-    searchRedisClient % "compile->compile;test->test",
+    renkuRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
 
@@ -277,7 +277,7 @@ lazy val searchProvision = project
   .dependsOn(
     commons % "compile->compile;test->test",
     events % "compile->compile;test->test",
-    searchRedisClient % "compile->compile;test->test",
+    renkuRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
   )

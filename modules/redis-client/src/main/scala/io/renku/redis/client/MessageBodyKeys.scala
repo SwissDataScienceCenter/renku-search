@@ -19,10 +19,5 @@
 package io.renku.redis.client
 
 private object MessageBodyKeys:
+  val header = "header"
   val payload = "payload"
-  val source = "source"
-  val messageType = "type"
-  val contentType = "dataContentType"
-  val schemaVersion = "schemaVersion"
-  val time = "time"
-  val requestId = "requestId"

@@ -18,50 +18,51 @@
 
 package io.renku.queue.client
 
+import io.renku.events.v1.Header
+import org.apache.avro.Schema
+
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
-final case class Header(
-    source: Option[MessageSource],
-    messageType: Option[MessageType],
+final case class MessageHeader(
+    source: MessageSource,
+    payloadSchema: Schema,
     dataContentType: DataContentType,
-    schemaVersion: Option[SchemaVersion],
-    time: Option[CreationTime],
-    requestId: Option[RequestId]
-)
-
-object Header:
-  def apply(contentType: DataContentType): Header =
+    schemaVersion: SchemaVersion,
+    time: CreationTime,
+    requestId: RequestId
+):
+  def toSchemaHeader(p: Any): Header =
     Header(
-      source = None,
-      messageType = None,
-      dataContentType = contentType,
-      schemaVersion = None,
-      time = None,
-      requestId = None
+      source.value,
+      p.getClass.getName,
+      dataContentType.mimeType,
+      schemaVersion.value,
+      time.value,
+      requestId.value
+    )
+
+object MessageHeader:
+  def apply(
+      source: MessageSource,
+      payloadSchema: Schema,
+      dataContentType: DataContentType,
+      schemaVersion: SchemaVersion,
+      requestId: RequestId
+  ): MessageHeader =
+    MessageHeader(
+      source,
+      payloadSchema,
+      dataContentType,
+      schemaVersion,
+      CreationTime.now,
+      requestId
     )
 
 opaque type MessageSource = String
 object MessageSource:
   def apply(v: String): MessageSource = v
   extension (self: MessageSource) def value: String = self
-
-opaque type MessageType = String
-object MessageType:
-  def apply(v: String): MessageType = v
-  extension (self: MessageType) def value: String = self
-
-enum DataContentType(val mimeType: String):
-  lazy val name: String = productPrefix
-  case Binary extends DataContentType("application/avro+binary")
-  case Json extends DataContentType("application/avro+json")
-
-object DataContentType:
-  def from(mimeType: String): Either[Throwable, DataContentType] =
-    DataContentType.values.toList
-      .find(_.mimeType == mimeType)
-      .toRight(
-        new IllegalArgumentException(s"'$mimeType' not a valid 'DataContentType' value")
-      )
 
 opaque type SchemaVersion = String
 object SchemaVersion:
@@ -71,6 +72,7 @@ object SchemaVersion:
 opaque type CreationTime = Instant
 object CreationTime:
   def apply(v: Instant): CreationTime = v
+  def now: CreationTime = Instant.now().truncatedTo(ChronoUnit.MILLIS)
   extension (self: CreationTime) def value: Instant = self
 
 opaque type RequestId = String

@@ -18,12 +18,8 @@
 
 package io.renku.queue.client
 
-opaque type QueueName = String
-object QueueName:
-  def apply(v: String): QueueName = v
-  extension (self: QueueName) def name: String = self
+import io.renku.events.v1.Header
+import io.renku.redis.client.MessageId
+import scodec.bits.ByteVector
 
-opaque type ClientId = String
-object ClientId:
-  def apply(v: String): ClientId = v
-  extension (self: ClientId) def value: String = self
+final case class QueueMessage(id: MessageId, header: Header, payload: ByteVector)

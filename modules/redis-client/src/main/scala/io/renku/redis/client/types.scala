@@ -18,28 +18,12 @@
 
 package io.renku.redis.client
 
-import org.scalacheck.Gen
-import org.scalacheck.Gen.{alphaLowerChar, alphaNumChar}
+opaque type QueueName = String
+object QueueName:
+  def apply(v: String): QueueName = v
+  extension (self: QueueName) def name: String = self
 
-object RedisClientGenerators:
-
-  val stringGen: Gen[String] =
-    Gen
-      .chooseNum(3, 10)
-      .flatMap(Gen.stringOfN(_, alphaLowerChar))
-
-  val queueNameGen: Gen[QueueName] =
-    stringGen.map(QueueName(_))
-
-  val clientIdGen: Gen[ClientId] =
-    Gen
-      .chooseNum(3, 10)
-      .flatMap(Gen.stringOfN(_, alphaNumChar).map(ClientId(_)))
-
-  val messageIdGen: Gen[MessageId] =
-    for
-      part1 <- Gen.chooseNum(3, 10)
-      part2 <- Gen.chooseNum(3, 10)
-    yield MessageId(s"$part1.$part2")
-
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+opaque type ClientId = String
+object ClientId:
+  def apply(v: String): ClientId = v
+  extension (self: ClientId) def value: String = self

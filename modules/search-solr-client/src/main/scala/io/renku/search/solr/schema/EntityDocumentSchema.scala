@@ -36,10 +36,13 @@ object EntityDocumentSchema:
     val nestPath: FieldName = FieldName("_nest_path_")
     val root: FieldName = FieldName("_root_")
     val nestParent: FieldName = FieldName("_nest_parent_")
+    // catch-all field
+    val contentAll: FieldName = FieldName("content_all")
 
   object FieldTypes:
     val string: FieldType = FieldType.str(TypeName("SearchString")).makeDocValue
     val text: FieldType = FieldType.text(TypeName("SearchText"), Analyzer.classic)
+    val textAll: FieldType = FieldType.text(TypeName("SearchTextAll"), Analyzer.classic).makeMultiValued
     val dateTime: FieldType = FieldType.dateTimePoint(TypeName("SearchDateTime"))
 
   val initialEntityDocumentAdd: Seq[SchemaCommand] = Seq(
@@ -56,4 +59,13 @@ object EntityDocumentSchema:
     SchemaCommand.Add(Field(Fields.creationDate, FieldTypes.dateTime)),
     SchemaCommand.Add(Field(Fields.members, FieldType.nestedPath).makeMultiValued),
     SchemaCommand.Add(Field(Fields.nestParent, FieldTypes.string))
+  )
+
+  val copyContentField: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(Field(Fields.contentAll, FieldTypes.textAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.name, Fields.contentAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.description, Fields.contentAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.slug, Fields.contentAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.repositories, Fields.contentAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.visibility, Fields.contentAll))
   )

@@ -23,12 +23,16 @@ import cats.syntax.all.*
 import io.renku.search.solr.documents.Project
 import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.{QueryData, QueryString, SolrClient}
+import io.renku.search.query.Query
 
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
 
   override def insertProjects(projects: Seq[Project]): F[Unit] =
     solrClient.insert(projects).void
+
+  override def queryProjects(query: Query): F[List[Project]] =
+    findProjects(QueryInterpreter(query))
 
   override def findProjects(phrase: String): F[List[Project]] =
     solrClient

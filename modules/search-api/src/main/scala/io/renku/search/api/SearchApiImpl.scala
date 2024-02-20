@@ -24,6 +24,7 @@ import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import org.http4s.dsl.Http4sDsl
 import scribe.Scribe
+import io.renku.search.query.Query
 
 private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
@@ -38,6 +39,13 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
       .map(_.asRight[String])
       .handleErrorWith(errorResponse(phrase))
       .widen
+
+  override def query(query: Query): F[Either[String, List[SearchEntity]]] =
+    solrClient
+      .queryProjects(query)
+      .map(toApiModel)
+      .map(_.asRight[String])
+      .handleErrorWith(errorResponse(query.render))
 
   private def errorResponse(
       phrase: String

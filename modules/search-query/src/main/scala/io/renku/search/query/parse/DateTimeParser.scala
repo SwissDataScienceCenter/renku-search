@@ -23,8 +23,8 @@ import io.renku.search.query.{DateTimeCalc, DateTimeRef, PartialDateTime, Relati
 
 import java.time.*
 
-/** Allows parsing partial date-time strings, filling missing parts with either lowest or
-  * highest possible values.
+/** Allows parsing partial date-time strings, allowing to fill missing parts with either
+  * lowest or highest possible values.
   */
 object DateTimeParser {
 
@@ -105,5 +105,4 @@ object DateTimeParser {
     dateCalc.map(DateTimeRef.apply).backtrack |
       partialDateTime.map(DateTimeRef.apply) |
       relativeDate.map(DateTimeRef.apply)
-
 }

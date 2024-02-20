@@ -188,12 +188,14 @@ lazy val searchSolrClient = project
     name := "search-solr-client",
     libraryDependencies ++=
       Dependencies.catsCore ++
-        Dependencies.catsEffect
+        Dependencies.catsEffect ++
+        Dependencies.luceneQueryParser
   )
   .dependsOn(
     avroCodec % "compile->compile;test->test",
     solrClient % "compile->compile;test->test",
-    commons % "compile->compile;test->test"
+    commons % "compile->compile;test->test",
+    searchQuery % "compile->compile;test->test"
   )
 
 lazy val avroCodec = project

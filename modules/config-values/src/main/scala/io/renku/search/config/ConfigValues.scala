@@ -51,10 +51,9 @@ object ConfigValues extends ConfigDecoders:
     val url = env(s"${prefix}_SOLR_URL").default("http://localhost:8983/solr").as[Uri]
     val core = env(s"${prefix}_SOLR_CORE").default("search-core-test")
     val maybeUser =
-      (env(s"${prefix}_SOLR_USER").option -> env(s"${prefix}_SOLR_PASS").option)
-        .mapN { case (maybeUsername, maybePass) =>
-          (maybeUsername, maybePass).mapN(SolrUser.apply)
-        }
+      (env(s"${prefix}_SOLR_USER"), env(s"${prefix}_SOLR_PASS"))
+        .mapN(SolrUser.apply)
+        .option
     val defaultCommit =
       env(s"${prefix}_SOLR_DEFAULT_COMMIT_WITHIN")
         .default("0 seconds")

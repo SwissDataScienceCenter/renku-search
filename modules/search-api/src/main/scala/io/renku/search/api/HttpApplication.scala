@@ -33,8 +33,6 @@ import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
-import sttp.tapir.swagger.SwaggerUIOptions
-import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import io.renku.search.query.Query
 
 object HttpApplication:
@@ -45,7 +43,8 @@ object HttpApplication:
 
 class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     extends Http4sDsl[F]
-    with TapirBorerJson:
+    with TapirBorerJson
+    with TapirCodecs:
 
   private val businessRoot = "search"
 
@@ -63,14 +62,12 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
       searchEndpoint.serverLogic(searchApi.query)
     )
 
-  given sttp.tapir.Codec[String, Query, sttp.tapir.CodecFormat.TextPlain] =
-    sttp.tapir.Codec.string.mapEither(Query.parse(_))(_.render)
-
-  private lazy val searchEndpoint: PublicEndpoint[Query, String, List[SearchEntity], Any] =
-    val query =
-      path[Query].name("user query").description("User defined query e.g. renku")
+  private lazy val searchEndpoint
+      : PublicEndpoint[Query, String, List[SearchEntity], Any] =
+    val q =
+      query[Query]("q").description("User defined query e.g. renku")
     endpoint.get
-      .in(query)
+      .in(q)
       .errorOut(borerJsonBody[String])
       .out(borerJsonBody[List[SearchEntity]])
       .description("Search API for searching Renku entities")

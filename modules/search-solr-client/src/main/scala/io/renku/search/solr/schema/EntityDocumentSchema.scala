@@ -42,7 +42,8 @@ object EntityDocumentSchema:
   object FieldTypes:
     val string: FieldType = FieldType.str(TypeName("SearchString")).makeDocValue
     val text: FieldType = FieldType.text(TypeName("SearchText"), Analyzer.classic)
-    val textAll: FieldType = FieldType.text(TypeName("SearchTextAll"), Analyzer.classic).makeMultiValued
+    val textAll: FieldType =
+      FieldType.text(TypeName("SearchTextAll"), Analyzer.classic).makeMultiValued
     val dateTime: FieldType = FieldType.dateTimePoint(TypeName("SearchDateTime"))
 
   val initialEntityDocumentAdd: Seq[SchemaCommand] = Seq(

@@ -46,6 +46,7 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
       .map(toApiModel)
       .map(_.asRight[String])
       .handleErrorWith(errorResponse(query.render))
+      .widen
 
   private def errorResponse(
       phrase: String

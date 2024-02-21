@@ -28,12 +28,12 @@ final case class Project(
     id: projects.Id,
     name: projects.Name,
     slug: projects.Slug,
-    repositories: Seq[projects.Repository],
+    repositories: Seq[projects.Repository] = Seq.empty,
     visibility: projects.Visibility,
     description: Option[projects.Description] = None,
     createdBy: User,
     creationDate: projects.CreationDate,
-    members: Seq[User]
+    members: Seq[User] = Seq.empty
 )
 
 object Project:

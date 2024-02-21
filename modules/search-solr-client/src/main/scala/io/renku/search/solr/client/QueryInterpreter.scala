@@ -30,13 +30,22 @@ private object QueryInterpreter {
     query.segments
       .map {
         case Segment.Field(FieldTerm.ProjectIdIs(ids)) =>
-          ids.toList.map(escape).map(id => s"${Fields.id.name}:$id").mkString("(", " OR ", ")")
+          ids.toList
+            .map(escape)
+            .map(id => s"${Fields.id.name}:$id")
+            .mkString("(", " OR ", ")")
 
         case Segment.Field(FieldTerm.SlugIs(slugs)) =>
-          slugs.toList.map(escape).map(slug => s"${Fields.slug.name}:$slug").mkString("(", " OR ", ")")
+          slugs.toList
+            .map(escape)
+            .map(slug => s"${Fields.slug.name}:$slug")
+            .mkString("(", " OR ", ")")
 
         case Segment.Field(FieldTerm.NameIs(names)) =>
-          names.toList.map(escape).map(name => s"${Fields.name.name}:$name").mkString("(", " OR ", ")")
+          names.toList
+            .map(escape)
+            .map(name => s"${Fields.name.name}:$name")
+            .mkString("(", " OR ", ")")
 
         case Segment.Text(txt) =>
           s"${Fields.contentAll.name}:${escape(txt)}"

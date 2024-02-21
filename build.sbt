@@ -281,11 +281,7 @@ lazy val searchProvision = project
   .settings(commonSettings)
   .settings(
     name := "search-provision",
-    libraryDependencies ++= Dependencies.ciris,
-    reStart / envVars := Map(
-      "RS_SOLR_URL" -> "http://rsdev:8983/solr",
-      "RS_REDIS_HOST" -> "rsdev"
-    )
+    libraryDependencies ++= Dependencies.ciris
   )
   .dependsOn(
     commons % "compile->compile;test->test",
@@ -307,10 +303,7 @@ lazy val searchApi = project
         Dependencies.http4sDsl ++
         Dependencies.http4sServer ++
         Dependencies.tapirHttp4sServer ++
-        Dependencies.tapirOpenAPI,
-    reStart / envVars := Map(
-      "RS_SOLR_URL" -> "http://rsdev:8983/solr"
-    )
+        Dependencies.tapirOpenAPI
   )
   .dependsOn(
     commons % "compile->compile;test->test",

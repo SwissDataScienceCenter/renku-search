@@ -25,7 +25,6 @@
           system.stateVersion = "23.11";
         };
       in {
-        # nix build .#nixosConfigurations.dev-vm.config.system.build.vm
         dev-vm = nixpkgs.lib.nixosSystem {
           system = flake-utils.lib.system.x86_64-linux;
           specialArgs = {inherit inputs;};
@@ -35,9 +34,6 @@
           ];
         };
 
-        # sudo nixos-container create rsdev --flake .
-        # sudo nixos-container start rsdev
-        # -> http://rsdev:8983/solr
         container = nixpkgs.lib.nixosSystem {
           system = flake-utils.lib.system.x86_64-linux;
           modules = [
@@ -54,47 +50,53 @@
     }
     // flake-utils.lib.eachDefaultSystem (system: let
       pkgs = nixpkgs.legacyPackages.${system};
+      selfPkgs = self.packages.${system};
     in {
       formatter = pkgs.alejandra;
-      packages = {solr = pkgs.callPackage (import ./nix/solr.nix) {};};
+      packages =
+        ((import ./nix/dev-scripts.nix) {inherit (pkgs) concatTextFile writeShellScriptBin;})
+        // {
+          solr = pkgs.callPackage (import ./nix/solr.nix) {};
+        };
+
       devShells = rec {
         default = container;
         container = pkgs.mkShell {
           RS_SOLR_URL = "http://rsdev:8983/solr";
           RS_REDIS_HOST = "rsdev";
+          RS_REDIS_PORT = "6379";
+          RS_CONTAINER = "rsdev";
 
-          buildInputs = [
-            pkgs.redis
-            pkgs.jq
-            (pkgs.writeShellScriptBin "solr-create-core" ''
-              core_name=''${1:-search-core-test}
-              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- su solr -c "solr create -c $core_name"
-              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- find /var/solr/data/$core_name/conf -type f -exec chmod 644 {} \;
-            '')
-            (pkgs.writeShellScriptBin "solr-delete-core" ''
-              core_name=''${1:-search-core-test}
-              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- su solr -c "solr delete -c $core_name"
-            '')
-            (pkgs.writeShellScriptBin "cnt-solr-recreate-core" ''
-              cnt-solr-delete-core "$1"
-              cnt-solr-create-core "$1"
-            '')
-            (pkgs.writeShellScriptBin "recreate-container" ''
-              cnt=''${RS_CONTAINER:-rsdev}
-              if nixos-container list | grep $cnt > /dev/null; then
-                echo "Destroying container $cnt"
-                sudo nixos-container destroy $cnt
-              fi
-              echo "Creating and starting container $cnt ..."
-              sudo nixos-container create $cnt --flake .
-              sudo nixos-container start $cnt
-            '')
-            (pkgs.writeShellScriptBin "redis-push" ''
-              cnt=''${RS_CONTAINER:-rsdev}
-              header='{"source":"dev","type":"project.created","dataContentType":"application/avro+json","schemaVersion":"1","time":0,"requestId":"r1"}'
-              payload=$(jq --null-input --arg id "$1" --arg name "$2" --arg slug "$1/$2" '{"id":$id,"name":$name,"slug":$slug, "repositories":[],"visibility":"PUBLIC","description":{"string":"my project description"},"createdBy":"dev","creationDate":0,"members":[]}')
-              redis-cli -h $cnt XADD events '*' header "$header" payload "$payload"
-            '')
+          buildInputs = with pkgs;
+          with selfPkgs; [
+            redis
+            jq
+
+            redis-push
+            recreate-container
+            solr-create-core
+            solr-delete-core
+            solr-recreate-core
+          ];
+        };
+        vm = pkgs.mkShell {
+          RS_SOLR_URL = "http://localhost:18983/solr";
+          RS_REDIS_HOST = "localhost";
+          RS_REDIS_PORT = "16379";
+          VM_SSH_PORT = "10022";
+
+          buildInputs = with pkgs;
+          with selfPkgs; [
+            redis
+            jq
+
+            redis-push
+            vm-build
+            vm-run
+            vm-ssh
+            vm-solr-create-core
+            vm-solr-delete-core
+            vm-solr-recreate-core
           ];
         };
       };

@@ -31,12 +31,13 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
 
   private given Scribe[F] = scribe.cats[F]
 
-  override def find(phrase: String): F[Either[String, List[Project]]] =
+  override def find(phrase: String): F[Either[String, List[SearchEntity]]] =
     solrClient
       .findProjects(phrase)
       .map(toApiModel)
       .map(_.asRight[String])
       .handleErrorWith(errorResponse(phrase))
+      .widen
 
   private def errorResponse(
       phrase: String

@@ -24,7 +24,7 @@ import io.renku.search.solr.client.SearchSolrClient
 import io.renku.solr.client.SolrConfig
 
 trait SearchApi[F[_]]:
-  def find(phrase: String): F[Either[String, List[Project]]]
+  def find(phrase: String): F[Either[String, List[SearchEntity]]]
 
 object SearchApi:
   def apply[F[_]: Async: Network](

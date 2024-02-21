@@ -20,6 +20,7 @@ object Dependencies {
     val scodec = "2.2.2"
     val scodecBits = "1.1.38"
     val scribe = "3.13.0"
+    val sttpApiSpec = "0.7.4"
     val tapir = "1.9.9"
   }
 
@@ -116,7 +117,8 @@ object Dependencies {
   val tapirHttp4sServer = Seq(
     "com.softwaremill.sttp.tapir" %% "tapir-http4s-server" % V.tapir
   )
-  val tapirOpenAPi = Seq(
-    "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % V.tapir
+  val tapirOpenAPI = Seq(
+    "com.softwaremill.sttp.tapir" %% "tapir-openapi-docs" % V.tapir,
+    "com.softwaremill.sttp.apispec" %% "openapi-circe-yaml" % V.sttpApiSpec
   )
 }

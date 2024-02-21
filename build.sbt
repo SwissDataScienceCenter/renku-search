@@ -294,7 +294,7 @@ lazy val searchApi = project
         Dependencies.http4sDsl ++
         Dependencies.http4sServer ++
         Dependencies.tapirHttp4sServer ++
-        Dependencies.tapirOpenAPi
+        Dependencies.tapirOpenAPI
   )
   .dependsOn(
     commons % "compile->compile;test->test",

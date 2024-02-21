@@ -21,17 +21,17 @@ package io.renku.search.api
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
+import io.circe.syntax.given
 import io.renku.search.http.borer.TapirBorerJson
 import io.renku.solr.client.SolrConfig
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.http4s.{HttpApp, HttpRoutes, Response}
+import sttp.apispec.openapi.circe.given
 import sttp.tapir.*
-import sttp.tapir.docs.openapi.OpenAPIDocsOptions
+import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
-import sttp.tapir.swagger.SwaggerUIOptions
-import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
 object HttpApplication:
   def apply[F[_]: Async: Network](
@@ -52,7 +52,7 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     ).orNotFound
 
   private lazy val businessRoutes: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(swaggerEndpoints ::: businessEndpoints)
+    Http4sServerInterpreter[F]().toRoutes(openAPIEndpoint :: businessEndpoints)
 
   private lazy val businessEndpoints: List[ServerEndpoint[Any, F]] =
     List(
@@ -69,10 +69,16 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
       .out(borerJsonBody[List[SearchEntity]])
       .description("Search API for searching Renku entities")
 
-  private lazy val swaggerEndpoints =
-    SwaggerInterpreter(
-      swaggerUIOptions = SwaggerUIOptions.default.copy(contextPath = List(businessRoot))
-    ).fromServerEndpoints[F](businessEndpoints, "Search API", "0.0.1")
+  private lazy val openAPIEndpoint =
+    val docs = OpenAPIDocsInterpreter()
+      .serverEndpointsToOpenAPI(businessEndpoints, "Search API", "0.0.1")
+
+    endpoint
+      .in("spec.json")
+      .get
+      .out(stringJsonBody)
+      .description("OpenAPI docs")
+      .serverLogic(_ => docs.asJson.spaces2.asRight.pure[F])
 
   private lazy val operationsRoutes: HttpRoutes[F] =
     Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))

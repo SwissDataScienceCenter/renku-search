@@ -60,15 +60,20 @@
       devShells = rec {
         default = container;
         container = pkgs.mkShell {
+          RS_SOLR_URL = "http://rsdev:8983/solr";
+          RS_REDIS_HOST = "rsdev";
+
           buildInputs = [
             pkgs.redis
             pkgs.jq
             (pkgs.writeShellScriptBin "solr-create-core" ''
-              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- su solr -c "solr create -c $1"
-              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- find /var/solr/data/$1/conf -type f -exec chmod 644 {} \;
+              core_name=''${1:-search-core-test}
+              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- su solr -c "solr create -c $core_name"
+              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- find /var/solr/data/$core_name/conf -type f -exec chmod 644 {} \;
             '')
             (pkgs.writeShellScriptBin "solr-delete-core" ''
-              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- su solr -c "solr delete -c $1"
+              core_name=''${1:-search-core-test}
+              sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- su solr -c "solr delete -c $core_name"
             '')
             (pkgs.writeShellScriptBin "cnt-solr-recreate-core" ''
               cnt-solr-delete-core "$1"
@@ -87,7 +92,7 @@
             (pkgs.writeShellScriptBin "redis-push" ''
               cnt=''${RS_CONTAINER:-rsdev}
               header='{"source":"dev","type":"project.created","dataContentType":"application/avro+json","schemaVersion":"1","time":0,"requestId":"r1"}'
-              payload=$(jq --null-input --arg id "$1" --arg name "$2" --arg slug "$1/$2" '{"id":$id,"name":$name,"slug":$slug, "repositories":[],"visibility":"public","description":"my project $id and $name","createdBy":"dev","creationDate":0,"members":[]}')
+              payload=$(jq --null-input --arg id "$1" --arg name "$2" --arg slug "$1/$2" '{"id":$id,"name":$name,"slug":$slug, "repositories":[],"visibility":"PUBLIC","description":{"string":"my project description"},"createdBy":"dev","creationDate":0,"members":[]}')
               redis-cli -h $cnt XADD events '*' header "$header" payload "$payload"
             '')
           ];

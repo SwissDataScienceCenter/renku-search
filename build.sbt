@@ -40,6 +40,7 @@ lazy val root = project
   .in(file("."))
   .withId("renku-search")
   .enablePlugins(DbTestPlugin)
+  .disablePlugins(RevolverPlugin)
   .settings(
     publish / skip := true,
     publishTo := Some(
@@ -158,6 +159,7 @@ lazy val renkuRedisClient = project
         Dependencies.redis4CatsStreams
   )
   .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(RevolverPlugin)
   .dependsOn(
     events % "compile->compile;test->test",
     redisClient % "compile->compile;test->test"

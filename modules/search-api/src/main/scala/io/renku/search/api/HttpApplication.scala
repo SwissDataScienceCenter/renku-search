@@ -33,6 +33,9 @@ import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
+import sttp.tapir.swagger.SwaggerUIOptions
+import sttp.tapir.swagger.bundle.SwaggerInterpreter
+import io.renku.search.query.Query
 
 object HttpApplication:
   def apply[F[_]: Async: Network](
@@ -57,13 +60,15 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
 
   private lazy val businessEndpoints: List[ServerEndpoint[Any, F]] =
     List(
-      searchEndpoint.serverLogic(searchApi.find)
+      searchEndpoint.serverLogic(searchApi.query)
     )
 
-  private lazy val searchEndpoint
-      : PublicEndpoint[String, String, List[SearchEntity], Any] =
+  given sttp.tapir.Codec[String, Query, sttp.tapir.CodecFormat.TextPlain] =
+    sttp.tapir.Codec.string.mapEither(Query.parse(_))(_.render)
+
+  private lazy val searchEndpoint: PublicEndpoint[Query, String, List[SearchEntity], Any] =
     val query =
-      path[String].name("user query").description("User defined query e.g. renku~")
+      path[Query].name("user query").description("User defined query e.g. renku")
     endpoint.get
       .in(query)
       .errorOut(borerJsonBody[String])

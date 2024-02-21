@@ -1,8 +1,13 @@
-{ modulesPath, lib, config, ... }:
-
 {
+  modulesPath,
+  lib,
+  config,
+  ...
+}: {
   imports = [
     (modulesPath + "/virtualisation/qemu-vm.nix")
+    ./solr-module.nix
+    ./services.nix
   ];
 
   services.openssh = {
@@ -13,12 +18,11 @@
   users.users.root = {
     password = "root";
   };
-  i18n = { defaultLocale = "de_DE.UTF-8"; };
+  i18n = {defaultLocale = "de_DE.UTF-8";};
   console.keyMap = "de";
 
   networking = {
     hostName = "renku-search-testvm";
-    firewall.allowedTCPPorts = [ 8983 6379 ];
   };
 
   virtualisation.memorySize = 4096;
@@ -41,15 +45,4 @@
     }
   ];
   documentation.enable = false;
-
-  services.solr = {
-    enable = true;
-  };
-
-  services.redis.servers.search = {
-    enable = true;
-    port = 6379;
-  };
-
-  system.stateVersion = "23.11";
 }

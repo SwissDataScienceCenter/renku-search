@@ -92,12 +92,12 @@ lazy val commons = project
     }.taskValue
   )
   .enablePlugins(AutomateHeaderPlugin)
-  .disablePlugins(DbTestPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
 
 lazy val http4sBorer = project
   .in(file("modules/http4s-borer"))
   .enablePlugins(AutomateHeaderPlugin)
-  .disablePlugins(DbTestPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("http4s-borer")
   .settings(commonSettings)
   .settings(
@@ -114,7 +114,7 @@ lazy val httpClient = project
   .in(file("modules/http-client"))
   .withId("http-client")
   .enablePlugins(AutomateHeaderPlugin)
-  .disablePlugins(DbTestPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
   .settings(commonSettings)
   .settings(
     name := "http-client",
@@ -141,6 +141,7 @@ lazy val redisClient = project
         Dependencies.redis4CatsStreams
   )
   .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(RevolverPlugin)
   .dependsOn(
     commons % "test->test"
   )
@@ -166,6 +167,7 @@ lazy val solrClient = project
   .in(file("modules/solr-client"))
   .withId("solr-client")
   .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .disablePlugins(RevolverPlugin)
   .settings(commonSettings)
   .settings(
     name := "solr-client",
@@ -183,6 +185,7 @@ lazy val searchSolrClient = project
   .in(file("modules/search-solr-client"))
   .withId("search-solr-client")
   .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .disablePlugins(RevolverPlugin)
   .settings(commonSettings)
   .settings(
     name := "search-solr-client",
@@ -200,7 +203,7 @@ lazy val searchSolrClient = project
 
 lazy val avroCodec = project
   .in(file("modules/avro-codec"))
-  .disablePlugins(DbTestPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
   .settings(commonSettings)
   .settings(
     name := "avro-codec",
@@ -212,7 +215,7 @@ lazy val avroCodec = project
 lazy val http4sAvro = project
   .in(file("modules/http4s-avro"))
   .enablePlugins(AutomateHeaderPlugin)
-  .disablePlugins(DbTestPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("http4s-avro")
   .settings(commonSettings)
   .settings(
@@ -237,11 +240,12 @@ lazy val events = project
     avroCodec % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin, AvroSchemaDownload)
-  .disablePlugins(DbTestPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
 
 lazy val configValues = project
   .in(file("modules/config-values"))
   .withId("config-values")
+  .disablePlugins(RevolverPlugin)
   .settings(commonSettings)
   .settings(
     name := "config-values",
@@ -257,6 +261,7 @@ lazy val configValues = project
 lazy val searchQuery = project
   .in(file("modules/search-query"))
   .withId("search-query")
+  .disablePlugins(RevolverPlugin)
   .settings(commonSettings)
   .settings(
     name := "search-query",
@@ -274,7 +279,11 @@ lazy val searchProvision = project
   .settings(commonSettings)
   .settings(
     name := "search-provision",
-    libraryDependencies ++= Dependencies.ciris
+    libraryDependencies ++= Dependencies.ciris,
+    reStart / envVars := Map(
+      "RS_SOLR_URL" -> "http://rsdev:8983/solr",
+      "RS_REDIS_HOST" -> "rsdev"
+    )
   )
   .dependsOn(
     commons % "compile->compile;test->test",
@@ -283,7 +292,7 @@ lazy val searchProvision = project
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin)
+  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
 
 lazy val searchApi = project
   .in(file("modules/search-api"))
@@ -296,7 +305,10 @@ lazy val searchApi = project
         Dependencies.http4sDsl ++
         Dependencies.http4sServer ++
         Dependencies.tapirHttp4sServer ++
-        Dependencies.tapirOpenAPI
+        Dependencies.tapirOpenAPI,
+    reStart / envVars := Map(
+      "RS_SOLR_URL" -> "http://rsdev:8983/solr"
+    )
   )
   .dependsOn(
     commons % "compile->compile;test->test",
@@ -304,7 +316,7 @@ lazy val searchApi = project
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin)
+  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
 
 lazy val commonSettings = Seq(
   organization := "io.renku",

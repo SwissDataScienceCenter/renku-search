@@ -62,6 +62,7 @@ object EntityDocumentSchema:
   )
 
   val copyContentField: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(FieldTypes.textAll),
     SchemaCommand.Add(Field(Fields.contentAll, FieldTypes.textAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.name, Fields.contentAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.description, Fields.contentAll)),

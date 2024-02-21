@@ -32,7 +32,10 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     solrClient.insert(projects).void
 
   override def queryProjects(query: Query): F[List[Project]] =
-    findProjects(QueryInterpreter(query))
+    solrClient.query[Project](QueryData.withChildren(
+      QueryString(QueryInterpreter(query))
+    ))
+    .map(_.responseBody.docs.toList)
 
   override def findProjects(phrase: String): F[List[Project]] =
     solrClient

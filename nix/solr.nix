@@ -1,4 +1,10 @@
-{ lib, stdenv, fetchurl, makeWrapper, jre }:
+{
+  lib,
+  stdenv,
+  fetchurl,
+  makeWrapper,
+  jre,
+}:
 # https://discourse.nixos.org/t/solr-has-been-removed-what-are-my-options/33504/3
 stdenv.mkDerivation rec {
   pname = "solr";
@@ -9,7 +15,7 @@ stdenv.mkDerivation rec {
     sha256 = "sha256-QQFdemk/76S4pTf10Jgq2ujxPzgu3znJSjSX+bN4MlA=";
   };
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [makeWrapper];
 
   installPhase = ''
     mkdir -p $out
@@ -26,10 +32,9 @@ stdenv.mkDerivation rec {
 
   meta = with lib; {
     homepage = "https://lucene.apache.org/solr/";
-    description =
-      "Open source enterprise search platform from the Apache Lucene project";
+    description = "Open source enterprise search platform from the Apache Lucene project";
     license = licenses.asl20;
     latforms = platforms.all;
-    maintainers = with maintainers; [ ];
+    maintainers = with maintainers; [];
   };
 }

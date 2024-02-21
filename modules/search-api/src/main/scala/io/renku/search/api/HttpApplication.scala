@@ -59,7 +59,8 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
       searchEndpoint.serverLogic(searchApi.find)
     )
 
-  private lazy val searchEndpoint: PublicEndpoint[String, String, List[SearchEntity], Any] =
+  private lazy val searchEndpoint
+      : PublicEndpoint[String, String, List[SearchEntity], Any] =
     val query =
       path[String].name("user query").description("User defined query e.g. renku~")
     endpoint.get

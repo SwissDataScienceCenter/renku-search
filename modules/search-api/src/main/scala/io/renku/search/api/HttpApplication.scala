@@ -21,7 +21,6 @@ package io.renku.search.api
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
-import io.renku.search.api.Project.given
 import io.renku.search.http.borer.TapirBorerJson
 import io.renku.solr.client.SolrConfig
 import org.http4s.dsl.Http4sDsl
@@ -60,13 +59,14 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
       searchEndpoint.serverLogic(searchApi.find)
     )
 
-  private lazy val searchEndpoint: PublicEndpoint[String, String, List[Project], Any] =
+  private lazy val searchEndpoint
+      : PublicEndpoint[String, String, List[SearchEntity], Any] =
     val query =
       path[String].name("user query").description("User defined query e.g. renku~")
     endpoint.get
       .in(query)
       .errorOut(borerJsonBody[String])
-      .out(borerJsonBody[List[Project]])
+      .out(borerJsonBody[List[SearchEntity]])
       .description("Search API for searching Renku entities")
 
   private lazy val swaggerEndpoints =

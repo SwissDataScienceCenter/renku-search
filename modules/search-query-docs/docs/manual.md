@@ -150,7 +150,7 @@ timestamp, it means /equals/. With partial timestamps it searches
 within the minimum and maximum possible date for that partial
 timestamp.
 
-Since multiple values are compined using `OR`, it is possible to
+Since multiple values are combined using `OR`, it is possible to
 search in multiple ranges.
 
 Example:

@@ -33,6 +33,9 @@ object EntityDocumentSchema:
     val createdBy: FieldName = FieldName("createdBy")
     val creationDate: FieldName = FieldName("creationDate")
     val members: FieldName = FieldName("members")
+    val nestPath: FieldName = FieldName("_nest_path_")
+    val root: FieldName = FieldName("_root_")
+    val nestParent: FieldName = FieldName("_nest_parent_")
 
   object FieldTypes:
     val string: FieldType = FieldType.str(TypeName("SearchString")).makeDocValue
@@ -51,5 +54,6 @@ object EntityDocumentSchema:
     SchemaCommand.Add(Field(Fields.description, FieldTypes.text)),
     SchemaCommand.Add(Field(Fields.createdBy, FieldType.nestedPath)),
     SchemaCommand.Add(Field(Fields.creationDate, FieldTypes.dateTime)),
-    SchemaCommand.Add(Field(Fields.members, FieldType.nestedPath).makeMultiValued)
+    SchemaCommand.Add(Field(Fields.members, FieldType.nestedPath).makeMultiValued),
+    SchemaCommand.Add(Field(Fields.nestParent, FieldTypes.string))
   )

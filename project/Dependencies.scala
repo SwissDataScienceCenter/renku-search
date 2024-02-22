@@ -21,7 +21,7 @@ object Dependencies {
     val scodecBits = "1.1.38"
     val scribe = "3.13.0"
     val sttpApiSpec = "0.7.4"
-    val tapir = "1.9.9"
+    val tapir = "1.9.10"
   }
 
   val catsScalaCheck = Seq(

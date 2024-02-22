@@ -19,11 +19,13 @@
 package io.renku.search.api
 
 import sttp.tapir.*
+import io.renku.search.api.data.*
 import io.renku.search.query.Query
 
 trait TapirCodecs:
   given Codec[String, Query, CodecFormat.TextPlain] =
     Codec.string.mapEither(Query.parse(_))(_.render)
 
-  given Schema[Query] =
-    Schema.string[Query]
+  given Schema[Query] = Schema.anyObject[Query]
+  given Schema[PageDef] = Schema.derived
+  given Schema[QueryInput] = Schema.derived

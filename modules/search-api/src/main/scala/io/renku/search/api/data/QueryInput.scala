@@ -16,23 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.api.data
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.documents.Project
-import io.renku.solr.client.{SolrClient, SolrConfig}
 import io.renku.search.query.Query
+import io.bullet.borer.Encoder
+import io.bullet.borer.derivation.MapBasedCodecs.{deriveEncoder, deriveDecoder}
+import io.bullet.borer.Decoder
 
-trait SearchSolrClient[F[_]]:
+final case class QueryInput(
+  query: Query,
+  page: PageDef
+)
 
-  def insertProjects(projects: Seq[Project]): F[Unit]
-
-  def findProjects(phrase: String): F[List[Project]]
-  def queryProjects(query: Query, limit: Int, offset: Int): F[List[Project]]
-
-object SearchSolrClient:
-  def make[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchSolrClient[F]] =
-    SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))
+object QueryInput:
+  given Encoder[QueryInput] = deriveEncoder
+  given Decoder[QueryInput] = deriveDecoder

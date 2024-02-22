@@ -22,11 +22,11 @@ import cats.effect.{Async, Resource}
 import fs2.io.net.Network
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.solr.client.SolrConfig
-import io.renku.search.query.Query
+import io.renku.search.api.data.*
 
 trait SearchApi[F[_]]:
   def find(phrase: String): F[Either[String, List[SearchEntity]]]
-  def query(query: Query): F[Either[String, List[SearchEntity]]]
+  def query(query: QueryInput): F[Either[String, List[SearchEntity]]]
 
 object SearchApi:
   def apply[F[_]: Async: Network](

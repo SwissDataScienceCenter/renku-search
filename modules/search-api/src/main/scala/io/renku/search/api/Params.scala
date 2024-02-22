@@ -16,23 +16,27 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.api
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.documents.Project
-import io.renku.solr.client.{SolrClient, SolrConfig}
+import sttp.tapir.query as queryParam
+import io.renku.search.api.data.*
 import io.renku.search.query.Query
 
-trait SearchSolrClient[F[_]]:
+object Params extends TapirCodecs {
 
-  def insertProjects(projects: Seq[Project]): F[Unit]
+  val query =
+    queryParam[Query]("q").description("User defined search query")
 
-  def findProjects(phrase: String): F[List[Project]]
-  def queryProjects(query: Query, limit: Int, offset: Int): F[List[Project]]
+  val pageDef = {
+    val limit =
+      queryParam[Int]("limit").description("The maximum number of results to return").default(25)
 
-object SearchSolrClient:
-  def make[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchSolrClient[F]] =
-    SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))
+    val offset =
+      queryParam[Int]("offset").description("How many results to skip").default(0)
+
+    limit.and(offset).map(PageDef.apply.tupled)(Tuple.fromProductTyped)
+  }
+
+  val queryInput =
+    query.and(pageDef).map(QueryInput.apply.tupled)(Tuple.fromProductTyped)
+}

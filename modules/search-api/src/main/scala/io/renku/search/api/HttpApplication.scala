@@ -34,6 +34,7 @@ import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
 import io.renku.search.query.Query
+import io.renku.search.api.data.*
 import io.renku.search.query.docs.SearchQueryManual
 
 object HttpApplication:
@@ -65,22 +66,24 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     )
 
   private lazy val searchEndpointGet
-      : PublicEndpoint[Query, String, List[SearchEntity], Any] =
-    val q =
-      query[Query]("q").description("User defined query e.g. renku")
+      : PublicEndpoint[QueryInput, String, List[SearchEntity], Any] =
     endpoint.get
-      .in(q)
+      .in(Params.queryInput)
       .errorOut(borerJsonBody[String])
       .out(borerJsonBody[List[SearchEntity]])
       .description(SearchQueryManual.markdown)
 
-  private val searchEndpointPost: PublicEndpoint[Query, String, List[SearchEntity], Any] =
+  private val searchEndpointPost
+      : PublicEndpoint[QueryInput, String, List[SearchEntity], Any] =
     endpoint.post
       .errorOut(borerJsonBody[String])
       .in(
-        borerJsonBody[Query]
+        borerJsonBody[QueryInput]
           .example(
-            Query(Query.Segment.nameIs("proj-name1"), Query.Segment.text("flight sim"))
+            QueryInput(
+              Query(Query.Segment.nameIs("proj-name1"), Query.Segment.text("flight sim")),
+              PageDef.default
+            )
           )
       )
       .out(borerJsonBody[List[SearchEntity]])

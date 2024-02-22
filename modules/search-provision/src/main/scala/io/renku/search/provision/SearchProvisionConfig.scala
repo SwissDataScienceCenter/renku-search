@@ -30,7 +30,8 @@ final case class SearchProvisionConfig(
     redisConfig: RedisConfig,
     queueName: QueueName,
     solrConfig: SolrConfig,
-    retryOnErrorDelay: FiniteDuration
+    retryOnErrorDelay: FiniteDuration,
+    verbosity: Int
 )
 
 object SearchProvisionConfig:
@@ -40,5 +41,6 @@ object SearchProvisionConfig:
       ConfigValues.redisConfig,
       ConfigValues.eventsQueueName,
       ConfigValues.solrConfig,
-      ConfigValues.retryOnErrorDelay
+      ConfigValues.retryOnErrorDelay,
+      ConfigValues.logLevel
     ).mapN(SearchProvisionConfig.apply)

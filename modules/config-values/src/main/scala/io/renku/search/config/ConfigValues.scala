@@ -34,7 +34,7 @@ object ConfigValues extends ConfigDecoders:
     env(s"${prefix}_$name")
 
   val logLevel: ConfigValue[Effect, Int] =
-    renv("LOG_LEVEL").default("1").as[Int]
+    renv("LOG_LEVEL").default("2").as[Int]
 
   val redisConfig: ConfigValue[Effect, RedisConfig] = {
     val host = renv("REDIS_HOST").default("localhost").as[RedisHost]

@@ -19,6 +19,7 @@
 package io.renku.search.api
 
 import cats.effect.{ExitCode, IO, IOApp}
+import io.renku.logging.LoggingSetup
 
 object Microservice extends IOApp:
 
@@ -27,6 +28,7 @@ object Microservice extends IOApp:
   override def run(args: List[String]): IO[ExitCode] =
     for {
       config <- loadConfig
+      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
       _ <- HttpApplication[IO](config.solrConfig)
         .flatMap(HttpServer.build)
         .use(_ => IO.never)

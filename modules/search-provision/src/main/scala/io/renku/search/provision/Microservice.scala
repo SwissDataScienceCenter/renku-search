@@ -21,6 +21,7 @@ package io.renku.search.provision
 import cats.effect.{ExitCode, IO, IOApp, Temporal}
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
+import io.renku.logging.LoggingSetup
 import scribe.Scribe
 import scribe.cats.*
 
@@ -32,6 +33,7 @@ object Microservice extends IOApp:
   override def run(args: List[String]): IO[ExitCode] =
     for {
       config <- loadConfig
+      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
       _ <- runSolrMigrations(config)
       _ <- startProvisioning(config)
     } yield ExitCode.Success

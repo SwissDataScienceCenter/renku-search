@@ -66,6 +66,7 @@
           RS_REDIS_HOST = "rsdev";
           RS_REDIS_PORT = "6379";
           RS_CONTAINER = "rsdev";
+          RS_LOG_LEVEL = "3";
 
           buildInputs = with pkgs;
           with selfPkgs; [
@@ -85,6 +86,7 @@
           RS_REDIS_HOST = "localhost";
           RS_REDIS_PORT = "16379";
           VM_SSH_PORT = "10022";
+          RS_LOG_LEVEL = "3";
 
           buildInputs = with pkgs;
           with selfPkgs; [

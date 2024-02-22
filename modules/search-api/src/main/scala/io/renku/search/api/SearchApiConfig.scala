@@ -18,14 +18,16 @@
 
 package io.renku.search.api
 
+import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
 import io.renku.search.config.ConfigValues
 import io.renku.solr.client.SolrConfig
 
 final case class SearchApiConfig(
-    solrConfig: SolrConfig
+    solrConfig: SolrConfig,
+    verbosity: Int
 )
 
 object SearchApiConfig:
   val config: ConfigValue[Effect, SearchApiConfig] =
-    ConfigValues.solrConfig.map(SearchApiConfig.apply)
+    (ConfigValues.solrConfig, ConfigValues.logLevel).mapN(SearchApiConfig.apply)

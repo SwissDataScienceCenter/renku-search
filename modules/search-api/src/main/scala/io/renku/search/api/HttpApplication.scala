@@ -59,7 +59,11 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     ).orNotFound
 
   private lazy val businessRoutes: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(businessEndpoints)
+    Http4sServerInterpreter[F](
+      Http4sServerOptions.customiseInterceptors
+        .corsInterceptor(CORSInterceptor.default)
+        .options
+    ).toRoutes(businessEndpoints)
 
   private lazy val businessEndpoints: List[ServerEndpoint[Any, F]] =
     List(

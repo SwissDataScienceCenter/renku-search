@@ -26,11 +26,12 @@ import io.renku.search.query.FieldTerm.Created
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.json.QueryJsonCodec
 import io.renku.search.query.parse.{QueryParser, QueryUtil}
+import cats.kernel.Monoid
 
 final case class Query(
     segments: List[Query.Segment]
 ):
-  def asString: String =
+  def render: String =
     segments
       .map {
         case Query.Segment.Field(v) => v.asString
@@ -58,6 +59,9 @@ object Query:
     case Text(value: String)
 
   object Segment:
+    given Monoid[Segment.Text] =
+      Monoid.instance(Text(""), _ ++ _)
+
     extension (self: Segment.Text)
       def ++(other: Segment.Text): Segment.Text =
         if (other.value.isEmpty) self

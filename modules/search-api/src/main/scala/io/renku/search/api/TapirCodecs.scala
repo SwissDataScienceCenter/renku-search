@@ -18,16 +18,12 @@
 
 package io.renku.search.api
 
-import cats.syntax.all.*
-import ciris.{ConfigValue, Effect}
-import io.renku.search.config.ConfigValues
-import io.renku.solr.client.SolrConfig
+import sttp.tapir.*
+import io.renku.search.query.Query
 
-final case class SearchApiConfig(
-    solrConfig: SolrConfig,
-    verbosity: Int
-)
+trait TapirCodecs:
+  given Codec[String, Query, CodecFormat.TextPlain] =
+    Codec.string.mapEither(Query.parse(_))(_.render)
 
-object SearchApiConfig:
-  val config: ConfigValue[Effect, SearchApiConfig] =
-    (ConfigValues.solrConfig, ConfigValues.logLevel).mapN(SearchApiConfig.apply)
+  given Schema[Query] =
+    Schema.string[Query]

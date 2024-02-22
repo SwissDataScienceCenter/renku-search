@@ -33,6 +33,8 @@ import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
+import io.renku.search.query.Query
+import io.renku.search.query.docs.SearchQueryManual
 
 object HttpApplication:
   def apply[F[_]: Async: Network](
@@ -42,7 +44,8 @@ object HttpApplication:
 
 class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     extends Http4sDsl[F]
-    with TapirBorerJson:
+    with TapirBorerJson
+    with TapirCodecs:
 
   private val businessRoot = "search"
 
@@ -57,18 +60,31 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
 
   private lazy val businessEndpoints: List[ServerEndpoint[Any, F]] =
     List(
-      searchEndpoint.serverLogic(searchApi.find)
+      searchEndpointGet.serverLogic(searchApi.query),
+      searchEndpointPost.serverLogic(searchApi.query)
     )
 
-  private lazy val searchEndpoint
-      : PublicEndpoint[String, String, List[SearchEntity], Any] =
-    val query =
-      path[String].name("user query").description("User defined query e.g. renku~")
+  private lazy val searchEndpointGet
+      : PublicEndpoint[Query, String, List[SearchEntity], Any] =
+    val q =
+      query[Query]("q").description("User defined query e.g. renku")
     endpoint.get
-      .in(query)
+      .in(q)
       .errorOut(borerJsonBody[String])
       .out(borerJsonBody[List[SearchEntity]])
-      .description("Search API for searching Renku entities")
+      .description(SearchQueryManual.markdown)
+
+  private val searchEndpointPost: PublicEndpoint[Query, String, List[SearchEntity], Any] =
+    endpoint.post
+      .errorOut(borerJsonBody[String])
+      .in(
+        borerJsonBody[Query]
+          .example(
+            Query(Query.Segment.nameIs("proj-name1"), Query.Segment.text("flight sim"))
+          )
+      )
+      .out(borerJsonBody[List[SearchEntity]])
+      .description(SearchQueryManual.markdown)
 
   private lazy val openAPIEndpoint =
     val docs = OpenAPIDocsInterpreter()

@@ -18,6 +18,7 @@
 
 package io.renku.search.query.parse
 
+import cats.syntax.all.*
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 
@@ -36,11 +37,8 @@ private[query] object QueryUtil {
       in match
         case first :: rest =>
           (first, curr) match
-            case (t1: Segment.Text, Some(tc)) =>
-              loop(rest, Some(tc ++ t1), result)
-
-            case (e: Segment.Text, None) =>
-              loop(rest, Some(e), result)
+            case (t1: Segment.Text, tc) =>
+              loop(rest, tc |+| Some(t1), result)
 
             case (f: Segment.Field, Some(tc)) =>
               loop(rest, None, f :: tc :: result)

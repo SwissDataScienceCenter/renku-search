@@ -117,3 +117,5 @@ helm-chart/renku-graph/charts/*tgz
 .DS_Store
 
 .direnv/
+*.qcow2
+.tmp

@@ -31,6 +31,7 @@ final case class FieldType(
     sortMissingLast: Boolean = true
 ):
   lazy val makeDocValue: FieldType = copy(docValues = true)
+  lazy val makeMultiValued: FieldType = copy(multiValued = true)
 
 object FieldType:
 

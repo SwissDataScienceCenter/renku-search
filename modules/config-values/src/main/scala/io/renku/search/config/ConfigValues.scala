@@ -30,37 +30,42 @@ object ConfigValues extends ConfigDecoders:
 
   private val prefix = "RS"
 
+  private def renv(name: String) =
+    env(s"${prefix}_$name")
+
+  val logLevel: ConfigValue[Effect, Int] =
+    renv("LOG_LEVEL").default("2").as[Int]
+
   val redisConfig: ConfigValue[Effect, RedisConfig] = {
-    val host = env(s"${prefix}_REDIS_HOST").default("localhost").as[RedisHost]
-    val port = env(s"${prefix}_REDIS_PORT").default("6379").as[RedisPort]
-    val sentinel = env(s"${prefix}_REDIS_SENTINEL").as[Boolean].default(false)
-    val maybeDB = env(s"${prefix}_REDIS_DB").as[RedisDB].option
-    val maybePass = env(s"${prefix}_REDIS_PASSWORD").as[RedisPassword].option
-    val maybeMasterSet = env(s"${prefix}_REDIS_MASTER_SET").as[RedisMasterSet].option
+    val host = renv("REDIS_HOST").default("localhost").as[RedisHost]
+    val port = renv("REDIS_PORT").default("6379").as[RedisPort]
+    val sentinel = renv("REDIS_SENTINEL").as[Boolean].default(false)
+    val maybeDB = renv("REDIS_DB").as[RedisDB].option
+    val maybePass = renv("REDIS_PASSWORD").as[RedisPassword].option
+    val maybeMasterSet = renv("REDIS_MASTER_SET").as[RedisMasterSet].option
 
     (host, port, sentinel, maybeDB, maybePass, maybeMasterSet).mapN(RedisConfig.apply)
   }
 
   val eventsQueueName: ConfigValue[Effect, QueueName] =
-    env(s"${prefix}_REDIS_QUEUE_NAME").default("events").as[QueueName]
+    renv("REDIS_QUEUE_NAME").default("events").as[QueueName]
 
   val retryOnErrorDelay: ConfigValue[Effect, FiniteDuration] =
-    env(s"${prefix}_RETRY_ON_ERROR_DELAY").default("2 seconds").as[FiniteDuration]
+    renv("RETRY_ON_ERROR_DELAY").default("2 seconds").as[FiniteDuration]
 
   val solrConfig: ConfigValue[Effect, SolrConfig] = {
-    val url = env(s"${prefix}_SOLR_URL").default("http://localhost:8983/solr").as[Uri]
-    val core = env(s"${prefix}_SOLR_CORE").default("search-core-test")
+    val url = renv("SOLR_URL").default("http://localhost:8983/solr").as[Uri]
+    val core = renv("SOLR_CORE").default("search-core-test")
     val maybeUser =
-      (env(s"${prefix}_SOLR_USER").option -> env(s"${prefix}_SOLR_PASS").option)
-        .mapN { case (maybeUsername, maybePass) =>
-          (maybeUsername, maybePass).mapN(SolrUser.apply)
-        }
+      (renv("SOLR_USER"), renv("SOLR_PASS"))
+        .mapN(SolrUser.apply)
+        .option
     val defaultCommit =
-      env(s"${prefix}_SOLR_DEFAULT_COMMIT_WITHIN")
+      renv("SOLR_DEFAULT_COMMIT_WITHIN")
         .default("0 seconds")
         .as[FiniteDuration]
         .option
     val logMessageBodies =
-      env(s"${prefix}_SOLR_LOG_MESSAGE_BODIES").default("false").as[Boolean]
+      renv("SOLR_LOG_MESSAGE_BODIES").default("false").as[Boolean]
     (url, core, maybeUser, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)
   }

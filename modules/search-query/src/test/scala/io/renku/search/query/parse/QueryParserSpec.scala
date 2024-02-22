@@ -20,6 +20,7 @@ package io.renku.search.query.parse
 
 import cats.data.NonEmptyList as Nel
 import io.renku.search.query.*
+import io.renku.search.query.Query.Segment
 import io.renku.search.query.Comparison.{GreaterThan, LowerThan}
 import munit.{FunSuite, ScalaCheckSuite}
 import org.scalacheck.Prop
@@ -92,14 +93,20 @@ class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
     )
   }
 
-  test("example queries".ignore) {
-    val p = QueryParser.query
-    println(p.run("name:\"vQgCg mpZU4cCgF3N eVZUMkH7\",JHRt visibility:private WX59P"))
+  test("invalid field terms converted as text".ignore) {
+    assertEquals(
+      Query.parse("projectId:"),
+      Right(Query(Segment.Text("projectId:")))
+    )
+    assertEquals(
+      Query.parse("projectId1"),
+      Right(Query(Segment.Text("projectId1")))
+    )
   }
 
   property("generated queries") {
     Prop.forAll(QueryGenerators.query) { q =>
-      val qStr = q.asString
+      val qStr = q.render
       val parsed = Query.parse(qStr).fold(sys.error, identity)
       if (q != parsed) {
         // this is for better error messages when things fail

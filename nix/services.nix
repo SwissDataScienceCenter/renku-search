@@ -1,6 +1,7 @@
 {
   lib,
   config,
+  pkgs,
   ...
 }: {
   services.solr = {
@@ -17,7 +18,14 @@
     };
   };
 
+  services.nginx = {
+    enable = true;
+    virtualHosts.rsdev.locations."/" = {
+      root = "${pkgs.openapi-doc}";
+    };
+  };
+
   networking = {
-    firewall.allowedTCPPorts = [8983];
+    firewall.allowedTCPPorts = [8983 80];
   };
 }

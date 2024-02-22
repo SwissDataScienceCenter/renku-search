@@ -12,6 +12,7 @@
     {
       overlays.default = final: prev: {
         solr = self.packages.${prev.system}.solr;
+        openapi-doc = self.packages.${prev.system}.openapi-doc;
       };
       nixosConfigurations = let
         selfOverlay = {
@@ -55,9 +56,10 @@
       formatter = pkgs.alejandra;
       packages =
         ((import ./nix/dev-scripts.nix) {inherit (pkgs) concatTextFile writeShellScriptBin;})
-        // {
+        // rec {
           solr = pkgs.callPackage (import ./nix/solr.nix) {};
           swagger-ui = pkgs.callPackage (import ./nix/swagger-ui.nix) {};
+          openapi-doc = pkgs.callPackage (import ./nix/openapi-doc.nix) { inherit swagger-ui; };
         };
 
       devShells = rec {

@@ -74,6 +74,7 @@
 
             redis-push
             recreate-container
+            start-container
             solr-create-core
             solr-delete-core
             solr-recreate-core

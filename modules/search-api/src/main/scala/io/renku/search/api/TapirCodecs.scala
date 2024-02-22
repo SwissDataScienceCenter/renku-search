@@ -24,3 +24,6 @@ import io.renku.search.query.Query
 trait TapirCodecs:
   given Codec[String, Query, CodecFormat.TextPlain] =
     Codec.string.mapEither(Query.parse(_))(_.render)
+
+  given Schema[Query] =
+    Schema.string[Query]

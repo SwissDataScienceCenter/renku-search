@@ -275,6 +275,18 @@ lazy val searchQuery = project
   )
   .enablePlugins(AutomateHeaderPlugin)
 
+lazy val searchQueryDocs = project
+  .in(file("modules/search-query-docs"))
+  .withId("search-query-docs")
+  .dependsOn(searchQuery)
+  .enablePlugins(SearchQueryDocsPlugin)
+  .settings(
+    name := "search-query-docs",
+    publish := {},
+    publishLocal := {},
+    publishArtifact := false
+  )
+
 lazy val searchProvision = project
   .in(file("modules/search-provision"))
   .withId("search-provision")
@@ -309,7 +321,8 @@ lazy val searchApi = project
     commons % "compile->compile;test->test",
     http4sBorer % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
-    configValues % "compile->compile;test->test"
+    configValues % "compile->compile;test->test",
+    searchQueryDocs % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
 

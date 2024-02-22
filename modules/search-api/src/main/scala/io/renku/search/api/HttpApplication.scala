@@ -36,6 +36,8 @@ import sttp.tapir.server.http4s.Http4sServerInterpreter
 import io.renku.search.query.Query
 import io.renku.search.api.data.*
 import io.renku.search.query.docs.SearchQueryManual
+import sttp.tapir.server.http4s.Http4sServerOptions
+import sttp.tapir.server.interceptor.cors.CORSInterceptor
 
 object HttpApplication:
   def apply[F[_]: Async: Network](
@@ -52,12 +54,12 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
 
   lazy val router: HttpApp[F] =
     Router[F](
-      s"/$businessRoot" -> businessRoutes,
+      s"/$businessRoot" -> (openAPIRoute <+> businessRoutes),
       "/" -> operationsRoutes
     ).orNotFound
 
   private lazy val businessRoutes: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(openAPIEndpoint :: businessEndpoints)
+    Http4sServerInterpreter[F]().toRoutes(businessEndpoints)
 
   private lazy val businessEndpoints: List[ServerEndpoint[Any, F]] =
     List(
@@ -94,12 +96,19 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
       .serverEndpointsToOpenAPI(businessEndpoints, "Search API", "0.0.1")
       .servers(List(Server(url = "/search", description = "Renku Search API".some)))
 
-    endpoint
+    endpoint.get
       .in("spec.json")
-      .get
       .out(stringJsonBody)
       .description("OpenAPI docs")
       .serverLogic(_ => docs.asJson.spaces2.asRight.pure[F])
+
+  private val openAPIRoute =
+    Http4sServerInterpreter[F](
+      Http4sServerOptions.customiseInterceptors
+        .corsInterceptor(CORSInterceptor.default)
+        .options
+    )
+      .toRoutes(List(openAPIEndpoint))
 
   private lazy val operationsRoutes: HttpRoutes[F] =
     Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))

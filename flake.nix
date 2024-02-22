@@ -57,6 +57,7 @@
         ((import ./nix/dev-scripts.nix) {inherit (pkgs) concatTextFile writeShellScriptBin;})
         // {
           solr = pkgs.callPackage (import ./nix/solr.nix) {};
+          swagger-ui = pkgs.callPackage (import ./nix/swagger-ui.nix) {};
         };
 
       devShells = rec {

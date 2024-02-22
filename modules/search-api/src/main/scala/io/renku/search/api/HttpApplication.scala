@@ -27,6 +27,7 @@ import io.renku.solr.client.SolrConfig
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.http4s.{HttpApp, HttpRoutes, Response}
+import sttp.apispec.openapi.Server
 import sttp.apispec.openapi.circe.given
 import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
@@ -72,6 +73,7 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
   private lazy val openAPIEndpoint =
     val docs = OpenAPIDocsInterpreter()
       .serverEndpointsToOpenAPI(businessEndpoints, "Search API", "0.0.1")
+      .servers(List(Server(url = "/search", description = "Renku Search API".some)))
 
     endpoint
       .in("spec.json")

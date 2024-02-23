@@ -27,7 +27,8 @@ import org.apache.lucene.queryparser.flexible.standard.QueryParserUtil
 private object QueryInterpreter {
 
   def apply(query: Query): String =
-    query.segments
+    if (query.isEmpty) "_type:Project" //User not yet supported to decode
+    else query.segments
       .map {
         case Segment.Field(FieldTerm.ProjectIdIs(ids)) =>
           ids.toList

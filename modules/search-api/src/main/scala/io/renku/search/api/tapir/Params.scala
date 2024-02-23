@@ -26,7 +26,7 @@ import io.renku.search.http.borer.TapirBorerJson
 object Params extends TapirCodecs with TapirBorerJson {
 
   val query: EndpointInput[Query] =
-    queryParam[Query]("q").description("User defined search query")
+    queryParam[Query]("q").description("User defined search query").default(Query.empty)
 
   val pageDef: EndpointInput[PageDef] = {
     val page =

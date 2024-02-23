@@ -281,14 +281,13 @@ lazy val searchQuery = project
 lazy val searchQueryDocs = project
   .in(file("modules/search-query-docs"))
   .withId("search-query-docs")
-  .dependsOn(searchQuery)
+  .disablePlugins(RevolverPlugin)
+  .settings(commonSettings)
   .enablePlugins(SearchQueryDocsPlugin)
   .settings(
-    name := "search-query-docs",
-    publish := {},
-    publishLocal := {},
-    publishArtifact := false
+    name := "search-query-docs"
   )
+  .dependsOn(searchQuery)
 
 lazy val searchProvision = project
   .in(file("modules/search-provision"))

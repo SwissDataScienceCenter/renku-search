@@ -31,3 +31,6 @@ final case class QueryInput(
 object QueryInput:
   given Encoder[QueryInput] = deriveEncoder
   given Decoder[QueryInput] = deriveDecoder
+
+  def pageOne(query: Query): QueryInput =
+    QueryInput(query, PageDef.default)

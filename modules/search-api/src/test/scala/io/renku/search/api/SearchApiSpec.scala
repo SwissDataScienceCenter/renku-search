@@ -19,11 +19,14 @@
 package io.renku.search.api
 
 import cats.effect.IO
+import io.renku.search.query.Query
+import io.renku.search.api.data.*
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import munit.CatsEffectSuite
 import scribe.Scribe
+import io.renku.search.api.data.QueryInput
 
 class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
 
@@ -37,10 +40,13 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       for {
         _ <- client.insertProjects(project1 :: project2 :: Nil)
         results <- searchApi
-          .find("matching")
+          .query(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
-      } yield assert(results contains toApiProject(project1))
+      } yield assert(results.items contains toApiProject(project1))
     }
+
+  private def mkQuery(phrase: String): QueryInput =
+    QueryInput.pageOne(Query.parse(phrase).fold(sys.error, identity))
 
   private def toApiProject(p: SolrProject) =
     def toUser(user: SolrUser): User = User(user.id)

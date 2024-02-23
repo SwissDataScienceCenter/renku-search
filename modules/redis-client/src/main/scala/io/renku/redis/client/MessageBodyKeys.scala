@@ -19,5 +19,5 @@
 package io.renku.redis.client
 
 private object MessageBodyKeys:
-  val header = "header"
+  val headers = "headers"
   val payload = "payload"

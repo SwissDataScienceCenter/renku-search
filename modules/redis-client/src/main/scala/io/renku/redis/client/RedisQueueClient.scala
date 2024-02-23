@@ -69,7 +69,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
       payload: ByteVector
   ): F[MessageId] =
     val messageBody = Map(
-      MessageBodyKeys.header -> header,
+      MessageBodyKeys.headers -> header,
       MessageBodyKeys.payload -> payload
     )
     val message = Stream.emit[F, XAddMessage[String, ByteVector]](
@@ -93,13 +93,13 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
         .getOrElse(StreamingOffset.All[String])
 
     def toMessage(rm: XReadMessage[String, ByteVector]): Option[RedisMessage] =
-      (rm.body.get(MessageBodyKeys.header), rm.body.get(MessageBodyKeys.payload))
+      (rm.body.get(MessageBodyKeys.headers), rm.body.get(MessageBodyKeys.payload))
         .mapN(RedisMessage(MessageId(rm.id.value), _, _))
 
     lazy val logInfo: ((XReadMessage[_, _], Option[RedisMessage])) => F[Unit] = {
       case (m, None) =>
         Log[F].info(
-          s"Message '${m.id}' skipped as it has no '${MessageBodyKeys.header}' or '${MessageBodyKeys.payload}'"
+          s"Message '${m.id}' skipped as it has no '${MessageBodyKeys.headers}' or '${MessageBodyKeys.payload}'"
         )
       case _ => ().pure[F]
     }

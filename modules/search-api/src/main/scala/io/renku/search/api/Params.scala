@@ -18,25 +18,50 @@
 
 package io.renku.search.api
 
-import sttp.tapir.query as queryParam
+import sttp.tapir.{query as queryParam, * }
 import io.renku.search.api.data.*
 import io.renku.search.query.Query
+import io.renku.search.http.borer.TapirBorerJson
 
-object Params extends TapirCodecs {
+object Params extends TapirCodecs with TapirBorerJson {
 
-  val query =
+  val query: EndpointInput[Query] =
     queryParam[Query]("q").description("User defined search query")
 
-  val pageDef = {
-    val limit =
-      queryParam[Int]("limit").description("The maximum number of results to return").default(25)
+  val pageDef: EndpointInput[PageDef] = {
+    val page =
+      queryParam[Int]("page")
+        .validate(Validator.min(1))
+        .description("The page to retrieve, starting at 1")
+        .default(1)
 
-    val offset =
-      queryParam[Int]("offset").description("How many results to skip").default(0)
+    val perPage =
+      queryParam[Int]("per_page")
+        .description("How many items to return for one page")
+        .validate(Validator.min(1))
+        .default(PageDef.default.limit)
 
-    limit.and(offset).map(PageDef.apply.tupled)(Tuple.fromProductTyped)
+    (page / perPage).map(PageDef.fromPage.tupled)(Tuple.fromProductTyped)
   }
 
-  val queryInput =
-    query.and(pageDef).map(QueryInput.apply.tupled)(Tuple.fromProductTyped)
+  val queryInput: EndpointInput[QueryInput] = query.and(pageDef).mapTo[QueryInput]
+
+  val pagingInfo: EndpointOutput[PageWithTotals] = {
+    val perPage: EndpointOutput[Int] = header[Int]("x-per-page")
+    val page: EndpointOutput[Int] = header[Int]("x-page")
+    val pageDef = page.and(perPage).map(PageDef.fromPage.tupled)(pd => (pd.page, pd.limit))
+
+    val prevPage: EndpointOutput[Option[Int]]  = header[Option[Int]]("x-prev-page")
+    val nextPage: EndpointOutput[Option[Int]] = header[Option[Int]]("x-next-page")
+    val total: EndpointOutput[Long] = header[Long]("x-total")
+    val totalPages: EndpointOutput[Int] = header[Int]("x-total-pages")
+
+    pageDef.and(prevPage).and(nextPage).and(total).and(totalPages).mapTo[PageWithTotals]
+  }
+
+  val searchItems: EndpointOutput[Seq[SearchEntity]] =
+    borerJsonBody[Seq[SearchEntity]]
+
+  val searchResult: EndpointOutput[SearchResult] =
+    searchItems.and(pagingInfo).mapTo[SearchResult]
 }

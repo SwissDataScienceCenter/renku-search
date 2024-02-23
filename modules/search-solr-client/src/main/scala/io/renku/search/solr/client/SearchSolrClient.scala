@@ -23,13 +23,14 @@ import fs2.io.net.Network
 import io.renku.search.solr.documents.Project
 import io.renku.solr.client.{SolrClient, SolrConfig}
 import io.renku.search.query.Query
+import io.renku.solr.client.QueryResponse
 
 trait SearchSolrClient[F[_]]:
 
   def insertProjects(projects: Seq[Project]): F[Unit]
 
   def findProjects(phrase: String): F[List[Project]]
-  def queryProjects(query: Query, limit: Int, offset: Int): F[List[Project]]
+  def queryProjects(query: Query, limit: Int, offset: Int): F[QueryResponse[Project]]
 
 object SearchSolrClient:
   def make[F[_]: Async: Network](

@@ -63,7 +63,8 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
       Http4sServerOptions.customiseInterceptors
         .corsInterceptor(CORSInterceptor.default)
         .options
-    ).toRoutes(businessEndpoints)
+    )
+      .toRoutes(businessEndpoints)
 
   private lazy val businessEndpoints: List[ServerEndpoint[Any, F]] =
     List(
@@ -72,15 +73,15 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
     )
 
   private lazy val searchEndpointGet
-      : PublicEndpoint[QueryInput, String, List[SearchEntity], Any] =
+      : PublicEndpoint[QueryInput, String, SearchResult, Any] =
     endpoint.get
       .in(Params.queryInput)
       .errorOut(borerJsonBody[String])
-      .out(borerJsonBody[List[SearchEntity]])
+      .out(Params.searchResult)
       .description(SearchQueryManual.markdown)
 
   private val searchEndpointPost
-      : PublicEndpoint[QueryInput, String, List[SearchEntity], Any] =
+      : PublicEndpoint[QueryInput, String, SearchResult, Any] =
     endpoint.post
       .errorOut(borerJsonBody[String])
       .in(
@@ -92,7 +93,7 @@ class HttpApplication[F[_]: Async](searchApi: SearchApi[F])
             )
           )
       )
-      .out(borerJsonBody[List[SearchEntity]])
+      .out(Params.searchResult)
       .description(SearchQueryManual.markdown)
 
   private lazy val openAPIEndpoint =

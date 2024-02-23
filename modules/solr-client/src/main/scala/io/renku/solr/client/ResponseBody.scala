@@ -26,7 +26,9 @@ final case class ResponseBody[A](
     start: Long,
     numFoundExact: Boolean,
     docs: Seq[A]
-)
+):
+  def map[B](f: A => B): ResponseBody[B] =
+    copy(docs = docs.map(f))
 
 object ResponseBody:
   given [A](using Decoder[A]): Decoder[ResponseBody[A]] = deriveDecoder

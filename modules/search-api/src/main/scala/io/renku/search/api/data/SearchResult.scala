@@ -16,19 +16,11 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.api.data
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.solr.client.SolrConfig
-import io.renku.search.api.data.*
+import io.renku.search.api.SearchEntity
 
-trait SearchApi[F[_]]:
-  def query(query: QueryInput): F[Either[String, SearchResult]]
-
-object SearchApi:
-  def apply[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient.make[F](solrConfig).map(new SearchApiImpl[F](_))
+final case class SearchResult(
+  items: Seq[SearchEntity],
+  pagingInfo: PageWithTotals
+)

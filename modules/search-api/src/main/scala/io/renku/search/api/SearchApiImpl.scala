@@ -25,6 +25,7 @@ import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import org.http4s.dsl.Http4sDsl
 import scribe.Scribe
 import io.renku.search.api.data.*
+import io.renku.solr.client.QueryResponse
 
 private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
@@ -32,44 +33,41 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
 
   private given Scribe[F] = scribe.cats[F]
 
-  override def find(phrase: String): F[Either[String, List[SearchEntity]]] =
+  override def query(query: QueryInput): F[Either[String, SearchResult]] =
     solrClient
-      .findProjects(phrase)
-      .map(toApiModel)
-      .map(_.asRight[String])
-      .handleErrorWith(errorResponse(phrase))
-      .widen
-
-  override def query(query: QueryInput): F[Either[String, List[SearchEntity]]] =
-    solrClient
-      .queryProjects(query.query, query.page.limit, query.page.offset)
-      .map(toApiModel)
+      .queryProjects(query.query, query.page.limit + 1, query.page.offset)
+      .map(toApiResult(query.page))
       .map(_.asRight[String])
       .handleErrorWith(errorResponse(query.query.render))
       .widen
 
   private def errorResponse(
       phrase: String
-  ): Throwable => F[Either[String, List[Project]]] =
+  ): Throwable => F[Either[String, SearchResult]] =
     err =>
       val message = s"Finding by '$phrase' phrase failed"
       Scribe[F]
         .error(message, err)
         .as(message)
-        .map(_.asLeft[List[Project]])
+        .map(_.asLeft[SearchResult])
 
-  private def toApiModel(entities: List[SolrProject]): List[Project] =
-    entities.map { p =>
-      def toUser(user: SolrUser): User = User(user.id)
-      Project(
-        p.id,
-        p.name,
-        p.slug,
-        p.repositories,
-        p.visibility,
-        p.description,
-        toUser(p.createdBy),
-        p.creationDate,
-        p.members.map(toUser)
-      )
-    }
+  private def toApiProject(p: SolrProject): SearchEntity =
+    def toUser(user: SolrUser): User = User(user.id)
+    Project(
+      p.id,
+      p.name,
+      p.slug,
+      p.repositories,
+      p.visibility,
+      p.description,
+      toUser(p.createdBy),
+      p.creationDate,
+      p.members.map(toUser)
+    )
+
+  private def toApiResult(currentPage: PageDef)(solrResult: QueryResponse[SolrProject]): SearchResult =
+    val hasMore = solrResult.responseBody.docs.size > currentPage.limit
+    val pageInfo = PageWithTotals(currentPage, solrResult.responseBody.numFound, hasMore)
+    val items = solrResult.responseBody.docs.map(toApiProject)
+    if (hasMore) SearchResult(items.init, pageInfo)
+    else SearchResult(items, pageInfo)

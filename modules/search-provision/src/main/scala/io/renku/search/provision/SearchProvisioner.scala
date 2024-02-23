@@ -23,9 +23,11 @@ import cats.effect.{Async, Resource, Temporal}
 import cats.syntax.all.*
 import fs2.Chunk
 import fs2.io.net.Network
+import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroReader
 import io.renku.avro.codec.decoders.all.given
-import io.renku.events.v1.ProjectCreated
+import io.renku.events.v1
+import io.renku.events.v1.{ProjectCreated, Visibility}
 import io.renku.queue.client.*
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
 import io.renku.search.model.*
@@ -126,23 +128,12 @@ private class SearchProvisionerImpl[F[_]: Async](
           .onError(markProcessedOnFailure(lastMessage, queueClient))
     }
 
+  private given Transformer[String, User] = (from: String) => User(users.Id(from))
+  private given Transformer[v1.Visibility, projects.Visibility] =
+    (from: v1.Visibility) => projects.Visibility.unsafeFromString(from.name())
+
   private lazy val toSolrDocuments: Seq[ProjectCreated] => Seq[Project] =
-    _.map { pc =>
-
-      def toUser(id: String): User = User(users.Id(id))
-
-      Project(
-        projects.Id(pc.id),
-        projects.Name(pc.name),
-        projects.Slug(pc.slug),
-        pc.repositories.map(projects.Repository(_)),
-        projects.Visibility.unsafeFromString(pc.visibility.name()),
-        pc.description.map(projects.Description(_)),
-        toUser(pc.createdBy),
-        projects.CreationDate(pc.creationDate),
-        pc.members.map(toUser)
-      )
-    }
+    _.map(_.to[Project])
 
   private def markProcessedOnFailure(
       message: QueueMessage,

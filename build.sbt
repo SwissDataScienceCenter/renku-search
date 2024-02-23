@@ -75,6 +75,7 @@ lazy val commons = project
       Dependencies.borer ++
         Dependencies.catsCore ++
         Dependencies.catsEffect ++
+        Dependencies.ducktape ++
         Dependencies.fs2Core ++
         Dependencies.scodecBits ++
         Dependencies.scribe,

@@ -31,16 +31,20 @@ import sttp.tapir.server.http4s.Http4sServerOptions
 import sttp.tapir.server.interceptor.cors.CORSInterceptor
 import io.renku.search.BuildInfo
 
-object OpenApiRoute {
+final class OpenApiRoute[F[_]: Async](
+    prefix: String,
+    description: String,
+    endpoints: List[ServerEndpoint[Any, F]]
+) {
 
-  private def openAPIEndpoint[F[_]: Async](endpoints: List[ServerEndpoint[Any, F]]) =
+  private val openAPIEndpoint =
     val docs = OpenAPIDocsInterpreter()
       .serverEndpointsToOpenAPI(
         endpoints,
         "Search API",
         BuildInfo.gitDescribedVersion.getOrElse(BuildInfo.version)
       )
-      .servers(List(Server(url = "/search", description = "Renku Search API".some)))
+      .servers(List(Server(url = prefix, description = description.some)))
 
     endpoint.get
       .in("spec.json")
@@ -48,11 +52,11 @@ object OpenApiRoute {
       .description("OpenAPI docs")
       .serverLogic(_ => docs.asJson.spaces2.asRight.pure[F])
 
-  def apply[F[_]: Async](endpoints: List[ServerEndpoint[Any, F]]) =
+  def routes =
     Http4sServerInterpreter[F](
       Http4sServerOptions.customiseInterceptors
         .corsInterceptor(CORSInterceptor.default)
         .options
     )
-      .toRoutes(List(openAPIEndpoint(endpoints)))
+      .toRoutes(openAPIEndpoint)
 }

@@ -35,12 +35,13 @@ object HttpApplication:
 
 final class HttpApplication[F[_]: Async](searchApi: SearchApi[F]) extends Http4sDsl[F]:
 
-  private val search = new SearchRoutes[F](searchApi)
+  private val prefix = "/search"
 
-  private val businessEndpoints = search.endpoints
+  private val search = new SearchRoutes[F](searchApi)
+  private val openapi = new OpenApiRoute[F](prefix, "Renku Search API", search.endpoints)
 
   lazy val router: HttpApp[F] =
     Router[F](
-      "/search" -> (OpenApiRoute(businessEndpoints) <+> search.routes),
+      prefix -> (openapi.routes <+> search.routes),
       "/" -> OperationRoutes[F]
     ).orNotFound

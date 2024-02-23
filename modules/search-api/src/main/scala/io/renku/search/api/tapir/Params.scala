@@ -39,6 +39,7 @@ object Params extends TapirCodecs with TapirBorerJson {
       queryParam[Int]("per_page")
         .description("How many items to return for one page")
         .validate(Validator.min(1))
+        .validate(Validator.max(100))
         .default(PageDef.default.limit)
 
     (page / perPage).map(PageDef.fromPage.tupled)(Tuple.fromProductTyped)

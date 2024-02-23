@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.api.tapir
 
 import sttp.tapir.*
 import io.renku.search.api.data.*

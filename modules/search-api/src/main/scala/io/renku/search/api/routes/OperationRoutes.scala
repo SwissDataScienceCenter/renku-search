@@ -16,9 +16,22 @@
  * limitations under the License.
  */
 
-package io.renku.search.api.data
+package io.renku.search.api.routes
 
-final case class SearchResult(
-  items: Seq[SearchEntity],
-  pagingInfo: PageWithTotals
-)
+import cats.effect.Async
+import cats.syntax.all.*
+import org.http4s.HttpRoutes
+import sttp.tapir.*
+import sttp.tapir.server.http4s.Http4sServerInterpreter
+
+object OperationRoutes {
+  private def pingEndpoint[F[_]: Async] =
+    endpoint.get
+      .in("ping")
+      .out(stringBody)
+      .description("Ping")
+      .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
+
+  def apply[F[_]: Async]: HttpRoutes[F] =
+    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))
+}

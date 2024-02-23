@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import com.github.sbt.git.SbtGit.GitKeys._
 
 organization := "io.renku"
 name := "renku-search"
@@ -90,9 +91,11 @@ lazy val commons = project
       val targets = sources.map(s => targetDir / s.name)
       IO.copy(sources.zip(targets))
       targets
-    }.taskValue
+    }.taskValue,
+    buildInfoKeys := Seq(name, version, gitHeadCommit, gitDescribedVersion),
+    buildInfoPackage := "io.renku.search"
   )
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
 
 lazy val http4sBorer = project

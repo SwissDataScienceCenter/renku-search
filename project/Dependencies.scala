@@ -13,6 +13,7 @@ object Dependencies {
     val catsParse = "1.0.0"
     val catsScalaCheck = "0.3.2"
     val ciris = "3.5.0"
+    val ducktape = "0.1.11"
     val fs2 = "3.9.4"
     val http4s = "0.23.25"
     val luceneQueryParser = "9.9.2"
@@ -79,6 +80,10 @@ object Dependencies {
 
   val catsEffectMunit = Seq(
     "org.typelevel" %% "munit-cats-effect-3" % V.catsEffectMunit
+  )
+
+  val ducktape = Seq(
+    "io.github.arainko" %% "ducktape" % V.ducktape
   )
 
   val fs2Core = Seq(

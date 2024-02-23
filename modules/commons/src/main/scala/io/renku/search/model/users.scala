@@ -19,6 +19,7 @@
 package io.renku.search.model
 
 import io.bullet.borer.Codec
+import io.github.arainko.ducktape.Transformer
 
 object users:
 
@@ -26,4 +27,5 @@ object users:
   object Id:
     def apply(v: String): Id = v
     extension (self: Id) def value: String = self
+    given Transformer[String, Id] = apply
     given Codec[Id] = Codec.bimap[String, Id](_.value, Id.apply)

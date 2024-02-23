@@ -132,4 +132,4 @@ class SearchProvisionerSpec extends CatsEffectSuite with QueueSpec with SearchSo
     )
 
   override def munitFixtures: Seq[Fixture[_]] =
-    List(withQueueClient, withSearchSolrClient)
+    List(withRedisClient, withQueueClient, withSearchSolrClient)

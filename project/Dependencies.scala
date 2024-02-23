@@ -15,7 +15,7 @@ object Dependencies {
     val ciris = "3.5.0"
     val fs2 = "3.9.4"
     val http4s = "0.23.25"
-    val luceneQueryParser = "9.9.1"
+    val luceneQueryParser = "9.9.2"
     val redis4Cats = "1.5.2"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"

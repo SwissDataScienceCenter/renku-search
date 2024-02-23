@@ -16,19 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.api.tapir
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.solr.client.SolrConfig
+import sttp.tapir.*
 import io.renku.search.api.data.*
+import io.renku.search.query.Query
 
-trait SearchApi[F[_]]:
-  def query(query: QueryInput): F[Either[String, SearchResult]]
+trait TapirCodecs:
+  given Codec[String, Query, CodecFormat.TextPlain] =
+    Codec.string.mapEither(Query.parse(_))(_.render)
 
-object SearchApi:
-  def apply[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient.make[F](solrConfig).map(new SearchApiImpl[F](_))
+  given Schema[Query] = Schema.anyObject[Query]
+  given Schema[PageDef] = Schema.derived
+  given Schema[QueryInput] = Schema.derived

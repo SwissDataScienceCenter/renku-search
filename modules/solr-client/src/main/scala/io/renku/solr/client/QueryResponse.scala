@@ -25,7 +25,9 @@ import io.bullet.borer.derivation.key
 final case class QueryResponse[A](
     responseHeader: ResponseHeader,
     @key("response") responseBody: ResponseBody[A]
-)
+):
+  def map[B](f: A => B): QueryResponse[B] =
+    copy(responseBody = responseBody.map(f))
 
 object QueryResponse:
   given [A](using Decoder[A]): Decoder[QueryResponse[A]] =

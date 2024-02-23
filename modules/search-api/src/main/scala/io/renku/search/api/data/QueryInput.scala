@@ -16,19 +16,21 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.api.data
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.solr.client.SolrConfig
-import io.renku.search.api.data.*
+import io.renku.search.query.Query
+import io.bullet.borer.Encoder
+import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
+import io.bullet.borer.Decoder
 
-trait SearchApi[F[_]]:
-  def query(query: QueryInput): F[Either[String, SearchResult]]
+final case class QueryInput(
+    query: Query,
+    page: PageDef
+)
 
-object SearchApi:
-  def apply[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient.make[F](solrConfig).map(new SearchApiImpl[F](_))
+object QueryInput:
+  given Encoder[QueryInput] = deriveEncoder
+  given Decoder[QueryInput] = deriveDecoder
+
+  def pageOne(query: Query): QueryInput =
+    QueryInput(query, PageDef.default)

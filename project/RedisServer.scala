@@ -26,7 +26,7 @@ object RedisServer extends RedisServer("graph", port = 6379)
 @annotation.nowarn()
 class RedisServer(module: String, val port: Int) {
 
-  val host: String = "localhost"
+  val host: String = sys.env.get("RS_REDIS_HOST").getOrElse("localhost")
   val url: String = s"redis://$host:$port"
 
   // When using a local Redis for development, use this env variable

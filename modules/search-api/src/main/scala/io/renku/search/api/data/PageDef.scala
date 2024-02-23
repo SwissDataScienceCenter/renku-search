@@ -16,14 +16,27 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.api.data
 
-import sttp.tapir.*
-import io.renku.search.query.Query
+import io.bullet.borer.Encoder
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.Decoder
 
-trait TapirCodecs:
-  given Codec[String, Query, CodecFormat.TextPlain] =
-    Codec.string.mapEither(Query.parse(_))(_.render)
+final case class PageDef(
+    limit: Int,
+    offset: Int
+):
+  require(limit > 0, "limit must be >0")
+  require(offset >= 0, "offset must be positive")
 
-  given Schema[Query] =
-    Schema.string[Query]
+  val page: Int =
+    1 + (offset / limit)
+
+object PageDef:
+  val default: PageDef = PageDef(25, 0)
+
+  def fromPage(pageNum: Int, perPage: Int): PageDef =
+    PageDef(perPage, (pageNum - 1).abs * perPage)
+
+  given Encoder[PageDef] = MapBasedCodecs.deriveEncoder
+  given Decoder[PageDef] = MapBasedCodecs.deriveDecoder

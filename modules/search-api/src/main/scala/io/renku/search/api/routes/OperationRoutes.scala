@@ -16,19 +16,22 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.api.routes
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.solr.client.SolrConfig
-import io.renku.search.api.data.*
+import cats.effect.Async
+import cats.syntax.all.*
+import org.http4s.HttpRoutes
+import sttp.tapir.*
+import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-trait SearchApi[F[_]]:
-  def query(query: QueryInput): F[Either[String, SearchResult]]
+object OperationRoutes {
+  private def pingEndpoint[F[_]: Async] =
+    endpoint.get
+      .in("ping")
+      .out(stringBody)
+      .description("Ping")
+      .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
 
-object SearchApi:
-  def apply[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchApi[F]] =
-    SearchSolrClient.make[F](solrConfig).map(new SearchApiImpl[F](_))
+  def apply[F[_]: Async]: HttpRoutes[F] =
+    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))
+}

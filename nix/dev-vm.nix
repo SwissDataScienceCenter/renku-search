@@ -43,6 +43,11 @@
       host.port = 16379;
       guest.port = 6379;
     }
+    {
+      from = "host";
+      host.port = 8088;
+      guest.port = 80;
+    }
   ];
   documentation.enable = false;
 }

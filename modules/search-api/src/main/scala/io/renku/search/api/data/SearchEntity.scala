@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.api.data
 
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
 import io.bullet.borer.{AdtEncodingStrategy, Codec, Decoder, Encoder}

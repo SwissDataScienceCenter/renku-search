@@ -1,9 +1,13 @@
-{ buildNpmPackage, nodejs, cypress, fetchFromGitHub }:
-
+{
+  buildNpmPackage,
+  nodejs,
+  cypress,
+  fetchFromGitHub,
+}:
 buildNpmPackage {
   name = "swagger-ui";
 
-  buildInputs = [ nodejs cypress ];
+  buildInputs = [nodejs cypress];
 
   src = fetchFromGitHub {
     owner = "swagger-api";

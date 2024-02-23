@@ -59,17 +59,23 @@
         // rec {
           solr = pkgs.callPackage (import ./nix/solr.nix) {};
           swagger-ui = pkgs.callPackage (import ./nix/swagger-ui.nix) {};
-          openapi-doc = pkgs.callPackage (import ./nix/openapi-doc.nix) { inherit swagger-ui; };
+          openapi-doc = pkgs.callPackage (import ./nix/openapi-doc.nix) {inherit swagger-ui;};
         };
 
       devShells = rec {
         default = container;
         container = pkgs.mkShell {
+          RS_SOLR_HOST = "rsdev";
           RS_SOLR_URL = "http://rsdev:8983/solr";
+          RS_SOLR_CORE = "rsdev-test";
           RS_REDIS_HOST = "rsdev";
           RS_REDIS_PORT = "6379";
           RS_CONTAINER = "rsdev";
           RS_LOG_LEVEL = "3";
+
+          #don't start docker container for dbTests
+          NO_SOLR = "true";
+          NO_REDIS = "true";
 
           buildInputs = with pkgs;
           with selfPkgs; [
@@ -82,14 +88,20 @@
             solr-create-core
             solr-delete-core
             solr-recreate-core
+            solr-recreate-dbtests-cores
           ];
         };
         vm = pkgs.mkShell {
           RS_SOLR_URL = "http://localhost:18983/solr";
+          RS_SOLR_CORE = "rsdev-test";
           RS_REDIS_HOST = "localhost";
           RS_REDIS_PORT = "16379";
           VM_SSH_PORT = "10022";
           RS_LOG_LEVEL = "3";
+
+          #don't start docker container for dbTests
+          NO_SOLR = "true";
+          NO_REDIS = "true";
 
           buildInputs = with pkgs;
           with selfPkgs; [
@@ -103,6 +115,7 @@
             vm-solr-create-core
             vm-solr-delete-core
             vm-solr-recreate-core
+            solr-recreate-dbtests-cores
           ];
         };
       };

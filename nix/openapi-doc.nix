@@ -1,5 +1,8 @@
-{ runCommand, writeText, swagger-ui }:
-let
+{
+  runCommand,
+  writeText,
+  swagger-ui,
+}: let
   indexhtml = writeText "index.html" ''
     <!DOCTYPE html>
     <html lang="en">
@@ -30,8 +33,8 @@ let
     </html>
   '';
 in
-runCommand "openapi-docs" {} ''
-  mkdir $out
-  ln -snf ${swagger-ui}/lib/node_modules/swagger-ui/dist/* $out/
-  ln -snf ${indexhtml} $out/index.html
-''
+  runCommand "openapi-docs" {} ''
+    mkdir $out
+    ln -snf ${swagger-ui}/lib/node_modules/swagger-ui/dist/* $out/
+    ln -snf ${indexhtml} $out/index.html
+  ''

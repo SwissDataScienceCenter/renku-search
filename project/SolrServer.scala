@@ -28,7 +28,8 @@ object SolrServer extends SolrServer("graph", port = 8983)
 @annotation.nowarn()
 class SolrServer(module: String, port: Int) {
 
-  val url: String = s"http://localhost:$port"
+  private val host: String = sys.env.get("RS_SOLR_HOST").getOrElse("localhost")
+  val url: String = s"http://$host:$port"
 
   // When using a local Solr for development, use this env variable
   // to not start a Solr server via docker for the tests

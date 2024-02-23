@@ -20,6 +20,7 @@ package io.renku.search.query.parse
 
 import cats.data.NonEmptyList
 import cats.parse.{Parser as P, Parser0 as P0}
+import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.*
 
@@ -64,6 +65,16 @@ private[query] object QueryParser {
   val visibilities: P[NonEmptyList[Visibility]] =
     nelOf(visibility, commaSep)
 
+  val entityType: P[EntityType] =
+    P.stringIn(
+      EntityType.values
+        .map(_.name.toLowerCase)
+        .toSet ++ EntityType.values.map(_.name).toSet
+    ).map(EntityType.unsafeFromString)
+
+  val entityTypes: P[NonEmptyList[EntityType]] =
+    nelOf(entityType, commaSep)
+
   val termIs: P[FieldTerm] = {
     val field = fieldNameFrom(Field.values.toSet - Field.Created - Field.Visibility)
     ((field <* is) ~ values).map { case (f, v) =>
@@ -74,8 +85,13 @@ private[query] object QueryParser {
         case Field.CreatedBy  => FieldTerm.CreatedByIs(v)
         case Field.Visibility => sys.error("visibility not allowed")
         case Field.Created    => sys.error("created not allowed")
+        case Field.Type       => sys.error("type not allowed")
     }
   }
+
+  val typeIs: P[FieldTerm] =
+    val field = fieldNameFrom(Set(Field.Type))
+    ((field ~ is).void *> entityTypes).map(v => FieldTerm.TypeIs(v))
 
   val visibilityIs: P[FieldTerm] = {
     val field = fieldNameFrom(Set(Field.Visibility))
@@ -90,7 +106,7 @@ private[query] object QueryParser {
     }
   }
 
-  val fieldTerm: P[FieldTerm] = termIs | visibilityIs | created
+  val fieldTerm: P[FieldTerm] = termIs | visibilityIs | typeIs | created
 
   val freeText: P[String] =
     P.charsWhile(c => !c.isWhitespace)

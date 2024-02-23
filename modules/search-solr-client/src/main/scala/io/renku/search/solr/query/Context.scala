@@ -16,31 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.query
+package io.renku.search.solr.query
 
-import io.bullet.borer.{Decoder, Encoder}
+import java.time.Instant
+import cats.effect.{Clock, Sync}
+import java.time.ZoneId
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
-  case Type
+trait Context[F[_]]:
+  def currentTime: F[Instant]
+  def zoneId: F[ZoneId]
 
-  val name: String = Strings.lowerFirst(productPrefix)
-
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
-
-  private[this] val allNames: String = Field.values.map(_.name).mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+object Context:
+  def forSync[F[_]: Sync]: Context[F] =
+    new Context[F]:
+      def currentTime: F[Instant] = Clock[F].realTimeInstant
+      def zoneId: F[ZoneId] = Sync[F].delay(ZoneId.systemDefault())

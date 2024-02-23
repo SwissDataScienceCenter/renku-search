@@ -21,6 +21,7 @@ package io.renku.search.solr.client
 import cats.effect.Async
 import cats.syntax.all.*
 import io.renku.search.solr.documents.Project
+import io.renku.search.solr.query.QueryInterpreter
 import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.{QueryData, QueryString, SolrClient}
 import io.renku.search.query.Query
@@ -30,6 +31,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
 
   private[this] val logger = scribe.cats.effect[F]
+  private[this] val interpreter = QueryInterpreter[F]
 
   override def insertProjects(projects: Seq[Project]): F[Unit] =
     solrClient.insert(projects).void
@@ -39,10 +41,12 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
       limit: Int,
       offset: Int
   ): F[QueryResponse[Project]] =
-    val solrQuery = QueryInterpreter(query)
-    logger.debug(s"Query: ${query.render} ->Solr: $solrQuery") >>
-      solrClient
+    for {
+      solrQuery <- interpreter.solrQuery(query)
+      _ <- logger.debug(s"Query: ${query.render} ->Solr: $solrQuery")
+      res <- solrClient
         .query[Project](QueryData.withChildren(QueryString(solrQuery, limit, offset)))
+    } yield res
 
   override def findProjects(phrase: String): F[List[Project]] =
     solrClient

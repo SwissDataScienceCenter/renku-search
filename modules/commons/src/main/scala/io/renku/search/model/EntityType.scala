@@ -16,31 +16,26 @@
  * limitations under the License.
  */
 
-package io.renku.search.query
+package io.renku.search.model
 
-import io.bullet.borer.{Decoder, Encoder}
+import io.bullet.borer.Encoder
+import io.bullet.borer.Decoder
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
-  case Type
+enum EntityType:
+  case Project
+  case User
 
-  val name: String = Strings.lowerFirst(productPrefix)
+  def name: String = productPrefix.toLowerCase
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
-
-  private[this] val allNames: String = Field.values.map(_.name).mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
+object EntityType:
+  def fromString(str: String): Either[String, EntityType] =
+    EntityType.values
       .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
+      .toRight(s"Invalid entity type: $str")
 
-  def unsafeFromString(str: String): Field =
+  def unsafeFromString(str: String): EntityType =
     fromString(str).fold(sys.error, identity)
+
+
+  given Encoder[EntityType] = Encoder.forString.contramap(_.name)
+  given Decoder[EntityType] = Decoder.forString.mapEither(fromString)

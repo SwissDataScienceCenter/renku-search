@@ -16,31 +16,19 @@
  * limitations under the License.
  */
 
-package io.renku.search.query
+package io.renku.search.solr.query
 
-import io.bullet.borer.{Decoder, Encoder}
+import cats.effect.Sync
+import cats.syntax.all.*
+import io.renku.search.query.Query
 
-enum Field:
-  case ProjectId
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
-  case Type
+final class QueryInterpreter[F[_]: Sync](ctx: Context[F]) extends QueryTokenEncoders:
+  private val encoder = SolrTokenEncoder[F, Query]
 
-  val name: String = Strings.lowerFirst(productPrefix)
+  def solrQuery(query: Query): F[String] =
+    if (query.isEmpty) SolrToken.allTypes.value.pure[F]
+    else encoder.encode(ctx, query).map(t => List(SolrToken.allTypes, t).foldAnd.value)
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
-
-  private[this] val allNames: String = Field.values.map(_.name).mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+object QueryInterpreter:
+  def apply[F[_]: Sync]: QueryInterpreter[F] =
+    new QueryInterpreter[F](Context.forSync[F])

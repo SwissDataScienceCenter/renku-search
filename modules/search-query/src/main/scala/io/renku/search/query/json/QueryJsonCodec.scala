@@ -21,6 +21,7 @@ package io.renku.search.query.json
 import cats.data.NonEmptyList
 import io.bullet.borer.compat.cats.*
 import io.bullet.borer.{Decoder, Encoder, Reader, Writer}
+import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.*
 import io.renku.search.query.FieldTerm.*
@@ -62,6 +63,9 @@ private[query] object QueryJsonCodec:
 
   private def writeFieldTermValue(w: Writer, term: FieldTerm): Writer =
     term match
+      case FieldTerm.TypeIs(values) =>
+        writeNelValue(w, values)
+
       case FieldTerm.ProjectIdIs(values) =>
         writeNelValue(w, values)
 
@@ -102,6 +106,10 @@ private[query] object QueryJsonCodec:
     name match
       case Name.TextName =>
         Segment.Text(r.readString())
+
+      case Name.FieldName(Field.Type) =>
+        val values = readNel[EntityType](r)
+        Segment.Field(TypeIs(values))
 
       case Name.FieldName(Field.ProjectId) =>
         val values = readNel[String](r)

@@ -19,6 +19,6 @@
 package io.renku.search.api.data
 
 final case class SearchResult(
-  items: Seq[SearchEntity],
-  pagingInfo: PageWithTotals
+    items: Seq[SearchEntity],
+    pagingInfo: PageWithTotals
 )

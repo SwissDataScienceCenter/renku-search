@@ -20,12 +20,12 @@ package io.renku.search.api.data
 
 import io.renku.search.query.Query
 import io.bullet.borer.Encoder
-import io.bullet.borer.derivation.MapBasedCodecs.{deriveEncoder, deriveDecoder}
+import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
 import io.bullet.borer.Decoder
 
 final case class QueryInput(
-  query: Query,
-  page: PageDef
+    query: Query,
+    page: PageDef
 )
 
 object QueryInput:

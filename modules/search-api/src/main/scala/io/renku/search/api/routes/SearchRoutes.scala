@@ -18,8 +18,8 @@
 
 package io.renku.search.api.routes
 
-import cats.effect.{Async}
-import org.http4s.{HttpRoutes}
+import cats.effect.Async
+import org.http4s.HttpRoutes
 import sttp.tapir.*
 import io.renku.search.api.data.*
 import io.renku.search.api.tapir.*

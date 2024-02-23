@@ -65,7 +65,9 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
       p.members.map(toUser)
     )
 
-  private def toApiResult(currentPage: PageDef)(solrResult: QueryResponse[SolrProject]): SearchResult =
+  private def toApiResult(currentPage: PageDef)(
+      solrResult: QueryResponse[SolrProject]
+  ): SearchResult =
     val hasMore = solrResult.responseBody.docs.size > currentPage.limit
     val pageInfo = PageWithTotals(currentPage, solrResult.responseBody.numFound, hasMore)
     val items = solrResult.responseBody.docs.map(toApiProject)

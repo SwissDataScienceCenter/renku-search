@@ -18,7 +18,7 @@
 
 package io.renku.search.api.routes
 
-import cats.effect.{Async}
+import cats.effect.Async
 import cats.syntax.all.*
 import io.circe.syntax.given
 import sttp.apispec.openapi.Server
@@ -35,7 +35,11 @@ object OpenApiRoute {
 
   private def openAPIEndpoint[F[_]: Async](endpoints: List[ServerEndpoint[Any, F]]) =
     val docs = OpenAPIDocsInterpreter()
-      .serverEndpointsToOpenAPI(endpoints, "Search API", BuildInfo.gitDescribedVersion.getOrElse(BuildInfo.version))
+      .serverEndpointsToOpenAPI(
+        endpoints,
+        "Search API",
+        BuildInfo.gitDescribedVersion.getOrElse(BuildInfo.version)
+      )
       .servers(List(Server(url = "/search", description = "Renku Search API".some)))
 
     endpoint.get

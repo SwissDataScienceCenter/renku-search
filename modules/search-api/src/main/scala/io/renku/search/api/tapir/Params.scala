@@ -18,7 +18,7 @@
 
 package io.renku.search.api.tapir
 
-import sttp.tapir.{query as queryParam, * }
+import sttp.tapir.{query as queryParam, *}
 import io.renku.search.api.data.*
 import io.renku.search.query.Query
 import io.renku.search.http.borer.TapirBorerJson
@@ -49,9 +49,10 @@ object Params extends TapirCodecs with TapirBorerJson {
   val pagingInfo: EndpointOutput[PageWithTotals] = {
     val perPage: EndpointOutput[Int] = header[Int]("x-per-page")
     val page: EndpointOutput[Int] = header[Int]("x-page")
-    val pageDef = page.and(perPage).map(PageDef.fromPage.tupled)(pd => (pd.page, pd.limit))
+    val pageDef =
+      page.and(perPage).map(PageDef.fromPage.tupled)(pd => (pd.page, pd.limit))
 
-    val prevPage: EndpointOutput[Option[Int]]  = header[Option[Int]]("x-prev-page")
+    val prevPage: EndpointOutput[Option[Int]] = header[Option[Int]]("x-prev-page")
     val nextPage: EndpointOutput[Option[Int]] = header[Option[Int]]("x-next-page")
     val total: EndpointOutput[Long] = header[Long]("x-total")
     val totalPages: EndpointOutput[Int] = header[Int]("x-total-pages")

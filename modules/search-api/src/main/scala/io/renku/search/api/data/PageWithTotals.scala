@@ -19,11 +19,11 @@
 package io.renku.search.api.data
 
 final case class PageWithTotals(
-  page: PageDef,
-  prevPage: Option[Int],
-  nextPage: Option[Int],
-  totalResult: Long,
-  totalPages: Int
+    page: PageDef,
+    prevPage: Option[Int],
+    nextPage: Option[Int],
+    totalResult: Long,
+    totalPages: Int
 )
 
 object PageWithTotals:

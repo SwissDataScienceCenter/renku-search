@@ -23,8 +23,8 @@ import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.Decoder
 
 final case class PageDef(
-  limit: Int,
-  offset: Int
+    limit: Int,
+    offset: Int
 ):
   require(limit > 0, "limit must be >0")
   require(offset >= 0, "offset must be positive")

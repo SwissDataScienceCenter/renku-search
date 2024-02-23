@@ -132,7 +132,7 @@ private class SearchProvisionerImpl[F[_]: Async](
     (from: v1.Visibility) => projects.Visibility.unsafeFromString(from.name())
 
   private lazy val toSolrDocuments: Seq[ProjectCreated] => Seq[Project] =
-    _.map(_.to[Project])
+    _.map(_.into[Project].transform(Field.default(_.score)))
 
   private def markProcessedOnFailure(
       message: QueueMessage,

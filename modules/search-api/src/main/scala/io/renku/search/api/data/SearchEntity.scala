@@ -20,6 +20,7 @@ package io.renku.search.api.data
 
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
 import io.bullet.borer.{AdtEncodingStrategy, Codec, Decoder, Encoder}
+import io.bullet.borer.NullOptions.given
 import io.renku.search.model.*
 import sttp.tapir.Schema.SName
 import sttp.tapir.SchemaType.{SDateTime, SProductField}
@@ -37,7 +38,8 @@ final case class Project(
     description: Option[projects.Description] = None,
     createdBy: User,
     creationDate: projects.CreationDate,
-    members: Seq[User]
+    members: Seq[User],
+    score: Option[Double] = None
 ) extends SearchEntity
 
 object Project:

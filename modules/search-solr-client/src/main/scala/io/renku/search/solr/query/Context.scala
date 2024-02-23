@@ -20,7 +20,9 @@ package io.renku.search.solr.query
 
 import java.time.Instant
 import cats.effect.{Clock, Sync}
+import cats.syntax.all.*
 import java.time.ZoneId
+import cats.Applicative
 
 trait Context[F[_]]:
   def currentTime: F[Instant]
@@ -31,3 +33,13 @@ object Context:
     new Context[F]:
       def currentTime: F[Instant] = Clock[F].realTimeInstant
       def zoneId: F[ZoneId] = Sync[F].delay(ZoneId.systemDefault())
+
+  def fixed[F[_]: Applicative](time: Instant, zone: ZoneId): Context[F] =
+    new Context[F]:
+      def currentTime = time.pure[F]
+      def zoneId = zone.pure[F]
+
+  def fixedZone[F[_]: Applicative: Clock](zone: ZoneId): Context[F] =
+    new Context[F]:
+      def currentTime = Clock[F].realTimeInstant
+      def zoneId = zone.pure[F]

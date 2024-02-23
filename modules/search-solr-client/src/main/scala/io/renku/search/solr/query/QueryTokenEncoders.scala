@@ -33,35 +33,36 @@ trait QueryTokenEncoders:
 
   given projectIdIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.ProjectIdIs] =
     SolrTokenEncoder.basic { case FieldTerm.ProjectIdIs(ids) =>
-      SolrToken.orFieldIs(Field.ProjectId, ids)
+      SolrToken.orFieldIs(Field.ProjectId, ids.map(SolrToken.fromString))
     }
 
   given nameIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.NameIs] =
     SolrTokenEncoder.basic { case FieldTerm.NameIs(names) =>
-      SolrToken.orFieldIs(Field.Name, names)
+      SolrToken.orFieldIs(Field.Name, names.map(SolrToken.fromString))
     }
 
   given typeIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.TypeIs] =
     SolrTokenEncoder.basic { case FieldTerm.TypeIs(values) =>
-      SolrToken.orFieldIs(Field.Type, values.map(_.name))
+      SolrToken.orFieldIs(Field.Type, values.map(SolrToken.fromEntityType))
     }
 
   given slugIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.SlugIs] =
     SolrTokenEncoder.basic { case FieldTerm.SlugIs(names) =>
-      SolrToken.orFieldIs(Field.Slug, names)
+      SolrToken.orFieldIs(Field.Slug, names.map(SolrToken.fromString))
     }
 
   given createdByIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.CreatedByIs] =
     SolrTokenEncoder.basic { case FieldTerm.CreatedByIs(names) =>
-      SolrToken.orFieldIs(Field.CreatedBy, names)
+      SolrToken.orFieldIs(Field.CreatedBy, names.map(SolrToken.fromString))
     }
 
   given visibilityIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.VisibilityIs] =
     SolrTokenEncoder.basic { case FieldTerm.VisibilityIs(values) =>
-      SolrToken.orFieldIs(Field.Visibility, values.map(_.name))
+      SolrToken.orFieldIs(Field.Visibility, values.map(SolrToken.fromVisibility))
     }
 
   given created[F[_]: Monad]: SolrTokenEncoder[F, FieldTerm.Created] =
+    val created = SolrToken.fromField(Field.Created)
     SolrTokenEncoder.create[F, FieldTerm.Created] {
       case (ctx, FieldTerm.Created(Comparison.Is, values)) =>
         (ctx.currentTime, ctx.zoneId).mapN { (ref, zone) =>
@@ -69,8 +70,8 @@ trait QueryTokenEncoders:
             .map(_.resolve(ref, zone))
             .map { case (min, maxOpt) =>
               maxOpt
-                .map(max => SolrToken.dateRange(Field.Created, min, max))
-                .getOrElse(SolrToken.dateIs(Field.Created, min))
+                .map(max => created === SolrToken.fromDateRange(min, max))
+                .getOrElse(created === SolrToken.fromInstant(min))
             }
             .toList
             .foldOr
@@ -81,7 +82,7 @@ trait QueryTokenEncoders:
           values
             .map(_.resolve(ref, zone))
             .map { case (min, maxOpt) =>
-              SolrToken.dateGt(Field.Created, maxOpt.getOrElse(min))
+              created > SolrToken.fromInstant(maxOpt.getOrElse(min))
             }
             .toList
             .foldOr
@@ -92,7 +93,7 @@ trait QueryTokenEncoders:
           values
             .map(_.resolve(ref, zone))
             .map { case (min, _) =>
-              SolrToken.dateLt(Field.Created, min)
+              created < SolrToken.fromInstant(min)
             }
             .toList
             .foldOr

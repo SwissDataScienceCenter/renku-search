@@ -76,13 +76,14 @@ private[query] object QueryParser {
     nelOf(entityType, commaSep)
 
   val termIs: P[FieldTerm] = {
-    val field = fieldNameFrom(Field.values.toSet - Field.Created - Field.Visibility)
+    val field = fieldNameFrom(Field.values.toSet - Field.Created - Field.Visibility - Field.Type)
     ((field <* is) ~ values).map { case (f, v) =>
       f match
         case Field.Name       => FieldTerm.NameIs(v)
         case Field.ProjectId  => FieldTerm.ProjectIdIs(v)
         case Field.Slug       => FieldTerm.SlugIs(v)
         case Field.CreatedBy  => FieldTerm.CreatedByIs(v)
+        // following fields are excluded from the field list above
         case Field.Visibility => sys.error("visibility not allowed")
         case Field.Created    => sys.error("created not allowed")
         case Field.Type       => sys.error("type not allowed")

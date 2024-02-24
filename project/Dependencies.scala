@@ -16,7 +16,7 @@ object Dependencies {
     val ducktape = "0.1.11"
     val fs2 = "3.9.4"
     val http4s = "0.23.25"
-    val luceneQueryParser = "9.9.2"
+    val luceneQueryParser = "9.10.0"
     val redis4Cats = "1.5.2"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"

@@ -125,7 +125,8 @@ class SearchProvisionerSpec extends CatsEffectSuite with QueueSpec with SearchSo
         Field.computed(
           _.visibility,
           pc => projects.Visibility.unsafeFromString(pc.visibility.name())
-        )
+        ),
+        Field.default(_.score)
       )
 
   override def munitFixtures: Seq[Fixture[_]] =

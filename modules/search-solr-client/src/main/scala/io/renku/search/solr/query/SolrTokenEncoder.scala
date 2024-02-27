@@ -59,19 +59,8 @@ object SolrTokenEncoder:
         : List[SolrTokenEncoder[F, ?]] =
       inline erasedValue[Elems] match
         case _: (elem *: elems) =>
-          deriveOrSummon[F, T, elem] :: summonInstances[F, T, elems]
+          summonInline[SolrTokenEncoder[F, elem]] :: summonInstances[F, T, elems]
         case _: EmptyTuple => Nil
-
-    inline def deriveOrSummon[F[_]: Monad, T, Elem]: SolrTokenEncoder[F, Elem] =
-      inline erasedValue[Elem] match
-//        case _: T => deriveRec[F, T, Elem]
-        case _ => summonInline[SolrTokenEncoder[F, Elem]]
-
-    /// we don't need recursive derivation right now
-    // inline def deriveRec[F[_]:Monad, T, Elem]: SolrTokenEncoder[F, Elem] =
-    //   inline erasedValue[T] match
-    //     case _: Elem => error("infinite recursive derivation")
-    //     case _       => Macros.derived[F, Elem](using Monad[F], summonInline[Mirror.Of[Elem]]) // recursive derivation
 
     def sumTokenEncoder[F[_]: Monad, T](
         s: Mirror.SumOf[T],

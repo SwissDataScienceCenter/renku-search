@@ -33,10 +33,7 @@ final class LuceneQueryInterpreter[F[_]: Monad]
 
   def run(ctx: Context[F], query: Query): F[SolrQuery] =
     if (query.isEmpty) SolrQuery(SolrToken.allTypes).pure[F]
-    else
-      encoder
-        .encode(ctx, query)
-//        .map(t => SolrQuery(List(SolrToken.allTypes, t.query).foldAnd))
+    else encoder.encode(ctx, query)
 
 object LuceneQueryInterpreter:
   def forSync[F[_]: Sync]: QueryInterpreter.WithContext[F] =

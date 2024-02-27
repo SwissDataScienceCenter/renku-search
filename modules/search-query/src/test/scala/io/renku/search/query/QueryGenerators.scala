@@ -77,6 +77,18 @@ object QueryGenerators:
   val field: Gen[Field] =
     Gen.oneOf(Field.values.toSeq)
 
+  val sortableField: Gen[SortableField] =
+    Gen.oneOf(SortableField.values.toSeq)
+
+  val sortDirection: Gen[Order.Direction] =
+    Gen.oneOf(Order.Direction.values.toSeq)
+
+  val orderedBy: Gen[Order.OrderedBy] =
+    for {
+      field <- sortableField
+      dir <- sortDirection
+    } yield Order.OrderedBy(field, dir)
+
   // TODO move to commons
   val visibility: Gen[Visibility] =
     Gen.oneOf(Visibility.values.toSeq)
@@ -153,9 +165,16 @@ object QueryGenerators:
       Gen.listOfN(len, phrase).map(_.mkString(" "))
     }
 
+  val sortTerm: Gen[Order] =
+    Gen.choose(1,5).flatMap { len =>
+      nelOfN(len, orderedBy).map(Order.apply)
+    }
+
+
   val segment: Gen[Query.Segment] =
     Gen.oneOf(
       fieldTerm.map(Query.Segment.Field.apply),
+      sortTerm.map(Query.Segment.Sort.apply),
       freeText.map(Query.Segment.Text.apply)
     )
 

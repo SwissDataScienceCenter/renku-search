@@ -42,12 +42,37 @@ private[query] object QueryParser {
   def fieldNameFrom(candidates: Set[Field]) =
     P.stringIn(mkFieldNames(candidates)).map(Field.unsafeFromString)
 
+  val sortableField: P[SortableField] =
+    P.stringIn(
+      SortableField.values
+        .map(_.name)
+        .toSeq ++ SortableField.values.map(_.name.toLowerCase).toSeq
+    ).map(SortableField.unsafeFromString)
+
+  val sortDirection: P[Order.Direction] =
+    P.stringIn(
+      Order.Direction.values
+        .map(_.name)
+        .toSeq ++ Order.Direction.values.map(_.name.toLowerCase).toSeq
+    ).map(Order.Direction.unsafeFromString)
+
+  val orderedBy: P[Order.OrderedBy] =
+    (sortableField ~ (P.string("-") *> sortDirection)).map { case (f, s) =>
+      Order.OrderedBy(f, s)
+    }
+
+  val orderedByNel: P[NonEmptyList[Order.OrderedBy]] =
+    nelOf(orderedBy, commaSep)
+
   val comparison: P[Comparison] =
     P.stringIn(Comparison.values.map(_.asString)).map(Comparison.unsafeFromString)
 
   val is: P[Unit] = P.string(Comparison.Is.asString)
   val gt: P[Unit] = P.string(Comparison.GreaterThan.asString)
   val lt: P[Unit] = P.string(Comparison.LowerThan.asString)
+
+  val sortTerm: P[Order] =
+    (P.string("sort").with1 *> (is *> orderedByNel)).map(Order.apply)
 
   val visibility: P[Visibility] =
     P.stringIn(
@@ -76,17 +101,17 @@ private[query] object QueryParser {
     nelOf(entityType, commaSep)
 
   val termIs: P[FieldTerm] = {
-    val field = fieldNameFrom(Field.values.toSet - Field.Created - Field.Visibility - Field.Type)
+    val field = fieldNameFrom(
+      Field.values.toSet - Field.Created - Field.Visibility - Field.Type
+    )
     ((field <* is) ~ values).map { case (f, v) =>
       f match
-        case Field.Name       => FieldTerm.NameIs(v)
-        case Field.ProjectId  => FieldTerm.ProjectIdIs(v)
-        case Field.Slug       => FieldTerm.SlugIs(v)
-        case Field.CreatedBy  => FieldTerm.CreatedByIs(v)
-        // following fields are excluded from the field list above
-        case Field.Visibility => sys.error("visibility not allowed")
-        case Field.Created    => sys.error("created not allowed")
-        case Field.Type       => sys.error("type not allowed")
+        case Field.Name      => FieldTerm.NameIs(v)
+        case Field.ProjectId => FieldTerm.ProjectIdIs(v)
+        case Field.Slug      => FieldTerm.SlugIs(v)
+        case Field.CreatedBy => FieldTerm.CreatedByIs(v)
+        // other fields are excluded from the field list above
+        case f => sys.error(s"$f not allowed")
     }
   }
 
@@ -114,6 +139,7 @@ private[query] object QueryParser {
 
   val segment: P[Query.Segment] =
     fieldTerm.map(Query.Segment.Field.apply) |
+      sortTerm.map(Query.Segment.Sort.apply) |
       freeText.map(Query.Segment.Text.apply)
 
   val query: P[Query] =

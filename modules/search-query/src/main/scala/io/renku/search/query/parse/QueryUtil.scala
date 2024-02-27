@@ -40,11 +40,11 @@ private[query] object QueryUtil {
             case (t1: Segment.Text, tc) =>
               loop(rest, tc |+| Some(t1), result)
 
-            case (f: Segment.Field, Some(tc)) =>
-              loop(rest, None, f :: tc :: result)
+            case t @ ((_: Segment.Field) | (_: Segment.Sort), Some(tc)) =>
+              loop(rest, None, t._1 :: tc :: result)
 
-            case (f: Segment.Field, None) =>
-              loop(rest, None, f :: result)
+            case t @ ((_: Segment.Field) | (_: Segment.Sort), None) =>
+              loop(rest, None, t._1 :: result)
 
         case Nil => (curr.toList ::: result).reverse
 

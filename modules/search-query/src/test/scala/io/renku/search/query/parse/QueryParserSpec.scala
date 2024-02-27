@@ -28,6 +28,18 @@ import io.renku.search.model.EntityType
 
 class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
 
+  test("sort term") {
+    val p = QueryParser.sortTerm
+    assertEquals(p.run("sort:name-asc"), Order(SortableField.Name -> Order.Direction.Asc))
+    assertEquals(
+      p.run("sort:name-asc,score-desc"),
+      Order(
+        SortableField.Name -> Order.Direction.Asc,
+        SortableField.Score -> Order.Direction.Desc
+      )
+    )
+  }
+
   test("string list") {
     val p = QueryParser.values
     assertEquals(p.run("a,b,c"), nel("a", "b", "c"))

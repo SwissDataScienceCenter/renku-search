@@ -46,15 +46,18 @@ import scala.collection.mutable.ListBuffer
   */
 private[query] object QueryJsonCodec:
   private[this] val freeTextField = "_text"
+  private[this] val sortTextField = "_sort"
 
   enum Name:
     case FieldName(v: Field)
+    case SortName
     case TextName
 
   private given Decoder[Name] =
     new Decoder[Name]:
       def read(r: Reader): Name =
         if (r.tryReadString(freeTextField)) Name.TextName
+        else if (r.tryReadString(sortTextField)) Name.SortName
         else Decoder[Field].map(Name.FieldName.apply).read(r)
 
   private def writeNelValue[T: Encoder](w: Writer, ts: NonEmptyList[T]): w.type =
@@ -94,6 +97,9 @@ private[query] object QueryJsonCodec:
           case Segment.Field(v) =>
             w.write(v.field)
             writeFieldTermValue(w, v)
+          case Segment.Sort(v) =>
+            w.write(sortTextField)
+            writeNelValue(w, v.fields)
         }
         w.writeMapClose()
     }
@@ -135,6 +141,11 @@ private[query] object QueryJsonCodec:
         val (cmp, date) =
           Decoder.forTuple[(Comparison, NonEmptyList[DateTimeRef])].read(r)
         Segment.Field(Created(cmp, date))
+
+      case Name.SortName =>
+        val values = readNel[Order.OrderedBy](r)
+        Segment.Sort(Order(values))
+
 
   val decoder: Decoder[List[Segment]] =
     new Decoder[List[Segment]] {

@@ -23,12 +23,20 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import io.renku.search.query.Query
 
-final class LuceneQueryInterpreter[F[_]: Monad] extends QueryInterpreter[F] with LuceneQueryEncoders:
+/** Provides conversion into solrs standard query. See
+  * https://solr.apache.org/guide/solr/latest/query-guide/standard-query-parser.html
+  */
+final class LuceneQueryInterpreter[F[_]: Monad]
+    extends QueryInterpreter[F]
+    with LuceneQueryEncoders:
   private val encoder = SolrTokenEncoder[F, Query]
 
   def run(ctx: Context[F], query: Query): F[SolrQuery] =
-    if (query.isEmpty) SolrQuery.lucene(SolrToken.allTypes).pure[F]
-    else encoder.encode(ctx, query).map(t => SolrQuery.lucene(List(SolrToken.allTypes, t).foldAnd))
+    if (query.isEmpty) SolrQuery(SolrToken.allTypes).pure[F]
+    else
+      encoder
+        .encode(ctx, query)
+//        .map(t => SolrQuery(List(SolrToken.allTypes, t.query).foldAnd))
 
 object LuceneQueryInterpreter:
   def forSync[F[_]: Sync]: QueryInterpreter.WithContext[F] =

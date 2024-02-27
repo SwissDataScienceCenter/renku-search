@@ -32,32 +32,34 @@ trait LuceneQueryEncoders:
 
   given projectIdIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.ProjectIdIs] =
     SolrTokenEncoder.basic { case FieldTerm.ProjectIdIs(ids) =>
-      SolrToken.orFieldIs(Field.ProjectId, ids.map(SolrToken.fromString))
+      SolrQuery(SolrToken.orFieldIs(Field.ProjectId, ids.map(SolrToken.fromString)))
     }
 
   given nameIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.NameIs] =
     SolrTokenEncoder.basic { case FieldTerm.NameIs(names) =>
-      SolrToken.orFieldIs(Field.Name, names.map(SolrToken.fromString))
+      SolrQuery(SolrToken.orFieldIs(Field.Name, names.map(SolrToken.fromString)))
     }
 
   given typeIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.TypeIs] =
     SolrTokenEncoder.basic { case FieldTerm.TypeIs(values) =>
-      SolrToken.orFieldIs(Field.Type, values.map(SolrToken.fromEntityType))
+      SolrQuery(SolrToken.orFieldIs(Field.Type, values.map(SolrToken.fromEntityType)))
     }
 
   given slugIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.SlugIs] =
     SolrTokenEncoder.basic { case FieldTerm.SlugIs(names) =>
-      SolrToken.orFieldIs(Field.Slug, names.map(SolrToken.fromString))
+      SolrQuery(SolrToken.orFieldIs(Field.Slug, names.map(SolrToken.fromString)))
     }
 
   given createdByIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.CreatedByIs] =
     SolrTokenEncoder.basic { case FieldTerm.CreatedByIs(names) =>
-      SolrToken.orFieldIs(Field.CreatedBy, names.map(SolrToken.fromString))
+      SolrQuery(SolrToken.orFieldIs(Field.CreatedBy, names.map(SolrToken.fromString)))
     }
 
   given visibilityIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.VisibilityIs] =
     SolrTokenEncoder.basic { case FieldTerm.VisibilityIs(values) =>
-      SolrToken.orFieldIs(Field.Visibility, values.map(SolrToken.fromVisibility))
+      SolrQuery(
+        SolrToken.orFieldIs(Field.Visibility, values.map(SolrToken.fromVisibility))
+      )
     }
 
   given created[F[_]: Monad]: SolrTokenEncoder[F, FieldTerm.Created] =
@@ -65,37 +67,43 @@ trait LuceneQueryEncoders:
     SolrTokenEncoder.create[F, FieldTerm.Created] {
       case (ctx, FieldTerm.Created(Comparison.Is, values)) =>
         (ctx.currentTime, ctx.zoneId).mapN { (ref, zone) =>
-          values
-            .map(_.resolve(ref, zone))
-            .map { case (min, maxOpt) =>
-              maxOpt
-                .map(max => created === SolrToken.fromDateRange(min, max))
-                .getOrElse(created === SolrToken.fromInstant(min))
-            }
-            .toList
-            .foldOr
+          SolrQuery(
+            values
+              .map(_.resolve(ref, zone))
+              .map { case (min, maxOpt) =>
+                maxOpt
+                  .map(max => created === SolrToken.fromDateRange(min, max))
+                  .getOrElse(created === SolrToken.fromInstant(min))
+              }
+              .toList
+              .foldOr
+          )
         }
 
       case (ctx, FieldTerm.Created(Comparison.GreaterThan, values)) =>
         (ctx.currentTime, ctx.zoneId).mapN { (ref, zone) =>
-          values
-            .map(_.resolve(ref, zone))
-            .map { case (min, maxOpt) =>
-              created > SolrToken.fromInstant(maxOpt.getOrElse(min))
-            }
-            .toList
-            .foldOr
+          SolrQuery(
+            values
+              .map(_.resolve(ref, zone))
+              .map { case (min, maxOpt) =>
+                created > SolrToken.fromInstant(maxOpt.getOrElse(min))
+              }
+              .toList
+              .foldOr
+          )
         }
 
       case (ctx, FieldTerm.Created(Comparison.LowerThan, values)) =>
         (ctx.currentTime, ctx.zoneId).mapN { (ref, zone) =>
-          values
-            .map(_.resolve(ref, zone))
-            .map { case (min, _) =>
-              created < SolrToken.fromInstant(min)
-            }
-            .toList
-            .foldOr
+          SolrQuery(
+            values
+              .map(_.resolve(ref, zone))
+              .map { case (min, _) =>
+                created < SolrToken.fromInstant(min)
+              }
+              .toList
+              .foldOr
+          )
         }
     }
 
@@ -112,16 +120,21 @@ trait LuceneQueryEncoders:
     }
 
   given textSegment[F[_]: Applicative]: SolrTokenEncoder[F, Segment.Text] =
-    SolrTokenEncoder.basic(t => SolrToken.contentAll(t.value))
+    SolrTokenEncoder.basic(t => SolrQuery(SolrToken.contentAll(t.value)))
+
+  given sortSegment[F[_]: Applicative]: SolrTokenEncoder[F, Segment.Sort] =
+    SolrTokenEncoder.basic(t => SolrQuery.sort(t.value))
 
   given segment[F[_]](using
       et: SolrTokenEncoder[F, Segment.Text],
-      ef: SolrTokenEncoder[F, Segment.Field]
+      ef: SolrTokenEncoder[F, Segment.Field],
+      es: SolrTokenEncoder[F, Segment.Sort]
   ): SolrTokenEncoder[F, Segment] =
     SolrTokenEncoder.curried[F, Segment] { ctx =>
       {
         case s: Segment.Text  => et.encode(ctx, s)
         case s: Segment.Field => ef.encode(ctx, s)
+        case s: Segment.Sort  => es.encode(ctx, s)
       }
     }
 
@@ -129,7 +142,7 @@ trait LuceneQueryEncoders:
       se: SolrTokenEncoder[F, A]
   ): SolrTokenEncoder[F, List[A]] =
     SolrTokenEncoder.create[F, List[A]] { (ctx, nel) =>
-      nel.traverse(se.encode(ctx, _)).map(_.toSeq.foldAnd)
+      nel.traverse(se.encode(ctx, _)).map(_.toSeq.combineAll)
     }
 
   given query[F[_]: Monad](using

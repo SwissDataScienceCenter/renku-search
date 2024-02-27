@@ -28,6 +28,7 @@ final case class QueryData(
     limit: Int,
     offset: Int,
     fields: Seq[FieldName],
+    sort: SolrSort,
     params: Map[String, String]
 ):
   def nextPage: QueryData =
@@ -47,9 +48,17 @@ final case class QueryData(
 object QueryData:
 
   def apply(query: QueryString): QueryData =
-    QueryData(query.q, Nil, query.limit, query.offset, Nil, Map.empty)
+    QueryData(query.q, Nil, query.limit, query.offset, Nil, SolrSort.empty, Map.empty)
 
   def withChildren(query: QueryString): QueryData =
-    QueryData(query.q, Nil, query.limit, query.offset, Nil, Map("fl" -> "* score,[child]"))
+    QueryData(
+      query.q,
+      Nil,
+      query.limit,
+      query.offset,
+      Nil,
+      SolrSort.empty,
+      Map("fl" -> "* score,[child]")
+    )
 
   given Encoder[QueryData] = deriveEncoder

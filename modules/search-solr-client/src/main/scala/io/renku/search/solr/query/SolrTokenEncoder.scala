@@ -24,7 +24,7 @@ import scala.deriving.*
 import scala.collection.AbstractIterable
 
 trait SolrTokenEncoder[F[_], A]:
-  def encode(ctx: Context[F], value: A): F[SolrToken]
+  def encode(ctx: Context[F], value: A): F[SolrQuery]
   final def contramap[B](f: B => A): SolrTokenEncoder[F, B] =
     SolrTokenEncoder.create((ctx, b) => encode(ctx, f(b)))
 
@@ -32,18 +32,18 @@ object SolrTokenEncoder:
   def apply[F[_], A](using e: SolrTokenEncoder[F, A]): SolrTokenEncoder[F, A] = e
 
   def create[F[_], A](
-      f: (ctx: Context[F], value: A) => F[SolrToken]
+      f: (ctx: Context[F], value: A) => F[SolrQuery]
   ): SolrTokenEncoder[F, A] =
     new SolrTokenEncoder[F, A]:
       def encode(ctx: Context[F], value: A) = f(ctx, value)
 
-  def curried[F[_], A](f: Context[F] => A => F[SolrToken]): SolrTokenEncoder[F, A] =
+  def curried[F[_], A](f: Context[F] => A => F[SolrQuery]): SolrTokenEncoder[F, A] =
     create[F, A]((ctx, v) => f(ctx)(v))
 
   inline def derived[F[_]: Monad, A](using Mirror.Of[A]): SolrTokenEncoder[F, A] =
     Macros.derived[F, A]
 
-  def basic[F[_]: Applicative, A](f: A => SolrToken): SolrTokenEncoder[F, A] =
+  def basic[F[_]: Applicative, A](f: A => SolrQuery): SolrTokenEncoder[F, A] =
     create[F, A]((_, v) => f(v).pure[F])
 
   private object Macros {
@@ -94,7 +94,7 @@ object SolrTokenEncoder:
           }
           .toList
           .sequence
-        vel.map(_.foldAnd)
+        vel.map(_.combineAll)
       }
 
     def iterable[T](p: T): Iterable[Any] = new AbstractIterable[Any]:

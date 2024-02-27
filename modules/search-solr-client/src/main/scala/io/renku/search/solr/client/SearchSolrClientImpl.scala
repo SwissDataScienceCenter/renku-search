@@ -33,7 +33,6 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   private[this] val logger = scribe.cats.effect[F]
   private[this] val interpreter = LuceneQueryInterpreter.forSync[F]
 
-
   override def insertProjects(projects: Seq[Project]): F[Unit] =
     solrClient.insert(projects).void
 
@@ -46,7 +45,11 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
       solrQuery <- interpreter.run(query)
       _ <- logger.debug(s"Query: ${query.render} ->Solr: $solrQuery")
       res <- solrClient
-        .query[Project](QueryData.withChildren(QueryString(solrQuery.query, limit, offset)))
+        .query[Project](
+          QueryData
+            .withChildren(QueryString(solrQuery.query.value, limit, offset))
+            .copy(sort = solrQuery.sort)
+        )
     } yield res
 
   override def findProjects(phrase: String): F[List[Project]] =

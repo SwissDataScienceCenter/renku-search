@@ -82,6 +82,7 @@
             redis
             jq
             sbt
+            scala-cli
 
             redis-push
             recreate-container
@@ -109,6 +110,7 @@
             redis
             jq
             sbt
+            scala-cli
 
             redis-push
             vm-build

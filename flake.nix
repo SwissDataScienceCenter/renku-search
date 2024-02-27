@@ -81,6 +81,8 @@
           with selfPkgs; [
             redis
             jq
+            sbt
+            scala-cli
 
             redis-push
             recreate-container
@@ -107,6 +109,8 @@
           with selfPkgs; [
             redis
             jq
+            sbt
+            scala-cli
 
             redis-push
             vm-build

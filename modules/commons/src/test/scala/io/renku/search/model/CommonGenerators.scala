@@ -16,22 +16,14 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.model
 
-import cats.effect.IO
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
-import munit.CatsEffectSuite
-import io.renku.search.query.Query
+import cats.data.NonEmptyList
+import org.scalacheck.Gen
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
-
-  test("be able to insert and fetch a project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.insertProjects(Seq(project))
-        r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
-        _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
-      } yield ()
-    }
+object CommonGenerators:
+  def nelOfN[A](n: Int, gen: Gen[A]): Gen[NonEmptyList[A]] =
+    for {
+      e0 <- gen
+      en <- Gen.listOfN(n - 1, gen)
+    } yield NonEmptyList(e0, en)

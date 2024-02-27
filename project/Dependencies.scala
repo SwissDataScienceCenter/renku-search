@@ -16,7 +16,6 @@ object Dependencies {
     val ducktape = "0.1.11"
     val fs2 = "3.9.4"
     val http4s = "0.23.25"
-    val luceneQueryParser = "9.9.2"
     val redis4Cats = "1.5.2"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"
@@ -25,10 +24,6 @@ object Dependencies {
     val sttpApiSpec = "0.7.4"
     val tapir = "1.9.10"
   }
-
-  val luceneQueryParser = Seq(
-    "org.apache.lucene" % "lucene-queryparser" % V.luceneQueryParser
-  )
 
   val catsScalaCheck = Seq(
     "io.chrisdavenport" %% "cats-scalacheck" % V.catsScalaCheck

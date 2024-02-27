@@ -42,7 +42,7 @@ object Params extends TapirCodecs with TapirBorerJson {
         .validate(Validator.max(100))
         .default(PageDef.default.limit)
 
-    (page / perPage).map(PageDef.fromPage.tupled)(Tuple.fromProductTyped)
+    (page / perPage).map(PageDef.fromPage.tupled)(p => (p.page, p.limit))
   }
 
   val queryInput: EndpointInput[QueryInput] = query.and(pageDef).mapTo[QueryInput]

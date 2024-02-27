@@ -47,7 +47,7 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
       phrase: String
   ): Throwable => F[Either[String, SearchResult]] =
     err =>
-      val message = s"Finding by '$phrase' phrase failed"
+      val message = s"Finding by '$phrase' phrase failed: ${err.getMessage}"
       Scribe[F]
         .error(message, err)
         .as(message)

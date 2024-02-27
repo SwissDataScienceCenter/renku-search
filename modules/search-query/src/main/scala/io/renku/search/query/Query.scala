@@ -36,6 +36,7 @@ final case class Query(
       .map {
         case Query.Segment.Field(v) => v.asString
         case Query.Segment.Text(v)  => v
+        case Query.Segment.Sort(v)  => v.render
       }
       .mkString(" ")
 
@@ -57,6 +58,7 @@ object Query:
   enum Segment:
     case Field(value: FieldTerm)
     case Text(value: String)
+    case Sort(value: Order)
 
   object Segment:
     given Monoid[Segment.Text] =
@@ -67,6 +69,9 @@ object Query:
         if (other.value.isEmpty) self
         else if (self.value.isEmpty) other
         else Segment.Text(s"${self.value} ${other.value}")
+
+    def sort(order: Order.OrderedBy, more: Order.OrderedBy*): Segment =
+      Segment.Sort(Order(NonEmptyList(order, more.toList)))
 
     def text(phrase: String): Segment =
       Segment.Text(phrase)

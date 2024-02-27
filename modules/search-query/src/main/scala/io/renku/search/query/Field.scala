@@ -27,6 +27,7 @@ enum Field:
   case Visibility
   case Created
   case CreatedBy
+  case Type
 
   val name: String = Strings.lowerFirst(productPrefix)
 

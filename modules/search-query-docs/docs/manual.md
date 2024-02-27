@@ -73,6 +73,7 @@ Multiple alternative values can be given as a comma separated list.
 The following fields are available:
 
 ```scala mdoc:passthrough
+import io.renku.search.model.EntityType
 import io.renku.search.query.*
 println(Field.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", ""))
 ```
@@ -80,6 +81,22 @@ println(Field.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", ""))
 Each field allows to specify one or more values, separated by comma.
 The value must be separated by a `:`. For date fields, additional `<`
 and `>` is supported.
+
+### EntityTypes
+
+The field `type` allows to search for specific entity types. If it is
+missing, all entity types are included in the result. Entity types are:
+
+```scala mdoc:passthrough
+println(
+  EntityType.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
+)
+```
+
+Example:
+```scala mdoc:passthrough
+println(s" `${Field.Type.name}:${EntityType.Project.name}`")
+```
 
 ### Dates
 
@@ -159,3 +176,32 @@ created:2023-03,2023-06
 ```
 
 The above means to match entities created in March 2023 or June 2023.
+
+## Sorting
+
+The query allows to define terms for sorting. Sorting is limited to
+specific fields, which are:
+
+```scala mdoc:passthrough
+println(
+  SortableField.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
+)
+```
+
+Sorting by a field is defined by writing the field name, followed by a
+dash and the sort direction. Multiple such definitions can be
+specified, using a comma separated list. Alternatively, multiple
+`sort:…` terms will be combined into a single one in the order they
+appear.
+
+Example:
+```scala mdoc:passthrough
+val str = Order(SortableField.Score -> Order.Direction.Desc, SortableField.Created -> Order.Direction.Asc).render
+println(s"`$str`")
+```
+is equivalent to
+```scala mdoc:passthrough
+val str1 = Order(SortableField.Score -> Order.Direction.Desc).render
+val str2 = Order(SortableField.Created -> Order.Direction.Asc).render
+println(s"`$str1 $str2`")
+```

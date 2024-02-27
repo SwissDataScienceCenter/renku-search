@@ -16,22 +16,27 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.solr.query
 
-import cats.effect.IO
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
-import munit.CatsEffectSuite
-import io.renku.search.query.Query
+import cats.Monoid
+import cats.syntax.all.*
+import io.renku.search.query.Order
+import io.renku.solr.client.SolrSort
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
+final case class SolrQuery(
+    query: SolrToken,
+    sort: SolrSort
+):
+  def ++(next: SolrQuery): SolrQuery =
+    SolrQuery(query && next.query, sort ++ next.sort)
 
-  test("be able to insert and fetch a project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.insertProjects(Seq(project))
-        r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
-        _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
-      } yield ()
-    }
+object SolrQuery:
+  val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)
+
+  def apply(e: SolrToken): SolrQuery =
+    SolrQuery(e, SolrSort.empty)
+
+  def sort(order: Order): SolrQuery =
+    SolrQuery(SolrToken.empty, SolrSortCreate(order.fields))
+
+  given Monoid[SolrQuery] = Monoid.instance(empty, (a, b) => a ++ b)

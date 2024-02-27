@@ -24,8 +24,21 @@ import io.renku.search.query.Query.Segment
 import io.renku.search.query.Comparison.{GreaterThan, LowerThan}
 import munit.{FunSuite, ScalaCheckSuite}
 import org.scalacheck.Prop
+import io.renku.search.model.EntityType
 
 class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
+
+  test("sort term") {
+    val p = QueryParser.sortTerm
+    assertEquals(p.run("sort:name-asc"), Order(SortableField.Name -> Order.Direction.Asc))
+    assertEquals(
+      p.run("sort:name-asc,score-desc"),
+      Order(
+        SortableField.Name -> Order.Direction.Asc,
+        SortableField.Score -> Order.Direction.Desc
+      )
+    )
+  }
 
   test("string list") {
     val p = QueryParser.values
@@ -70,7 +83,8 @@ class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
     val data = List(
       "projectId:id5" -> FieldTerm.ProjectIdIs(Nel.of("id5")),
       "name:\"my project\"" -> FieldTerm.NameIs(Nel.of("my project")),
-      "slug:ab1,ab2" -> FieldTerm.SlugIs(Nel.of("ab1", "ab2"))
+      "slug:ab1,ab2" -> FieldTerm.SlugIs(Nel.of("ab1", "ab2")),
+      "type:project" -> FieldTerm.TypeIs(Nel.of(EntityType.Project))
     )
     data.foreach { case (in, expect) =>
       assertEquals(p.run(in), expect)

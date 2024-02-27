@@ -20,6 +20,7 @@ package io.renku.search.query
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
+import io.renku.search.model.{CommonGenerators, ModelGenerators}
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
@@ -77,16 +78,17 @@ object QueryGenerators:
   val field: Gen[Field] =
     Gen.oneOf(Field.values.toSeq)
 
-  // TODO move to commons
-  val visibility: Gen[Visibility] =
-    Gen.oneOf(Visibility.values.toSeq)
+  val sortableField: Gen[SortableField] =
+    Gen.oneOf(SortableField.values.toSeq)
 
-  // TODO move to commons
-  def nelOfN[A](n: Int, gen: Gen[A]): Gen[NonEmptyList[A]] =
+  val sortDirection: Gen[Order.Direction] =
+    Gen.oneOf(Order.Direction.values.toSeq)
+
+  val orderedBy: Gen[Order.OrderedBy] =
     for {
-      e0 <- gen
-      en <- Gen.listOfN(n - 1, gen)
-    } yield NonEmptyList(e0, en)
+      field <- sortableField
+      dir <- sortDirection
+    } yield Order.OrderedBy(field, dir)
 
   private val alphaNumChars = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')
   private val simpleWord: Gen[String] = {
@@ -109,7 +111,7 @@ object QueryGenerators:
   }
 
   private val stringValues: Gen[NonEmptyList[String]] =
-    Gen.choose(1, 4).flatMap(n => nelOfN(n, phrase))
+    Gen.choose(1, 4).flatMap(n => CommonGenerators.nelOfN(n, phrase))
 
   val projectIdTerm: Gen[FieldTerm] =
     stringValues.map(FieldTerm.ProjectIdIs(_))
@@ -125,7 +127,10 @@ object QueryGenerators:
 
   val visibilityTerm: Gen[FieldTerm] =
     Gen
-      .frequency(10 -> visibility.map(NonEmptyList.one), 1 -> nelOfN(2, visibility))
+      .frequency(
+        10 -> ModelGenerators.visibilityGen.map(NonEmptyList.one),
+        1 -> CommonGenerators.nelOfN(2, ModelGenerators.visibilityGen)
+      )
       .map(vs => FieldTerm.VisibilityIs(vs.distinct))
 
   private val comparison: Gen[Comparison] =
@@ -135,7 +140,7 @@ object QueryGenerators:
     for {
       cmp <- comparison
       len <- Gen.frequency(5 -> Gen.const(1), 1 -> Gen.choose(1, 3))
-      pd <- nelOfN(len, dateTimeRef)
+      pd <- CommonGenerators.nelOfN(len, dateTimeRef)
     } yield FieldTerm.Created(cmp, pd)
 
   val fieldTerm: Gen[FieldTerm] =
@@ -153,9 +158,15 @@ object QueryGenerators:
       Gen.listOfN(len, phrase).map(_.mkString(" "))
     }
 
+  val sortTerm: Gen[Order] =
+    Gen.choose(1, 5).flatMap { len =>
+      CommonGenerators.nelOfN(len, orderedBy).map(_.distinct).map(Order.apply)
+    }
+
   val segment: Gen[Query.Segment] =
     Gen.oneOf(
       fieldTerm.map(Query.Segment.Field.apply),
+      sortTerm.map(Query.Segment.Sort.apply),
       freeText.map(Query.Segment.Text.apply)
     )
 

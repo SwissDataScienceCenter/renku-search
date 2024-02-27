@@ -16,22 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.solr.query
 
-import cats.effect.IO
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
-import munit.CatsEffectSuite
+import cats.Monad
+import cats.effect.Sync
+import cats.syntax.all.*
 import io.renku.search.query.Query
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
+/** Provides conversion into solrs standard query. See
+  * https://solr.apache.org/guide/solr/latest/query-guide/standard-query-parser.html
+  */
+final class LuceneQueryInterpreter[F[_]: Monad]
+    extends QueryInterpreter[F]
+    with LuceneQueryEncoders:
+  private val encoder = SolrTokenEncoder[F, Query]
 
-  test("be able to insert and fetch a project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.insertProjects(Seq(project))
-        r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
-        _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
-      } yield ()
-    }
+  def run(ctx: Context[F], query: Query): F[SolrQuery] =
+    if (query.isEmpty) SolrQuery(SolrToken.allTypes).pure[F]
+    else encoder.encode(ctx, query)
+
+object LuceneQueryInterpreter:
+  def forSync[F[_]: Sync]: QueryInterpreter.WithContext[F] =
+    QueryInterpreter.withContext(LuceneQueryInterpreter[F], Context.forSync[F])

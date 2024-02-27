@@ -16,22 +16,27 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.query
 
-import cats.effect.IO
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
-import munit.CatsEffectSuite
-import io.renku.search.query.Query
+import io.bullet.borer.{Decoder, Encoder}
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
+enum SortableField:
+  case Name
+  case Created
+  case Score
 
-  test("be able to insert and fetch a project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.insertProjects(Seq(project))
-        r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
-        _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
-      } yield ()
-    }
+  val name: String = Strings.lowerFirst(productPrefix)
+
+object SortableField:
+  given Encoder[SortableField] = Encoder.forString.contramap(_.name)
+  given Decoder[SortableField] = Decoder.forString.mapEither(fromString)
+
+  private[this] val allNames: String = SortableField.values.map(_.name).mkString(", ")
+
+  def fromString(str: String): Either[String, SortableField] =
+    SortableField.values
+      .find(_.name.equalsIgnoreCase(str))
+      .toRight(s"Invalid field: $str. Allowed are: $allNames")
+
+  def unsafeFromString(str: String): SortableField =
+    fromString(str).fold(sys.error, identity)

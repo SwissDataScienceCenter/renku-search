@@ -21,6 +21,7 @@ package io.renku.search.query.json
 import cats.data.NonEmptyList
 import io.bullet.borer.compat.cats.*
 import io.bullet.borer.{Decoder, Encoder, Reader, Writer}
+import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.*
 import io.renku.search.query.FieldTerm.*
@@ -45,15 +46,18 @@ import scala.collection.mutable.ListBuffer
   */
 private[query] object QueryJsonCodec:
   private[this] val freeTextField = "_text"
+  private[this] val sortTextField = "_sort"
 
   enum Name:
     case FieldName(v: Field)
+    case SortName
     case TextName
 
   private given Decoder[Name] =
     new Decoder[Name]:
       def read(r: Reader): Name =
         if (r.tryReadString(freeTextField)) Name.TextName
+        else if (r.tryReadString(sortTextField)) Name.SortName
         else Decoder[Field].map(Name.FieldName.apply).read(r)
 
   private def writeNelValue[T: Encoder](w: Writer, ts: NonEmptyList[T]): w.type =
@@ -62,6 +66,9 @@ private[query] object QueryJsonCodec:
 
   private def writeFieldTermValue(w: Writer, term: FieldTerm): Writer =
     term match
+      case FieldTerm.TypeIs(values) =>
+        writeNelValue(w, values)
+
       case FieldTerm.ProjectIdIs(values) =>
         writeNelValue(w, values)
 
@@ -90,6 +97,9 @@ private[query] object QueryJsonCodec:
           case Segment.Field(v) =>
             w.write(v.field)
             writeFieldTermValue(w, v)
+          case Segment.Sort(v) =>
+            w.write(sortTextField)
+            writeNelValue(w, v.fields)
         }
         w.writeMapClose()
     }
@@ -102,6 +112,10 @@ private[query] object QueryJsonCodec:
     name match
       case Name.TextName =>
         Segment.Text(r.readString())
+
+      case Name.FieldName(Field.Type) =>
+        val values = readNel[EntityType](r)
+        Segment.Field(TypeIs(values))
 
       case Name.FieldName(Field.ProjectId) =>
         val values = readNel[String](r)
@@ -127,6 +141,10 @@ private[query] object QueryJsonCodec:
         val (cmp, date) =
           Decoder.forTuple[(Comparison, NonEmptyList[DateTimeRef])].read(r)
         Segment.Field(Created(cmp, date))
+
+      case Name.SortName =>
+        val values = readNel[Order.OrderedBy](r)
+        Segment.Sort(Order(values))
 
   val decoder: Decoder[List[Segment]] =
     new Decoder[List[Segment]] {

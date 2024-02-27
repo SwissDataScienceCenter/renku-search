@@ -16,22 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.solr.query
 
-import cats.effect.IO
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
-import munit.CatsEffectSuite
 import io.renku.search.query.Query
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
+trait QueryInterpreter[F[_]]:
+  def run(ctx: Context[F], q: Query): F[SolrQuery]
 
-  test("be able to insert and fetch a project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.insertProjects(Seq(project))
-        r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
-        _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
-      } yield ()
-    }
+object QueryInterpreter:
+  trait WithContext[F[_]]:
+    def run(q: Query): F[SolrQuery]
+
+  def withContext[F[_]](qi: QueryInterpreter[F], ctx: Context[F]): WithContext[F] =
+    new WithContext[F]:
+      def run(q: Query) = qi.run(ctx, q)

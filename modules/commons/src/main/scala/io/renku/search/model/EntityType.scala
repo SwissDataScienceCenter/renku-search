@@ -16,22 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.model
 
-import cats.effect.IO
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
-import munit.CatsEffectSuite
-import io.renku.search.query.Query
+import io.bullet.borer.Encoder
+import io.bullet.borer.Decoder
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
+enum EntityType:
+  case Project
+  case User
 
-  test("be able to insert and fetch a project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.insertProjects(Seq(project))
-        r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
-        _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
-      } yield ()
-    }
+  def name: String = productPrefix.toLowerCase
+
+object EntityType:
+  def fromString(str: String): Either[String, EntityType] =
+    EntityType.values
+      .find(_.name.equalsIgnoreCase(str))
+      .toRight(s"Invalid entity type: $str")
+
+  def unsafeFromString(str: String): EntityType =
+    fromString(str).fold(sys.error, identity)
+
+  given Encoder[EntityType] = Encoder.forString.contramap(_.name)
+  given Decoder[EntityType] = Decoder.forString.mapEither(fromString)

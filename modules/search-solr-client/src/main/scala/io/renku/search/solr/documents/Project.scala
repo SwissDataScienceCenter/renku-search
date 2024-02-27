@@ -33,7 +33,8 @@ final case class Project(
     description: Option[projects.Description] = None,
     createdBy: users.Id,
     creationDate: projects.CreationDate,
-    members: Seq[users.Id] = Seq.empty
+    members: Seq[users.Id] = Seq.empty,
+    score: Option[Double] = None
 )
 
 object Project:

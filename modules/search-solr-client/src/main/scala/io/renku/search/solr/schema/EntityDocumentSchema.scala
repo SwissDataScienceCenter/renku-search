@@ -38,6 +38,8 @@ object EntityDocumentSchema:
     val nestParent: FieldName = FieldName("_nest_parent_")
     // catch-all field
     val contentAll: FieldName = FieldName("content_all")
+    // virtual score field
+    val score: FieldName = FieldName("score")
 
   object FieldTypes:
     val id: FieldType = FieldType.id(TypeName("SearchId")).makeDocValue

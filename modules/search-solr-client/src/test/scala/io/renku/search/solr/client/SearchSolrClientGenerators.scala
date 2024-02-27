@@ -19,43 +19,38 @@
 package io.renku.search.solr.client
 
 import cats.syntax.all.*
-import io.renku.scalacheck
 import io.renku.search.model.*
+import io.renku.search.model.ModelGenerators.*
 import io.renku.search.solr.documents.*
 import org.scalacheck.Gen
+import org.scalacheck.cats.implicits.*
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-
-object SearchSolrClientGenerators extends scalacheck.all:
+object SearchSolrClientGenerators:
 
   private def projectIdGen: Gen[projects.Id] =
     Gen.uuid.map(uuid => projects.Id(uuid.toString))
 
   def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    (projectIdGen, userIdGen).mapN((projectId, creatorId) =>
-      Project(
-        projectId,
-        projects.Name(name),
-        projects.Slug(name),
-        Seq(projects.Repository(s"http://github.com/$name")),
-        Gen.oneOf(projects.Visibility.values.toList).generateOne,
-        Option(projects.Description(desc)),
-        creatorId,
-        instantGen().generateAs(projects.CreationDate.apply),
-        Seq(creatorId)
+    (projectIdGen, userIdGen, visibilityGen, creationDateGen)
+      .mapN((projectId, creatorId, visibility, creationDate) =>
+        Project(
+          projectId,
+          projects.Name(name),
+          projects.Slug(name),
+          Seq(projects.Repository(s"http://github.com/$name")),
+          visibility,
+          Option(projects.Description(desc)),
+          creatorId,
+          creationDate,
+          Seq(creatorId)
+        )
       )
-    )
 
   def userDocumentGen: Gen[User] =
     userIdGen.map(id => User(id))
 
   private def userIdGen: Gen[users.Id] = Gen.uuid.map(uuid => users.Id(uuid.toString))
 
-  private def instantGen(
-      min: Instant = Instant.EPOCH,
-      max: Instant = Instant.now()
-  ): Gen[Instant] =
-    Gen
-      .chooseNum(min.toEpochMilli, max.toEpochMilli)
-      .map(Instant.ofEpochMilli(_).truncatedTo(ChronoUnit.MILLIS))
+  extension [V](gen: Gen[V])
+    def generateOne: V = gen.sample.getOrElse(generateOne)
+    def generateAs[D](f: V => D): D = f(generateOne)

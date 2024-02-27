@@ -16,23 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.scalacheck
+package io.renku.search.model
 
-import cats.{Functor, Semigroupal}
+import io.renku.search.model.projects.*
 import org.scalacheck.Gen
 
-object all extends all
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
-trait all:
+object ModelGenerators {
 
-  extension [V](gen: Gen[V])
-    def generateOne: V = gen.sample.getOrElse(generateOne)
-    def generateAs[D](f: V => D): D = f(generateOne)
+  val visibilityGen: Gen[Visibility] = Gen.oneOf(Visibility.values.toList)
+  val creationDateGen: Gen[CreationDate] = instantGen().map(CreationDate.apply)
 
-  given Functor[Gen] = new Functor[Gen]:
-    override def map[A, B](fa: Gen[A])(f: A => B): Gen[B] = fa.map(f)
+  private def instantGen(
+      min: Instant = Instant.EPOCH,
+      max: Instant = Instant.now()
+  ): Gen[Instant] =
+    Gen
+      .chooseNum(min.toEpochMilli, max.toEpochMilli)
+      .map(Instant.ofEpochMilli(_).truncatedTo(ChronoUnit.MILLIS))
 
-  given Semigroupal[Gen] = new Semigroupal[Gen] {
-    override def product[A, B](fa: Gen[A], fb: Gen[B]): Gen[(A, B)] =
-      fa.flatMap(a => fb.map(a -> _))
-  }
+}

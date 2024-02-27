@@ -81,6 +81,7 @@
           with selfPkgs; [
             redis
             jq
+            sbt
 
             redis-push
             recreate-container
@@ -107,6 +108,7 @@
           with selfPkgs; [
             redis
             jq
+            sbt
 
             redis-push
             vm-build

@@ -43,8 +43,11 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
         results <- searchApi
           .query(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
-      } yield assert(results.items contains toApiProject(project1))
+      } yield assert(results.items.map(scoreToNone) contains toApiProject(project1))
     }
+
+  private def scoreToNone(e: SearchEntity): SearchEntity = e match
+    case p: Project => p.copy(score = None)
 
   private def mkQuery(phrase: String): QueryInput =
     QueryInput.pageOne(Query.parse(phrase).fold(sys.error, identity))

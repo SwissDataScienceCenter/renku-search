@@ -66,7 +66,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with QueueSpec with SearchSo
             .awakeEvery[IO](500 millis)
             .evalMap(_ => solrClient.findProjects("*"))
             .flatMap(Stream.emits(_))
-            .evalMap(d => solrDocs.update(_ + d))
+            .evalMap(d => solrDocs.update(_ + d.copy(score = None)))
             .compile
             .drain
             .start
@@ -103,7 +103,7 @@ class SearchProvisionerSpec extends CatsEffectSuite with QueueSpec with SearchSo
             .evalMap(_ => solrClient.findProjects("*"))
             .flatMap(Stream.emits(_))
             .evalTap(IO.println)
-            .evalMap(d => solrDocs.update(_ + d))
+            .evalMap(d => solrDocs.update(_ + d.copy(score = None)))
             .compile
             .drain
             .start

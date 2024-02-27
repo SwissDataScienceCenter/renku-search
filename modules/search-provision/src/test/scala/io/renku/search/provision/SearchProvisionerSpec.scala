@@ -22,6 +22,7 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
+import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.projectCreatedGen
@@ -32,7 +33,7 @@ import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.search.model.{projects, users}
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.{Project, User}
+import io.renku.search.solr.documents.Project
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
@@ -118,18 +119,14 @@ class SearchProvisionerSpec extends CatsEffectSuite with QueueSpec with SearchSo
     withQueueClient() >>= withSearchSolrClient().tupleLeft
 
   private def toSolrDocument(created: ProjectCreated): Project =
-    def toUser(id: String): User = User(users.Id(id))
-    Project(
-      projects.Id(created.id),
-      projects.Name(created.name),
-      projects.Slug(created.slug),
-      created.repositories.map(projects.Repository(_)),
-      projects.Visibility.unsafeFromString(created.visibility.name()),
-      created.description.map(projects.Description(_)),
-      toUser(created.createdBy),
-      projects.CreationDate(created.creationDate),
-      created.members.map(toUser)
-    )
+    created
+      .into[Project]
+      .transform(
+        Field.computed(
+          _.visibility,
+          pc => projects.Visibility.unsafeFromString(pc.visibility.name())
+        )
+      )
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

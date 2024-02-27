@@ -35,6 +35,9 @@ final case class FieldType(
 
 object FieldType:
 
+  def id(name: TypeName): FieldType =
+    FieldType(name, FieldTypeClass.Defaults.strField)
+
   def text(name: TypeName, analyzer: Analyzer): FieldType =
     FieldType(name, FieldTypeClass.Defaults.textField, analyzer = Some(analyzer))
 

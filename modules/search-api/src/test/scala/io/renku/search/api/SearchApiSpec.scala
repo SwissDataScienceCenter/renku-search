@@ -19,14 +19,15 @@
 package io.renku.search.api
 
 import cats.effect.IO
-import io.renku.search.query.Query
+import io.github.arainko.ducktape.*
 import io.renku.search.api.data.*
+import io.renku.search.model.users
+import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
+import io.renku.search.solr.documents.Project as SolrProject
 import munit.CatsEffectSuite
 import scribe.Scribe
-import io.renku.search.api.data.QueryInput
 
 class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
 
@@ -49,15 +50,5 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
     QueryInput.pageOne(Query.parse(phrase).fold(sys.error, identity))
 
   private def toApiProject(p: SolrProject) =
-    def toUser(user: SolrUser): User = User(user.id)
-    Project(
-      p.id,
-      p.name,
-      p.slug,
-      p.repositories,
-      p.visibility,
-      p.description,
-      toUser(p.createdBy),
-      p.creationDate,
-      p.members.map(toUser)
-    )
+    given Transformer[users.Id, User] = (id: users.Id) => User(id)
+    p.to[Project]

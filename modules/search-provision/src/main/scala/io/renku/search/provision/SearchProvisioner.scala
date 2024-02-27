@@ -128,7 +128,6 @@ private class SearchProvisionerImpl[F[_]: Async](
           .onError(markProcessedOnFailure(lastMessage, queueClient))
     }
 
-  private given Transformer[String, User] = (from: String) => User(users.Id(from))
   private given Transformer[v1.Visibility, projects.Visibility] =
     (from: v1.Visibility) => projects.Visibility.unsafeFromString(from.name())
 

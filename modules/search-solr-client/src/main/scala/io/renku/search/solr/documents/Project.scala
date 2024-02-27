@@ -31,9 +31,9 @@ final case class Project(
     repositories: Seq[projects.Repository] = Seq.empty,
     visibility: projects.Visibility,
     description: Option[projects.Description] = None,
-    createdBy: User,
+    createdBy: users.Id,
     creationDate: projects.CreationDate,
-    members: Seq[User] = Seq.empty
+    members: Seq[users.Id] = Seq.empty
 )
 
 object Project:

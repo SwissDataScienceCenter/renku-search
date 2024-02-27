@@ -32,7 +32,6 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
       for {
         _ <- client.insertProjects(Seq(project))
         r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
-        _ <- IO.println(r.responseBody.docs)
         _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
       } yield ()
     }

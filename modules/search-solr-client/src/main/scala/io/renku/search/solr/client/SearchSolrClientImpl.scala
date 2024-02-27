@@ -47,7 +47,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   override def findProjects(phrase: String): F[List[Project]] =
     solrClient
       .query[Project](
-        QueryData.withChildren(
+        QueryData(
           QueryString(
             s"${EntityDocumentSchema.Fields.entityType}:${Project.entityType} AND (name:$phrase OR description:$phrase)"
           )

@@ -22,6 +22,7 @@ import cats.effect.Async
 import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.search.api.data.*
+import io.renku.search.model.users
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Project as SolrProject
 import io.renku.solr.client.QueryResponse
@@ -57,6 +58,10 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
   ): SearchResult =
     val hasMore = solrResult.responseBody.docs.size > currentPage.limit
     val pageInfo = PageWithTotals(currentPage, solrResult.responseBody.numFound, hasMore)
-    val items = solrResult.responseBody.docs.map(_.to[Project])
+    val items = solrResult.responseBody.docs.map(toApiProject)
     if (hasMore) SearchResult(items.init, pageInfo)
     else SearchResult(items, pageInfo)
+
+  private lazy val toApiProject: SolrProject => Project =
+    given Transformer[users.Id, User] = (id: users.Id) => User(id)
+    _.to[Project]

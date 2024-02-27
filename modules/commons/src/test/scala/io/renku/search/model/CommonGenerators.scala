@@ -16,16 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.commons.generators
+package io.renku.search.model
 
 import cats.data.NonEmptyList
 import org.scalacheck.Gen
-import io.renku.search.model.projects.Visibility
 
 object CommonGenerators:
-  val visibility: Gen[Visibility] =
-    Gen.oneOf(Visibility.values.toSeq)
-
   def nelOfN[A](n: Int, gen: Gen[A]): Gen[NonEmptyList[A]] =
     for {
       e0 <- gen

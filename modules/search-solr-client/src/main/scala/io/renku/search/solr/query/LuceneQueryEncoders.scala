@@ -26,10 +26,9 @@ import io.renku.search.query.Query
 
 import cats.Monad
 import cats.Applicative
-import cats.effect.kernel.Sync
 import io.renku.search.query.Comparison
 
-trait QueryTokenEncoders:
+trait LuceneQueryEncoders:
 
   given projectIdIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.ProjectIdIs] =
     SolrTokenEncoder.basic { case FieldTerm.ProjectIdIs(ids) =>
@@ -100,7 +99,7 @@ trait QueryTokenEncoders:
         }
     }
 
-  given fieldTerm[F[_]: Sync]: SolrTokenEncoder[F, FieldTerm] =
+  given fieldTerm[F[_]: Monad]: SolrTokenEncoder[F, FieldTerm] =
     SolrTokenEncoder.derived[F, FieldTerm]
 
   given fieldSegment[F[_]: Applicative](using

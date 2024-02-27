@@ -18,15 +18,18 @@
 
 package io.renku.search.solr.query
 
+import cats.Monad
+import cats.effect.Sync
+import cats.syntax.all.*
 import io.renku.search.query.Query
 
-trait QueryInterpreter[F[_]]:
-  def run(ctx: Context[F], q: Query): F[SolrQuery]
+final class LuceneQueryInterpreter[F[_]: Monad] extends QueryInterpreter[F] with LuceneQueryEncoders:
+  private val encoder = SolrTokenEncoder[F, Query]
 
-object QueryInterpreter:
-  trait WithContext[F[_]]:
-    def run(q: Query): F[SolrQuery]
+  def run(ctx: Context[F], query: Query): F[SolrQuery] =
+    if (query.isEmpty) SolrQuery.lucene(SolrToken.allTypes).pure[F]
+    else encoder.encode(ctx, query).map(t => SolrQuery.lucene(List(SolrToken.allTypes, t).foldAnd))
 
-  def withContext[F[_]](qi: QueryInterpreter[F], ctx: Context[F]): WithContext[F] =
-    new WithContext[F]:
-      def run(q: Query) = qi.run(ctx, q)
+object LuceneQueryInterpreter:
+  def forSync[F[_]: Sync]: QueryInterpreter.WithContext[F] =
+    QueryInterpreter.withContext(LuceneQueryInterpreter[F], Context.forSync[F])

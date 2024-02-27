@@ -18,15 +18,15 @@
 
 package io.renku.search.solr.query
 
-import io.renku.search.query.Query
+final case class SolrQuery(
+  queryType: SolrQuery.Type,
+  query: String
+)
 
-trait QueryInterpreter[F[_]]:
-  def run(ctx: Context[F], q: Query): F[SolrQuery]
+object SolrQuery:
+  enum Type:
+    case Lucene
+    case Edismax
 
-object QueryInterpreter:
-  trait WithContext[F[_]]:
-    def run(q: Query): F[SolrQuery]
-
-  def withContext[F[_]](qi: QueryInterpreter[F], ctx: Context[F]): WithContext[F] =
-    new WithContext[F]:
-      def run(q: Query) = qi.run(ctx, q)
+  def lucene(qstr: SolrToken): SolrQuery =
+    SolrQuery(Type.Lucene, qstr.value)

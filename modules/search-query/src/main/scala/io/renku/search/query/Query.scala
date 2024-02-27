@@ -29,14 +29,14 @@ import io.renku.search.query.parse.{QueryParser, QueryUtil}
 import cats.kernel.Monoid
 
 final case class Query(
-  segments: List[Query.Segment]
+    segments: List[Query.Segment]
 ):
   def render: String =
     segments
       .map {
         case Query.Segment.Field(v) => v.asString
         case Query.Segment.Text(v)  => v
-        case Query.Segment.Sort(v) => v.render
+        case Query.Segment.Sort(v)  => v.render
       }
       .mkString(" ")
 

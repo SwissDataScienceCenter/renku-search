@@ -146,7 +146,6 @@ private[query] object QueryJsonCodec:
         val values = readNel[Order.OrderedBy](r)
         Segment.Sort(Order(values))
 
-
   val decoder: Decoder[List[Segment]] =
     new Decoder[List[Segment]] {
       def read(r: Reader) = {

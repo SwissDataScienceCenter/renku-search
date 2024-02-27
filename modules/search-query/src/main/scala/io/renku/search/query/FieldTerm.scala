@@ -23,7 +23,8 @@ import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
 
 enum FieldTerm(val field: Field, val cmp: Comparison):
-  case TypeIs(values: NonEmptyList[EntityType]) extends FieldTerm(Field.Type, Comparison.Is)
+  case TypeIs(values: NonEmptyList[EntityType])
+      extends FieldTerm(Field.Type, Comparison.Is)
   case ProjectIdIs(values: NonEmptyList[String])
       extends FieldTerm(Field.ProjectId, Comparison.Is)
   case NameIs(values: NonEmptyList[String]) extends FieldTerm(Field.Name, Comparison.Is)
@@ -37,7 +38,7 @@ enum FieldTerm(val field: Field, val cmp: Comparison):
 
   private[query] def asString =
     val value = this match
-      case TypeIs(values)      =>
+      case TypeIs(values) =>
         val ts = values.toList.distinct.map(_.name)
         ts.mkString(",")
       case ProjectIdIs(values) => FieldTerm.nelToString(values)

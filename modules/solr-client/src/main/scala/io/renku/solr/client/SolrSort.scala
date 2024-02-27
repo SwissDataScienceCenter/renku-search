@@ -32,7 +32,9 @@ object SolrSort:
 
   object Direction:
     def fromString(s: String): Either[String, Direction] =
-      Direction.values.find(_.toString.equalsIgnoreCase(s)).toRight(s"Invalid sort direction: $s")
+      Direction.values
+        .find(_.toString.equalsIgnoreCase(s))
+        .toRight(s"Invalid sort direction: $s")
     def unsafeFromString(s: String): Direction =
       fromString(s).fold(sys.error, identity)
 

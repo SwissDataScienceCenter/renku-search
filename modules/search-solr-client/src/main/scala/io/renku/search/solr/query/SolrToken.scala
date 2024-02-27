@@ -73,7 +73,7 @@ object SolrToken:
   def dateLt(field: Field, date: Instant): SolrToken =
     fieldOp(field, Comparison.LowerThan, date.toString)
 
-  //TODO: currently only projects work, user can't be decoded
+  // TODO: currently only projects work, user can't be decoded
   val allTypes: SolrToken = fieldIs(Field.Type, "Project")
 
   private def fieldOp(field: Field, op: Comparison, value: SolrToken): SolrToken =
@@ -85,11 +85,13 @@ object SolrToken:
     fieldOp(field, Comparison.Is, value)
 
   private def monoidWith(sep: String): Monoid[SolrToken] =
-    Monoid.instance(empty, (a, b) => if (a.isEmpty) b else if (b.isEmpty) a else s"$a$sep$b")
+    Monoid.instance(
+      empty,
+      (a, b) => if (a.isEmpty) b else if (b.isEmpty) a else s"$a$sep$b"
+    )
   private val orMonoid: Monoid[SolrToken] = monoidWith(" OR ")
   private val andMonoid: Monoid[SolrToken] = monoidWith(" AND ")
   private val spaceMonoid: Monoid[SolrToken] = monoidWith(" ")
-
 
   extension (self: SolrToken)
     def value: String = self
@@ -103,8 +105,7 @@ object SolrToken:
     def <(next: SolrToken): SolrToken = self ~ Comparison.LowerThan.token ~ next
     def >(next: SolrToken): SolrToken = self ~ Comparison.GreaterThan.token ~ next
 
-  extension (self: Comparison)
-    def token: SolrToken = fromComparison(self)
+  extension (self: Comparison) def token: SolrToken = fromComparison(self)
 
   extension (self: Seq[SolrToken])
     def foldM(using Monoid[SolrToken]): SolrToken =

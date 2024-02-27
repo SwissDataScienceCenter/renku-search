@@ -31,7 +31,10 @@ object Order:
   def apply(field: OrderedBy, fields: OrderedBy*): Order =
     Order(NonEmptyList(field, fields.toList))
 
-  def apply(field: (SortableField, Direction), fields: (SortableField, Direction)*): Order =
+  def apply(
+      field: (SortableField, Direction),
+      fields: (SortableField, Direction)*
+  ): Order =
     Order(NonEmptyList(field, fields.toList).map(OrderedBy.apply.tupled))
 
   enum Direction:

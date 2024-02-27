@@ -166,10 +166,9 @@ object QueryGenerators:
     }
 
   val sortTerm: Gen[Order] =
-    Gen.choose(1,5).flatMap { len =>
+    Gen.choose(1, 5).flatMap { len =>
       nelOfN(len, orderedBy).map(Order.apply)
     }
-
 
   val segment: Gen[Query.Segment] =
     Gen.oneOf(

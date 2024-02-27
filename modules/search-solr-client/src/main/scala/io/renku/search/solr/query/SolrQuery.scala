@@ -24,12 +24,11 @@ import io.renku.search.query.Order
 import io.renku.solr.client.SolrSort
 
 final case class SolrQuery(
-  query: SolrToken,
-  sort: SolrSort
+    query: SolrToken,
+    sort: SolrSort
 ):
   def ++(next: SolrQuery): SolrQuery =
     SolrQuery(query && next.query, sort ++ next.sort)
-
 
 object SolrQuery:
   val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)

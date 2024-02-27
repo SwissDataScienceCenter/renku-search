@@ -39,7 +39,8 @@ enum DateTimeRef:
     */
   def resolve(ref: Instant, zoneId: ZoneId): (Instant, Option[Instant]) = this match
     case Relative(RelativeDate.Today) => (ref, None)
-    case Relative(RelativeDate.Yesterday) => (ref.atZone(zoneId).minusDays(1).toInstant, None)
+    case Relative(RelativeDate.Yesterday) =>
+      (ref.atZone(zoneId).minusDays(1).toInstant, None)
     case Literal(pdate) =>
       val min = pdate.instantMin(zoneId)
       val max = pdate.instantMax(zoneId)
@@ -52,11 +53,9 @@ enum DateTimeRef:
         case rd: RelativeDate =>
           Relative(rd).resolve(ref, zoneId)._1.atZone(zoneId)
 
-      if (cdate.range) (ts.minus(cdate.amount).toInstant, Some(ts.plus(cdate.amount).toInstant))
+      if (cdate.range)
+        (ts.minus(cdate.amount).toInstant, Some(ts.plus(cdate.amount).toInstant))
       else (ts.plus(cdate.amount).toInstant, None)
-
-
-
 
 object DateTimeRef:
   given Encoder[DateTimeRef] = Encoder.forString.contramap(_.asString)

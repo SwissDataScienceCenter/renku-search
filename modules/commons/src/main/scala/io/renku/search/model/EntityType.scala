@@ -36,6 +36,5 @@ object EntityType:
   def unsafeFromString(str: String): EntityType =
     fromString(str).fold(sys.error, identity)
 
-
   given Encoder[EntityType] = Encoder.forString.contramap(_.name)
   given Decoder[EntityType] = Decoder.forString.mapEither(fromString)

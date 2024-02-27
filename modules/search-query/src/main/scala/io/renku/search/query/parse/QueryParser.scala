@@ -62,7 +62,7 @@ private[query] object QueryParser {
     }
 
   val orderedByNel: P[NonEmptyList[Order.OrderedBy]] =
-    nelOf(orderedBy, commaSep)
+    nelOf(orderedBy, commaSep).map(_.distinct)
 
   val comparison: P[Comparison] =
     P.stringIn(Comparison.values.map(_.asString)).map(Comparison.unsafeFromString)

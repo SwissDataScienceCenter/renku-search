@@ -20,6 +20,7 @@ package io.renku.search.query
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
+import io.renku.commons.generators.CommonGenerators
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
@@ -89,17 +90,6 @@ object QueryGenerators:
       dir <- sortDirection
     } yield Order.OrderedBy(field, dir)
 
-  // TODO move to commons
-  val visibility: Gen[Visibility] =
-    Gen.oneOf(Visibility.values.toSeq)
-
-  // TODO move to commons
-  def nelOfN[A](n: Int, gen: Gen[A]): Gen[NonEmptyList[A]] =
-    for {
-      e0 <- gen
-      en <- Gen.listOfN(n - 1, gen)
-    } yield NonEmptyList(e0, en)
-
   private val alphaNumChars = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')
   private val simpleWord: Gen[String] = {
     val len = Gen.choose(2, 12)
@@ -121,7 +111,7 @@ object QueryGenerators:
   }
 
   private val stringValues: Gen[NonEmptyList[String]] =
-    Gen.choose(1, 4).flatMap(n => nelOfN(n, phrase))
+    Gen.choose(1, 4).flatMap(n => CommonGenerators.nelOfN(n, phrase))
 
   val projectIdTerm: Gen[FieldTerm] =
     stringValues.map(FieldTerm.ProjectIdIs(_))
@@ -137,7 +127,10 @@ object QueryGenerators:
 
   val visibilityTerm: Gen[FieldTerm] =
     Gen
-      .frequency(10 -> visibility.map(NonEmptyList.one), 1 -> nelOfN(2, visibility))
+      .frequency(
+        10 -> CommonGenerators.visibility.map(NonEmptyList.one),
+        1 -> CommonGenerators.nelOfN(2, CommonGenerators.visibility)
+      )
       .map(vs => FieldTerm.VisibilityIs(vs.distinct))
 
   private val comparison: Gen[Comparison] =
@@ -147,7 +140,7 @@ object QueryGenerators:
     for {
       cmp <- comparison
       len <- Gen.frequency(5 -> Gen.const(1), 1 -> Gen.choose(1, 3))
-      pd <- nelOfN(len, dateTimeRef)
+      pd <- CommonGenerators.nelOfN(len, dateTimeRef)
     } yield FieldTerm.Created(cmp, pd)
 
   val fieldTerm: Gen[FieldTerm] =
@@ -167,7 +160,7 @@ object QueryGenerators:
 
   val sortTerm: Gen[Order] =
     Gen.choose(1, 5).flatMap { len =>
-      nelOfN(len, orderedBy).map(Order.apply)
+      CommonGenerators.nelOfN(len, orderedBy).map(_.distinct).map(Order.apply)
     }
 
   val segment: Gen[Query.Segment] =

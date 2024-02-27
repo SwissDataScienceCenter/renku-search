@@ -62,6 +62,7 @@ object Order:
     given Encoder[OrderedBy] = Encoder.forString.contramap(_.render)
     given Decoder[OrderedBy] =
       Decoder.forString.mapEither(s => QueryParser.orderedBy.parseAll(s).leftMap(_.show))
+    given cats.Order[OrderedBy] = cats.Order.by(_.render)
 
   def fromString(s: String): Either[String, Order] =
     QueryParser.sortTerm.parseAll(s).leftMap(_.show)

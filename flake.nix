@@ -92,6 +92,7 @@
             solr-recreate-core
             solr-recreate-dbtests-cores
             solr-logs
+            k8s-reprovision
           ];
         };
         vm = pkgs.mkShell {
@@ -122,6 +123,7 @@
             vm-solr-recreate-core
             vm-solr-logs
             solr-recreate-dbtests-cores
+            k8s-reprovision
           ];
         };
       };

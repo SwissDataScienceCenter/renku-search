@@ -47,7 +47,8 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
       res <- solrClient
         .query[Project](
           QueryData(QueryString(solrQuery.query.value, limit, offset))
-            .copy(sort = solrQuery.sort)
+            .withSort(solrQuery.sort)
+            .withScore
         )
     } yield res
 

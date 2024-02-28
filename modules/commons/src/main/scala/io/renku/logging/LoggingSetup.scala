@@ -53,7 +53,7 @@ object LoggingSetup:
 
   private def configureRenkuSearch(level: Level): Unit = {
     scribe
-      .Logger("io.renku.search")
+      .Logger("io.renku")
       .clearHandlers()
       .withHandler(
         formatter = Formatter.classic,

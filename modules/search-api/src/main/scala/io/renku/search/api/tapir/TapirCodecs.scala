@@ -27,5 +27,4 @@ trait TapirCodecs:
     Codec.string.mapEither(Query.parse(_))(_.render)
 
   given Schema[Query] = Schema.anyObject[Query]
-  given Schema[PageDef] = Schema.derived
   given Schema[QueryInput] = Schema.derived

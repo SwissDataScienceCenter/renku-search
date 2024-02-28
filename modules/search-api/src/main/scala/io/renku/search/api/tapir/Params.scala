@@ -58,12 +58,12 @@ object Params extends TapirCodecs with TapirBorerJson {
     val total: EndpointOutput[Long] = header[Long]("x-total")
     val totalPages: EndpointOutput[Int] = header[Int]("x-total-pages")
 
-    pageDef.and(prevPage).and(nextPage).and(total).and(totalPages).mapTo[PageWithTotals]
+    pageDef.and(total).and(totalPages).and(prevPage).and(nextPage).mapTo[PageWithTotals]
   }
 
   val searchItems: EndpointOutput[Seq[SearchEntity]] =
     borerJsonBody[Seq[SearchEntity]]
 
   val searchResult: EndpointOutput[SearchResult] =
-    searchItems.and(pagingInfo).mapTo[SearchResult]
+    borerJsonBody[SearchResult].and(pagingInfo).map(_._1)(r => (r, r.pagingInfo))
 }

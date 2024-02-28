@@ -18,7 +18,17 @@
 
 package io.renku.search.api.data
 
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.Encoder
+import io.bullet.borer.Decoder
+import sttp.tapir.Schema
+
 final case class SearchResult(
     items: Seq[SearchEntity],
     pagingInfo: PageWithTotals
 )
+
+object SearchResult:
+  given Encoder[SearchResult] = MapBasedCodecs.deriveEncoder
+  given Decoder[SearchResult] = MapBasedCodecs.deriveDecoder
+  given Schema[SearchResult] = Schema.derived

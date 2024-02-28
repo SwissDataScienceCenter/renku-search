@@ -38,6 +38,7 @@ final class SearchRoutes[F[_]: Async](api: SearchApi[F])
 
   private val searchEndpointGet: PublicEndpoint[QueryInput, String, SearchResult, Any] =
     endpoint.get
+      .in("")
       .in(Params.queryInput)
       .errorOut(borerJsonBody[String])
       .out(Params.searchResult)
@@ -45,6 +46,7 @@ final class SearchRoutes[F[_]: Async](api: SearchApi[F])
 
   private val searchEndpointPost: PublicEndpoint[QueryInput, String, SearchResult, Any] =
     endpoint.post
+      .in("")
       .errorOut(borerJsonBody[String])
       .in(
         borerJsonBody[QueryInput]

@@ -91,6 +91,7 @@
             solr-delete-core
             solr-recreate-core
             solr-recreate-dbtests-cores
+            solr-logs
           ];
         };
         vm = pkgs.mkShell {
@@ -119,6 +120,7 @@
             vm-solr-create-core
             vm-solr-delete-core
             vm-solr-recreate-core
+            vm-solr-logs
             solr-recreate-dbtests-cores
           ];
         };

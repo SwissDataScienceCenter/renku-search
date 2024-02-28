@@ -1,7 +1,7 @@
 {
   concatTextFile,
   writeShellScriptBin,
-}: rec {
+}: let key = ./dev-vm-key; in rec {
   redis-push = concatTextFile {
     name = "redis-push";
     files = [./scripts/redis-push];
@@ -37,6 +37,10 @@
     ${solr-create-core}/bin/solr-create-core "$1"
   '';
 
+  solr-logs = writeShellScriptBin "solr-logs" ''
+    sudo nixos-container run ''${RS_CONTAINER:-rsdev} -- journalctl -efu solr.service
+  '';
+
   vm-build = writeShellScriptBin "vm-build" ''
     nix build .#nixosConfigurations.dev-vm.config.system.build.vm
   '';
@@ -46,7 +50,11 @@
   '';
 
   vm-ssh = writeShellScriptBin "vm-ssh" ''
-    ssh -p $VM_SSH_PORT root@localhost "$@"
+    ssh -i ${key} -p $VM_SSH_PORT root@localhost "$@"
+  '';
+
+  vm-solr-logs = writeShellScriptBin "solr-logs" ''
+    ${vm-ssh}/bin/vm-ssh journalctl -efu solr.service
   '';
 
   vm-solr-create-core = writeShellScriptBin "solr-create-core" ''

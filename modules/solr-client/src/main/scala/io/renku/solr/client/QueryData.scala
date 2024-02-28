@@ -45,20 +45,14 @@ final case class QueryData(
       )
     )
 
+  def withSort(sort: SolrSort): QueryData = copy(sort = sort)
+  def withFieldList(fl: String): QueryData = copy(params = params.updated("fl", fl))
+  def withScore: QueryData = withFieldList("* score")
+  def withScoreAndChildren: QueryData = withFieldList("* score,[child]")
+
 object QueryData:
 
   def apply(query: QueryString): QueryData =
     QueryData(query.q, Nil, query.limit, query.offset, Nil, SolrSort.empty, Map.empty)
-
-  def withChildren(query: QueryString): QueryData =
-    QueryData(
-      query.q,
-      Nil,
-      query.limit,
-      query.offset,
-      Nil,
-      SolrSort.empty,
-      Map("fl" -> "* score,[child]")
-    )
 
   given Encoder[QueryData] = deriveEncoder

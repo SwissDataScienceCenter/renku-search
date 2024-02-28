@@ -53,10 +53,13 @@ object SchemaMigrator:
 
     override def migrate(migrations: Seq[SchemaMigration]): F[Unit] = for {
       current <- currentVersion
+      _ <- logger.info(s"Found current schema version '$current' using id $versionDocId")
       _ <- current.fold(initVersionDocument)(_ => ().pure[F])
       remain = migrations.sortBy(_.version).dropWhile(m => current.exists(_ >= m.version))
+      _ <- logger.info(s"There are ${remain.size} migrations to run")
       _ <- remain.traverse_(m =>
-        client.modifySchema(m.commands) >> upsertVersion(m.version)
+        logger.info(s"Run migration ${m.version}") >>
+          client.modifySchema(m.commands) >> upsertVersion(m.version)
       )
     } yield ()
 

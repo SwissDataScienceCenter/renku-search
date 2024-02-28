@@ -17,6 +17,7 @@
 
   users.users.root = {
     password = "root";
+    openssh.authorizedKeys.keyFiles = [ ./dev-vm-key.pub ];
   };
   i18n = {defaultLocale = "de_DE.UTF-8";};
   console.keyMap = "de";

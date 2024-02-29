@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [ -z "$RENKU_ENV" ]; then
+    echo "Please set RENKU_ENV environment variable to the deployment"
+    echo "environment you want to run against"
+    exit 1
+else
+    echo "This will drop the SOLR core at $RENKU_ENV and restart search-provisioner"
+    echo "service which will re-read all events again. Sure?"
+    read
+fi
+
+get_pod_name() {
+    local pat="$1"
+    kubectl -n $RENKU_ENV get pods -o json|jq -r '.items[]|.metadata.name'|grep "$pat"
+}
+
+get_deployment() {
+    local pat="$1"
+    kubectl -n $RENKU_ENV get deployments -o json | jq  ".items[] | {replicas: .spec.replicas, app: .metadata.labels.app, name: .metadata.name} | select(.app==\"$pat\")"
+}
+
+restart_provisioner() {
+    local pat="search-provision"
+
+    local info=$(get_deployment "$pat")
+    local replicas=$(echo $info | jq -r .replicas)
+    local name=$(echo $info | jq -r .name)
+
+    echo "Stopping $name, $replicas->0"
+    kubectl -n $RENKU_ENV scale --replicas=0 deployment $name
+    sleep 1
+    echo "Starting $name, 0->$replicas"
+    kubectl -n $RENKU_ENV scale --replicas=$replicas deployment $name
+}
+
+recreate_solr_core() {
+    local core_name=${SOLR_CORE_NAME:-renku-search}
+    local pod_name=$(get_pod_name solr-0)
+    local solr_pass=$(kubectl -n $RENKU_ENV get secrets -o json | jq -r '.items[]|select(.metadata.labels."app.kubernetes.io/component" == "solr")|.data."solr-password"|@base64d')
+    kubectl -n $RENKU_ENV exec $pod_name -- env SOLR_AUTH_TYPE="basic" SOLR_AUTHENTICATION_OPTS="-Dbasicauth=renku:$solr_pass" solr delete -c "$core_name"
+    kubectl -n $RENKU_ENV exec $pod_name -- env SOLR_AUTH_TYPE="basic" SOLR_AUTHENTICATION_OPTS="-Dbasicauth=renku:$solr_pass" solr create -c "$core_name"
+}
+
+drop_last_message_id() {
+    # get redis secret
+    local redis_secret=$(kubectl -n $RENKU_ENV get secrets -o json | jq -r '.items[]|select(.metadata.name == "redis-secret")|.data."redis-password"|@base64d')
+
+    local pod_name=$(get_pod_name redis-node-0)
+    echo "Setting up port-forward to $pod_name"
+    # port-forward to redis 0 node
+    kubectl -n "$RENKU_ENV" port-forward "$pod_name" 16379:6379 &
+    local pfw_pid=$!
+    sleep 1.5
+    echo "Run portforward in $pfw_pid"
+    local msg_id=$(redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" GET project.created.search-provisioner | jq -r)
+    if [ "$msg_id" = "null" ] || [ -z "$msg_id" ]; then
+        echo "No messages processed"
+    else
+        echo "Last message id: $msg_id - Deleting it"
+        redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" DEL project.created.search-provisioner $msg_id
+    fi
+    echo "Drop port-forward"
+    kill $pfw_pid
+}
+
+echo "Dropping and creating solr core"
+recreate_solr_core
+
+echo "Dropping last processed message id"
+drop_last_message_id
+
+echo "Restart search provisioner"
+restart_provisioner

@@ -79,4 +79,11 @@
     solr-create-core core-test
     solr-create-core search-core-test
   '';
+
+  k8s-reprovision = concatTextFile {
+    name = "k8s-reprovision";
+    files = [./scripts/k8s-reprovision];
+    executable = true;
+    destination = "/bin/k8s-reprovision";
+  };
 }

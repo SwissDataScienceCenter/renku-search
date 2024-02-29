@@ -39,11 +39,7 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
       FieldTerm.Created(Comparison.GreaterThan, Nel.of(DateTimeRef(pd)))
     assertEquals(
       createdEncoder.encode(ctx, date),
-      SolrQuery(
-        SolrToken.fromField(Field.Created) ~
-          SolrToken.fromComparison(Comparison.GreaterThan) ~
-          SolrToken.fromInstant(pd.instantMax(utc))
-      )
+      SolrQuery(SolrToken.dateGt(Field.Created, pd.instantMax(utc)))
     )
 
   test("use date-min for lower-than"):
@@ -52,11 +48,7 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
       FieldTerm.Created(Comparison.LowerThan, Nel.of(DateTimeRef(pd)))
     assertEquals(
       createdEncoder.encode(ctx, date),
-      SolrQuery(
-        SolrToken.fromField(Field.Created) ~
-          SolrToken.fromComparison(Comparison.LowerThan) ~
-          SolrToken.fromInstant(pd.instantMin(utc))
-      )
+      SolrQuery(SolrToken.dateLt(Field.Created, pd.instantMin(utc)))
     )
 
   test("created comparison is"):

@@ -73,10 +73,13 @@
     ${vm-solr-create-core}/bin/solr-create-core "$1"
   '';
 
+  # core names are defined in project/SolrServer.scala
   solr-recreate-dbtests-cores = writeShellScriptBin "solr-recreate-dbtests-cores" ''
-    solr-delete-core core-test
+    solr-delete-core core-test1
+    solr-delete-core core-test2
     solr-delete-core search-core-test
-    solr-create-core core-test
+    solr-create-core core-test1
+    solr-create-core core-test2
     solr-create-core search-core-test
   '';
 

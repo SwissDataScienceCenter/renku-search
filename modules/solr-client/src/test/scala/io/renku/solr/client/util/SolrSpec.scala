@@ -29,9 +29,10 @@ trait SolrSpec:
   self: munit.Suite =>
 
   protected lazy val server: SolrServer = SolrServer
+  protected lazy val coreName: String = server.testCoreName1
   protected lazy val solrConfig: SolrConfig = SolrConfig(
     Uri.unsafeFromString(server.url) / "solr",
-    server.genericCoreName,
+    coreName,
     maybeUser = None,
     commitWithin = Some(Duration.Zero),
     logMessageBodies = true

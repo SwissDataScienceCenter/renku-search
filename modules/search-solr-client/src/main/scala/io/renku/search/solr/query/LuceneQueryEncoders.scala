@@ -86,7 +86,7 @@ trait LuceneQueryEncoders:
             values
               .map(_.resolve(ref, zone))
               .map { case (min, maxOpt) =>
-                created > SolrToken.fromInstant(maxOpt.getOrElse(min))
+                SolrToken.dateGt(Field.Created, maxOpt.getOrElse(min))
               }
               .toList
               .foldOr
@@ -99,7 +99,7 @@ trait LuceneQueryEncoders:
             values
               .map(_.resolve(ref, zone))
               .map { case (min, _) =>
-                created < SolrToken.fromInstant(min)
+                SolrToken.dateLt(Field.Created, min)
               }
               .toList
               .foldOr

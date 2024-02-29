@@ -34,7 +34,7 @@ opaque type SolrToken = String
 
 object SolrToken:
   val empty: SolrToken = ""
-  def fromString(str: String): SolrToken = Escape.queryChars(str)
+  def fromString(str: String): SolrToken = StringEscape.queryChars(str)
   def fromVisibility(v: Visibility): SolrToken = v.name
   def fromEntityType(et: EntityType): SolrToken =
     et match
@@ -52,7 +52,7 @@ object SolrToken:
       case Field.Type       => SolrField.entityType
     ).name
 
-  def fromInstant(ts: Instant): SolrToken = ts.toString
+  def fromInstant(ts: Instant): SolrToken = StringEscape.escape(ts.toString, ":")
   def fromDateRange(min: Instant, max: Instant): SolrToken = s"[$min TO $max]"
 
   def fromComparison(op: Comparison): SolrToken =
@@ -62,16 +62,16 @@ object SolrToken:
       case Comparison.LowerThan   => "<"
 
   def contentAll(text: String): SolrToken =
-    s"${SolrField.contentAll.name}:${Escape.queryChars(text)}"
+    s"${SolrField.contentAll.name}:${StringEscape.queryChars(text)}"
 
   def orFieldIs(field: Field, values: NonEmptyList[SolrToken]): SolrToken =
     values.map(fieldIs(field, _)).toList.foldOr
 
   def dateIs(field: Field, date: Instant): SolrToken = fieldIs(field, fromInstant(date))
   def dateGt(field: Field, date: Instant): SolrToken =
-    fieldOp(field, Comparison.GreaterThan, date.toString)
+    fieldIs(field, s"[${fromInstant(date)} TO *]")
   def dateLt(field: Field, date: Instant): SolrToken =
-    fieldOp(field, Comparison.LowerThan, date.toString)
+    fieldIs(field, s"[* TO ${fromInstant(date)}]")
 
   // TODO: currently only projects work, user can't be decoded
   val allTypes: SolrToken = fieldIs(Field.Type, "Project")
@@ -83,6 +83,8 @@ object SolrToken:
 
   def fieldIs(field: Field, value: SolrToken): SolrToken =
     fieldOp(field, Comparison.Is, value)
+
+  def unsafeFromString(s: String): SolrToken = s
 
   private def monoidWith(sep: String): Monoid[SolrToken] =
     Monoid.instance(
@@ -102,8 +104,6 @@ object SolrToken:
     def &&(next: SolrToken): SolrToken = andMonoid.combine(self, next)
     def ||(next: SolrToken): SolrToken = orMonoid.combine(self, next)
     def ===(next: SolrToken): SolrToken = self ~ Comparison.Is.token ~ next
-    def <(next: SolrToken): SolrToken = self ~ Comparison.LowerThan.token ~ next
-    def >(next: SolrToken): SolrToken = self ~ Comparison.GreaterThan.token ~ next
 
   extension (self: Comparison) def token: SolrToken = fromComparison(self)
 
@@ -113,20 +113,3 @@ object SolrToken:
       if (self.sizeIs <= 1) all else s"($all)"
     def foldOr: SolrToken = foldM(using orMonoid)
     def foldAnd: SolrToken = foldM(using andMonoid)
-
-  // Escapes query characters for solr. This is taken from here:
-  // https://github.com/apache/solr/blob/bcb9f144974ed07aa3b66766302474542067b522/solr/solrj/src/java/org/apache/solr/client/solrj/util/ClientUtils.java#L163
-  // to not introduce too many dependencies only for this little function
-  private object Escape {
-    private[this] val specialChars = "\\+-!():^[]\"{}~*?|&;/"
-    private inline def isSpecial(c: Char) = c.isWhitespace || specialChars.contains(c)
-
-    def queryChars(s: String): String = {
-      val sb = new StringBuilder();
-      s.foreach { c =>
-        if (isSpecial(c)) sb.append('\\')
-        sb.append(c)
-      }
-      s.toString
-    }
-  }

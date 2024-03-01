@@ -38,7 +38,6 @@ final case class Project(
     description: Option[projects.Description] = None,
     createdBy: User,
     creationDate: projects.CreationDate,
-    members: Seq[User],
     score: Option[Double] = None
 ) extends SearchEntity
 

@@ -41,8 +41,7 @@ object SearchSolrClientGenerators:
           visibility,
           Option(projects.Description(desc)),
           creatorId,
-          creationDate,
-          Seq(creatorId)
+          creationDate
         )
       )
 

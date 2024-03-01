@@ -43,8 +43,7 @@ object EventsGenerators:
       visibility,
       maybeDesc,
       creator,
-      Instant.now().truncatedTo(ChronoUnit.MILLIS),
-      Seq(creator)
+      Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )
 
   def stringGen(max: Int): Gen[String] =

@@ -39,8 +39,7 @@ class SerializeDeserializeSpec extends FunSuite {
       Visibility.PUBLIC,
       Some("a description for it"),
       "created-by-me",
-      Instant.now().truncatedTo(ChronoUnit.MILLIS),
-      Seq.empty
+      Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )
     val avro = AvroIO(ProjectCreated.SCHEMA$)
 

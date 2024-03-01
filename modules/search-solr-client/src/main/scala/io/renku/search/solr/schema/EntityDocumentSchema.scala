@@ -32,7 +32,6 @@ object EntityDocumentSchema:
     val description: FieldName = FieldName("description")
     val createdBy: FieldName = FieldName("createdBy")
     val creationDate: FieldName = FieldName("creationDate")
-    val members: FieldName = FieldName("members")
     val nestPath: FieldName = FieldName("_nest_path_")
     val root: FieldName = FieldName("_root_")
     val nestParent: FieldName = FieldName("_nest_parent_")
@@ -62,7 +61,6 @@ object EntityDocumentSchema:
     SchemaCommand.Add(Field(Fields.description, FieldTypes.text)),
     SchemaCommand.Add(Field(Fields.createdBy, FieldTypes.id)),
     SchemaCommand.Add(Field(Fields.creationDate, FieldTypes.dateTime)),
-    SchemaCommand.Add(Field(Fields.members, FieldTypes.id).makeMultiValued),
     SchemaCommand.Add(Field(Fields.nestParent, FieldTypes.string))
   )
 

@@ -16,17 +16,27 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client.facet
 
-import io.bullet.borer.Encoder
+import io.renku.solr.client.schema.FieldName
+import cats.data.NonEmptyList
 
-opaque type FieldName = String
-object FieldName:
-  val all: FieldName = "*"
-  val score: FieldName = "score"
+enum Facet:
+  // https://solr.apache.org/guide/solr/latest/query-guide/json-facet-api.html#terms-facet
+  case Terms(
+      name: FieldName,
+      field: FieldName,
+      limit: Option[Int] = None,
+      minCount: Option[Int] = None,
+      method: Option[FacetAlgorithm] = None,
+      missing: Boolean = false,
+      numBuckets: Boolean = false,
+      allBuckets: Boolean = false
+  )
 
-  def apply(name: String): FieldName = name
-
-  extension (self: FieldName) def name: String = self
-
-  given Encoder[FieldName] = Encoder.forString
+  // https://solr.apache.org/guide/solr/latest/query-guide/json-facet-api.html#range-facet
+  case ArbitraryRange(
+      name: FieldName,
+      field: FieldName,
+      ranges: NonEmptyList[FacetRange]
+  )

@@ -25,6 +25,7 @@ import io.renku.search.query.Query
 import io.renku.search.solr.documents.Entity
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
+import io.renku.solr.client.schema.FieldName
 
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
@@ -47,6 +48,6 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
         .query[Entity](
           QueryData(QueryString(solrQuery.query.value, limit, offset))
             .withSort(solrQuery.sort)
-            .withScore
+            .withFields(FieldName.all, FieldName.score)
         )
     } yield res

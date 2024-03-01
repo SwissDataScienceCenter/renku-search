@@ -16,17 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client.facet
 
 import io.bullet.borer.Encoder
 
-opaque type FieldName = String
-object FieldName:
-  val all: FieldName = "*"
-  val score: FieldName = "score"
+enum FacetAlgorithm:
+  case DocValues
+  case UnInvertedField
+  case DocValuesHash
+  case Enum
+  case Stream
+  case Smart
 
-  def apply(name: String): FieldName = name
+  private[client] def name: String = this match
+    case DocValues       => "dv"
+    case UnInvertedField => "uif"
+    case DocValuesHash   => "dvhash"
+    case Enum            => "enum"
+    case Stream          => "stream"
+    case Smart           => "smart"
 
-  extension (self: FieldName) def name: String = self
-
-  given Encoder[FieldName] = Encoder.forString
+object FacetAlgorithm:
+  given Encoder[FacetAlgorithm] = Encoder.forString.contramap(_.name)

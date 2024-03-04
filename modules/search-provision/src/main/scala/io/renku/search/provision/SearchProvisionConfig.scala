@@ -28,7 +28,7 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class SearchProvisionConfig(
     redisConfig: RedisConfig,
-    queueName: QueueName,
+    queues: QueueName,
     solrConfig: SolrConfig,
     retryOnErrorDelay: FiniteDuration,
     verbosity: Int

@@ -28,10 +28,10 @@ final case class QueryData(
     filter: Seq[String],
     limit: Int,
     offset: Int,
-    fields: Seq[FieldName],
-    sort: SolrSort,
-    params: Map[String, String],
-    facet: Facets
+    fields: Seq[FieldName] = Seq.empty,
+    sort: SolrSort = SolrSort.empty,
+    params: Map[String, String] = Map.empty,
+    facet: Facets = Facets.empty
 ):
   def nextPage: QueryData =
     copy(offset = offset + limit)

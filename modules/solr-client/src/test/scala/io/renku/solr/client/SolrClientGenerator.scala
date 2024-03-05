@@ -19,7 +19,47 @@
 package io.renku.solr.client
 
 import org.scalacheck.Gen
+import io.renku.solr.client.facet.*
+import io.renku.solr.client.schema.FieldName
+import io.renku.search.model.CommonGenerators
 
 object SolrClientGenerator:
 
   extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+
+  val fieldName: Gen[FieldName] =
+    Gen.alphaLowerStr.map(FieldName.apply)
+
+  val facetTerms: Gen[Facet.Terms] =
+    for {
+      name <- fieldName
+      field <- fieldName
+      limit <- Gen.choose(1, 10)
+    } yield Facet.Terms(name, field, Some(limit))
+
+  val facetRangeValue: Gen[FacetRange.Value] =
+    Gen.oneOf(Gen.const(FacetRange.All), Gen.choose(0, 1000))
+
+  val facetRange: Gen[FacetRange] =
+    for {
+      from <- facetRangeValue
+      to <- from match
+        case FacetRange.All => Gen.choose(0, 500)
+        case n: Int => Gen.oneOf(Gen.const(FacetRange.All), Gen.choose(0, 500).map(_ + n))
+    } yield FacetRange(from, to)
+
+  val facetArbitraryRange: Gen[Facet.ArbitraryRange] =
+    for {
+      name <- fieldName
+      field <- fieldName
+      numRanges <- Gen.choose(1, 5)
+      ranges <- CommonGenerators.nelOfN(numRanges, facetRange)
+    } yield Facet.ArbitraryRange(name, field, ranges)
+
+  val facet: Gen[Facet] = Gen.oneOf(facetTerms, facetArbitraryRange)
+
+  val facets: Gen[Facets] =
+    Gen.choose(0, 5).flatMap(n => Gen.listOfN(n, facet)).map { n =>
+      if (n.isEmpty) Facets.empty
+      else Facets(n: _*)
+    }

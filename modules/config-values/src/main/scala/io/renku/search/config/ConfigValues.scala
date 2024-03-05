@@ -57,7 +57,7 @@ object ConfigValues extends ConfigDecoders:
     val url = renv("SOLR_URL").default("http://localhost:8983/solr").as[Uri]
     val core = renv("SOLR_CORE").default("search-core-test")
     val maybeUser =
-      (renv("SOLR_USER"), renv("SOLR_PASS"))
+      (renv("SOLR_USER").default("admin"), renv("SOLR_PASS"))
         .mapN(SolrUser.apply)
         .option
     val defaultCommit =

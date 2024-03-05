@@ -52,6 +52,7 @@ object AvroSchemaDownload extends AutoPlugin {
       // must be constant values, because settingKeys are evaluated at project load time
       Seq(
         schemaTargetDirectory.value / "common",
+        schemaTargetDirectory.value / "user",
         schemaTargetDirectory.value / "project"
       ),
     Compile / sourceGenerators += Def
@@ -103,5 +104,4 @@ object AvroSchemaDownload extends AutoPlugin {
 
       case _ => ()
     }
-
 }

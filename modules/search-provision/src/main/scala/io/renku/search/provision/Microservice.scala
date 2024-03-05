@@ -41,7 +41,7 @@ object Microservice extends IOApp:
 
   private def startProvisioning(cfg: SearchProvisionConfig): IO[Unit] =
     ProjectCreatedProvisioning
-      .make[IO](cfg.queues, cfg.redisConfig, cfg.solrConfig)
+      .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
       .evalMap(_.provisioningProcess.start)
       .use(_ => IO.never)
       .handleErrorWith { err =>

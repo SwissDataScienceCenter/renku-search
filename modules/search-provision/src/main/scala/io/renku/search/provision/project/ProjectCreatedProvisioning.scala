@@ -26,7 +26,7 @@ import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1
 import io.renku.events.v1.{ProjectCreated, Visibility}
-import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
+import io.renku.redis.client.{QueueName, RedisConfig}
 import io.renku.search.model.*
 import io.renku.search.provision.SolrProvisioningProcess
 import io.renku.search.provision.TypeTransformers.given
@@ -37,8 +37,6 @@ import scribe.Scribe
 trait ProjectCreatedProvisioning[F[_]] extends SolrProvisioningProcess[F]
 
 object ProjectCreatedProvisioning:
-
-  private val clientId: ClientId = ClientId("search-provisioner")
 
   def make[F[_]: Async: Network](
       queueName: QueueName,

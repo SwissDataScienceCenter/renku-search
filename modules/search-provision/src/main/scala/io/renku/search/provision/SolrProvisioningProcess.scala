@@ -94,6 +94,7 @@ private class SolrProvisioningProcessImpl[F[_]: Async: Scribe, In, Out](
   private lazy val logInfo: ((QueueMessage, Seq[In])) => F[Unit] = { case (m, v) =>
     Scribe[F].info(
       "Received message " +
+        s"queue: $queueName, " +
         s"id: ${m.id}, " +
         s"source: ${m.header.source}, " +
         s"type: ${m.header.`type`} " +

@@ -47,8 +47,8 @@ object ConfigValues extends ConfigDecoders:
     (host, port, sentinel, maybeDB, maybePass, maybeMasterSet).mapN(RedisConfig.apply)
   }
 
-  val eventsQueueName: ConfigValue[Effect, QueueName] =
-    renv("REDIS_QUEUE_NAME").default("events").as[QueueName]
+  def eventQueue(eventType: String): ConfigValue[Effect, QueueName] =
+    renv(s"REDIS_QUEUE_$eventType").default("events").as[QueueName]
 
   val retryOnErrorDelay: ConfigValue[Effect, FiniteDuration] =
     renv("RETRY_ON_ERROR_DELAY").default("2 seconds").as[FiniteDuration]

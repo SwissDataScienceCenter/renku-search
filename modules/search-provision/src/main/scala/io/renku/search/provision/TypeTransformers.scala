@@ -16,25 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.provision
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.bullet.borer.Encoder
-import io.renku.search.solr.documents.Project
-import io.renku.solr.client.{SolrClient, SolrConfig}
-import io.renku.search.query.Query
-import io.renku.solr.client.QueryResponse
+import io.github.arainko.ducktape.Transformer
+import io.renku.events.v1
+import io.renku.search.model.projects
 
-trait SearchSolrClient[F[_]]:
+object TypeTransformers extends TypeTransformers
 
-  def insert[D: Encoder](documents: Seq[D]): F[Unit]
+trait TypeTransformers:
 
-  def findProjects(phrase: String): F[List[Project]]
-  def queryProjects(query: Query, limit: Int, offset: Int): F[QueryResponse[Project]]
-
-object SearchSolrClient:
-  def make[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchSolrClient[F]] =
-    SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))
+  given Transformer[v1.Visibility, projects.Visibility] =
+    (from: v1.Visibility) => projects.Visibility.unsafeFromString(from.name())

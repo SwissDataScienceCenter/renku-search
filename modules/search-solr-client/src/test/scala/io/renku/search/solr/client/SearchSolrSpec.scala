@@ -20,26 +20,32 @@ package io.renku.search.solr.client
 
 import cats.effect.{IO, Resource}
 import io.renku.search.solr.schema.Migrations
-import io.renku.solr.client.SolrClient
 import io.renku.solr.client.migration.SchemaMigrator
 import io.renku.solr.client.util.SolrSpec
+import io.renku.solr.client.{SolrClient, SolrConfig}
 
 trait SearchSolrSpec extends SolrSpec:
   self: munit.Suite =>
 
-  val withSearchSolrClient: Fixture[Resource[IO, SearchSolrClient[IO]]] =
-    new Fixture[Resource[IO, SearchSolrClient[IO]]]("search-solr"):
+  abstract class SolrFixture
+      extends Fixture[Resource[IO, SearchSolrClient[IO]]]("search-solr"):
+    def solrConfig: SolrConfig
 
-      def apply(): Resource[IO, SearchSolrClient[IO]] =
-        SolrClient[IO](solrConfig.copy(core = server.searchCoreName))
-          .evalTap(SchemaMigrator[IO](_).migrate(Migrations.all).attempt.void)
-          .map(new SearchSolrClientImpl[IO](_))
+  val withSearchSolrClient: SolrFixture = new SolrFixture:
 
-      override def beforeAll(): Unit =
-        server.start()
+    def apply(): Resource[IO, SearchSolrClient[IO]] =
+      SolrClient[IO](solrConfig)
+        .evalTap(SchemaMigrator[IO](_).migrate(Migrations.all).attempt.void)
+        .map(new SearchSolrClientImpl[IO](_))
 
-      override def afterAll(): Unit =
-        server.stop()
+    override lazy val solrConfig: SolrConfig =
+      self.solrConfig.copy(core = server.searchCoreName)
+
+    override def beforeAll(): Unit =
+      server.start()
+
+    override def afterAll(): Unit =
+      server.stop()
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withSearchSolrClient)

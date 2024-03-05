@@ -18,57 +18,60 @@
 
 package io.renku.search.provision
 
-import cats.MonadThrow
 import cats.effect.{Async, Resource, Temporal}
 import cats.syntax.all.*
+import cats.{MonadThrow, Show}
 import fs2.Chunk
 import fs2.io.net.Network
+import io.bullet.borer.Encoder
 import io.github.arainko.ducktape.*
-import io.renku.avro.codec.AvroReader
-import io.renku.avro.codec.decoders.all.given
-import io.renku.events.v1
-import io.renku.events.v1.{ProjectCreated, Visibility}
-import io.renku.queue.client.*
+import io.renku.avro.codec.{AvroDecoder, AvroReader}
+import io.renku.queue.client.{DataContentType, QueueClient, QueueMessage}
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
-import io.renku.search.model.*
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.*
 import io.renku.solr.client.SolrConfig
+import org.apache.avro.Schema
 import scribe.Scribe
 
 import scala.concurrent.duration.*
 
-trait SearchProvisioner[F[_]]:
-  def provisionSolr: F[Unit]
+trait SolrProvisioningProcess[F[_]]:
+  def provisioningProcess: F[Unit]
 
-object SearchProvisioner:
-
+object SolrProvisioningProcess:
   private val clientId: ClientId = ClientId("search-provisioner")
 
-  def make[F[_]: Async: Network](
+  def make[F[_]: Async: Network: Scribe, In, Out](
       queueName: QueueName,
+      inSchema: Schema,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
-  ): Resource[F, SearchProvisioner[F]] =
+  )(using
+      Show[In],
+      Transformer[In, Out],
+      AvroDecoder[In],
+      Encoder[Out]
+  ): Resource[F, SolrProvisioningProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
-      new SearchProvisionerImpl[F](
-        clientId,
+      new SolrProvisioningProcessImpl[F, In, Out](
         queueName,
+        inSchema,
+        clientId,
         QueueClient.make[F](redisConfig),
         _
       )
     }
 
-private class SearchProvisionerImpl[F[_]: Async](
-    clientId: ClientId,
+private class SolrProvisioningProcessImpl[F[_]: Async: Scribe, In, Out](
     queueName: QueueName,
+    inSchema: Schema,
+    clientId: ClientId,
     queueClientResource: Resource[F, QueueClient[F]],
     solrClient: SearchSolrClient[F]
-) extends SearchProvisioner[F]:
+)(using Show[In], Transformer[In, Out], AvroDecoder[In], Encoder[Out])
+    extends SolrProvisioningProcess[F]:
 
-  private given Scribe[F] = scribe.cats[F]
-
-  override def provisionSolr: F[Unit] =
+  override def provisioningProcess: F[Unit] =
     queueClientResource
       .use { queueClient =>
         findLastProcessed(queueClient) >>= { maybeLastProcessed =>
@@ -88,26 +91,29 @@ private class SearchProvisionerImpl[F[_]: Async](
   private def findLastProcessed(queueClient: QueueClient[F]) =
     queueClient.findLastProcessed(clientId, queueName)
 
-  private lazy val logInfo: ((QueueMessage, Seq[ProjectCreated])) => F[Unit] = {
-    case (m, v) =>
-      Scribe[F].info(
-        s"Received messageId: ${m.id} for projects: ${v.map(_.slug).mkString(", ")}"
-      )
+  private lazy val logInfo: ((QueueMessage, Seq[In])) => F[Unit] = { case (m, v) =>
+    Scribe[F].info(
+      "Received message " +
+        s"id: ${m.id}, " +
+        s"source: ${m.header.source}, " +
+        s"type: ${m.header.`type`} " +
+        s"for: ${v.mkString_(", ")}"
+    )
   }
 
-  private val avro = AvroReader(ProjectCreated.SCHEMA$)
+  private val avro = AvroReader(inSchema)
 
   private def decodeMessage(queueClient: QueueClient[F])(
       message: QueueMessage
-  ): F[(QueueMessage, Seq[ProjectCreated])] =
+  ): F[(QueueMessage, Seq[In])] =
     MonadThrow[F]
       .fromEither(DataContentType.from(message.header.dataContentType))
       .flatMap { ct =>
         MonadThrow[F]
           .catchNonFatal {
             ct match {
-              case DataContentType.Binary => avro.read[ProjectCreated](message.payload)
-              case DataContentType.Json => avro.readJson[ProjectCreated](message.payload)
+              case DataContentType.Binary => avro.read[In](message.payload)
+              case DataContentType.Json   => avro.readJson[In](message.payload)
             }
           }
           .map(message -> _)
@@ -116,23 +122,20 @@ private class SearchProvisionerImpl[F[_]: Async](
 
   private def pushToSolr(
       queueClient: QueueClient[F]
-  )(chunk: Chunk[(QueueMessage, Seq[ProjectCreated])]): F[Unit] =
+  )(chunk: Chunk[(QueueMessage, Seq[In])]): F[Unit] =
     chunk.toList match {
       case Nil => ().pure[F]
       case tuples =>
-        val allSolrDocs = toSolrDocuments(tuples.flatMap(_._2))
+        val docs = toSolrDocuments(tuples.flatMap(_._2))
         val (lastMessage, _) = tuples.last
         solrClient
-          .insertProjects(allSolrDocs)
+          .insert(docs)
           .flatMap(_ => markProcessed(lastMessage, queueClient))
           .onError(markProcessedOnFailure(lastMessage, queueClient))
     }
 
-  private given Transformer[v1.Visibility, projects.Visibility] =
-    (from: v1.Visibility) => projects.Visibility.unsafeFromString(from.name())
-
-  private lazy val toSolrDocuments: Seq[ProjectCreated] => Seq[Project] =
-    _.map(_.into[Project].transform(Field.default(_.score)))
+  private lazy val toSolrDocuments: Seq[In] => Seq[Out] =
+    _.map(_.to[Out])
 
   private def markProcessedOnFailure(
       message: QueueMessage,
@@ -145,5 +148,5 @@ private class SearchProvisionerImpl[F[_]: Async](
     queueClient.markProcessed(clientId, queueName, message.id)
 
   private def logAndRestart: Throwable => F[Unit] = err =>
-    Scribe[F].error("Failure in the provisioning process", err) >>
-      Temporal[F].delayBy(provisionSolr, 30 seconds)
+    Scribe[F].error(s"Failure in the provisioning process for '$queueName'", err) >>
+      Temporal[F].delayBy(provisioningProcess, 30 seconds)

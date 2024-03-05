@@ -39,6 +39,7 @@ trait RedisSpec:
   abstract class RedisFixture extends Fixture[Resource[IO, RedisClient]]("redis"):
     def asRedisCommands(): Resource[IO, RedisCommands[IO, String, String]]
     def asRedisQueueClient(): Resource[IO, RedisQueueClient[IO]]
+    def redisConfig: RedisConfig
 
   val withRedisClient: RedisFixture = new RedisFixture:
 
@@ -54,11 +55,12 @@ trait RedisSpec:
       apply().flatMap(createRedisCommands)
 
     override def asRedisQueueClient(): Resource[IO, RedisQueueClient[IO]] =
-      RedisQueueClient.make[IO](
-        RedisConfig(
-          RedisHost(server.host),
-          RedisPort(server.port)
-        )
+      RedisQueueClient.make[IO](redisConfig)
+
+    override lazy val redisConfig: RedisConfig =
+      RedisConfig(
+        RedisHost(server.host),
+        RedisPort(server.port)
       )
 
     override def beforeAll(): Unit =

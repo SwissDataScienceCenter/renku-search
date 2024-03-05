@@ -19,9 +19,9 @@
 package io.renku.search.solr.client
 
 import cats.effect.IO
+import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import munit.CatsEffectSuite
-import io.renku.search.query.Query
 
 class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
 
@@ -30,7 +30,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
       val project =
         projectDocumentGen("solr-project", "solr project description").generateOne
       for {
-        _ <- client.insertProjects(Seq(project))
+        _ <- client.insert(Seq(project))
         r <- client.queryProjects(Query.parse("solr").toOption.get, 10, 0)
         _ = assert(r.responseBody.docs.map(_.copy(score = None)) contains project)
       } yield ()

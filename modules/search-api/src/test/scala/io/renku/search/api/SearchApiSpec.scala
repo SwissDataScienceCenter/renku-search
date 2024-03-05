@@ -26,6 +26,7 @@ import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.Project as SolrProject
+import io.renku.search.solr.documents.Project.given
 import munit.CatsEffectSuite
 import scribe.Scribe
 
@@ -39,7 +40,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       val project2 = projectDocumentGen("disparate", "disparate description").generateOne
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- client.insertProjects(project1 :: project2 :: Nil)
+        _ <- client.insert(project1 :: project2 :: Nil)
         results <- searchApi
           .query(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))

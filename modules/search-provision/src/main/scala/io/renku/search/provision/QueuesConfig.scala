@@ -16,25 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.provision
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.bullet.borer.Encoder
-import io.renku.search.solr.documents.Project
-import io.renku.solr.client.{SolrClient, SolrConfig}
-import io.renku.search.query.Query
-import io.renku.solr.client.QueryResponse
+import ciris.{ConfigValue, Effect}
+import io.renku.redis.client.QueueName
+import io.renku.search.config.ConfigValues
 
-trait SearchSolrClient[F[_]]:
+final case class QueuesConfig(
+    projectCreated: QueueName
+)
 
-  def insert[D: Encoder](documents: Seq[D]): F[Unit]
-
-  def findProjects(phrase: String): F[List[Project]]
-  def queryProjects(query: Query, limit: Int, offset: Int): F[QueryResponse[Project]]
-
-object SearchSolrClient:
-  def make[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchSolrClient[F]] =
-    SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))
+object QueuesConfig:
+  val config: ConfigValue[Effect, QueuesConfig] =
+    ConfigValues
+      .eventQueue("projectCreated")
+      .map(QueuesConfig.apply)

@@ -20,6 +20,7 @@ package io.renku.search.solr.client
 
 import cats.effect.Async
 import cats.syntax.all.*
+import io.bullet.borer.Encoder
 import io.renku.search.solr.documents.Project
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.search.solr.schema.EntityDocumentSchema
@@ -33,8 +34,8 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   private[this] val logger = scribe.cats.effect[F]
   private[this] val interpreter = LuceneQueryInterpreter.forSync[F]
 
-  override def insertProjects(projects: Seq[Project]): F[Unit] =
-    solrClient.insert(projects).void
+  override def insert[D: Encoder](documents: Seq[D]): F[Unit] =
+    solrClient.insert(documents).void
 
   override def queryProjects(
       query: Query,

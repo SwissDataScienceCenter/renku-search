@@ -19,9 +19,10 @@
 package io.renku.search.provision
 
 import cats.effect.{ExitCode, IO, IOApp, Temporal}
+import io.renku.logging.LoggingSetup
+import io.renku.search.provision.project.ProjectCreatedProvisioning
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
-import io.renku.logging.LoggingSetup
 import scribe.Scribe
 import scribe.cats.*
 
@@ -39,9 +40,9 @@ object Microservice extends IOApp:
     } yield ExitCode.Success
 
   private def startProvisioning(cfg: SearchProvisionConfig): IO[Unit] =
-    SearchProvisioner
-      .make[IO](cfg.queueName, cfg.redisConfig, cfg.solrConfig)
-      .evalMap(_.provisionSolr.start)
+    ProjectCreatedProvisioning
+      .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
+      .evalMap(_.provisioningProcess.start)
       .use(_ => IO.never)
       .handleErrorWith { err =>
         Scribe[IO].error("Starting provisioning failure, retrying", err) >>

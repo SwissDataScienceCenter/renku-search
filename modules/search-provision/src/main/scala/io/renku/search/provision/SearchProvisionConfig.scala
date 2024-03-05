@@ -20,7 +20,7 @@ package io.renku.search.provision
 
 import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
-import io.renku.redis.client.{QueueName, RedisConfig}
+import io.renku.redis.client.RedisConfig
 import io.renku.search.config.ConfigValues
 import io.renku.solr.client.SolrConfig
 
@@ -28,10 +28,10 @@ import scala.concurrent.duration.FiniteDuration
 
 final case class SearchProvisionConfig(
     redisConfig: RedisConfig,
-    queueName: QueueName,
     solrConfig: SolrConfig,
     retryOnErrorDelay: FiniteDuration,
-    verbosity: Int
+    verbosity: Int,
+    queuesConfig: QueuesConfig
 )
 
 object SearchProvisionConfig:
@@ -39,8 +39,8 @@ object SearchProvisionConfig:
   val config: ConfigValue[Effect, SearchProvisionConfig] =
     (
       ConfigValues.redisConfig,
-      ConfigValues.eventsQueueName,
       ConfigValues.solrConfig,
       ConfigValues.retryOnErrorDelay,
-      ConfigValues.logLevel
+      ConfigValues.logLevel,
+      QueuesConfig.config
     ).mapN(SearchProvisionConfig.apply)

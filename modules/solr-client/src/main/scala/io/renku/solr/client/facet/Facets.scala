@@ -73,7 +73,7 @@ object Facets:
         def write(w: Writer, v: Facets) =
           w.writeMapOpen(v.size)
           v.foreach {
-            case f: Facet.Terms => Encoder[Facet.Terms].write(w, f)
+            case f: Facet.Terms          => Encoder[Facet.Terms].write(w, f)
             case f: Facet.ArbitraryRange => Encoder[Facet.ArbitraryRange].write(w, f)
           }
           w.writeMapClose()

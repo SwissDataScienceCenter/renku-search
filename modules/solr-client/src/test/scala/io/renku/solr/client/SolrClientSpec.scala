@@ -26,18 +26,17 @@ import io.renku.solr.client.SolrClientSpec.Room
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
-import munit.ScalaCheckSuite
-import org.scalacheck.Prop
-import io.bullet.borer.Json
+import munit.ScalaCheckEffectSuite
+import org.scalacheck.effect.PropF
 import io.bullet.borer.Reader
 
 class SolrClientSpec
     extends CatsEffectSuite
-    with ScalaCheckSuite
+    with ScalaCheckEffectSuite
     with SolrSpec
     with SolrTruncate:
 
-  test("use schema for inserting and querying".ignore):
+  test("use schema for inserting and querying"):
     val cmds = Seq(
       SchemaCommand.Add(FieldType.text(TypeName("roomText"), Analyzer.classic)),
       SchemaCommand.Add(FieldType.int(TypeName("roomInt"))),
@@ -61,16 +60,12 @@ class SolrClientSpec
         r.skipElement()
         ()
     }
-    Prop.forAll(SolrClientGenerator.facets) { facets =>
+    PropF.forAllF(SolrClientGenerator.facets) { facets =>
       val q = QueryData(QueryString("*:*")).withFacet(facets)
-      println(
-        s"query: ${Json.encode(q).toUtf8String}"
-      )
       withSolrClient().use { client =>
         client.query[Unit](q).void
-      }.unsafeRunAndForget()
+      }
     }
-
 
 object SolrClientSpec:
   case class Room(roomName: String, roomDescription: String, roomSeats: Int)

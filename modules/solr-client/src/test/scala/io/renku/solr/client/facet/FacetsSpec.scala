@@ -45,4 +45,7 @@ class FacetsSpec extends FunSuite:
       )
     )
     val json = Json.encode(Facets(range)).toUtf8String
-    assertEquals(json, """{"stars":{"type":"range","field":"stars","ranges":[{"from":"*","to":100},{"from":100,"to":200},{"from":200,"to":"*"}]}}""")
+    assertEquals(
+      json,
+      """{"stars":{"type":"range","field":"stars","ranges":[{"from":"*","to":100},{"from":100,"to":200},{"from":200,"to":"*"}]}}"""
+    )

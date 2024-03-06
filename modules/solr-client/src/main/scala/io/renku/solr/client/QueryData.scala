@@ -44,6 +44,15 @@ final case class QueryData(
 object QueryData:
 
   def apply(query: QueryString): QueryData =
-    QueryData(query.q, Nil, query.limit, query.offset, Nil, SolrSort.empty, Map.empty, Facets.empty)
+    QueryData(
+      query.q,
+      Nil,
+      query.limit,
+      query.offset,
+      Nil,
+      SolrSort.empty,
+      Map.empty,
+      Facets.empty
+    )
 
   given Encoder[QueryData] = deriveEncoder

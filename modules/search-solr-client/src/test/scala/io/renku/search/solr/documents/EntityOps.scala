@@ -18,15 +18,11 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
-import io.bullet.borer.{Decoder, Encoder}
-import io.renku.search.model.users
-import io.renku.solr.client.EncoderSupport.deriveWithDiscriminator
+object EntityOps extends EntityOps
+trait EntityOps:
 
-final case class User(id: users.Id)
-
-object User:
-  val entityType: String = "User"
-
-  given Encoder[User] = deriveWithDiscriminator
-  given Decoder[User] = deriveDecoder
+  extension (entity: Entity)
+    def noneScore: Entity = entity match {
+      case e: Project => e.copy(score = None)
+      case e: User    => e.copy(score = None)
+    }

@@ -18,7 +18,7 @@
 
 package io.renku.events
 
-import io.renku.events.v1.{ProjectCreated, Visibility}
+import io.renku.events.v1.{ProjectCreated, UserAdded, Visibility}
 import org.scalacheck.Gen
 import org.scalacheck.Gen.alphaNumChar
 
@@ -44,6 +44,19 @@ object EventsGenerators:
       maybeDesc,
       creator,
       Instant.now().truncatedTo(ChronoUnit.MILLIS)
+    )
+
+  def userAddedGen(prefix: String): Gen[UserAdded] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      firstName <- Gen.option(stringGen(max = 5).map(v => s"$prefix-$v"))
+      lastName <- stringGen(max = 5).map(v => s"$prefix-$v")
+      email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
+    yield UserAdded(
+      id,
+      firstName,
+      Some(lastName),
+      email
     )
 
   def stringGen(max: Int): Gen[String] =

@@ -18,16 +18,19 @@
 
 package io.renku.search.model
 
-import io.renku.search.model.projects.*
+import cats.syntax.all.*
 import org.scalacheck.Gen
+import org.scalacheck.cats.implicits.*
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-object ModelGenerators {
+object ModelGenerators:
 
-  val visibilityGen: Gen[Visibility] = Gen.oneOf(Visibility.values.toList)
-  val creationDateGen: Gen[CreationDate] = instantGen().map(CreationDate.apply)
+  val projectVisibilityGen: Gen[projects.Visibility] =
+    Gen.oneOf(projects.Visibility.values.toList)
+  val projectCreationDateGen: Gen[projects.CreationDate] =
+    instantGen().map(projects.CreationDate.apply)
 
   private def instantGen(
       min: Instant = Instant.EPOCH,
@@ -37,4 +40,19 @@ object ModelGenerators {
       .chooseNum(min.toEpochMilli, max.toEpochMilli)
       .map(Instant.ofEpochMilli(_).truncatedTo(ChronoUnit.MILLIS))
 
-}
+  val userIdGen: Gen[users.Id] = Gen.uuid.map(uuid => users.Id(uuid.toString))
+  val userFirstNameGen: Gen[users.FirstName] = Gen
+    .oneOf("Eike", "Kuba", "Ralf", "Lorenzo", "Jean-Pierre", "Alfonso")
+    .map(users.FirstName.apply)
+  val userLastNameGen: Gen[users.LastName] = Gen
+    .oneOf("Kowalski", "Doe", "Tourist", "Milkman", "Da Silva", "Bar")
+    .map(users.LastName.apply)
+  def userEmailGen(first: users.FirstName, last: users.LastName): Gen[users.Email] = Gen
+    .oneOf("mail.com", "hotmail.com", "epfl.ch", "ethz.ch")
+    .map(v => users.Email(s"$first.$last@$v"))
+  val userEmailGen: Gen[users.Email] =
+    (
+      Gen.oneOf("mail.com", "hotmail.com", "epfl.ch", "ethz.ch"),
+      userFirstNameGen,
+      userLastNameGen
+    ).mapN((f, l, p) => users.Email(s"$f.$l@$p"))

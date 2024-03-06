@@ -18,12 +18,12 @@
 
 package io.renku.search.api.data
 
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
 import io.bullet.borer.{AdtEncodingStrategy, Codec, Decoder, Encoder}
-import io.bullet.borer.NullOptions.given
 import io.renku.search.model.*
 import sttp.tapir.Schema.SName
-import sttp.tapir.SchemaType.{SDateTime, SProductField}
+import sttp.tapir.SchemaType.{SCoproduct, SDateTime, SProductField, SRef}
 import sttp.tapir.generic.Configuration
 import sttp.tapir.{FieldName, Schema, SchemaType}
 
@@ -36,7 +36,7 @@ final case class Project(
     repositories: Seq[projects.Repository],
     visibility: projects.Visibility,
     description: Option[projects.Description] = None,
-    createdBy: User,
+    createdBy: UserId,
     creationDate: projects.CreationDate,
     score: Option[Double] = None
 ) extends SearchEntity
@@ -52,14 +52,26 @@ object Project:
   private given Schema[projects.CreationDate] = Schema(SDateTime())
   given Schema[Project] = Schema.derived[Project]
 
-final case class User(
-    id: users.Id
-)
-
-object User:
-  given Codec[User] = deriveCodec[User]
+final case class UserId(id: users.Id)
+object UserId:
+  given Codec[UserId] = deriveCodec[UserId]
 
   private given Schema[users.Id] = Schema.string[users.Id]
+  given Schema[UserId] = Schema.derived[UserId]
+
+final case class User(
+    id: users.Id,
+    firstName: Option[users.FirstName] = None,
+    lastName: Option[users.LastName] = None,
+    email: Option[users.Email] = None,
+    score: Option[Double] = None
+) extends SearchEntity
+
+object User:
+  private given Schema[users.Id] = Schema.string[users.Id]
+  private given Schema[users.FirstName] = Schema.string[users.FirstName]
+  private given Schema[users.LastName] = Schema.string[users.LastName]
+  private given Schema[users.Email] = Schema.string[users.Email]
   given Schema[User] = Schema.derived[User]
 
 object SearchEntity:
@@ -71,13 +83,14 @@ object SearchEntity:
   given Schema[SearchEntity] = {
     val derived = Schema.derived[SearchEntity]
     derived.schemaType match {
-      case s: SchemaType.SCoproduct[_] =>
+      case s: SCoproduct[_] =>
         derived.copy(schemaType =
           s.addDiscriminatorField(
             FieldName(discriminatorField),
             Schema.string,
             List(
-              implicitly[Schema[Project]].name.map(SchemaType.SRef(_)).map("Project" -> _)
+              implicitly[Schema[Project]].name.map(SRef(_)).map("Project" -> _),
+              implicitly[Schema[User]].name.map(SRef(_)).map("User" -> _)
             ).flatten.toMap
           )
         )

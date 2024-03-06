@@ -24,6 +24,7 @@ object Migrations {
 
   val all: Seq[SchemaMigration] = Seq(
     SchemaMigration(version = 1L, EntityDocumentSchema.initialEntityDocumentAdd),
-    SchemaMigration(version = 2L, EntityDocumentSchema.copyContentField)
+    SchemaMigration(version = 2L, EntityDocumentSchema.copyContentField),
+    SchemaMigration(version = 3L, EntityDocumentSchema.userFields)
   )
 }

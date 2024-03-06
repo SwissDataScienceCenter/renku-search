@@ -128,8 +128,8 @@ object QueryGenerators:
   val visibilityTerm: Gen[FieldTerm] =
     Gen
       .frequency(
-        10 -> ModelGenerators.visibilityGen.map(NonEmptyList.one),
-        1 -> CommonGenerators.nelOfN(2, ModelGenerators.visibilityGen)
+        10 -> ModelGenerators.projectVisibilityGen.map(NonEmptyList.one),
+        1 -> CommonGenerators.nelOfN(2, ModelGenerators.projectVisibilityGen)
       )
       .map(vs => FieldTerm.VisibilityIs(vs.distinct))
 

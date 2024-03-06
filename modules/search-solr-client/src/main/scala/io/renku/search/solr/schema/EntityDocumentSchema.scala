@@ -23,16 +23,20 @@ import io.renku.solr.client.schema.*
 object EntityDocumentSchema:
 
   object Fields:
-    val id: FieldName = FieldName("id")
-    val entityType: FieldName = FieldName("_type")
-    val name: FieldName = FieldName("name")
-    val slug: FieldName = FieldName("slug")
-    val repositories: FieldName = FieldName("repositories")
-    val visibility: FieldName = FieldName("visibility")
-    val description: FieldName = FieldName("description")
     val createdBy: FieldName = FieldName("createdBy")
     val creationDate: FieldName = FieldName("creationDate")
+    val description: FieldName = FieldName("description")
+    val email: FieldName = FieldName("email")
+    val entityType: FieldName = FieldName("_type")
+    val firstName: FieldName = FieldName("firstName")
+    val id: FieldName = FieldName("id")
+    val lastName: FieldName = FieldName("lastName")
+    val name: FieldName = FieldName("name")
     val nestPath: FieldName = FieldName("_nest_path_")
+    val repositories: FieldName = FieldName("repositories")
+    val slug: FieldName = FieldName("slug")
+    val visibility: FieldName = FieldName("visibility")
+
     val root: FieldName = FieldName("_root_")
     val nestParent: FieldName = FieldName("_nest_parent_")
     // catch-all field
@@ -71,4 +75,12 @@ object EntityDocumentSchema:
     SchemaCommand.Add(CopyFieldRule(Fields.description, Fields.contentAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.slug, Fields.contentAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.repositories, Fields.contentAll))
+  )
+
+  val userFields: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(Field(Fields.firstName, FieldTypes.string)),
+    SchemaCommand.Add(Field(Fields.lastName, FieldTypes.string)),
+    SchemaCommand.Add(Field(Fields.email, FieldTypes.string)),
+    SchemaCommand.Add(CopyFieldRule(Fields.firstName, Fields.contentAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.lastName, Fields.contentAll))
   )

@@ -19,14 +19,19 @@
 package io.renku.search.api
 
 import cats.effect.IO
+import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.search.api.data.*
 import io.renku.search.model.users
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.Project as SolrProject
 import io.renku.search.solr.documents.Project.given
+import io.renku.search.solr.documents.{
+  Entity as SolrEntity,
+  Project as SolrProject,
+  User as SolrUser
+}
 import munit.CatsEffectSuite
 import scribe.Scribe
 
@@ -44,15 +49,36 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
         results <- searchApi
           .query(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
-      } yield assert(results.items.map(scoreToNone) contains toApiProject(project1))
+      } yield assert {
+        results.items.map(scoreToNone) contains toApiEntity(project1)
+      }
+    }
+
+  test("return Project and User entities"):
+    withSearchSolrClient().use { client =>
+      val project = projectDocumentGen("exclusive", "exclusive description").generateOne
+      val user = SolrUser(project.createdBy, users.FirstName("exclusive").some)
+      val searchApi = new SearchApiImpl[IO](client)
+      for {
+        _ <- client.insert(project :: Nil)
+        _ <- client.insert(user :: Nil)
+        results <- searchApi
+          .query(mkQuery("exclusive"))
+          .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
+      } yield assert {
+        toApiEntities(project, user).diff(results.items.map(scoreToNone)).isEmpty
+      }
     }
 
   private def scoreToNone(e: SearchEntity): SearchEntity = e match
-    case p: Project => p.copy(score = None)
+    case e: Project => e.copy(score = None)
+    case e: User    => e.copy(score = None)
 
   private def mkQuery(phrase: String): QueryInput =
-    QueryInput.pageOne(Query.parse(phrase).fold(sys.error, identity))
+    QueryInput.pageOne(Query.parse(s"Fields $phrase").fold(sys.error, identity))
 
-  private def toApiProject(p: SolrProject) =
-    given Transformer[users.Id, User] = (id: users.Id) => User(id)
-    p.to[Project]
+  private def toApiEntities(e: SolrEntity*) = e.map(toApiEntity)
+
+  private def toApiEntity(e: SolrEntity) =
+    given Transformer[users.Id, UserId] = (id: users.Id) => UserId(id)
+    e.to[SearchEntity]

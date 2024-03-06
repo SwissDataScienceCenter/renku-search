@@ -21,17 +21,14 @@ package io.renku.search.solr.client
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
 import io.bullet.borer.Encoder
-import io.renku.search.solr.documents.Project
+import io.renku.search.solr.documents.Entity
 import io.renku.solr.client.{SolrClient, SolrConfig}
 import io.renku.search.query.Query
 import io.renku.solr.client.QueryResponse
 
 trait SearchSolrClient[F[_]]:
-
   def insert[D: Encoder](documents: Seq[D]): F[Unit]
-
-  def findProjects(phrase: String): F[List[Project]]
-  def queryProjects(query: Query, limit: Int, offset: Int): F[QueryResponse[Project]]
+  def queryEntity(query: Query, limit: Int, offset: Int): F[QueryResponse[Entity]]
 
 object SearchSolrClient:
   def make[F[_]: Async: Network](

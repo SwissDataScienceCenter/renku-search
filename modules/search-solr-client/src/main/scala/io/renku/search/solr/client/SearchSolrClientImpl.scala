@@ -21,12 +21,10 @@ package io.renku.search.solr.client
 import cats.effect.Async
 import cats.syntax.all.*
 import io.bullet.borer.Encoder
-import io.renku.search.solr.documents.Project
-import io.renku.search.solr.query.LuceneQueryInterpreter
-import io.renku.search.solr.schema.EntityDocumentSchema
-import io.renku.solr.client.{QueryData, QueryString, SolrClient}
 import io.renku.search.query.Query
-import io.renku.solr.client.QueryResponse
+import io.renku.search.solr.documents.Entity
+import io.renku.search.solr.query.LuceneQueryInterpreter
+import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
 
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
@@ -37,29 +35,18 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   override def insert[D: Encoder](documents: Seq[D]): F[Unit] =
     solrClient.insert(documents).void
 
-  override def queryProjects(
+  override def queryEntity(
       query: Query,
       limit: Int,
       offset: Int
-  ): F[QueryResponse[Project]] =
+  ): F[QueryResponse[Entity]] =
     for {
       solrQuery <- interpreter.run(query)
       _ <- logger.debug(s"Query: ${query.render} ->Solr: $solrQuery")
       res <- solrClient
-        .query[Project](
+        .query[Entity](
           QueryData(QueryString(solrQuery.query.value, limit, offset))
             .withSort(solrQuery.sort)
             .withScore
         )
     } yield res
-
-  override def findProjects(phrase: String): F[List[Project]] =
-    solrClient
-      .query[Project](
-        QueryData(
-          QueryString(
-            s"${EntityDocumentSchema.Fields.entityType}:${Project.entityType} AND (name:$phrase OR description:$phrase)"
-          )
-        )
-      )
-      .map(_.responseBody.docs.toList)

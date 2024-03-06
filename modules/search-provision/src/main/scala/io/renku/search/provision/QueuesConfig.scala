@@ -18,16 +18,19 @@
 
 package io.renku.search.provision
 
+import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
 import io.renku.redis.client.QueueName
 import io.renku.search.config.ConfigValues
 
 final case class QueuesConfig(
-    projectCreated: QueueName
+    projectCreated: QueueName,
+    userAdded: QueueName
 )
 
 object QueuesConfig:
   val config: ConfigValue[Effect, QueuesConfig] =
-    ConfigValues
-      .eventQueue("projectCreated")
-      .map(QueuesConfig.apply)
+    (
+      ConfigValues.eventQueue("projectCreated"),
+      ConfigValues.eventQueue("userAdded")
+    ).mapN(QueuesConfig.apply)

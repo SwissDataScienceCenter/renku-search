@@ -19,14 +19,15 @@
 package io.renku.search.query
 
 import cats.data.NonEmptyList
+import cats.kernel.Monoid
 import cats.syntax.all.*
 import io.bullet.borer.{Decoder, Encoder}
+import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.FieldTerm.Created
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.json.QueryJsonCodec
 import io.renku.search.query.parse.{QueryParser, QueryUtil}
-import cats.kernel.Monoid
 
 final case class Query(
     segments: List[Query.Segment]
@@ -75,6 +76,9 @@ object Query:
 
     def text(phrase: String): Segment =
       Segment.Text(phrase)
+
+    def typeIs(value: EntityType, more: EntityType*): Segment =
+      Segment.Field(FieldTerm.TypeIs(NonEmptyList(value, more.toList)))
 
     def projectIdIs(value: String, more: String*): Segment =
       Segment.Field(FieldTerm.ProjectIdIs(NonEmptyList(value, more.toList)))

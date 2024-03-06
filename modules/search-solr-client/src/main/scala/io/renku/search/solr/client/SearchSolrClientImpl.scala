@@ -22,9 +22,10 @@ import cats.effect.Async
 import cats.syntax.all.*
 import io.bullet.borer.Encoder
 import io.renku.search.query.Query
-import io.renku.search.solr.documents.Entity
+import io.renku.search.solr.documents.{DocumentId, Entity}
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
+import cats.data.NonEmptyList
 import io.renku.solr.client.schema.FieldName
 import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.search.solr.schema.EntityDocumentSchema
@@ -44,6 +45,9 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
 
   override def insert[D: Encoder](documents: Seq[D]): F[Unit] =
     solrClient.insert(documents).void
+
+  override def deleteIds(ids: NonEmptyList[DocumentId]): F[Unit] =
+    solrClient.deleteIds(ids.map(_.name)).void
 
   override def queryEntity(
       query: Query,

@@ -27,19 +27,22 @@ object SolrClientGenerator:
 
   extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
 
-  val fieldNameStr: Gen[FieldName] =
-    Gen.alphaLowerStr.suchThat(_.nonEmpty).map(n => s"${n}_s").map(FieldName.apply)
+  private val fieldNameString: Gen[String] =
+    Gen.choose(4, 12).flatMap(n => Gen.listOfN(n, Gen.alphaLowerChar)).map(_.mkString)
 
-  val fieldNameInt: Gen[FieldName] =
-    Gen.alphaLowerStr.suchThat(_.nonEmpty).map(n => s"${n}_i").map(FieldName.apply)
+  val fieldNameTypeStr: Gen[FieldName] =
+    fieldNameString.map(n => s"${n}_s").map(FieldName.apply)
+
+  val fieldNameTypeInt: Gen[FieldName] =
+    fieldNameString.map(n => s"${n}_i").map(FieldName.apply)
 
   val fieldNameLiteral: Gen[FieldName] =
-    Gen.alphaLowerStr.suchThat(_.nonEmpty).map(FieldName.apply)
+    fieldNameString.map(FieldName.apply)
 
   val facetTerms: Gen[Facet.Terms] =
     for {
       name <- fieldNameLiteral
-      field <- Gen.oneOf(fieldNameStr, fieldNameInt)
+      field <- Gen.oneOf(fieldNameTypeStr, fieldNameTypeInt)
       limit <- Gen.choose(1, 10)
     } yield Facet.Terms(name, field, Some(limit))
 
@@ -57,7 +60,7 @@ object SolrClientGenerator:
   val facetArbitraryRange: Gen[Facet.ArbitraryRange] =
     for {
       name <- fieldNameLiteral
-      field <- fieldNameInt
+      field <- fieldNameTypeInt
       numRanges <- Gen.choose(1, 5)
       ranges <- CommonGenerators.nelOfN(numRanges, facetRange)
     } yield Facet.ArbitraryRange(name, field, ranges)

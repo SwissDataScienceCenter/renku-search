@@ -35,7 +35,7 @@ object HttpApplication:
 
 final class HttpApplication[F[_]: Async](searchApi: SearchApi[F]) extends Http4sDsl[F]:
 
-  private val prefix = "/apiv2/search"
+  private val prefix = "/search"
 
   private val search = SearchRoutes[F](searchApi)
   private val openapi = OpenApiRoute[F](prefix, "Renku Search API", search.endpoints)

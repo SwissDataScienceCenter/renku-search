@@ -70,6 +70,5 @@ object EntityDocumentSchema:
     SchemaCommand.Add(CopyFieldRule(Fields.name, Fields.contentAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.description, Fields.contentAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.slug, Fields.contentAll)),
-    SchemaCommand.Add(CopyFieldRule(Fields.repositories, Fields.contentAll)),
-    SchemaCommand.Add(CopyFieldRule(Fields.visibility, Fields.contentAll))
+    SchemaCommand.Add(CopyFieldRule(Fields.repositories, Fields.contentAll))
   )

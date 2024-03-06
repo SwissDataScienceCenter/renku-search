@@ -39,6 +39,7 @@ final case class QueryData(
   def withSort(sort: SolrSort): QueryData = copy(sort = sort)
   def withFields(field: FieldName*) = copy(fields = field)
   def addFilter(q: String): QueryData = copy(filter = filter :+ q)
+  def withFacet(facet: Facets): QueryData = copy(facet = facet)
 
 object QueryData:
 

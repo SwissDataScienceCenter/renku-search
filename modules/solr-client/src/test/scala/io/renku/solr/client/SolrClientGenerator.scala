@@ -27,13 +27,19 @@ object SolrClientGenerator:
 
   extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
 
-  val fieldName: Gen[FieldName] =
-    Gen.alphaLowerStr.map(FieldName.apply)
+  val fieldNameStr: Gen[FieldName] =
+    Gen.alphaLowerStr.suchThat(_.nonEmpty).map(n => s"${n}_s").map(FieldName.apply)
+
+  val fieldNameInt: Gen[FieldName] =
+    Gen.alphaLowerStr.suchThat(_.nonEmpty).map(n => s"${n}_i").map(FieldName.apply)
+
+  val fieldNameLiteral: Gen[FieldName] =
+    Gen.alphaLowerStr.suchThat(_.nonEmpty).map(FieldName.apply)
 
   val facetTerms: Gen[Facet.Terms] =
     for {
-      name <- fieldName
-      field <- fieldName
+      name <- fieldNameLiteral
+      field <- Gen.oneOf(fieldNameStr, fieldNameInt)
       limit <- Gen.choose(1, 10)
     } yield Facet.Terms(name, field, Some(limit))
 
@@ -50,8 +56,8 @@ object SolrClientGenerator:
 
   val facetArbitraryRange: Gen[Facet.ArbitraryRange] =
     for {
-      name <- fieldName
-      field <- fieldName
+      name <- fieldNameLiteral
+      field <- fieldNameInt
       numRanges <- Gen.choose(1, 5)
       ranges <- CommonGenerators.nelOfN(numRanges, facetRange)
     } yield Facet.ArbitraryRange(name, field, ranges)

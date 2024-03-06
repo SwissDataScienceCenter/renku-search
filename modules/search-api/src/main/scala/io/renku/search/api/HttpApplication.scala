@@ -38,7 +38,8 @@ final class HttpApplication[F[_]: Async](searchApi: SearchApi[F]) extends Http4s
   private val prefix = "/search"
 
   private val search = SearchRoutes[F](searchApi)
-  private val openapi = OpenApiRoute[F](prefix, "Renku Search API", search.endpoints)
+  private val openapi =
+    OpenApiRoute[F](s"/api/$prefix", "Renku Search API", search.endpoints)
 
   lazy val router: HttpApp[F] =
     Router[F](

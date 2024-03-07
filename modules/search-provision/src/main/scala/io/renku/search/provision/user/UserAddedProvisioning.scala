@@ -27,12 +27,12 @@ import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1
 import io.renku.events.v1.UserAdded
 import io.renku.redis.client.{QueueName, RedisConfig}
-import io.renku.search.provision.SolrProvisioningProcess
+import io.renku.search.provision.UpsertProvisioningProcess
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
-trait UserAddedProvisioning[F[_]] extends SolrProvisioningProcess[F]
+trait UserAddedProvisioning[F[_]] extends UpsertProvisioningProcess[F]
 
 object UserAddedProvisioning:
 
@@ -40,9 +40,9 @@ object UserAddedProvisioning:
       queueName: QueueName,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
-  ): Resource[F, SolrProvisioningProcess[F]] =
+  ): Resource[F, UpsertProvisioningProcess[F]] =
     given Scribe[F] = scribe.cats[F]
-    SolrProvisioningProcess.make[F, UserAdded, documents.User](
+    UpsertProvisioningProcess.make[F, UserAdded, documents.User](
       queueName,
       UserAdded.SCHEMA$,
       redisConfig,

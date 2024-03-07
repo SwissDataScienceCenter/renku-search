@@ -61,7 +61,7 @@ object Microservice extends IOApp:
 
   private def startProcess(
       cfg: SearchProvisionConfig
-  ): ((String, QueueName, Resource[IO, SolrProvisioningProcess[IO]])) => IO[Unit] = {
+  ): ((String, QueueName, Resource[IO, UpsertProvisioningProcess[IO]])) => IO[Unit] = {
     case t @ (name, queue, resource) =>
       resource
         .evalMap(_.provisioningProcess.start)

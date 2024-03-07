@@ -35,10 +35,10 @@ import scribe.Scribe
 
 import scala.concurrent.duration.*
 
-trait SolrProvisioningProcess[F[_]]:
+trait UpsertProvisioningProcess[F[_]]:
   def provisioningProcess: F[Unit]
 
-object SolrProvisioningProcess:
+object UpsertProvisioningProcess:
   private val clientId: ClientId = ClientId("search-provisioner")
 
   def make[F[_]: Async: Network: Scribe, In, Out](
@@ -51,9 +51,9 @@ object SolrProvisioningProcess:
       Transformer[In, Out],
       AvroDecoder[In],
       Encoder[Out]
-  ): Resource[F, SolrProvisioningProcess[F]] =
+  ): Resource[F, UpsertProvisioningProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
-      new SolrProvisioningProcessImpl[F, In, Out](
+      new UpsertProvisioningProcessImpl[F, In, Out](
         queueName,
         inSchema,
         clientId,
@@ -62,14 +62,14 @@ object SolrProvisioningProcess:
       )
     }
 
-private class SolrProvisioningProcessImpl[F[_]: Async: Scribe, In, Out](
+private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out](
     queueName: QueueName,
     inSchema: Schema,
     clientId: ClientId,
     queueClientResource: Resource[F, QueueClient[F]],
     solrClient: SearchSolrClient[F]
 )(using Show[In], Transformer[In, Out], AvroDecoder[In], Encoder[Out])
-    extends SolrProvisioningProcess[F]:
+    extends UpsertProvisioningProcess[F]:
 
   override def provisioningProcess: F[Unit] =
     queueClientResource

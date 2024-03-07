@@ -21,6 +21,7 @@ package io.renku.search.provision
 import cats.effect.*
 import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
+import io.renku.redis.client.QueueName
 import io.renku.search.provision.project.ProjectCreatedProvisioning
 import io.renku.search.provision.user.UserAddedProvisioning
 import io.renku.search.solr.schema.Migrations
@@ -43,19 +44,30 @@ object Microservice extends IOApp:
 
   private def startProvisioners(cfg: SearchProvisionConfig): IO[Unit] =
     List(
-      "ProjectCreated" -> ProjectCreatedProvisioning
-        .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig),
-      "UserAdded" -> UserAddedProvisioning
-        .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
-    ).traverse_(startProcess(cfg))
+      (
+        "ProjectCreated",
+        cfg.queuesConfig.projectCreated,
+        ProjectCreatedProvisioning
+          .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
+      ),
+      (
+        "UserAdded",
+        cfg.queuesConfig.userAdded,
+        UserAddedProvisioning
+          .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
+      )
+    ).parTraverse_(startProcess(cfg))
+      .flatMap(_ => IO.never)
 
   private def startProcess(
       cfg: SearchProvisionConfig
-  ): ((String, Resource[IO, SolrProvisioningProcess[IO]])) => IO[Unit] = {
-    case t @ (name, resource) =>
+  ): ((String, QueueName, Resource[IO, SolrProvisioningProcess[IO]])) => IO[Unit] = {
+    case t @ (name, queue, resource) =>
       resource
         .evalMap(_.provisioningProcess.start)
-        .use(_ => IO.never)
+        .use(_ =>
+          Scribe[IO].info(s"'$name' provisioning process started on '$queue' queue")
+        )
         .handleErrorWith { err =>
           Scribe[IO].error(
             s"Starting provisioning process for '$name' failed, retrying",

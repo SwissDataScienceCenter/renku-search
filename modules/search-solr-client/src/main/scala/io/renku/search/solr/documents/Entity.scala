@@ -18,11 +18,23 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
-import io.bullet.borer.{Decoder, Encoder}
-import io.renku.search.model.*
-import io.renku.solr.client.EncoderSupport.deriveWithDiscriminator
+import io.bullet.borer.derivation.MapBasedCodecs.*
+import io.bullet.borer.{AdtEncodingStrategy, Decoder, Encoder}
+import io.renku.search.model.{projects, users}
+import io.renku.solr.client.EncoderSupport.*
+
+sealed trait Entity:
+  val score: Option[Double]
+
+object Entity:
+
+  val allTypes: Set[String] = Set(Project.entityType, User.entityType)
+
+  given AdtEncodingStrategy =
+    AdtEncodingStrategy.flat(typeMemberName = discriminatorField)
+
+  given Encoder[Entity] = deriveEncoder[Entity]
+  given Decoder[Entity] = deriveAllDecoders[Entity]
 
 final case class Project(
     id: projects.Id,
@@ -34,15 +46,20 @@ final case class Project(
     createdBy: users.Id,
     creationDate: projects.CreationDate,
     score: Option[Double] = None
-)
+) extends Entity
 
 object Project:
   val entityType: String = "Project"
-
   given Encoder[Project] = deriveWithDiscriminator
-  given Decoder[Seq[User]] =
-    Decoder[Seq[User]] { reader =>
-      if reader.hasArrayStart then Decoder.forArray[User].map(_.toSeq).read(reader)
-      else Decoder[User].map(Seq(_)).read(reader)
-    }
-  given Decoder[Project] = deriveDecoder
+
+final case class User(
+    id: users.Id,
+    firstName: Option[users.FirstName] = None,
+    lastName: Option[users.LastName] = None,
+    email: Option[users.Email] = None,
+    score: Option[Double] = None
+) extends Entity
+
+object User:
+  val entityType: String = "User"
+  given Encoder[User] = deriveWithDiscriminator

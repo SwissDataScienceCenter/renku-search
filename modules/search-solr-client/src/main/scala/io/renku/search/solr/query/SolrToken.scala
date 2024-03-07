@@ -18,17 +18,17 @@
 
 package io.renku.search.solr.query
 
-import cats.syntax.all.*
-import io.renku.search.query.Field
-import cats.data.NonEmptyList
 import cats.Monoid
-import java.time.Instant
+import cats.data.NonEmptyList
+import cats.syntax.all.*
+import io.renku.search.model.EntityType
+import io.renku.search.model.projects.Visibility
+import io.renku.search.query.{Comparison, Field}
 import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.schema.FieldName
-import io.renku.search.query.Comparison
-import io.renku.search.model.EntityType
-import io.renku.search.model.projects.Visibility
+
+import java.time.Instant
 
 opaque type SolrToken = String
 
@@ -73,8 +73,7 @@ object SolrToken:
   def dateLt(field: Field, date: Instant): SolrToken =
     fieldIs(field, s"[* TO ${fromInstant(date)}]")
 
-  // TODO: currently only projects work, user can't be decoded
-  val allTypes: SolrToken = fieldIs(Field.Type, "Project")
+  val allTypes: SolrToken = fieldIs(Field.Type, "*")
 
   private def fieldOp(field: Field, op: Comparison, value: SolrToken): SolrToken =
     val cmp = fromComparison(op)

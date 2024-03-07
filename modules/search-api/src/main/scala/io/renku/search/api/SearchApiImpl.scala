@@ -24,7 +24,7 @@ import io.github.arainko.ducktape.*
 import io.renku.search.api.data.*
 import io.renku.search.model.users
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.Project as SolrProject
+import io.renku.search.solr.documents.Entity as SolrEntity
 import io.renku.solr.client.QueryResponse
 import org.http4s.dsl.Http4sDsl
 import scribe.Scribe
@@ -37,7 +37,7 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
 
   override def query(query: QueryInput): F[Either[String, SearchResult]] =
     solrClient
-      .queryProjects(query.query, query.page.limit + 1, query.page.offset)
+      .queryEntity(query.query, query.page.limit + 1, query.page.offset)
       .map(toApiResult(query.page))
       .map(_.asRight[String])
       .handleErrorWith(errorResponse(query.query.render))
@@ -54,14 +54,14 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
         .map(_.asLeft[SearchResult])
 
   private def toApiResult(currentPage: PageDef)(
-      solrResult: QueryResponse[SolrProject]
+      solrResult: QueryResponse[SolrEntity]
   ): SearchResult =
     val hasMore = solrResult.responseBody.docs.size > currentPage.limit
     val pageInfo = PageWithTotals(currentPage, solrResult.responseBody.numFound, hasMore)
-    val items = solrResult.responseBody.docs.map(toApiProject)
+    val items = solrResult.responseBody.docs.map(toApiEntity)
     if (hasMore) SearchResult(items.init, pageInfo)
     else SearchResult(items, pageInfo)
 
-  private lazy val toApiProject: SolrProject => Project =
-    given Transformer[users.Id, User] = (id: users.Id) => User(id)
-    _.to[Project]
+  private lazy val toApiEntity: SolrEntity => SearchEntity =
+    given Transformer[users.Id, UserId] = (id: users.Id) => UserId(id)
+    _.to[SearchEntity]

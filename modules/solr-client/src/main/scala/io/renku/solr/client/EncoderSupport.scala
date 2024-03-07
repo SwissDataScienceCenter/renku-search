@@ -26,10 +26,12 @@ import scala.deriving.*
 
 object EncoderSupport {
 
+  val discriminatorField: String = "_type"
+
   inline def deriveWithDiscriminator[A <: Product](using
       Mirror.ProductOf[A]
   ): Encoder[A] =
-    Macros.createEncoder[String, A]("_type")
+    Macros.createEncoder[String, A](discriminatorField)
 
   private object Macros {
 

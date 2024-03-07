@@ -29,3 +29,24 @@ object users:
     extension (self: Id) def value: String = self
     given Transformer[String, Id] = apply
     given Codec[Id] = Codec.bimap[String, Id](_.value, Id.apply)
+
+  opaque type FirstName = String
+  object FirstName:
+    def apply(v: String): FirstName = v
+    extension (self: FirstName) def value: String = self
+    given Transformer[String, FirstName] = apply
+    given Codec[FirstName] = Codec.bimap[String, FirstName](_.value, FirstName.apply)
+
+  opaque type LastName = String
+  object LastName:
+    def apply(v: String): LastName = v
+    extension (self: LastName) def value: String = self
+    given Transformer[String, LastName] = apply
+    given Codec[LastName] = Codec.bimap[String, LastName](_.value, LastName.apply)
+
+  opaque type Email = String
+  object Email:
+    def apply(v: String): Email = v
+    extension (self: Email) def value: String = self
+    given Transformer[String, Email] = apply
+    given Codec[Email] = Codec.bimap[String, Email](_.value, LastName.apply)

@@ -22,11 +22,14 @@ import cats.{Applicative, Monad}
 import cats.syntax.all.*
 import scala.deriving.*
 import scala.collection.AbstractIterable
+import cats.Functor
 
 trait SolrTokenEncoder[F[_], A]:
   def encode(ctx: Context[F], value: A): F[SolrQuery]
   final def contramap[B](f: B => A): SolrTokenEncoder[F, B] =
     SolrTokenEncoder.create((ctx, b) => encode(ctx, f(b)))
+  final def modify(f: SolrQuery => SolrQuery)(using Functor[F]): SolrTokenEncoder[F, A] =
+    SolrTokenEncoder.create((ctx, a) => encode(ctx, a).map(f))
 
 object SolrTokenEncoder:
   def apply[F[_], A](using e: SolrTokenEncoder[F, A]): SolrTokenEncoder[F, A] = e

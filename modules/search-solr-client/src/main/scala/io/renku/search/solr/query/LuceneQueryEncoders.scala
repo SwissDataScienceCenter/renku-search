@@ -148,4 +148,7 @@ trait LuceneQueryEncoders:
   given query[F[_]: Monad](using
       se: SolrTokenEncoder[F, List[Segment]]
   ): SolrTokenEncoder[F, Query] =
-    se.contramap(_.segments)
+    se.contramap[Query](_.segments).modify(q =>
+      if (q.query.isEmpty) q.copy(query = SolrToken.allTypes)
+      else q
+    )

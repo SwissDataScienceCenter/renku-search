@@ -89,8 +89,8 @@ object SearchEntity:
             FieldName(discriminatorField),
             Schema.string,
             List(
-              implicitly[Schema[Project]].name.map(SRef(_)).map("Project" -> _),
-              implicitly[Schema[User]].name.map(SRef(_)).map("User" -> _)
+              summon[Schema[Project]].name.map(SRef(_)).map("Project" -> _),
+              summon[Schema[User]].name.map(SRef(_)).map("User" -> _)
             ).flatten.toMap
           )
         )

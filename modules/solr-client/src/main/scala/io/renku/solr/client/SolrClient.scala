@@ -38,6 +38,8 @@ trait SolrClient[F[_]]:
 
   def delete(q: QueryString): F[Unit]
 
+  def deleteById(id: String): F[Unit]
+
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse]
 
 object SolrClient:

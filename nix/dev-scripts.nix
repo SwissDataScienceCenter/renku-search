@@ -77,9 +77,11 @@
   solr-recreate-dbtests-cores = writeShellScriptBin "solr-recreate-dbtests-cores" ''
     solr-delete-core core-test1
     solr-delete-core core-test2
+    solr-delete-core core-test3
     solr-delete-core search-core-test
     solr-create-core core-test1
     solr-create-core core-test2
+    solr-create-core core-test3
     solr-create-core search-core-test
   '';
 

@@ -22,6 +22,7 @@ import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
 import io.renku.search.model.*
+import io.renku.search.api.tapir.SchemaSyntax.*
 import sttp.tapir.Schema.SName
 import sttp.tapir.SchemaType.{SCoproduct, SDateTime, SProductField, SRef}
 import sttp.tapir.generic.Configuration
@@ -54,20 +55,18 @@ object Project:
   private given Schema[projects.CreationDate] = Schema(SDateTime())
   given Schema[Project] = Schema
     .derived[Project]
-    .encodedExample(
-      Json.encode {
-        Project(
-          projects.Id("01HRA7AZ2Q234CDQWGA052F8MK"),
-          projects.Name("renku"),
-          projects.Slug("renku"),
-          Seq(projects.Repository("https://github.com/renku")),
-          projects.Visibility.Public,
-          Some(projects.Description("Renku project")),
-          UserId(users.Id("1CAF4C73F50D4514A041C9EDDB025A36")),
-          projects.CreationDate(Instant.now),
-          Some(1.0)
-        ).asInstanceOf[SearchEntity]
-      }.toUtf8String
+    .jsonExample(
+      Project(
+        projects.Id("01HRA7AZ2Q234CDQWGA052F8MK"),
+        projects.Name("renku"),
+        projects.Slug("renku"),
+        Seq(projects.Repository("https://github.com/renku")),
+        projects.Visibility.Public,
+        Some(projects.Description("Renku project")),
+        UserId(users.Id("1CAF4C73F50D4514A041C9EDDB025A36")),
+        projects.CreationDate(Instant.now),
+        Some(1.0)
+      ): SearchEntity
     )
 
 final case class UserId(id: users.Id)
@@ -77,9 +76,7 @@ object UserId:
   private given Schema[users.Id] = Schema.string[users.Id]
   given Schema[UserId] = Schema
     .derived[UserId]
-    .encodedExample(
-      Json.encode(UserId(users.Id("01HRA7AZ2Q234CDQWGA052F8MK"))).toUtf8String
-    )
+    .jsonExample(UserId(users.Id("01HRA7AZ2Q234CDQWGA052F8MK")))
 
 final case class User(
     id: users.Id,
@@ -96,16 +93,14 @@ object User:
   private given Schema[users.Email] = Schema.string[users.Email]
   given Schema[User] = Schema
     .derived[User]
-    .encodedExample(
-      Json.encode {
-        User(
-          users.Id("1CAF4C73F50D4514A041C9EDDB025A36"),
-          Some(users.FirstName("Albert")),
-          Some(users.LastName("Einstein")),
-          Some(users.Email("albert.einstein@mail.com")),
-          Some(2.1)
-        ).asInstanceOf[SearchEntity]
-      }.toUtf8String
+    .jsonExample(
+      User(
+        users.Id("1CAF4C73F50D4514A041C9EDDB025A36"),
+        Some(users.FirstName("Albert")),
+        Some(users.LastName("Einstein")),
+        Some(users.Email("albert.einstein@mail.com")),
+        Some(2.1)
+      ): SearchEntity
     )
 
 object SearchEntity:

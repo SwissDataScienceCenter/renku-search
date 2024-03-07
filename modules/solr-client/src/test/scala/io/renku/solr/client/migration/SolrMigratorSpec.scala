@@ -27,6 +27,7 @@ import munit.CatsEffectSuite
 
 class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
   private val logger = scribe.cats.io
+  override protected lazy val coreName: String = server.testCoreName3
   private val migrations = Seq(
     SchemaMigration(-5, Add(FieldType.text(TypeName("testText"), Analyzer.classic))),
     SchemaMigration(-4, Add(FieldType.int(TypeName("testInt")))),

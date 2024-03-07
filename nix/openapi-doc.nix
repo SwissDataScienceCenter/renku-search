@@ -20,7 +20,7 @@
         <script>
          window.onload = () => {
              window.ui = SwaggerUIBundle({
-                 url: 'http://localhost:8080/apiv2/search/spec.json',
+                 url: 'http://localhost:8080/search/spec.json',
                  dom_id: '#swagger-ui',
                  presets: [
                      SwaggerUIBundle.presets.apis,

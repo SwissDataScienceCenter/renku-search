@@ -40,7 +40,8 @@ class SolrServer(module: String, port: Int) {
   val searchCoreName = "search-core-test"
   val testCoreName1 = "core-test1"
   val testCoreName2 = "core-test2"
-  private val cores = Set(testCoreName1, testCoreName2, searchCoreName)
+  val testCoreName3 = "core-test3"
+  private val cores = Set(testCoreName1, testCoreName2, testCoreName3, searchCoreName)
   private val startCmd = s"""|docker run --rm
                              |--name $containerName
                              |-p $port:8983

@@ -18,14 +18,16 @@
 
 package io.renku.search.api.data
 
+import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
-import io.bullet.borer.{AdtEncodingStrategy, Codec, Decoder, Encoder}
 import io.renku.search.model.*
 import sttp.tapir.Schema.SName
 import sttp.tapir.SchemaType.{SCoproduct, SDateTime, SProductField, SRef}
 import sttp.tapir.generic.Configuration
 import sttp.tapir.{FieldName, Schema, SchemaType}
+
+import java.time.Instant
 
 sealed trait SearchEntity
 
@@ -50,14 +52,34 @@ object Project:
     Schema.derivedEnumeration[projects.Visibility].defaultStringBased
   private given Schema[projects.Description] = Schema.string[projects.Description]
   private given Schema[projects.CreationDate] = Schema(SDateTime())
-  given Schema[Project] = Schema.derived[Project]
+  given Schema[Project] = Schema
+    .derived[Project]
+    .encodedExample(
+      Json.encode {
+        Project(
+          projects.Id("01HRA7AZ2Q234CDQWGA052F8MK"),
+          projects.Name("renku"),
+          projects.Slug("renku"),
+          Seq(projects.Repository("https://github.com/renku")),
+          projects.Visibility.Public,
+          Some(projects.Description("Renku project")),
+          UserId(users.Id("1CAF4C73F50D4514A041C9EDDB025A36")),
+          projects.CreationDate(Instant.now),
+          Some(1.0)
+        ).asInstanceOf[SearchEntity]
+      }.toUtf8String
+    )
 
 final case class UserId(id: users.Id)
 object UserId:
   given Codec[UserId] = deriveCodec[UserId]
 
   private given Schema[users.Id] = Schema.string[users.Id]
-  given Schema[UserId] = Schema.derived[UserId]
+  given Schema[UserId] = Schema
+    .derived[UserId]
+    .encodedExample(
+      Json.encode(UserId(users.Id("01HRA7AZ2Q234CDQWGA052F8MK"))).toUtf8String
+    )
 
 final case class User(
     id: users.Id,
@@ -72,7 +94,19 @@ object User:
   private given Schema[users.FirstName] = Schema.string[users.FirstName]
   private given Schema[users.LastName] = Schema.string[users.LastName]
   private given Schema[users.Email] = Schema.string[users.Email]
-  given Schema[User] = Schema.derived[User]
+  given Schema[User] = Schema
+    .derived[User]
+    .encodedExample(
+      Json.encode {
+        User(
+          users.Id("1CAF4C73F50D4514A041C9EDDB025A36"),
+          Some(users.FirstName("Albert")),
+          Some(users.LastName("Einstein")),
+          Some(users.Email("albert.einstein@mail.com")),
+          Some(2.1)
+        ).asInstanceOf[SearchEntity]
+      }.toUtf8String
+    )
 
 object SearchEntity:
 

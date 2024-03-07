@@ -16,20 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.search.api.data
+package io.renku.search.api.tapir
 
-import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.Encoder
-import io.bullet.borer.Decoder
+import io.bullet.borer.Json
 import sttp.tapir.Schema
 
-final case class SearchResult(
-    items: Seq[SearchEntity],
-    facets: FacetData,
-    pagingInfo: PageWithTotals
-)
+trait SchemaSyntax:
 
-object SearchResult:
-  given Encoder[SearchResult] = MapBasedCodecs.deriveEncoder
-  given Decoder[SearchResult] = MapBasedCodecs.deriveDecoder
-  given Schema[SearchResult] = Schema.derived
+  extension [T](self: Schema[T])
+    def jsonExample(value: T)(using Encoder[T]): Schema[T] =
+      self.encodedExample(Json.encode(value).toUtf8String)
+
+object SchemaSyntax extends SchemaSyntax

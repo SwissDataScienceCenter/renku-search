@@ -29,6 +29,8 @@ import munit.CatsEffectSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
 import io.bullet.borer.Reader
+import org.scalacheck.Gen
+import io.renku.solr.client.facet.{Facet, Facets}
 
 class SolrClientSpec
     extends CatsEffectSuite
@@ -45,17 +47,22 @@ class SolrClientSpec
       SchemaCommand.Add(Field(FieldName("roomSeats"), TypeName("roomInt")))
     )
     withSolrClient().use { client =>
+      val rooms = Seq(Room("meeting room", "room for meetings", 56))
       for {
+        _ <- truncateAll(client)(
+          List("roomName", "roomDescription", "roomSeats").map(FieldName.apply),
+          List("roomText", "roomInt").map(TypeName.apply)
+        )
         _ <- client.modifySchema(cmds)
         _ <- client
-          .insert[Room](Seq(Room("meeting room", "room for meetings", 56)))
+          .insert[Room](rooms)
         r <- client.query[Room](QueryData(QueryString("_type:Room")))
-        _ <- IO.println(r)
+        _ = assertEquals(r.responseBody.docs, rooms)
       } yield ()
     }
 
   test("correct facet queries"):
-    given Decoder[Unit] = new Decoder {
+    val decoder: Decoder[Unit] = new Decoder {
       def read(r: Reader): Unit =
         r.skipElement()
         ()
@@ -63,12 +70,39 @@ class SolrClientSpec
     PropF.forAllF(SolrClientGenerator.facets) { facets =>
       val q = QueryData(QueryString("*:*")).withFacet(facets)
       withSolrClient().use { client =>
-        client.query[Unit](q).void
+        client.query(q)(using decoder).void
       }
+    }
+
+  test("decoding facet response"):
+    val rooms = Gen.listOfN(15, Room.gen).sample.get
+    val facets =
+      Facets(Facet.Terms(FieldName("by_name"), FieldName("roomName"), limit = Some(6)))
+    withSolrClient().use { client =>
+      for {
+        _ <- client.delete(QueryString("*:*"))
+        _ <- client.insert(rooms)
+        r <- client.query[Room](QueryData(QueryString("*:*")).withFacet(facets))
+        _ = assert(r.facetResponse.nonEmpty)
+        _ = assertEquals(r.facetResponse.get.count, 15)
+        _ = assertEquals(
+          r.facetResponse.get.buckets(FieldName("by_name")).buckets.size,
+          6
+        )
+      } yield ()
     }
 
 object SolrClientSpec:
   case class Room(roomName: String, roomDescription: String, roomSeats: Int)
   object Room:
+    val gen: Gen[Room] = for {
+      name <- Gen
+        .choose(4, 12)
+        .flatMap(n => Gen.listOfN(n, Gen.alphaChar))
+        .map(_.mkString)
+      descr = s"Room description for $name"
+      seats <- Gen.choose(15, 350)
+    } yield Room(name, descr, seats)
+
     given Decoder[Room] = deriveDecoder
     given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]

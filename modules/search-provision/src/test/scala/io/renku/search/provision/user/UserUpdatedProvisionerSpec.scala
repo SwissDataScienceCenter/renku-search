@@ -49,46 +49,46 @@ class UserUpdatedProvisionerSpec
 
   private val avro = AvroIO(UserUpdated.SCHEMA$)
 
-  test("can fetch events, decode them, and update in Solr"):
-    val queue = RedisClientGenerators.queueNameGen.generateOne
+  (firstNameUpdate :: lastNameUpdate :: emailUpdate :: noUpdate :: Nil).foreach {
+    case TestCase(name, updateF) =>
+      test(s"can fetch events, decode them, and update in Solr in case of $name"):
+        val queue = RedisClientGenerators.queueNameGen.generateOne
 
-    clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
-      for
-        solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
+        clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+          for
+            solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
 
-        provisioningFiber <- provisioner.provisioningProcess.start
+            provisioningFiber <- provisioner.provisioningProcess.start
 
-        userAdded = userAddedGen(prefix = "update").generateOne
-        _ <- solrClient.insert(Seq(userAdded.toSolrDocument.widen))
+            userAdded = userAddedGen(prefix = "update").generateOne
+            _ <- solrClient.insert(Seq(userAdded.toSolrDocument.widen))
 
-        userUpdated = UserUpdated(
-          userAdded.id,
-          stringGen(max = 5).generateOne.some,
-          None,
-          None
-        )
-        _ <- queueClient.enqueue(
-          queue,
-          messageHeaderGen(UserUpdated.SCHEMA$).generateOne,
-          userUpdated
-        )
+            userUpdated = updateF(userAdded)
+            _ <- queueClient.enqueue(
+              queue,
+              messageHeaderGen(UserUpdated.SCHEMA$).generateOne,
+              userUpdated
+            )
 
-        docsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
-            .flatMap(qr => Stream.emits(qr.responseBody.docs))
-            .evalMap(e => solrDocs.update(_ + e.noneScore))
-            .compile
-            .drain
-            .start
+            docsCollectorFiber <-
+              Stream
+                .awakeEvery[IO](500 millis)
+                .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
+                .flatMap(qr => Stream.emits(qr.responseBody.docs))
+                .evalMap(e => solrDocs.update(_ + e.noneScore))
+                .compile
+                .drain
+                .start
 
-        _ <- solrDocs.waitUntil(_ contains userAdded.update(userUpdated).toSolrDocument)
+            _ <- solrDocs.waitUntil(
+              _ contains userAdded.update(userUpdated).toSolrDocument
+            )
 
-        _ <- provisioningFiber.cancel
-        _ <- docsCollectorFiber.cancel
-      yield ()
-    }
+            _ <- provisioningFiber.cancel
+            _ <- docsCollectorFiber.cancel
+          yield ()
+        }
+  }
 
   private lazy val queryUsers = Query(typeIs(EntityType.User))
 
@@ -110,6 +110,42 @@ class UserUpdatedProvisionerSpec
       val added1 = updated.firstName.fold(added)(v => added.copy(firstName = Some(v)))
       val added2 = updated.lastName.fold(added1)(v => added1.copy(lastName = Some(v)))
       updated.email.fold(added2)(v => added2.copy(email = Some(v)))
+
+  private case class TestCase(name: String, f: UserAdded => UserUpdated)
+  private lazy val firstNameUpdate = TestCase(
+    "firstName update",
+    ua =>
+      UserUpdated(
+        ua.id,
+        stringGen(max = 5).generateOne.some,
+        None,
+        None
+      )
+  )
+  private lazy val lastNameUpdate = TestCase(
+    "lastName update",
+    ua =>
+      UserUpdated(
+        ua.id,
+        None,
+        stringGen(max = 5).generateOne.some,
+        None
+      )
+  )
+  private lazy val emailUpdate = TestCase(
+    "email update",
+    ua =>
+      UserUpdated(
+        ua.id,
+        None,
+        None,
+        stringGen(max = 5).map(v => s"v@host.com").generateOne.some
+      )
+  )
+  private lazy val noUpdate = TestCase(
+    "no update",
+    ua => UserUpdated(ua.id, None, None, None)
+  )
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

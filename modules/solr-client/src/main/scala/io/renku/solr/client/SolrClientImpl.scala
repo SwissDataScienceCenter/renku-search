@@ -70,8 +70,9 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
       .flatTap(r => logger.trace(s"Solr inserted response: $r"))
 
   private def makeUpdateUrl = {
-    val base =
-      (solrUrl / "update").withQueryParam("overwrite", "true").withQueryParam("wt", "json")
+    val base = (solrUrl / "update")
+      .withQueryParam("overwrite", "true")
+      .withQueryParam("wt", "json")
     config.commitWithin match
       case Some(d) if d == Duration.Zero => base.withQueryParam("commit", "true")
       case Some(d) => base.withQueryParam("commitWithin", d.toMillis)

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.user
+package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
@@ -25,27 +25,30 @@ import fs2.concurrent.SignallingRef
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
-import io.renku.events.EventsGenerators.userAddedGen
-import io.renku.events.v1.UserAdded
+import io.renku.events.EventsGenerators.projectCreatedGen
+import io.renku.events.v1.{ProjectCreated, Visibility}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.{DataContentType, QueueSpec}
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, users}
+import io.renku.search.model.{EntityType, projects, users}
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.{Entity, User}
+import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
 
-class UserAddedProvisionerSpec extends CatsEffectSuite with QueueSpec with SearchSolrSpec:
+class ProjectCreatedProvisioningSpec
+    extends CatsEffectSuite
+    with QueueSpec
+    with SearchSolrSpec:
 
-  private val avro = AvroIO(UserAdded.SCHEMA$)
+  private val avro = AvroIO(ProjectCreated.SCHEMA$)
 
   test("can fetch events binary encoded, decode them, and send them to Solr"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
@@ -56,17 +59,17 @@ class UserAddedProvisionerSpec extends CatsEffectSuite with QueueSpec with Searc
 
         provisioningFiber <- provisioner.provisioningProcess.start
 
-        message1 = userAddedGen(prefix = "binary").generateOne
+        message1 = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queue,
-          messageHeaderGen(UserAdded.SCHEMA$, DataContentType.Binary).generateOne,
+          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
           message1
         )
 
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
+            .evalMap(_ => solrClient.queryEntity(queryProjects, 20, 0))
             .flatMap(qr => Stream.emits(qr.responseBody.docs))
             .evalMap(e => solrDocs.update(_ + e.noneScore))
             .compile
@@ -89,17 +92,17 @@ class UserAddedProvisionerSpec extends CatsEffectSuite with QueueSpec with Searc
 
         provisioningFiber <- provisioner.provisioningProcess.start
 
-        message1 = userAddedGen(prefix = "json").generateOne
+        message1 = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queue,
-          messageHeaderGen(UserAdded.SCHEMA$, DataContentType.Json).generateOne,
+          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Json).generateOne,
           message1
         )
 
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
+            .evalMap(_ => solrClient.queryEntity(queryProjects, 10, 0))
             .flatMap(qr => Stream.emits(qr.responseBody.docs))
             .evalTap(IO.println)
             .evalMap(e => solrDocs.update(_ + e.noneScore))
@@ -114,12 +117,12 @@ class UserAddedProvisionerSpec extends CatsEffectSuite with QueueSpec with Searc
       yield ()
     }
 
-  private lazy val queryUsers = Query(typeIs(EntityType.User))
+  private lazy val queryProjects = Query(typeIs(EntityType.Project))
 
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)
       .flatMap { case (rc, sc) =>
-        UserAddedProvisioning
+        ProjectCreatedProvisioning
           .make[IO](
             queueName,
             withRedisClient.redisConfig,
@@ -128,8 +131,16 @@ class UserAddedProvisionerSpec extends CatsEffectSuite with QueueSpec with Searc
           .map((rc, sc, _))
       }
 
-  private def toSolrDocument(added: UserAdded): User =
-    added.into[User].transform(Field.default(_.score))
+  private def toSolrDocument(created: ProjectCreated): Project =
+    created
+      .into[Project]
+      .transform(
+        Field.computed(
+          _.visibility,
+          pc => projects.Visibility.unsafeFromString(pc.visibility.name())
+        ),
+        Field.default(_.score)
+      )
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

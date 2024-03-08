@@ -17,7 +17,7 @@
  */
 
 package io.renku.search.provision
-package user
+package project
 
 import cats.Show
 import cats.effect.{Async, Resource}
@@ -26,14 +26,14 @@ import io.bullet.borer.Codec.*
 import io.bullet.borer.{Codec, Decoder, Encoder}
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
-import io.renku.events.v1.UserUpdated
+import io.renku.events.v1.ProjectUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
-import io.renku.search.model.users
+import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
-object UserUpdatedProvisioning:
+object ProjectUpdatedProvisioning:
 
   def make[F[_]: Async: Network](
       queueName: QueueName,
@@ -41,29 +41,36 @@ object UserUpdatedProvisioning:
       solrConfig: SolrConfig
   ): Resource[F, UpdateProvisioningProcess[F]] =
     given Scribe[F] = scribe.cats[F]
-    UpdateProvisioningProcess.make[F, UserUpdated, documents.User](
+    UpdateProvisioningProcess.make[F, ProjectUpdated, documents.Project](
       queueName,
-      UserUpdated.SCHEMA$,
+      ProjectUpdated.SCHEMA$,
       idExtractor,
       docUpdate,
       redisConfig,
       solrConfig
     )
 
-  private given Codec[documents.User] = Codec[documents.User](
+  private given Codec[documents.Project] = Codec[documents.Project](
     Encoder[documents.Entity].contramap(_.asInstanceOf[documents.Entity]),
     Decoder[documents.Entity].mapEither {
-      case u: documents.User => Right(u)
-      case u                 => Left(s"${u.getClass} is not a User document")
+      case u: documents.Project => Right(u)
+      case u                    => Left(s"${u.getClass} is not a Project document")
     }
   )
 
-  private given Show[UserUpdated] =
-    Show.show[UserUpdated](u => s"id '${u.id}'")
+  private given Show[ProjectUpdated] =
+    Show.show[ProjectUpdated](v => s"slug '${v.slug}'")
 
-  private lazy val idExtractor: UserUpdated => String = _.id
+  private lazy val idExtractor: ProjectUpdated => String = _.id
 
-  private lazy val docUpdate: ((UserUpdated, documents.User)) => documents.User = {
-    case (update, _) =>
-      update.into[documents.User].transform(Field.default(_.score))
+  private lazy val docUpdate
+      : ((ProjectUpdated, documents.Project)) => documents.Project = {
+    case (update, orig) =>
+      update
+        .into[documents.Project]
+        .transform(
+          Field.const(_.createdBy, orig.createdBy),
+          Field.const(_.creationDate, orig.creationDate),
+          Field.default(_.score)
+        )
   }

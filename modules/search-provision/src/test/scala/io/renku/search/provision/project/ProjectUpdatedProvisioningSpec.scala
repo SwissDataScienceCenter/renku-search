@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.user
+package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
@@ -25,33 +25,34 @@ import fs2.concurrent.SignallingRef
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
-import io.renku.events.EventsGenerators.{stringGen, userAddedGen}
-import io.renku.events.v1.{UserAdded, UserUpdated}
+import io.renku.events.EventsGenerators.*
+import io.renku.events.v1.{ProjectCreated, ProjectUpdated}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{EntityType, users}
+import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.{Entity, User}
+import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
 
-class UserUpdatedProvisionerSpec
+class ProjectUpdatedProvisioningSpec
     extends CatsEffectSuite
     with QueueSpec
     with SearchSolrSpec:
 
-  private val avro = AvroIO(UserUpdated.SCHEMA$)
+  private val avro = AvroIO(ProjectUpdated.SCHEMA$)
 
-  (firstNameUpdate :: lastNameUpdate :: emailUpdate :: noUpdate :: Nil).foreach {
-    case TestCase(name, updateF) =>
+  (nameUpdate :: slugUpdate :: repositoriesUpdate :: visibilityUpdate :: descUpdate :: noUpdate :: Nil)
+    .foreach { case TestCase(name, updateF) =>
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
         val queue = RedisClientGenerators.queueNameGen.generateOne
 
@@ -61,20 +62,20 @@ class UserUpdatedProvisionerSpec
 
             provisioningFiber <- provisioner.provisioningProcess.start
 
-            userAdded = userAddedGen(prefix = "update").generateOne
-            _ <- solrClient.insert(Seq(userAdded.toSolrDocument.widen))
+            created = projectCreatedGen(prefix = "update").generateOne
+            _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
 
-            userUpdated = updateF(userAdded)
+            updated = updateF(created)
             _ <- queueClient.enqueue(
               queue,
-              messageHeaderGen(UserUpdated.SCHEMA$).generateOne,
-              userUpdated
+              messageHeaderGen(ProjectUpdated.SCHEMA$).generateOne,
+              updated
             )
 
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
+                .evalMap(_ => solrClient.queryEntity(queryProjects, 20, 0))
                 .flatMap(qr => Stream.emits(qr.responseBody.docs))
                 .evalMap(e => solrDocs.update(_ + e.noneScore))
                 .compile
@@ -82,21 +83,21 @@ class UserUpdatedProvisionerSpec
                 .start
 
             _ <- solrDocs.waitUntil(
-              _ contains userAdded.update(userUpdated).toSolrDocument
+              _ contains created.update(updated).toSolrDocument
             )
 
             _ <- provisioningFiber.cancel
             _ <- docsCollectorFiber.cancel
           yield ()
         }
-  }
+    }
 
-  private lazy val queryUsers = Query(typeIs(EntityType.User))
+  private lazy val queryProjects = Query(typeIs(EntityType.Project))
 
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)
       .flatMap { case (rc, sc) =>
-        UserUpdatedProvisioning
+        ProjectUpdatedProvisioning
           .make[IO](
             queueName,
             withRedisClient.redisConfig,
@@ -105,47 +106,81 @@ class UserUpdatedProvisionerSpec
           .map((rc, sc, _))
       }
 
-  extension (added: UserAdded)
-    def toSolrDocument: User = added.into[User].transform(Field.default(_.score))
-    def update(updated: UserUpdated): UserAdded =
-      val added1 = updated.firstName.fold(added)(v => added.copy(firstName = Some(v)))
-      val added2 = updated.lastName.fold(added1)(v => added1.copy(lastName = Some(v)))
-      updated.email.fold(added2)(v => added2.copy(email = Some(v)))
+  extension (created: ProjectCreated)
+    def toSolrDocument: Project = created.into[Project].transform(Field.default(_.score))
+    def update(updated: ProjectUpdated): ProjectCreated =
+      created.copy(
+        name = updated.name,
+        slug = updated.slug,
+        repositories = updated.repositories,
+        visibility = updated.visibility,
+        description = updated.description
+      )
 
-  private case class TestCase(name: String, f: UserAdded => UserUpdated)
-  private lazy val firstNameUpdate = TestCase(
-    "firstName update",
-    ua =>
-      UserUpdated(
-        ua.id,
-        stringGen(max = 5).generateOne.some,
-        ua.lastName,
-        ua.email
+  private case class TestCase(name: String, f: ProjectCreated => ProjectUpdated)
+  private lazy val nameUpdate = TestCase(
+    "name update",
+    pc =>
+      ProjectUpdated(
+        pc.id,
+        stringGen(max = 5).generateOne,
+        pc.slug,
+        pc.repositories,
+        pc.visibility,
+        pc.description
       )
   )
-  private lazy val lastNameUpdate = TestCase(
-    "lastName update",
-    ua =>
-      UserUpdated(
-        ua.id,
-        ua.firstName,
-        stringGen(max = 5).generateOne.some,
-        ua.email
+  private lazy val slugUpdate = TestCase(
+    "slug update",
+    pc =>
+      ProjectUpdated(
+        pc.id,
+        pc.name,
+        stringGen(max = 5).generateOne,
+        pc.repositories,
+        pc.visibility,
+        pc.description
       )
   )
-  private lazy val emailUpdate = TestCase(
-    "email update",
-    ua =>
-      UserUpdated(
-        ua.id,
-        ua.firstName,
-        ua.lastName,
-        stringGen(max = 5).map(v => s"v@host.com").generateOne.some
+  private lazy val repositoriesUpdate = TestCase(
+    "repositories update",
+    pc =>
+      ProjectUpdated(
+        pc.id,
+        pc.name,
+        pc.slug,
+        stringGen(max = 5).generateList,
+        pc.visibility,
+        pc.description
+      )
+  )
+  private lazy val visibilityUpdate = TestCase(
+    "repositories update",
+    pc =>
+      ProjectUpdated(
+        pc.id,
+        pc.name,
+        pc.slug,
+        pc.repositories,
+        projectVisibilityGen.generateOne,
+        pc.description
+      )
+  )
+  private lazy val descUpdate = TestCase(
+    "repositories update",
+    pc =>
+      ProjectUpdated(
+        pc.id,
+        pc.name,
+        pc.slug,
+        pc.repositories,
+        pc.visibility,
+        stringGen(max = 5).generateSome
       )
   )
   private lazy val noUpdate = TestCase(
     "no update",
-    ua => UserUpdated(ua.id, ua.firstName, ua.lastName, ua.email)
+    _.to[ProjectUpdated]
   )
 
   override def munitFixtures: Seq[Fixture[_]] =

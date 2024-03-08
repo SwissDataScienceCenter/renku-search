@@ -22,8 +22,8 @@ import cats.effect.*
 import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
 import io.renku.redis.client.QueueName
-import io.renku.search.provision.project.ProjectCreatedProvisioning
-import io.renku.search.provision.user.{UserAddedProvisioning, UserUpdatedProvisioning}
+import io.renku.search.provision.project.*
+import io.renku.search.provision.user.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 import scribe.Scribe
@@ -49,6 +49,12 @@ object Microservice extends IOApp:
         cfg.queuesConfig.projectCreated,
         ProjectCreatedProvisioning
           .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
+      ),
+      (
+        "ProjectUpdated",
+        cfg.queuesConfig.projectUpdated,
+        ProjectUpdatedProvisioning
+          .make[IO](cfg.queuesConfig.projectUpdated, cfg.redisConfig, cfg.solrConfig)
       ),
       (
         "UserAdded",

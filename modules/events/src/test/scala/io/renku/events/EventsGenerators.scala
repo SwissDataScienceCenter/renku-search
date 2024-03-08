@@ -27,12 +27,15 @@ import java.time.temporal.ChronoUnit
 
 object EventsGenerators:
 
+  val projectVisibilityGen: Gen[Visibility] = Gen.oneOf(Visibility.values().toList)
+
   def projectCreatedGen(prefix: String): Gen[ProjectCreated] =
     for
       id <- Gen.uuid.map(_.toString)
       name <- stringGen(max = 5).map(v => s"$prefix-$v")
-      repositories <- Gen.listOfN(Gen.choose(1, 3).generateOne, stringGen(10))
-      visibility <- Gen.oneOf(Visibility.values().toList)
+      repositoriesCount <- Gen.choose(1, 3)
+      repositories <- Gen.listOfN(repositoriesCount, stringGen(10))
+      visibility <- projectVisibilityGen
       maybeDesc <- Gen.option(stringGen(20))
       creator <- Gen.uuid.map(_.toString)
     yield ProjectCreated(
@@ -68,5 +71,3 @@ object EventsGenerators:
     Gen
       .chooseNum(3, max)
       .flatMap(Gen.stringOfN(_, alphaChar))
-
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

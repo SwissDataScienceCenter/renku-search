@@ -23,7 +23,7 @@ import org.scalacheck.Gen.{alphaLowerChar, alphaNumChar}
 
 object RedisClientGenerators:
 
-  val stringGen: Gen[String] =
+  private val stringGen: Gen[String] =
     Gen
       .chooseNum(3, 10)
       .flatMap(Gen.stringOfN(_, alphaLowerChar))

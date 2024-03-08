@@ -25,12 +25,14 @@ import io.renku.search.config.ConfigValues
 
 final case class QueuesConfig(
     projectCreated: QueueName,
-    userAdded: QueueName
+    userAdded: QueueName,
+    userUpdated: QueueName
 )
 
 object QueuesConfig:
   val config: ConfigValue[Effect, QueuesConfig] =
     (
       ConfigValues.eventQueue("projectCreated"),
-      ConfigValues.eventQueue("userAdded")
+      ConfigValues.eventQueue("userAdded"),
+      ConfigValues.eventQueue("userUpdated")
     ).mapN(QueuesConfig.apply)

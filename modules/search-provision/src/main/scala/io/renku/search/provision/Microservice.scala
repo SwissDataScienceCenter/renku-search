@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.project.ProjectCreatedProvisioning
-import io.renku.search.provision.user.UserAddedProvisioning
+import io.renku.search.provision.user.{UserAddedProvisioning, UserUpdatedProvisioning}
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 import scribe.Scribe
@@ -55,6 +55,12 @@ object Microservice extends IOApp:
         cfg.queuesConfig.userAdded,
         UserAddedProvisioning
           .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
+      ),
+      (
+        "UserUpdated",
+        cfg.queuesConfig.userUpdated,
+        UserUpdatedProvisioning
+          .make[IO](cfg.queuesConfig.userUpdated, cfg.redisConfig, cfg.solrConfig)
       )
     ).parTraverse_(startProcess(cfg))
       .flatMap(_ => IO.never)

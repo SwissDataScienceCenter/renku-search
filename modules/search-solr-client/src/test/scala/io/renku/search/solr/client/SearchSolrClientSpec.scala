@@ -20,6 +20,7 @@ package io.renku.search.solr.client
 
 import cats.effect.IO
 import cats.syntax.all.*
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.users
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrClientGenerators.*

@@ -19,6 +19,7 @@
 package io.renku.search.query
 
 import cats.data.NonEmptyList
+import cats.Order as CatsOrder
 import cats.syntax.all.*
 import io.renku.search.model.{CommonGenerators, ModelGenerators}
 import io.renku.search.model.projects.Visibility
@@ -160,6 +161,7 @@ object QueryGenerators:
 
   val sortTerm: Gen[Order] =
     Gen.choose(1, 5).flatMap { len =>
+      given CatsOrder[Order.OrderedBy] = CatsOrder.by(_.field)
       CommonGenerators.nelOfN(len, orderedBy).map(_.distinct).map(Order.apply)
     }
 

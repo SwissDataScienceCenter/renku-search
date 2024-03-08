@@ -16,28 +16,29 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.query
+package io.renku.search
 
-import cats.Monoid
-import cats.syntax.all.*
-import io.renku.search.query.Order
-import io.renku.solr.client.SolrSort
+import fs2.Stream
+import cats.effect.IO
+import org.scalacheck.Gen
+import cats.arrow.FunctionK
 
-final case class SolrQuery(
-    query: SolrToken,
-    sort: SolrSort
-):
-  def withQuery(q: SolrToken): SolrQuery = copy(query = q)
-  def ++(next: SolrQuery): SolrQuery =
-    SolrQuery(query && next.query, sort ++ next.sort)
+trait GeneratorSyntax:
 
-object SolrQuery:
-  val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)
+  extension [A](self: Gen[A])
+    @annotation.tailrec
+    final def generateOne: A =
+      self.sample match
+        case Some(a) => a
+        case None    => generateOne
 
-  def apply(e: SolrToken): SolrQuery =
-    SolrQuery(e, SolrSort.empty)
+    def generateSome: Option[A] = Some(generateOne)
 
-  def sort(order: Order): SolrQuery =
-    SolrQuery(SolrToken.empty, SolrSortCreate(order.fields))
+    def stream: Stream[Gen, A] =
+      Stream.repeatEval(self)
 
-  given Monoid[SolrQuery] = Monoid.instance(empty, (a, b) => a ++ b)
+  extension [A](self: Stream[Gen, A])
+    def toIO: Stream[IO, A] =
+      self.translate(FunctionK.lift[Gen, IO]([X] => (gx: Gen[X]) => IO(gx.generateOne)))
+
+object GeneratorSyntax extends GeneratorSyntax

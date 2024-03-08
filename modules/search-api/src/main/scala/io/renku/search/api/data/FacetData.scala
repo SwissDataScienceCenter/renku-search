@@ -18,18 +18,32 @@
 
 package io.renku.search.api.data
 
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.Encoder
+import io.renku.search.model.EntityType
 import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs
 import sttp.tapir.Schema
+import io.bullet.borer.Encoder
+import io.renku.search.api.tapir.SchemaSyntax.*
 
-final case class SearchResult(
-    items: Seq[SearchEntity],
-    facets: FacetData,
-    pagingInfo: PageWithTotals
+final case class FacetData(
+    entityType: Map[EntityType, Int]
 )
 
-object SearchResult:
-  given Encoder[SearchResult] = MapBasedCodecs.deriveEncoder
-  given Decoder[SearchResult] = MapBasedCodecs.deriveDecoder
-  given Schema[SearchResult] = Schema.derived
+object FacetData:
+  val empty: FacetData = FacetData(Map.empty)
+
+  given Decoder[FacetData] = MapBasedCodecs.deriveDecoder
+  given Encoder[FacetData] = MapBasedCodecs.deriveEncoder
+  given Schema[FacetData] = {
+    given Schema[Map[EntityType, Int]] = Schema.schemaForMap(_.name)
+    Schema
+      .derived[FacetData]
+      .jsonExample(
+        FacetData(
+          Map(
+            EntityType.Project -> 15,
+            EntityType.User -> 3
+          )
+        )
+      )
+  }

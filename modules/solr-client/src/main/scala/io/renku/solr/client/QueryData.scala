@@ -21,38 +21,38 @@ package io.renku.solr.client
 import io.bullet.borer.Encoder
 import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
 import io.renku.solr.client.schema.FieldName
+import io.renku.solr.client.facet.Facets
 
 final case class QueryData(
     query: String,
     filter: Seq[String],
     limit: Int,
     offset: Int,
-    fields: Seq[FieldName],
-    sort: SolrSort,
-    params: Map[String, String]
+    fields: Seq[FieldName] = Seq.empty,
+    sort: SolrSort = SolrSort.empty,
+    params: Map[String, String] = Map.empty,
+    facet: Facets = Facets.empty
 ):
   def nextPage: QueryData =
     copy(offset = offset + limit)
 
-  def withHighLight(fields: List[FieldName], pre: String, post: String): QueryData =
-    copy(params =
-      params ++ Map(
-        "hl" -> "on",
-        "hl.requireFieldMatch" -> "true",
-        "hl.fl" -> fields.map(_.name).mkString(","),
-        "hl.simple.pre" -> pre,
-        "hl.simple.post" -> post
-      )
-    )
-
   def withSort(sort: SolrSort): QueryData = copy(sort = sort)
-  def withFieldList(fl: String): QueryData = copy(params = params.updated("fl", fl))
-  def withScore: QueryData = withFieldList("* score")
-  def withScoreAndChildren: QueryData = withFieldList("* score,[child]")
+  def withFields(field: FieldName*) = copy(fields = field)
+  def addFilter(q: String): QueryData = copy(filter = filter :+ q)
+  def withFacet(facet: Facets): QueryData = copy(facet = facet)
 
 object QueryData:
 
   def apply(query: QueryString): QueryData =
-    QueryData(query.q, Nil, query.limit, query.offset, Nil, SolrSort.empty, Map.empty)
+    QueryData(
+      query.q,
+      Nil,
+      query.limit,
+      query.offset,
+      Nil,
+      SolrSort.empty,
+      Map.empty,
+      Facets.empty
+    )
 
   given Encoder[QueryData] = deriveEncoder

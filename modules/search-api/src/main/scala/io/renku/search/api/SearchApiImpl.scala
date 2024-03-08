@@ -25,9 +25,12 @@ import io.renku.search.api.data.*
 import io.renku.search.model.users
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity as SolrEntity
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryResponse
 import org.http4s.dsl.Http4sDsl
 import scribe.Scribe
+import io.renku.search.model.EntityType
+import io.renku.solr.client.facet.FacetResponse
 
 private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
@@ -58,9 +61,19 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
   ): SearchResult =
     val hasMore = solrResult.responseBody.docs.size > currentPage.limit
     val pageInfo = PageWithTotals(currentPage, solrResult.responseBody.numFound, hasMore)
+    val facets = solrResult.facetResponse
+      .flatMap(_.buckets.get(Fields.entityType))
+      .map { counts =>
+        val all =
+          counts.buckets.flatMap { case FacetResponse.Bucket(key, count) =>
+            EntityType.fromString(key).toOption.map(et => et -> count)
+          }.toMap
+        FacetData(all)
+      }
+      .getOrElse(FacetData.empty)
     val items = solrResult.responseBody.docs.map(toApiEntity)
-    if (hasMore) SearchResult(items.init, pageInfo)
-    else SearchResult(items, pageInfo)
+    if (hasMore) SearchResult(items.init, facets, pageInfo)
+    else SearchResult(items, facets, pageInfo)
 
   private lazy val toApiEntity: SolrEntity => SearchEntity =
     given Transformer[users.Id, UserId] = (id: users.Id) => UserId(id)

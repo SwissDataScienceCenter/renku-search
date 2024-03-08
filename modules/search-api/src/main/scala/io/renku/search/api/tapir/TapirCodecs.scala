@@ -21,6 +21,7 @@ package io.renku.search.api.tapir
 import sttp.tapir.*
 import io.renku.search.api.data.*
 import io.renku.search.query.Query
+import io.renku.search.model.EntityType
 
 trait TapirCodecs:
   given Codec[String, Query, CodecFormat.TextPlain] =
@@ -28,3 +29,10 @@ trait TapirCodecs:
 
   given Schema[Query] = Schema.anyObject[Query]
   given Schema[QueryInput] = Schema.derived
+
+  given Codec[String, EntityType, CodecFormat.TextPlain] =
+    Codec.string.mapEither(EntityType.fromString(_))(_.name)
+
+  given Schema[EntityType] = Schema.derivedEnumeration.defaultStringBased
+
+object TapirCodecs extends TapirCodecs

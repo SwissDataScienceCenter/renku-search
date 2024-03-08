@@ -25,6 +25,9 @@ import io.renku.search.query.Query
 import io.renku.search.solr.documents.Entity
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
+import io.renku.solr.client.schema.FieldName
+import io.renku.solr.client.facet.{Facet, Facets}
+import io.renku.search.solr.schema.EntityDocumentSchema
 
 import scala.reflect.ClassTag
 
@@ -33,6 +36,11 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
 
   private[this] val logger = scribe.cats.effect[F]
   private[this] val interpreter = LuceneQueryInterpreter.forSync[F]
+
+  private val typeTerms = Facet.Terms(
+    EntityDocumentSchema.Fields.entityType,
+    EntityDocumentSchema.Fields.entityType
+  )
 
   override def insert[D: Encoder](documents: Seq[D]): F[Unit] =
     solrClient.insert(documents).void
@@ -49,7 +57,8 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
         .query[Entity](
           QueryData(QueryString(solrQuery.query.value, limit, offset))
             .withSort(solrQuery.sort)
-            .withScore
+            .withFacet(Facets(typeTerms))
+            .withFields(FieldName.all, FieldName.score)
         )
     } yield res
 

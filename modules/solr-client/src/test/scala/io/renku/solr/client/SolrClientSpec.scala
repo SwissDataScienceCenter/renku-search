@@ -20,16 +20,23 @@ package io.renku.solr.client
 
 import cats.effect.IO
 import cats.syntax.all.*
-import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
-import io.bullet.borer.{Decoder, Encoder}
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
+import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.solr.client.SolrClientSpec.Room
+import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
-import munit.CatsEffectSuite
+import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
+import org.scalacheck.Gen
+import org.scalacheck.effect.PropF
 
 import java.util.UUID
 
-class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
+class SolrClientSpec
+    extends CatsEffectSuite
+    with ScalaCheckEffectSuite
+    with SolrSpec
+    with SolrTruncate:
 
   test("use schema for inserting and querying"):
     val cmds = Seq(
@@ -43,6 +50,10 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
     withSolrClient().use { client =>
       val room = Room(UUID.randomUUID().toString, "meeting room", "room for meetings", 56)
       for {
+        _ <- truncateAll(client)(
+          List("roomName", "roomDescription", "roomSeats").map(FieldName.apply),
+          List("roomText", "roomInt").map(TypeName.apply)
+        )
         _ <- client.modifySchema(cmds)
         _ <- client.insert[Room](Seq(room))
         qr <- client.query[Room](QueryData(QueryString("_type:Room")))
@@ -52,8 +63,69 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
       } yield ()
     }
 
+  test("correct facet queries"):
+    val decoder: Decoder[Unit] = new Decoder {
+      def read(r: Reader): Unit =
+        r.skipElement()
+        ()
+    }
+    PropF.forAllF(SolrClientGenerator.facets) { facets =>
+      val q = QueryData(QueryString("*:*")).withFacet(facets)
+      withSolrClient().use { client =>
+        client.query(q)(using decoder).void
+      }
+    }
+
+  test("decoding facet response"):
+    val rooms = Gen.listOfN(15, Room.gen).sample.get
+    val facets =
+      Facets(Facet.Terms(FieldName("by_name"), FieldName("roomName"), limit = Some(6)))
+    withSolrClient().use { client =>
+      for {
+        _ <- client.delete(QueryString("*:*"))
+        _ <- client.insert(rooms)
+        r <- client.query[Room](QueryData(QueryString("*:*")).withFacet(facets))
+        _ = assert(r.facetResponse.nonEmpty)
+        _ = assertEquals(r.facetResponse.get.count, 15)
+        _ = assertEquals(
+          r.facetResponse.get.buckets(FieldName("by_name")).buckets.size,
+          6
+        )
+      } yield ()
+    }
+
+// test("delete by id"):
+//   withSolrClient().use { client =>
+//     for {
+//       _ <- client.delete(QueryString("*:*"))
+//       _ <- client.insert(Seq(SolrClientSpec.Person("p1", "John")))
+//       r <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
+//       p = r.responseBody.docs.head
+//       _ = assertEquals(p.id, "p1")
+//       _ <- client.deleteById("p1", "p2")
+//       r2 <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
+//       _ <- IO.sleep(50.millis) // seems to be necessary on ci
+//       _ = assert(r2.responseBody.docs.isEmpty)
+//     } yield ()
+//   }
+
 object SolrClientSpec:
   case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)
   object Room:
-    given Decoder[Room] = deriveDecoder
+    val gen: Gen[Room] = for {
+      id <- Gen.uuid.map(_.toString)
+      name <- Gen
+        .choose(4, 12)
+        .flatMap(n => Gen.listOfN(n, Gen.alphaChar))
+        .map(_.mkString)
+      descr = s"Room description for $name"
+      seats <- Gen.choose(15, 350)
+    } yield Room(id, name, descr, seats)
+
+    given Decoder[Room] = MapBasedCodecs.deriveDecoder
     given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]
+
+  case class Person(id: String, @key("name_s") name: String)
+  object Person:
+    given Decoder[Person] = MapBasedCodecs.deriveDecoder
+    given Encoder[Person] = MapBasedCodecs.deriveEncoder

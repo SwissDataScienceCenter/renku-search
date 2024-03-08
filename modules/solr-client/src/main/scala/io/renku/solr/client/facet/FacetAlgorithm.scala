@@ -16,20 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.search.api.data
+package io.renku.solr.client.facet
 
-import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.Encoder
-import io.bullet.borer.Decoder
-import sttp.tapir.Schema
 
-final case class SearchResult(
-    items: Seq[SearchEntity],
-    facets: FacetData,
-    pagingInfo: PageWithTotals
-)
+enum FacetAlgorithm:
+  case DocValues
+  case UnInvertedField
+  case DocValuesHash
+  case Enum
+  case Stream
+  case Smart
 
-object SearchResult:
-  given Encoder[SearchResult] = MapBasedCodecs.deriveEncoder
-  given Decoder[SearchResult] = MapBasedCodecs.deriveDecoder
-  given Schema[SearchResult] = Schema.derived
+  private[client] def name: String = this match
+    case DocValues       => "dv"
+    case UnInvertedField => "uif"
+    case DocValuesHash   => "dvhash"
+    case Enum            => "enum"
+    case Stream          => "stream"
+    case Smart           => "smart"
+
+object FacetAlgorithm:
+  given Encoder[FacetAlgorithm] = Encoder.forString.contramap(_.name)

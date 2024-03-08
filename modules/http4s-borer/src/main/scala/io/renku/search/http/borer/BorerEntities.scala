@@ -38,7 +38,8 @@ object BorerEntities:
     EitherT(StreamProvider(media.body).flatMap { implicit input =>
       for {
         res <- Async[F].delay(Json.decode(input).to[A].valueEither)
-      } yield res.left.map(BorerDecodeFailure("<not available>", _))
+        txt <- if (res.isLeft) media.bodyText.compile.string else Async[F].pure("")
+      } yield res.left.map(BorerDecodeFailure(txt, _))
     })
 
   def decodeCbor[F[_]: Async, A: Decoder](media: Media[F]): DecodeResult[F, A] =

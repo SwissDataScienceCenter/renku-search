@@ -16,20 +16,27 @@
  * limitations under the License.
  */
 
-package io.renku.search.api.data
+package io.renku.solr.client.facet
 
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.Encoder
-import io.bullet.borer.Decoder
-import sttp.tapir.Schema
+import io.renku.solr.client.schema.FieldName
+import cats.data.NonEmptyList
 
-final case class SearchResult(
-    items: Seq[SearchEntity],
-    facets: FacetData,
-    pagingInfo: PageWithTotals
-)
+enum Facet:
+  // https://solr.apache.org/guide/solr/latest/query-guide/json-facet-api.html#terms-facet
+  case Terms(
+      name: FieldName,
+      field: FieldName,
+      limit: Option[Int] = None,
+      minCount: Option[Int] = None,
+      method: Option[FacetAlgorithm] = None,
+      missing: Boolean = false,
+      numBuckets: Boolean = false,
+      allBuckets: Boolean = false
+  )
 
-object SearchResult:
-  given Encoder[SearchResult] = MapBasedCodecs.deriveEncoder
-  given Decoder[SearchResult] = MapBasedCodecs.deriveDecoder
-  given Schema[SearchResult] = Schema.derived
+  // https://solr.apache.org/guide/solr/latest/query-guide/json-facet-api.html#range-facet
+  case ArbitraryRange(
+      name: FieldName,
+      field: FieldName,
+      ranges: NonEmptyList[FacetRange]
+  )

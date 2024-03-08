@@ -43,7 +43,9 @@ class LuceneQueryInterpreterSpec
   override protected lazy val coreName: String = server.testCoreName2
 
   given Decoder[Unit] = new Decoder {
-    def read(r: Reader) = ()
+    def read(r: Reader) =
+      r.skipElement()
+      ()
   }
 
   def query(s: String | Query): QueryData =

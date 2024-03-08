@@ -41,5 +41,3 @@ object RedisClientGenerators:
       part1 <- Gen.chooseNum(3, 10)
       part2 <- Gen.chooseNum(3, 10)
     yield MessageId(s"$part1.$part2")
-
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

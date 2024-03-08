@@ -32,6 +32,8 @@ trait GeneratorSyntax:
         case Some(a) => a
         case None    => generateOne
 
+    def generateSome: Option[A] = Some(generateOne)
+
     def stream: Stream[Gen, A] =
       Stream.repeatEval(self)
 

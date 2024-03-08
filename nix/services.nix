@@ -4,28 +4,19 @@
   pkgs,
   ...
 }: {
-  services.solr = {
+  services.dev-solr = {
     enable = true;
+    cores = ["rsdev-test" "core-test1" "core-test2" "core-test3" "search-core-test"];
+    heap = 512;
   };
 
-  services.redis.servers.search = {
+  services.dev-redis = {
     enable = true;
-    port = 6379;
-    bind = "0.0.0.0";
-    openFirewall = true;
-    settings = {
-      "protected-mode" = "no";
-    };
+    instance = "search";
   };
 
-  services.nginx = {
+  services.openapi-docs = {
     enable = true;
-    virtualHosts.rsdev.locations."/" = {
-      root = "${pkgs.openapi-doc}";
-    };
-  };
-
-  networking = {
-    firewall.allowedTCPPorts = [8983 80];
+    openapi-spec = "http://localhost:8080/search/spec.json";
   };
 }

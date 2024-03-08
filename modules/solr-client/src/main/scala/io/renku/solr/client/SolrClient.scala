@@ -40,6 +40,8 @@ trait SolrClient[F[_]]:
 
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse]
 
+  def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]]
+
 object SolrClient:
   def apply[F[_]: Async: Network](config: SolrConfig): Resource[F, SolrClient[F]] =
     ClientBuilder(EmberClientBuilder.default[F])

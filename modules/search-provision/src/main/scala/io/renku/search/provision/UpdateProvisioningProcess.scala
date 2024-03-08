@@ -21,10 +21,8 @@ package io.renku.search.provision
 import cats.Show
 import cats.effect.{Async, Resource, Temporal}
 import cats.syntax.all.*
-import fs2.Chunk
 import fs2.io.net.Network
-import io.bullet.borer.Encoder
-import io.github.arainko.ducktape.*
+import io.bullet.borer.Codec
 import io.renku.avro.codec.AvroDecoder
 import io.renku.queue.client.{QueueClient, QueueMessage}
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
@@ -35,40 +33,47 @@ import org.apache.avro.Schema
 import scribe.Scribe
 
 import scala.concurrent.duration.*
+import scala.reflect.ClassTag
 
-trait UpsertProvisioningProcess[F[_]] extends ProvisioningProcess[F]
+trait UpdateProvisioningProcess[F[_]] extends ProvisioningProcess[F]
 
-object UpsertProvisioningProcess:
+object UpdateProvisioningProcess:
 
   def make[F[_]: Async: Network: Scribe, In, Out <: Entity](
       queueName: QueueName,
       inSchema: Schema,
+      idExtractor: In => String,
+      docUpdate: ((In, Out)) => Out,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
   )(using
       Show[In],
-      Transformer[In, Out],
       AvroDecoder[In],
-      Encoder[Entity]
-  ): Resource[F, UpsertProvisioningProcess[F]] =
+      Codec[Entity],
+      ClassTag[Out]
+  ): Resource[F, UpdateProvisioningProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
-      new UpsertProvisioningProcessImpl[F, In, Out](
+      new UpdateProvisioningProcessImpl[F, In, Out](
         queueName,
         ProvisioningProcess.clientId,
+        idExtractor,
+        docUpdate,
         QueueClient.make[F](redisConfig),
         _,
         QueueMessageDecoder[F, In](inSchema)
       )
     }
 
-private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Entity](
+private class UpdateProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Entity](
     queueName: QueueName,
     clientId: ClientId,
+    idExtractor: In => String,
+    docUpdate: ((In, Out)) => Out,
     queueClientResource: Resource[F, QueueClient[F]],
     solrClient: SearchSolrClient[F],
     messageDecoder: QueueMessageDecoder[F, In]
-)(using Show[In], Transformer[In, Out], AvroDecoder[In], Encoder[Entity])
-    extends UpsertProvisioningProcess[F]:
+)(using Show[In], Codec[Entity], ClassTag[Out])
+    extends UpdateProvisioningProcess[F]:
 
   override def provisioningProcess: F[Unit] =
     queueClientResource
@@ -78,7 +83,7 @@ private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
             .acquireEventsStream(queueName, chunkSize = 1, maybeLastProcessed)
             .evalMap(decodeMessage(queueClient))
             .evalTap(logInfo)
-            .groupWithin(chunkSize = 10, timeout = 500 millis)
+            .evalMap(fetchDocuments)
             .evalMap(pushToSolr(queueClient))
             .compile
             .drain
@@ -109,22 +114,37 @@ private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
       .tupleLeft(message)
       .onError(markProcessedOnFailure(message, queueClient))
 
+  private lazy val fetchDocuments
+      : ((QueueMessage, Seq[In])) => F[(QueueMessage, Seq[(In, Out)])] =
+    case (m, ins) =>
+      ins
+        .map { in =>
+          val docId = idExtractor(in)
+          solrClient.findById[Out](docId) >>= {
+            case Some(out) => (in, out).some.pure[F]
+            case None =>
+              Scribe[F]
+                .warn(s"Document id: '$docId' for update doesn't exist in Solr; skipping")
+                .as(Option.empty[Nothing])
+          }
+        }
+        .sequence
+        .map(_.flatten)
+        .map((m, _))
+
   private def pushToSolr(
       queueClient: QueueClient[F]
-  )(chunk: Chunk[(QueueMessage, Seq[In])]): F[Unit] =
-    chunk.toList match {
-      case Nil => ().pure[F]
-      case tuples =>
-        val docs = toSolrDocuments(tuples.flatMap(_._2))
-        val (lastMessage, _) = tuples.last
+  ): ((QueueMessage, Seq[(In, Out)])) => F[Unit] = { case (m, inOuts) =>
+    inOuts match {
+      case l if l.isEmpty => ().pure[F]
+      case inOuts =>
+        val updatedDocs = inOuts.map(docUpdate).map(_.widen)
         solrClient
-          .insert(docs.map(_.widen))
-          .flatMap(_ => markProcessed(lastMessage, queueClient))
-          .onError(markProcessedOnFailure(lastMessage, queueClient))
+          .insert(updatedDocs)
+          .flatMap(_ => markProcessed(m, queueClient))
+          .onError(markProcessedOnFailure(m, queueClient))
     }
-
-  private lazy val toSolrDocuments: Seq[In] => Seq[Out] =
-    _.map(_.to[Out])
+  }
 
   private def markProcessedOnFailure(
       message: QueueMessage,

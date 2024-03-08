@@ -34,8 +34,6 @@ import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
-trait ProjectCreatedProvisioning[F[_]] extends UpsertProvisioningProcess[F]
-
 object ProjectCreatedProvisioning:
 
   def make[F[_]: Async: Network](

@@ -20,7 +20,7 @@ package io.renku.events
 
 import io.renku.events.v1.{ProjectCreated, UserAdded, Visibility}
 import org.scalacheck.Gen
-import org.scalacheck.Gen.alphaNumChar
+import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -49,8 +49,8 @@ object EventsGenerators:
   def userAddedGen(prefix: String): Gen[UserAdded] =
     for
       id <- Gen.uuid.map(_.toString)
-      firstName <- Gen.option(stringGen(max = 5).map(v => s"$prefix-$v"))
-      lastName <- stringGen(max = 5).map(v => s"$prefix-$v")
+      firstName <- Gen.option(alphaStringGen(max = 5).map(v => s"$prefix-$v"))
+      lastName <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
       email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
     yield UserAdded(
       id,
@@ -63,5 +63,10 @@ object EventsGenerators:
     Gen
       .chooseNum(3, max)
       .flatMap(Gen.stringOfN(_, alphaNumChar))
+
+  def alphaStringGen(max: Int): Gen[String] =
+    Gen
+      .chooseNum(3, max)
+      .flatMap(Gen.stringOfN(_, alphaChar))
 
   extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)

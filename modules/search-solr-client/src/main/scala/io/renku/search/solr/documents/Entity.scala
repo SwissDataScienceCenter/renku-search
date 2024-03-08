@@ -19,12 +19,13 @@
 package io.renku.search.solr.documents
 
 import io.bullet.borer.derivation.MapBasedCodecs.*
-import io.bullet.borer.{AdtEncodingStrategy, Decoder, Encoder}
+import io.bullet.borer.{AdtEncodingStrategy, Codec, Decoder, Encoder}
 import io.renku.search.model.{projects, users}
 import io.renku.solr.client.EncoderSupport.*
 
 sealed trait Entity:
   val score: Option[Double]
+  def widen: Entity = this
 
 object Entity:
 
@@ -33,8 +34,9 @@ object Entity:
   given AdtEncodingStrategy =
     AdtEncodingStrategy.flat(typeMemberName = discriminatorField)
 
-  given Encoder[Entity] = deriveEncoder[Entity]
+  given Encoder[Entity] = deriveAllEncoders[Entity]
   given Decoder[Entity] = deriveAllDecoders[Entity]
+  given Codec[Entity] = Codec.of[Entity]
 
 final case class Project(
     id: projects.Id,
@@ -50,7 +52,6 @@ final case class Project(
 
 object Project:
   val entityType: String = "Project"
-  given Encoder[Project] = deriveWithDiscriminator
 
 final case class User(
     id: users.Id,
@@ -62,4 +63,3 @@ final case class User(
 
 object User:
   val entityType: String = "User"
-  given Encoder[User] = deriveWithDiscriminator

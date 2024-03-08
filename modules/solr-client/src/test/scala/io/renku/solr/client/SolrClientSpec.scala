@@ -27,6 +27,8 @@ import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.CatsEffectSuite
 
+import java.util.UUID
+
 class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
 
   test("use schema for inserting and querying"):
@@ -37,18 +39,21 @@ class SolrClientSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
       SchemaCommand.Add(Field(FieldName("roomDescription"), TypeName("roomText"))),
       SchemaCommand.Add(Field(FieldName("roomSeats"), TypeName("roomInt")))
     )
+
     withSolrClient().use { client =>
+      val room = Room(UUID.randomUUID().toString, "meeting room", "room for meetings", 56)
       for {
         _ <- client.modifySchema(cmds)
-        _ <- client
-          .insert[Room](Seq(Room("meeting room", "room for meetings", 56)))
-        r <- client.query[Room](QueryData(QueryString("_type:Room")))
-        _ <- IO.println(r)
+        _ <- client.insert[Room](Seq(room))
+        qr <- client.query[Room](QueryData(QueryString("_type:Room")))
+        _ = qr.responseBody.docs contains room
+        ir <- client.findById[Room](room.id)
+        _ = ir.responseBody.docs contains room
       } yield ()
     }
 
 object SolrClientSpec:
-  case class Room(roomName: String, roomDescription: String, roomSeats: Int)
+  case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)
   object Room:
     given Decoder[Room] = deriveDecoder
     given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]

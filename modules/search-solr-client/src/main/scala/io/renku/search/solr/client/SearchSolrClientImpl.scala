@@ -26,6 +26,8 @@ import io.renku.search.solr.documents.Entity
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
 
+import scala.reflect.ClassTag
+
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
 
@@ -50,3 +52,12 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
             .withScore
         )
     } yield res
+
+  override def findById[D <: Entity](id: String)(using ct: ClassTag[D]): F[Option[D]] =
+    solrClient.findById[Entity](id).map(_.responseBody.docs.headOption).flatMap {
+      case Some(e: D) => Some(e).pure[F]
+      case Some(e) =>
+        new Exception(s"Entity '$id' is of type ${e.getClass} not ${ct.runtimeClass}")
+          .raiseError[F, Option[D]]
+      case None => Option.empty[D].pure[F]
+    }

@@ -18,6 +18,7 @@
 
 package io.renku.solr.client
 
+import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
 import io.bullet.borer.{Decoder, Encoder}
@@ -61,18 +62,30 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
       .void
 
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse] =
-    val req = Method.POST(docs, makeUpdateUrl).withBasicAuth(credentials)
+    val req = Method
+      .POST(docs, makeUpdateUrl)
+      .withBasicAuth(credentials)
     underlying
       .expectOr[InsertResponse](req)(ResponseLogging.Error(logger, req))
       .flatTap(r => logger.trace(s"Solr inserted response: $r"))
 
   private def makeUpdateUrl = {
-    val base = solrUrl / "update"
+    val base =
+      (solrUrl / "update").withQueryParam("overwrite", "true").withQueryParam("wt", "json")
     config.commitWithin match
       case Some(d) if d == Duration.Zero => base.withQueryParam("commit", "true")
       case Some(d) => base.withQueryParam("commitWithin", d.toMillis)
       case None    => base
   }
+
+  override def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]] =
+    val req = Method
+      .GET(makeGetByIdUrl(NonEmptyList.of(id, other: _*)))
+      .withBasicAuth(credentials)
+    underlying.fetchAs[GetByIdResponse[A]](req)
+
+  private def makeGetByIdUrl(ids: NonEmptyList[String]) =
+    (solrUrl / "get").withQueryParam("ids", ids.toList)
 
   private lazy val credentials: Option[BasicCredentials] =
     config.maybeUser.map(u => BasicCredentials(u.username, u.password))

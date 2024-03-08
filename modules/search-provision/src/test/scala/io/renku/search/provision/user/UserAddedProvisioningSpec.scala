@@ -43,7 +43,10 @@ import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
 
-class UserAddedProvisioningSpec extends CatsEffectSuite with QueueSpec with SearchSolrSpec:
+class UserAddedProvisioningSpec
+    extends CatsEffectSuite
+    with QueueSpec
+    with SearchSolrSpec:
 
   private val avro = AvroIO(UserAdded.SCHEMA$)
 

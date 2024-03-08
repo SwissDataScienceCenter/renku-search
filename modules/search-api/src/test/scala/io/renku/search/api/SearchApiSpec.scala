@@ -21,6 +21,7 @@ package io.renku.search.api
 import cats.effect.IO
 import cats.syntax.all.*
 import io.github.arainko.ducktape.*
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.api.data.*
 import io.renku.search.model.users
 import io.renku.search.query.Query

@@ -31,6 +31,7 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.{DataContentType, QueueSpec}
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{EntityType, users}
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment

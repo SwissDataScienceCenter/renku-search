@@ -28,7 +28,11 @@ object LoggingSetup:
     println(s">> Setting up logging with verbosity=$verbosity")
     val root = scribe.Logger.root.clearHandlers().clearModifiers()
     verbosity match
-      case n if n <= 0 =>
+      case n if n < 0 =>
+        ()
+
+      case 0 =>
+        root.withMinimumLevel(Level.Error).replace()
         ()
 
       case 1 =>

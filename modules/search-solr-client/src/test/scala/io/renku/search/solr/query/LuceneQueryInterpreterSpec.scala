@@ -32,15 +32,23 @@ import munit.CatsEffectSuite
 import java.time.Instant
 import java.time.ZoneId
 import io.renku.search.query.QueryGenerators
-import munit.ScalaCheckSuite
-import org.scalacheck.Prop
+import munit.ScalaCheckEffectSuite
+import org.scalacheck.effect.PropF
+import io.renku.search.LoggingConfigure
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields
+import io.renku.search.model.EntityType
+import org.scalacheck.Test.Parameters
 
 class LuceneQueryInterpreterSpec
     extends CatsEffectSuite
-    with ScalaCheckSuite
+    with LoggingConfigure
+    with ScalaCheckEffectSuite
     with SolrSpec:
 
   override protected lazy val coreName: String = server.testCoreName2
+
+  override protected def scalaCheckTestParameters: Parameters =
+    super.scalaCheckTestParameters.withMinSuccessfulTests(20)
 
   given Decoder[Unit] = new Decoder {
     def read(r: Reader) =
@@ -55,7 +63,7 @@ class LuceneQueryInterpreterSpec
 
     val ctx = Context.fixed[Id](Instant.EPOCH, ZoneId.of("UTC"))
     val q = LuceneQueryInterpreter[Id].run(ctx, userQuery)
-    QueryData(QueryString(q.query.value, 0, 10)).withSort(q.sort)
+    QueryData(QueryString(q.query.value, 10, 0)).withSort(q.sort)
 
   def withSolr =
     withSolrClient().evalTap(c => SchemaMigrator[IO](c).migrate(Migrations.all).void)
@@ -67,17 +75,32 @@ class LuceneQueryInterpreterSpec
         .traverse_(client.query[Unit])
     }
 
-  property("generade valid solr queries"):
-    Prop.forAll(QueryGenerators.query) { q =>
+  test("generade valid solr queries"):
+    PropF.forAllF(QueryGenerators.query) { q =>
       withSolr
         .use { client =>
-          client.query(query(q))
+          client.query(query(q)).void
         }
-        .unsafeRunAndForget()
     }
 
-  test("generated queries are syntactically correct"):
-    val q = QueryGenerators.query.sample.get
-    withSolr.use { client =>
-      client.query[Unit](query(q))
+  test("sort only"):
+    val doc = Map(
+      Fields.id.name -> "one",
+      Fields.name.name -> "John",
+      Fields.entityType.name -> EntityType.User.name
+    )
+    PropF.forAllF(QueryGenerators.sortTerm) { order =>
+      val q = Query(Query.Segment.Sort(order))
+      withSolr.use { client =>
+        for {
+          _ <- client.insert(Seq(doc))
+          r <- client.query[Map[String, String]](
+            query(q).withFields(Fields.id, Fields.name, Fields.entityType).withLimit(2)
+          )
+          _ = assert(
+            r.responseBody.docs.size >= 1,
+            s"Expected at least one result, but got: ${r.responseBody.docs}"
+          )
+        } yield ()
+      }
     }

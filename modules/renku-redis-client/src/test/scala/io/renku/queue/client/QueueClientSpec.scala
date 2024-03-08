@@ -28,6 +28,7 @@ import io.renku.queue.client.DataContentType.{Binary, Json}
 import io.renku.queue.client.Generators.*
 import io.renku.redis.client.{MessageId, RedisClientGenerators}
 import io.renku.redis.client.RedisClientGenerators.*
+import io.renku.search.GeneratorSyntax.*
 import munit.CatsEffectSuite
 
 class QueueClientSpec extends CatsEffectSuite with QueueSpec:

@@ -19,6 +19,7 @@
 package io.renku.search.query
 
 import io.bullet.borer.{Decoder, Encoder}
+import cats.kernel.Order
 
 enum SortableField:
   case Name
@@ -30,6 +31,7 @@ enum SortableField:
 object SortableField:
   given Encoder[SortableField] = Encoder.forString.contramap(_.name)
   given Decoder[SortableField] = Decoder.forString.mapEither(fromString)
+  given Order[SortableField] = Order.by(_.name)
 
   private[this] val allNames: String = SortableField.values.map(_.name).mkString(", ")
 

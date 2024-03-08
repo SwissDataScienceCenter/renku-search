@@ -25,8 +25,6 @@ import io.renku.search.model.CommonGenerators
 
 object SolrClientGenerator:
 
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
-
   private val fieldNameString: Gen[String] =
     Gen.choose(4, 12).flatMap(n => Gen.listOfN(n, Gen.alphaLowerChar)).map(_.mkString)
 

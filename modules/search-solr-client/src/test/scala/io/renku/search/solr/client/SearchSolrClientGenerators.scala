@@ -22,6 +22,7 @@ import cats.syntax.all.*
 import io.renku.search.model.*
 import io.renku.search.model.ModelGenerators.*
 import io.renku.search.solr.documents.*
+import io.renku.search.GeneratorSyntax.*
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
 
@@ -48,11 +49,6 @@ object SearchSolrClientGenerators:
   def userDocumentGen: Gen[User] =
     (userIdGen, Gen.option(userFirstNameGen), Gen.option(userLastNameGen))
       .flatMapN { case (id, f, l) =>
-        val e = (f, l).flatMapN(userEmailGen(_, _).generateOption)
+        val e = (f, l).flatMapN(userEmailGen(_, _).generateSome)
         User(id, f, l, e)
       }
-
-  extension [V](gen: Gen[V])
-    def generateOne: V = gen.sample.getOrElse(generateOne)
-    def generateOption: Option[V] = Gen.option(gen).sample.getOrElse(generateOption)
-    def generateAs[D](f: V => D): D = f(generateOne)

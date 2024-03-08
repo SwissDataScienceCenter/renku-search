@@ -119,8 +119,8 @@ class UserUpdatedProvisionerSpec
       UserUpdated(
         ua.id,
         stringGen(max = 5).generateOne.some,
-        None,
-        None
+        ua.lastName,
+        ua.email
       )
   )
   private lazy val lastNameUpdate = TestCase(
@@ -128,9 +128,9 @@ class UserUpdatedProvisionerSpec
     ua =>
       UserUpdated(
         ua.id,
-        None,
+        ua.firstName,
         stringGen(max = 5).generateOne.some,
-        None
+        ua.email
       )
   )
   private lazy val emailUpdate = TestCase(
@@ -138,14 +138,14 @@ class UserUpdatedProvisionerSpec
     ua =>
       UserUpdated(
         ua.id,
-        None,
-        None,
+        ua.firstName,
+        ua.lastName,
         stringGen(max = 5).map(v => s"v@host.com").generateOne.some
       )
   )
   private lazy val noUpdate = TestCase(
     "no update",
-    ua => UserUpdated(ua.id, None, None, None)
+    ua => UserUpdated(ua.id, ua.firstName, ua.lastName, ua.email)
   )
 
   override def munitFixtures: Seq[Fixture[_]] =

@@ -24,6 +24,7 @@ import cats.effect.{Async, Resource}
 import fs2.io.net.Network
 import io.bullet.borer.Codec.*
 import io.bullet.borer.{Codec, Decoder, Encoder}
+import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.UserUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
@@ -65,11 +66,6 @@ object UserUpdatedProvisioning:
   private lazy val idExtractor: UserUpdated => String = _.id
 
   private lazy val docUpdate: ((UserUpdated, documents.User)) => documents.User = {
-    case (update, origDoc) =>
-      val doc1 = update.firstName
-        .fold(origDoc)(v => origDoc.copy(firstName = Some(users.FirstName(v))))
-      val doc2 = update.lastName
-        .fold(doc1)(v => origDoc.copy(lastName = Some(users.LastName(v))))
-      update.email
-        .fold(doc2)(v => origDoc.copy(email = Some(users.Email(v))))
+    case (update, _) =>
+      update.into[documents.User].transform(Field.default(_.score))
   }

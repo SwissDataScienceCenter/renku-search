@@ -16,28 +16,23 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.query
+package io.renku.search
 
-import cats.Monoid
-import cats.syntax.all.*
-import io.renku.search.query.Order
-import io.renku.solr.client.SolrSort
+import io.renku.logging.LoggingSetup
 
-final case class SolrQuery(
-    query: SolrToken,
-    sort: SolrSort
-):
-  def withQuery(q: SolrToken): SolrQuery = copy(query = q)
-  def ++(next: SolrQuery): SolrQuery =
-    SolrQuery(query && next.query, sort ++ next.sort)
+trait LoggingConfigure extends munit.FunSuite:
 
-object SolrQuery:
-  val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)
+  def defaultVerbosity: Int = 0
 
-  def apply(e: SolrToken): SolrQuery =
-    SolrQuery(e, SolrSort.empty)
+  override def beforeAll(): Unit =
+    setLoggingVerbosity(defaultVerbosity)
+    super.beforeAll()
 
-  def sort(order: Order): SolrQuery =
-    SolrQuery(SolrToken.empty, SolrSortCreate(order.fields))
+  def setLoggingVerbosity(level: Int): Unit =
+    LoggingSetup.doConfigure(level)
 
-  given Monoid[SolrQuery] = Monoid.instance(empty, (a, b) => a ++ b)
+  def withVerbosity[T](level: Int)(body: => T): T =
+    val verbosity = defaultVerbosity
+    LoggingSetup.doConfigure(level)
+    try body
+    finally LoggingSetup.doConfigure(verbosity)

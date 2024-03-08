@@ -22,6 +22,7 @@ import cats.effect.IO
 import cats.syntax.all.*
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.{Decoder, Encoder}
+import io.renku.search.LoggingConfigure
 import io.renku.solr.client.SolrClientSpec.Room
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
@@ -35,6 +36,7 @@ import io.bullet.borer.derivation.key
 
 class SolrClientSpec
     extends CatsEffectSuite
+    with LoggingConfigure
     with ScalaCheckEffectSuite
     with SolrSpec
     with SolrTruncate:

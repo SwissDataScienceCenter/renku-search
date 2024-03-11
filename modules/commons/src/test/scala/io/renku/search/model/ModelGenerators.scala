@@ -28,9 +28,9 @@ import java.time.temporal.ChronoUnit
 object ModelGenerators:
 
   val projectNameGen: Gen[projects.Name] =
-    alphaStringGen(max=10).map(projects.Name.apply)
+    alphaStringGen(max = 10).map(projects.Name.apply)
   val projectDescGen: Gen[projects.Description] =
-    alphaStringGen(max=30).map(projects.Description.apply)
+    alphaStringGen(max = 30).map(projects.Description.apply)
 
   val projectVisibilityGen: Gen[projects.Visibility] =
     Gen.oneOf(projects.Visibility.values.toList)

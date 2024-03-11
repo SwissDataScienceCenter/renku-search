@@ -49,34 +49,44 @@ object Microservice extends IOApp:
         cfg.queuesConfig.projectCreated,
         ProjectCreatedProvisioning
           .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
+          .map(_.provisioningProcess.start)
       ),
       (
         "ProjectUpdated",
         cfg.queuesConfig.projectUpdated,
         ProjectUpdatedProvisioning
           .make[IO](cfg.queuesConfig.projectUpdated, cfg.redisConfig, cfg.solrConfig)
+          .map(_.provisioningProcess.start)
+      ),
+      (
+        "ProjectRemoved",
+        cfg.queuesConfig.projectRemoved,
+        ProjectRemovedProvisioning
+          .make[IO](cfg.queuesConfig.projectRemoved, cfg.redisConfig, cfg.solrConfig)
+          .map(_.removalProcess.start)
       ),
       (
         "UserAdded",
         cfg.queuesConfig.userAdded,
         UserAddedProvisioning
           .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
+          .map(_.provisioningProcess.start)
       ),
       (
         "UserUpdated",
         cfg.queuesConfig.userUpdated,
         UserUpdatedProvisioning
           .make[IO](cfg.queuesConfig.userUpdated, cfg.redisConfig, cfg.solrConfig)
+          .map(_.provisioningProcess.start)
       )
     ).parTraverse_(startProcess(cfg))
       .flatMap(_ => IO.never)
 
   private def startProcess(
       cfg: SearchProvisionConfig
-  ): ((String, QueueName, Resource[IO, ProvisioningProcess[IO]])) => IO[Unit] = {
+  ): ((String, QueueName, Resource[IO, IO[FiberIO[Unit]]])) => IO[Unit] = {
     case t @ (name, queue, resource) =>
       resource
-        .evalMap(_.provisioningProcess.start)
         .use(_ =>
           Scribe[IO].info(s"'$name' provisioning process started on '$queue' queue")
         )

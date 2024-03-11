@@ -16,27 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision
+package io.renku.solr.client
 
-import cats.syntax.all.*
-import ciris.{ConfigValue, Effect}
-import io.renku.redis.client.QueueName
-import io.renku.search.config.ConfigValues
+import io.bullet.borer.{Encoder, Writer}
+import cats.data.NonEmptyList
 
-final case class QueuesConfig(
-    projectCreated: QueueName,
-    projectUpdated: QueueName,
-    projectRemoved: QueueName,
-    userAdded: QueueName,
-    userUpdated: QueueName
-)
+final private[client] case class DeleteIdRequest(ids: NonEmptyList[String])
 
-object QueuesConfig:
-  val config: ConfigValue[Effect, QueuesConfig] =
-    (
-      ConfigValues.eventQueue("projectCreated"),
-      ConfigValues.eventQueue("projectUpdated"),
-      ConfigValues.eventQueue("projectRemoved"),
-      ConfigValues.eventQueue("userAdded"),
-      ConfigValues.eventQueue("userUpdated")
-    ).mapN(QueuesConfig.apply)
+private[client] object DeleteIdRequest:
+  given Encoder[DeleteIdRequest] =
+    new Encoder[DeleteIdRequest]:
+      override def write(w: Writer, value: DeleteIdRequest) =
+        w.writeMap(Map("delete" -> value.ids.toList))(
+          Encoder[String],
+          Encoder[List[String]]
+        )

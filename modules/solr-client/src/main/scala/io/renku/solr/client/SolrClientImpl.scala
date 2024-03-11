@@ -61,6 +61,15 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
       .flatTap(r => logger.trace(s"Solr delete response: $r"))
       .void
 
+  def deleteIds(ids: NonEmptyList[String]): F[Unit] =
+    val req = Method
+      .POST(DeleteIdRequest(ids), makeUpdateUrl)
+      .withBasicAuth(credentials)
+    underlying
+      .expectOr[InsertResponse](req)(ResponseLogging.Error(logger, req))
+      .flatTap(r => logger.trace(s"Solr delete response: $r"))
+      .void
+
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse] =
     val req = Method
       .POST(docs, makeUpdateUrl)

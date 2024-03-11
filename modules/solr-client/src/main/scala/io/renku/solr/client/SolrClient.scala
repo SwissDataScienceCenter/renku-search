@@ -25,6 +25,7 @@ import io.renku.search.http.{ClientBuilder, ResponseLogging, RetryConfig}
 import io.renku.solr.client.schema.SchemaCommand
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.client.EmberClientBuilder.default
+import cats.data.NonEmptyList
 
 trait SolrClient[F[_]]:
   def modifySchema(
@@ -37,6 +38,7 @@ trait SolrClient[F[_]]:
   def query[A: Decoder](q: QueryData): F[QueryResponse[A]]
 
   def delete(q: QueryString): F[Unit]
+  def deleteIds(ids: NonEmptyList[String]): F[Unit]
 
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse]
 

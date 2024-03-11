@@ -25,6 +25,11 @@ import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.model.{projects, users}
 import io.renku.solr.client.EncoderSupport.*
 
+opaque type DocumentId = String
+object DocumentId:
+  def apply(v: String): DocumentId = v
+  extension (self: DocumentId) def name: String = self
+
 sealed trait Entity:
   val score: Option[Double]
   def widen: Entity = this

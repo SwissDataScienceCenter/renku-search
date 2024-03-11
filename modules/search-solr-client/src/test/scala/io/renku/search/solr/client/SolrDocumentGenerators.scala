@@ -19,17 +19,23 @@
 package io.renku.search.solr.client
 
 import cats.syntax.all.*
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.*
 import io.renku.search.model.ModelGenerators.*
 import io.renku.search.solr.documents.*
-import io.renku.search.GeneratorSyntax.*
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
 
-object SearchSolrClientGenerators:
+object SolrDocumentGenerators:
 
   private def projectIdGen: Gen[projects.Id] =
     Gen.uuid.map(uuid => projects.Id(uuid.toString))
+
+  val projectDocumentGen: Gen[Project] =
+    projectDocumentGen(
+      s"proj-${projectNameGen.generateOne}",
+      s"proj desc ${projectDescGen.generateOne}"
+    )
 
   def projectDocumentGen(name: String, desc: String): Gen[Project] =
     (projectIdGen, userIdGen, projectVisibilityGen, projectCreationDateGen)

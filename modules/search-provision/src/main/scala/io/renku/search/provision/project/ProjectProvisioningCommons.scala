@@ -16,16 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.schema
+package io.renku.search.provision.project
 
-import io.renku.solr.client.migration.SchemaMigration
+import io.bullet.borer.{Codec, Decoder, Encoder}
+import io.renku.search.solr.documents
 
-object Migrations {
+private object ProjectProvisioningCommons:
 
-  val all: Seq[SchemaMigration] = Seq(
-    SchemaMigration(version = 1L, EntityDocumentSchema.initialEntityDocumentAdd),
-    SchemaMigration(version = 2L, EntityDocumentSchema.copyContentField),
-    SchemaMigration(version = 3L, EntityDocumentSchema.userFields),
-    SchemaMigration(version = 4L, EntityDocumentSchema.projectMembersFields)
+  given Codec[documents.Project] = Codec[documents.Project](
+    Encoder[documents.Entity].contramap(_.asInstanceOf[documents.Entity]),
+    Decoder[documents.Entity].mapEither {
+      case u: documents.Project => Right(u)
+      case u                    => Left(s"${u.getClass} is not a Project document")
+    }
   )
-}

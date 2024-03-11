@@ -18,7 +18,7 @@
 
 package io.renku.events
 
-import io.renku.events.v1.{ProjectCreated, UserAdded, Visibility}
+import io.renku.events.v1.*
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
@@ -27,7 +27,10 @@ import java.time.temporal.ChronoUnit
 
 object EventsGenerators:
 
-  val projectVisibilityGen: Gen[Visibility] = Gen.oneOf(Visibility.values().toList)
+  val projectVisibilityGen: Gen[Visibility] =
+    Gen.oneOf(Visibility.values().toList)
+  val projectMemberRoleGen: Gen[ProjectMemberRole] =
+    Gen.oneOf(ProjectMemberRole.values().toList)
 
   def projectCreatedGen(prefix: String): Gen[ProjectCreated] =
     for
@@ -48,6 +51,26 @@ object EventsGenerators:
       creator,
       Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )
+
+  def projectAuthorizationAddedGen(
+      projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
+      roleGen: Gen[ProjectMemberRole] = projectMemberRoleGen
+  ): Gen[ProjectAuthorizationAdded] =
+    for
+      projectId <- projectIdGen
+      userId <- Gen.uuid.map(_.toString)
+      role <- roleGen
+    yield ProjectAuthorizationAdded(projectId, userId, role)
+
+  def projectAuthorizationUpdatedGen(
+      projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
+      roleGen: Gen[ProjectMemberRole] = projectMemberRoleGen
+  ): Gen[ProjectAuthorizationUpdated] =
+    for
+      projectId <- projectIdGen
+      userId <- Gen.uuid.map(_.toString)
+      role <- roleGen
+    yield ProjectAuthorizationUpdated(projectId, userId, role)
 
   def userAddedGen(prefix: String): Gen[UserAdded] =
     for

@@ -20,6 +20,8 @@ package io.renku.search.solr.documents
 
 import io.bullet.borer.derivation.MapBasedCodecs.*
 import io.bullet.borer.{AdtEncodingStrategy, Codec, Decoder, Encoder}
+import io.renku.search.model.projects.MemberRole
+import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.model.{projects, users}
 import io.renku.solr.client.EncoderSupport.*
 
@@ -47,8 +49,16 @@ final case class Project(
     description: Option[projects.Description] = None,
     createdBy: users.Id,
     creationDate: projects.CreationDate,
+    owners: List[users.Id] = List.empty,
+    members: List[users.Id] = List.empty,
     score: Option[Double] = None
-) extends Entity
+) extends Entity:
+
+  def addMember(userId: users.Id, role: MemberRole): Project =
+    role match {
+      case Owner  => copy(owners = (userId :: owners).distinct)
+      case Member => copy(members = (userId :: members).distinct)
+    }
 
 object Project:
   val entityType: String = "Project"

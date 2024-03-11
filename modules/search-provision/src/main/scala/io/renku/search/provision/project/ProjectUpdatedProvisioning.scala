@@ -22,13 +22,12 @@ package project
 import cats.Show
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-import io.bullet.borer.Codec.*
-import io.bullet.borer.{Codec, Decoder, Encoder}
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
 import io.renku.search.provision.TypeTransformers.given
+import io.renku.search.provision.project.ProjectProvisioningCommons.*
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
@@ -50,14 +49,6 @@ object ProjectUpdatedProvisioning:
       solrConfig
     )
 
-  private given Codec[documents.Project] = Codec[documents.Project](
-    Encoder[documents.Entity].contramap(_.asInstanceOf[documents.Entity]),
-    Decoder[documents.Entity].mapEither {
-      case u: documents.Project => Right(u)
-      case u                    => Left(s"${u.getClass} is not a Project document")
-    }
-  )
-
   private given Show[ProjectUpdated] =
     Show.show[ProjectUpdated](v => s"slug '${v.slug}'")
 
@@ -71,6 +62,8 @@ object ProjectUpdatedProvisioning:
         .transform(
           Field.const(_.createdBy, orig.createdBy),
           Field.const(_.creationDate, orig.creationDate),
+          Field.const(_.owners, orig.owners),
+          Field.const(_.members, orig.members),
           Field.default(_.score)
         )
   }

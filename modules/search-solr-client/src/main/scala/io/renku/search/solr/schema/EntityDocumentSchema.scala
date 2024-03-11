@@ -31,8 +31,10 @@ object EntityDocumentSchema:
     val firstName: FieldName = FieldName("firstName")
     val id: FieldName = FieldName("id")
     val lastName: FieldName = FieldName("lastName")
+    val members: FieldName = FieldName("members")
     val name: FieldName = FieldName("name")
     val nestPath: FieldName = FieldName("_nest_path_")
+    val owners: FieldName = FieldName("owners")
     val repositories: FieldName = FieldName("repositories")
     val slug: FieldName = FieldName("slug")
     val visibility: FieldName = FieldName("visibility")
@@ -83,4 +85,9 @@ object EntityDocumentSchema:
     SchemaCommand.Add(Field(Fields.email, FieldTypes.string)),
     SchemaCommand.Add(CopyFieldRule(Fields.firstName, Fields.contentAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.lastName, Fields.contentAll))
+  )
+
+  val projectMembersFields: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(Field(Fields.owners, FieldTypes.id).makeMultiValued),
+    SchemaCommand.Add(Field(Fields.members, FieldTypes.id).makeMultiValued)
   )

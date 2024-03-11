@@ -57,6 +57,26 @@ object Microservice extends IOApp:
           .make[IO](cfg.queuesConfig.projectUpdated, cfg.redisConfig, cfg.solrConfig)
       ),
       (
+        "ProjectAuthorizationAdded",
+        cfg.queuesConfig.projectCreated,
+        AuthorizationAddedProvisioning
+          .make[IO](
+            cfg.queuesConfig.projectAuthorizationAdded,
+            cfg.redisConfig,
+            cfg.solrConfig
+          )
+      ),
+      (
+        "ProjectAuthorizationUpdated",
+        cfg.queuesConfig.projectCreated,
+        AuthorizationUpdatedProvisioning
+          .make[IO](
+            cfg.queuesConfig.projectAuthorizationUpdated,
+            cfg.redisConfig,
+            cfg.solrConfig
+          )
+      ),
+      (
         "UserAdded",
         cfg.queuesConfig.userAdded,
         UserAddedProvisioning

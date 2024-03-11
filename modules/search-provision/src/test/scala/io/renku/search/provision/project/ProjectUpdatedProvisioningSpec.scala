@@ -32,11 +32,8 @@ import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, users}
+import io.renku.search.model.users
 import io.renku.search.provision.TypeTransformers.given
-import io.renku.search.query.Query
-import io.renku.search.query.Query.Segment
-import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
@@ -89,8 +86,6 @@ class ProjectUpdatedProvisioningSpec
           yield ()
         }
     }
-
-  private lazy val queryProjects = Query(typeIs(EntityType.Project))
 
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)

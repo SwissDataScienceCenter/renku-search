@@ -58,7 +58,7 @@ object Microservice extends IOApp:
       ),
       (
         "ProjectAuthorizationAdded",
-        cfg.queuesConfig.projectCreated,
+        cfg.queuesConfig.projectAuthorizationAdded,
         AuthorizationAddedProvisioning
           .make[IO](
             cfg.queuesConfig.projectAuthorizationAdded,
@@ -68,10 +68,20 @@ object Microservice extends IOApp:
       ),
       (
         "ProjectAuthorizationUpdated",
-        cfg.queuesConfig.projectCreated,
+        cfg.queuesConfig.projectAuthorizationUpdated,
         AuthorizationUpdatedProvisioning
           .make[IO](
             cfg.queuesConfig.projectAuthorizationUpdated,
+            cfg.redisConfig,
+            cfg.solrConfig
+          )
+      ),
+      (
+        "ProjectAuthorizationRemoved",
+        cfg.queuesConfig.projectAuthorizationRemoved,
+        AuthorizationRemovedProvisioning
+          .make[IO](
+            cfg.queuesConfig.projectAuthorizationRemoved,
             cfg.redisConfig,
             cfg.solrConfig
           )

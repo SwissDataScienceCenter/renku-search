@@ -49,3 +49,17 @@ class ProjectSpec extends ScalaCheckSuite:
             assertEquals(updated.members, userId :: project.members)
         }
     }
+
+  test("removeMember should remove the given userId from the correct bucket in the doc"):
+    Prop.forAll(projectDocumentGen, userIdGen, projectMemberRoleGen) {
+      case (project, userId, role) =>
+        val updated = project.addMember(userId, role)
+        assertEquals(updated.removeMember(userId), project)
+    }
+
+  test("removeMember should do nothing if there's no member/owner with the given userId"):
+    Prop.forAll(projectDocumentGen, userIdGen, userIdGen, projectMemberRoleGen) {
+      case (project, existingUserId, toDeleteUserId, role) =>
+        val updated = project.addMember(existingUserId, role)
+        assertEquals(updated.removeMember(toDeleteUserId), updated)
+    }

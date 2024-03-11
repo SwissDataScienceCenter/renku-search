@@ -60,6 +60,9 @@ final case class Project(
       case Member => copy(members = (userId :: members).distinct)
     }
 
+  def removeMember(userId: users.Id): Project =
+    copy(owners = owners.filterNot(_ == userId), members = members.filterNot(_ == userId))
+
 object Project:
   val entityType: String = "Project"
 

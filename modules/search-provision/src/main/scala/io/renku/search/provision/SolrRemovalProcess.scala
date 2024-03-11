@@ -20,12 +20,12 @@ package io.renku.search.provision
 
 import cats.effect.{Async, Resource, Temporal}
 import cats.syntax.all.*
-import cats.{MonadThrow, Show}
+import cats.Show
 import fs2.Chunk
 import fs2.io.net.Network
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.{AvroDecoder, AvroReader}
-import io.renku.queue.client.{DataContentType, QueueClient, QueueMessage}
+import io.renku.queue.client.{QueueClient, QueueMessage}
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.solr.client.SolrConfig
@@ -57,7 +57,8 @@ object SolrRemovalProcess:
         inSchema,
         clientId,
         QueueClient.make[F](redisConfig),
-        _
+        _,
+        QueueMessageDecoder[F, In](inSchema)
       )
     }
 
@@ -66,7 +67,8 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
     inSchema: Schema,
     clientId: ClientId,
     queueClientResource: Resource[F, QueueClient[F]],
-    solrClient: SearchSolrClient[F]
+    solrClient: SearchSolrClient[F],
+    messageDecoder: QueueMessageDecoder[F, In]
 )(using Show[In], Transformer[In, DocumentId], AvroDecoder[In])
     extends SolrRemovalProcess[F]:
   override def removalProcess: F[Unit] =
@@ -104,19 +106,10 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
   private def decodeMessage(queueClient: QueueClient[F])(
       message: QueueMessage
   ): F[(QueueMessage, Seq[In])] =
-    MonadThrow[F]
-      .fromEither(DataContentType.from(message.header.dataContentType))
-      .flatMap { ct =>
-        MonadThrow[F]
-          .catchNonFatal {
-            ct match {
-              case DataContentType.Binary => avro.read[In](message.payload)
-              case DataContentType.Json   => avro.readJson[In](message.payload)
-            }
-          }
-          .map(message -> _)
-          .onError(markProcessedOnFailure(message, queueClient))
-      }
+    messageDecoder
+      .decodeMessage(message)
+      .tupleLeft(message)
+      .onError(markProcessedOnFailure(message, queueClient))
 
   private def deleteFromSolr(
       queueClient: QueueClient[F]

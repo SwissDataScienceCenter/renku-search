@@ -65,7 +65,6 @@ class ProjectRemovedProvisioningSpec
           Stream
             .awakeEvery[IO](500 millis)
             .evalMap(_ => solrClient.findById[Project](created.id))
-            // .flatMap(qr => Stream.emits(qr.responseBody.docs))
             .evalMap(e => solrDoc.update(_ => e))
             .compile
             .drain
@@ -81,15 +80,6 @@ class ProjectRemovedProvisioningSpec
           messageHeaderGen(ProjectRemoved.SCHEMA$).generateOne,
           removed
         )
-
-        docsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.findById[Project](created.id))
-            .evalMap(e => solrDoc.update(_ => e))
-            .compile
-            .drain
-            .start
 
         _ <- solrDoc.waitUntil(
           _.isEmpty

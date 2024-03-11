@@ -20,19 +20,22 @@ package io.renku.events
 
 import io.renku.events.v1.{ProjectCreated, UserAdded, Visibility}
 import org.scalacheck.Gen
-import org.scalacheck.Gen.alphaNumChar
+import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 object EventsGenerators:
 
+  val projectVisibilityGen: Gen[Visibility] = Gen.oneOf(Visibility.values().toList)
+
   def projectCreatedGen(prefix: String): Gen[ProjectCreated] =
     for
       id <- Gen.uuid.map(_.toString)
       name <- stringGen(max = 5).map(v => s"$prefix-$v")
-      repositories <- Gen.listOfN(Gen.choose(1, 3).generateOne, stringGen(10))
-      visibility <- Gen.oneOf(Visibility.values().toList)
+      repositoriesCount <- Gen.choose(1, 3)
+      repositories <- Gen.listOfN(repositoriesCount, stringGen(10))
+      visibility <- projectVisibilityGen
       maybeDesc <- Gen.option(stringGen(20))
       creator <- Gen.uuid.map(_.toString)
     yield ProjectCreated(
@@ -49,8 +52,8 @@ object EventsGenerators:
   def userAddedGen(prefix: String): Gen[UserAdded] =
     for
       id <- Gen.uuid.map(_.toString)
-      firstName <- Gen.option(stringGen(max = 5).map(v => s"$prefix-$v"))
-      lastName <- stringGen(max = 5).map(v => s"$prefix-$v")
+      firstName <- Gen.option(alphaStringGen(max = 5).map(v => s"$prefix-$v"))
+      lastName <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
       email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
     yield UserAdded(
       id,
@@ -64,4 +67,7 @@ object EventsGenerators:
       .chooseNum(3, max)
       .flatMap(Gen.stringOfN(_, alphaNumChar))
 
-  extension [V](gen: Gen[V]) def generateOne: V = gen.sample.getOrElse(generateOne)
+  def alphaStringGen(max: Int): Gen[String] =
+    Gen
+      .chooseNum(3, max)
+      .flatMap(Gen.stringOfN(_, alphaChar))

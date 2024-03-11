@@ -18,58 +18,62 @@
 
 package io.renku.search.provision
 
+import cats.Show
 import cats.effect.{Async, Resource, Temporal}
 import cats.syntax.all.*
-import cats.{MonadThrow, Show}
-import fs2.Chunk
 import fs2.io.net.Network
-import io.bullet.borer.Encoder
-import io.github.arainko.ducktape.*
-import io.renku.avro.codec.{AvroDecoder, AvroReader}
-import io.renku.queue.client.{DataContentType, QueueClient, QueueMessage}
+import io.bullet.borer.Codec
+import io.renku.avro.codec.AvroDecoder
+import io.renku.queue.client.{QueueClient, QueueMessage}
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
 import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.documents.Entity
 import io.renku.solr.client.SolrConfig
 import org.apache.avro.Schema
 import scribe.Scribe
 
 import scala.concurrent.duration.*
+import scala.reflect.ClassTag
 
-trait SolrProvisioningProcess[F[_]]:
-  def provisioningProcess: F[Unit]
+trait UpdateProvisioningProcess[F[_]] extends ProvisioningProcess[F]
 
-object SolrProvisioningProcess:
-  private val clientId: ClientId = ClientId("search-provisioner")
+object UpdateProvisioningProcess:
 
-  def make[F[_]: Async: Network: Scribe, In, Out](
+  def make[F[_]: Async: Network: Scribe, In, Out <: Entity](
       queueName: QueueName,
       inSchema: Schema,
+      idExtractor: In => String,
+      docUpdate: ((In, Out)) => Out,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
   )(using
       Show[In],
-      Transformer[In, Out],
       AvroDecoder[In],
-      Encoder[Out]
-  ): Resource[F, SolrProvisioningProcess[F]] =
+      Codec[Entity],
+      ClassTag[Out]
+  ): Resource[F, UpdateProvisioningProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
-      new SolrProvisioningProcessImpl[F, In, Out](
+      new UpdateProvisioningProcessImpl[F, In, Out](
         queueName,
-        inSchema,
-        clientId,
+        ProvisioningProcess.clientId,
+        idExtractor,
+        docUpdate,
         QueueClient.make[F](redisConfig),
-        _
+        _,
+        QueueMessageDecoder[F, In](inSchema)
       )
     }
 
-private class SolrProvisioningProcessImpl[F[_]: Async: Scribe, In, Out](
+private class UpdateProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Entity](
     queueName: QueueName,
-    inSchema: Schema,
     clientId: ClientId,
+    idExtractor: In => String,
+    docUpdate: ((In, Out)) => Out,
     queueClientResource: Resource[F, QueueClient[F]],
-    solrClient: SearchSolrClient[F]
-)(using Show[In], Transformer[In, Out], AvroDecoder[In], Encoder[Out])
-    extends SolrProvisioningProcess[F]:
+    solrClient: SearchSolrClient[F],
+    messageDecoder: QueueMessageDecoder[F, In]
+)(using Show[In], Codec[Entity], ClassTag[Out])
+    extends UpdateProvisioningProcess[F]:
 
   override def provisioningProcess: F[Unit] =
     queueClientResource
@@ -79,7 +83,7 @@ private class SolrProvisioningProcessImpl[F[_]: Async: Scribe, In, Out](
             .acquireEventsStream(queueName, chunkSize = 1, maybeLastProcessed)
             .evalMap(decodeMessage(queueClient))
             .evalTap(logInfo)
-            .groupWithin(chunkSize = 10, timeout = 500 millis)
+            .evalMap(fetchDocuments)
             .evalMap(pushToSolr(queueClient))
             .compile
             .drain
@@ -102,48 +106,52 @@ private class SolrProvisioningProcessImpl[F[_]: Async: Scribe, In, Out](
     )
   }
 
-  private val avro = AvroReader(inSchema)
-
   private def decodeMessage(queueClient: QueueClient[F])(
       message: QueueMessage
   ): F[(QueueMessage, Seq[In])] =
-    MonadThrow[F]
-      .fromEither(DataContentType.from(message.header.dataContentType))
-      .flatMap { ct =>
-        MonadThrow[F]
-          .catchNonFatal {
-            ct match {
-              case DataContentType.Binary => avro.read[In](message.payload)
-              case DataContentType.Json   => avro.readJson[In](message.payload)
-            }
+    messageDecoder
+      .decodeMessage(message)
+      .tupleLeft(message)
+      .onError(markProcessedOnFailure(message, queueClient))
+
+  private lazy val fetchDocuments
+      : ((QueueMessage, Seq[In])) => F[(QueueMessage, Seq[(In, Out)])] =
+    case (m, ins) =>
+      ins
+        .map { in =>
+          val docId = idExtractor(in)
+          solrClient.findById[Out](docId) >>= {
+            case Some(out) => (in, out).some.pure[F]
+            case None =>
+              Scribe[F]
+                .warn(s"Document id: '$docId' for update doesn't exist in Solr; skipping")
+                .as(Option.empty[Nothing])
           }
-          .map(message -> _)
-          .onError(markProcessedOnFailure(message, queueClient))
-      }
+        }
+        .sequence
+        .map(_.flatten)
+        .map((m, _))
 
   private def pushToSolr(
       queueClient: QueueClient[F]
-  )(chunk: Chunk[(QueueMessage, Seq[In])]): F[Unit] =
-    chunk.toList match {
-      case Nil => ().pure[F]
-      case tuples =>
-        val docs = toSolrDocuments(tuples.flatMap(_._2))
-        val (lastMessage, _) = tuples.last
+  ): ((QueueMessage, Seq[(In, Out)])) => F[Unit] = { case (m, inOuts) =>
+    inOuts match {
+      case l if l.isEmpty => ().pure[F]
+      case inOuts =>
+        val updatedDocs = inOuts.map(docUpdate).map(_.widen)
         solrClient
-          .insert(docs)
-          .flatMap(_ => markProcessed(lastMessage, queueClient))
-          .onError(markProcessedOnFailure(lastMessage, queueClient))
+          .insert(updatedDocs)
+          .flatMap(_ => markProcessed(m, queueClient))
+          .onError(markProcessedOnFailure(m, queueClient))
     }
-
-  private lazy val toSolrDocuments: Seq[In] => Seq[Out] =
-    _.map(_.to[Out])
+  }
 
   private def markProcessedOnFailure(
       message: QueueMessage,
       queueClient: QueueClient[F]
   ): PartialFunction[Throwable, F[Unit]] = err =>
     markProcessed(message, queueClient) >>
-      Scribe[F].error(s"Processing messageId: ${message.id} failed", err)
+      Scribe[F].error(s"Processing messageId: ${message.id} for '$queueName' failed", err)
 
   private def markProcessed(message: QueueMessage, queueClient: QueueClient[F]): F[Unit] =
     queueClient.markProcessed(clientId, queueName, message.id)

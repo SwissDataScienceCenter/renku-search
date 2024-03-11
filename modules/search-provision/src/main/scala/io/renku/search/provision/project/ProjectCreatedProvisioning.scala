@@ -28,13 +28,11 @@ import io.renku.events.v1
 import io.renku.events.v1.{ProjectCreated, Visibility}
 import io.renku.redis.client.{QueueName, RedisConfig}
 import io.renku.search.model.*
-import io.renku.search.provision.SolrProvisioningProcess
+import io.renku.search.provision.UpsertProvisioningProcess
 import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
-
-trait ProjectCreatedProvisioning[F[_]] extends SolrProvisioningProcess[F]
 
 object ProjectCreatedProvisioning:
 
@@ -42,9 +40,9 @@ object ProjectCreatedProvisioning:
       queueName: QueueName,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
-  ): Resource[F, SolrProvisioningProcess[F]] =
+  ): Resource[F, UpsertProvisioningProcess[F]] =
     given Scribe[F] = scribe.cats[F]
-    SolrProvisioningProcess.make[F, ProjectCreated, documents.Project](
+    UpsertProvisioningProcess.make[F, ProjectCreated, documents.Project](
       queueName,
       ProjectCreated.SCHEMA$,
       redisConfig,

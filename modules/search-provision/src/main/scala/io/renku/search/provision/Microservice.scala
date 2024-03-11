@@ -22,8 +22,8 @@ import cats.effect.*
 import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
 import io.renku.redis.client.QueueName
-import io.renku.search.provision.project.ProjectCreatedProvisioning
-import io.renku.search.provision.user.UserAddedProvisioning
+import io.renku.search.provision.project.*
+import io.renku.search.provision.user.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 import scribe.Scribe
@@ -51,17 +51,29 @@ object Microservice extends IOApp:
           .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
       ),
       (
+        "ProjectUpdated",
+        cfg.queuesConfig.projectUpdated,
+        ProjectUpdatedProvisioning
+          .make[IO](cfg.queuesConfig.projectUpdated, cfg.redisConfig, cfg.solrConfig)
+      ),
+      (
         "UserAdded",
         cfg.queuesConfig.userAdded,
         UserAddedProvisioning
           .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
+      ),
+      (
+        "UserUpdated",
+        cfg.queuesConfig.userUpdated,
+        UserUpdatedProvisioning
+          .make[IO](cfg.queuesConfig.userUpdated, cfg.redisConfig, cfg.solrConfig)
       )
     ).parTraverse_(startProcess(cfg))
       .flatMap(_ => IO.never)
 
   private def startProcess(
       cfg: SearchProvisionConfig
-  ): ((String, QueueName, Resource[IO, SolrProvisioningProcess[IO]])) => IO[Unit] = {
+  ): ((String, QueueName, Resource[IO, ProvisioningProcess[IO]])) => IO[Unit] = {
     case t @ (name, queue, resource) =>
       resource
         .evalMap(_.provisioningProcess.start)

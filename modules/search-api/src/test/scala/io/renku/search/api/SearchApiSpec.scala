@@ -27,12 +27,7 @@ import io.renku.search.model.users
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrClientGenerators.*
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.Project.given
-import io.renku.search.solr.documents.{
-  Entity as SolrEntity,
-  Project as SolrProject,
-  User as SolrUser
-}
+import io.renku.search.solr.documents.{Entity as SolrEntity, User as SolrUser}
 import munit.CatsEffectSuite
 import scribe.Scribe
 
@@ -46,7 +41,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       val project2 = projectDocumentGen("disparate", "disparate description").generateOne
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- client.insert(project1 :: project2 :: Nil)
+        _ <- client.insert((project1 :: project2 :: Nil).map(_.widen))
         results <- searchApi
           .query(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
@@ -61,8 +56,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       val user = SolrUser(project.createdBy, users.FirstName("exclusive").some)
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- client.insert(project :: Nil)
-        _ <- client.insert(user :: Nil)
+        _ <- client.insert(project :: user :: Nil)
         results <- searchApi
           .query(mkQuery("exclusive"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))

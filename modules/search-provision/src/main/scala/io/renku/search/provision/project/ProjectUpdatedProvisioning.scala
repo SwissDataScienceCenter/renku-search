@@ -16,43 +16,61 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.user
+package io.renku.search.provision
+package project
 
 import cats.Show
 import cats.effect.{Async, Resource}
-import cats.syntax.all.*
 import fs2.io.net.Network
+import io.bullet.borer.Codec.*
+import io.bullet.borer.{Codec, Decoder, Encoder}
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
-import io.renku.events.v1
-import io.renku.events.v1.UserAdded
+import io.renku.events.v1.ProjectUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
-import io.renku.search.provision.UpsertProvisioningProcess
+import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
-trait UserAddedProvisioning[F[_]] extends UpsertProvisioningProcess[F]
-
-object UserAddedProvisioning:
+object ProjectUpdatedProvisioning:
 
   def make[F[_]: Async: Network](
       queueName: QueueName,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
-  ): Resource[F, UpsertProvisioningProcess[F]] =
+  ): Resource[F, UpdateProvisioningProcess[F]] =
     given Scribe[F] = scribe.cats[F]
-    UpsertProvisioningProcess.make[F, UserAdded, documents.User](
+    UpdateProvisioningProcess.make[F, ProjectUpdated, documents.Project](
       queueName,
-      UserAdded.SCHEMA$,
+      ProjectUpdated.SCHEMA$,
+      idExtractor,
+      docUpdate,
       redisConfig,
       solrConfig
     )
 
-  private given Show[UserAdded] =
-    Show.show[UserAdded](u =>
-      u.lastName.map(v => s"lastName '$v'").getOrElse(s"id '${u.id}'")
-    )
+  private given Codec[documents.Project] = Codec[documents.Project](
+    Encoder[documents.Entity].contramap(_.asInstanceOf[documents.Entity]),
+    Decoder[documents.Entity].mapEither {
+      case u: documents.Project => Right(u)
+      case u                    => Left(s"${u.getClass} is not a Project document")
+    }
+  )
 
-  private given Transformer[UserAdded, documents.User] =
-    _.into[documents.User].transform(Field.default(_.score))
+  private given Show[ProjectUpdated] =
+    Show.show[ProjectUpdated](v => s"slug '${v.slug}'")
+
+  private lazy val idExtractor: ProjectUpdated => String = _.id
+
+  private lazy val docUpdate
+      : ((ProjectUpdated, documents.Project)) => documents.Project = {
+    case (update, orig) =>
+      update
+        .into[documents.Project]
+        .transform(
+          Field.const(_.createdBy, orig.createdBy),
+          Field.const(_.creationDate, orig.creationDate),
+          Field.default(_.score)
+        )
+  }

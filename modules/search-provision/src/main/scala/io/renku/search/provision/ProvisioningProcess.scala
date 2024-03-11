@@ -16,24 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.search.provision
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import io.bullet.borer.Encoder
-import io.renku.search.query.Query
-import io.renku.search.solr.documents.Entity
-import io.renku.solr.client.{QueryResponse, SolrClient, SolrConfig}
+import io.renku.redis.client.ClientId
 
-import scala.reflect.ClassTag
+trait ProvisioningProcess[F[_]]:
+  def provisioningProcess: F[Unit]
 
-trait SearchSolrClient[F[_]]:
-  def findById[D <: Entity](id: String)(using ct: ClassTag[D]): F[Option[D]]
-  def insert[D: Encoder](documents: Seq[D]): F[Unit]
-  def queryEntity(query: Query, limit: Int, offset: Int): F[QueryResponse[Entity]]
-
-object SearchSolrClient:
-  def make[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, SearchSolrClient[F]] =
-    SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))
+object ProvisioningProcess:
+  val clientId: ClientId = ClientId("search-provisioner")

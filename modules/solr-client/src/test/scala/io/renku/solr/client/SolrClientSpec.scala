@@ -20,19 +20,18 @@ package io.renku.solr.client
 
 import cats.effect.IO
 import cats.syntax.all.*
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.{Decoder, Encoder}
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
+import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.search.LoggingConfigure
 import io.renku.solr.client.SolrClientSpec.Room
+import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
-import munit.CatsEffectSuite
-import munit.ScalaCheckEffectSuite
-import org.scalacheck.effect.PropF
-import io.bullet.borer.Reader
+import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
 import org.scalacheck.Gen
-import io.renku.solr.client.facet.{Facet, Facets}
-import io.bullet.borer.derivation.key
+import org.scalacheck.effect.PropF
+
+import java.util.UUID
 
 class SolrClientSpec
     extends CatsEffectSuite
@@ -49,18 +48,20 @@ class SolrClientSpec
       SchemaCommand.Add(Field(FieldName("roomDescription"), TypeName("roomText"))),
       SchemaCommand.Add(Field(FieldName("roomSeats"), TypeName("roomInt")))
     )
+
     withSolrClient().use { client =>
-      val rooms = Seq(Room("meeting room", "room for meetings", 56))
+      val room = Room(UUID.randomUUID().toString, "meeting room", "room for meetings", 56)
       for {
         _ <- truncateAll(client)(
           List("roomName", "roomDescription", "roomSeats").map(FieldName.apply),
           List("roomText", "roomInt").map(TypeName.apply)
         )
         _ <- client.modifySchema(cmds)
-        _ <- client
-          .insert[Room](rooms)
-        r <- client.query[Room](QueryData(QueryString("_type:Room")))
-        _ = assertEquals(r.responseBody.docs, rooms)
+        _ <- client.insert[Room](Seq(room))
+        qr <- client.query[Room](QueryData(QueryString("_type:Room")))
+        _ = qr.responseBody.docs contains room
+        ir <- client.findById[Room](room.id)
+        _ = ir.responseBody.docs contains room
       } yield ()
     }
 
@@ -95,32 +96,33 @@ class SolrClientSpec
       } yield ()
     }
 
-  // test("delete by id"):
-  //   withSolrClient().use { client =>
-  //     for {
-  //       _ <- client.delete(QueryString("*:*"))
-  //       _ <- client.insert(Seq(SolrClientSpec.Person("p1", "John")))
-  //       r <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
-  //       p = r.responseBody.docs.head
-  //       _ = assertEquals(p.id, "p1")
-  //       _ <- client.deleteById("p1", "p2")
-  //       r2 <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
-  //       _ <- IO.sleep(50.millis) // seems to be necessary on ci
-  //       _ = assert(r2.responseBody.docs.isEmpty)
-  //     } yield ()
-  //   }
+// test("delete by id"):
+//   withSolrClient().use { client =>
+//     for {
+//       _ <- client.delete(QueryString("*:*"))
+//       _ <- client.insert(Seq(SolrClientSpec.Person("p1", "John")))
+//       r <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
+//       p = r.responseBody.docs.head
+//       _ = assertEquals(p.id, "p1")
+//       _ <- client.deleteById("p1", "p2")
+//       r2 <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
+//       _ <- IO.sleep(50.millis) // seems to be necessary on ci
+//       _ = assert(r2.responseBody.docs.isEmpty)
+//     } yield ()
+//   }
 
 object SolrClientSpec:
-  case class Room(roomName: String, roomDescription: String, roomSeats: Int)
+  case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)
   object Room:
     val gen: Gen[Room] = for {
+      id <- Gen.uuid.map(_.toString)
       name <- Gen
         .choose(4, 12)
         .flatMap(n => Gen.listOfN(n, Gen.alphaChar))
         .map(_.mkString)
       descr = s"Room description for $name"
       seats <- Gen.choose(15, 350)
-    } yield Room(name, descr, seats)
+    } yield Room(id, name, descr, seats)
 
     given Decoder[Room] = MapBasedCodecs.deriveDecoder
     given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]

@@ -18,10 +18,10 @@
 
 package io.renku.search
 
-import fs2.Stream
-import cats.effect.IO
-import org.scalacheck.Gen
 import cats.arrow.FunctionK
+import cats.effect.IO
+import fs2.Stream
+import org.scalacheck.Gen
 
 trait GeneratorSyntax:
 
@@ -33,6 +33,8 @@ trait GeneratorSyntax:
         case None    => generateOne
 
     def generateSome: Option[A] = Some(generateOne)
+
+    def generateList: List[A] = Gen.listOf(self).generateOne
 
     def stream: Stream[Gen, A] =
       Stream.repeatEval(self)

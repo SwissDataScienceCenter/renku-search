@@ -27,7 +27,6 @@ import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
 import io.renku.search.provision.TypeTransformers.given
-import io.renku.search.provision.project.ProjectProvisioningCommons.*
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe

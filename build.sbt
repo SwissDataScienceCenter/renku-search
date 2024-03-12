@@ -354,6 +354,8 @@ lazy val commonSettings = Seq(
   ),
   Compile / console / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
+  semanticdbEnabled := true, // enable SemanticDB
+  semanticdbVersion := scalafixSemanticdb.revision,
   libraryDependencies ++=
     Dependencies.scribe,
   libraryDependencies ++= (

@@ -18,7 +18,7 @@
 
 package io.renku.search.solr.documents
 
-import io.renku.search.model.ModelGenerators.{projectMemberRoleGen, userIdGen}
+import io.renku.search.model.ModelGenerators.{idGen, projectMemberRoleGen}
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.solr.client.SolrDocumentGenerators.projectDocumentGen
 import munit.{FunSuite, ScalaCheckSuite}
@@ -27,7 +27,7 @@ import org.scalacheck.Prop
 class ProjectSpec extends ScalaCheckSuite:
 
   test("addMember should add the given userId and role to the correct bucket in the doc"):
-    Prop.forAll(projectDocumentGen, userIdGen, projectMemberRoleGen) {
+    Prop.forAll(projectDocumentGen, idGen, projectMemberRoleGen) {
       case (project, userId, role) =>
         val updated = project.addMember(userId, role)
         role match {
@@ -39,7 +39,7 @@ class ProjectSpec extends ScalaCheckSuite:
     }
 
   test("addMember should not add duplicates"):
-    Prop.forAll(projectDocumentGen, userIdGen, projectMemberRoleGen) {
+    Prop.forAll(projectDocumentGen, idGen, projectMemberRoleGen) {
       case (project, userId, role) =>
         val updated = project.addMember(userId, role).addMember(userId, role)
         role match {
@@ -51,14 +51,14 @@ class ProjectSpec extends ScalaCheckSuite:
     }
 
   test("removeMember should remove the given userId from the correct bucket in the doc"):
-    Prop.forAll(projectDocumentGen, userIdGen, projectMemberRoleGen) {
+    Prop.forAll(projectDocumentGen, idGen, projectMemberRoleGen) {
       case (project, userId, role) =>
         val updated = project.addMember(userId, role)
         assertEquals(updated.removeMember(userId), project)
     }
 
   test("removeMember should do nothing if there's no member/owner with the given userId"):
-    Prop.forAll(projectDocumentGen, userIdGen, userIdGen, projectMemberRoleGen) {
+    Prop.forAll(projectDocumentGen, idGen, idGen, projectMemberRoleGen) {
       case (project, existingUserId, toDeleteUserId, role) =>
         val updated = project.addMember(existingUserId, role)
         assertEquals(updated.removeMember(toDeleteUserId), updated)

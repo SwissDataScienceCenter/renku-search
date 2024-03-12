@@ -20,17 +20,18 @@ package io.renku.search.api
 
 import cats.effect.Async
 import cats.syntax.all.*
+
 import io.github.arainko.ducktape.*
 import io.renku.search.api.data.*
-import io.renku.search.model.users
+import io.renku.search.model.EntityType
+import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity as SolrEntity
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryResponse
+import io.renku.solr.client.facet.FacetResponse
 import org.http4s.dsl.Http4sDsl
 import scribe.Scribe
-import io.renku.search.model.EntityType
-import io.renku.solr.client.facet.FacetResponse
 
 private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
@@ -76,5 +77,5 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     else SearchResult(items, facets, pageInfo)
 
   private lazy val toApiEntity: SolrEntity => SearchEntity =
-    given Transformer[users.Id, UserId] = (id: users.Id) => UserId(id)
+    given Transformer[Id, UserId] = (id: Id) => UserId(id)
     _.to[SearchEntity]

@@ -22,7 +22,6 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.userAddedGen
@@ -32,13 +31,13 @@ import io.renku.queue.client.{DataContentType, QueueSpec}
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, users}
+import io.renku.search.model.EntityType
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.{Entity, User}
+import io.renku.search.solr.documents.Entity
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
@@ -46,7 +45,8 @@ import scala.concurrent.duration.*
 class UserAddedProvisioningSpec
     extends CatsEffectSuite
     with QueueSpec
-    with SearchSolrSpec:
+    with SearchSolrSpec
+    with UserSyntax:
 
   private val avro = AvroIO(UserAdded.SCHEMA$)
 
@@ -76,7 +76,7 @@ class UserAddedProvisioningSpec
             .drain
             .start
 
-        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
+        _ <- solrDocs.waitUntil(_ contains message1.toSolrDocument)
 
         _ <- provisioningFiber.cancel
         _ <- docsCollectorFiber.cancel
@@ -130,9 +130,6 @@ class UserAddedProvisioningSpec
           )
           .map((rc, sc, _))
       }
-
-  private def toSolrDocument(added: UserAdded): User =
-    added.into[User].transform(Field.default(_.score))
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

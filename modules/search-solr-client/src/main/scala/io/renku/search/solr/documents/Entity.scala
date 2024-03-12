@@ -18,11 +18,11 @@
 
 package io.renku.search.solr.documents
 
+import io.bullet.borer._
 import io.bullet.borer.derivation.MapBasedCodecs.*
-import io.bullet.borer.{AdtEncodingStrategy, Codec, Decoder, Encoder}
+import io.renku.search.model._
 import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
-import io.renku.search.model.{projects, users}
 import io.renku.solr.client.EncoderSupport.*
 
 opaque type DocumentId = String
@@ -32,6 +32,7 @@ object DocumentId:
 
 sealed trait Entity:
   val score: Option[Double]
+  val id: Id
   def widen: Entity = this
 
 object Entity:
@@ -46,38 +47,60 @@ object Entity:
   given Codec[Entity] = Codec.of[Entity]
 
 final case class Project(
-    id: projects.Id,
-    name: projects.Name,
+    id: Id,
+    name: Name,
     slug: projects.Slug,
     repositories: Seq[projects.Repository] = Seq.empty,
     visibility: projects.Visibility,
     description: Option[projects.Description] = None,
-    createdBy: users.Id,
+    createdBy: Id,
     creationDate: projects.CreationDate,
-    owners: List[users.Id] = List.empty,
-    members: List[users.Id] = List.empty,
+    owners: List[Id] = List.empty,
+    members: List[Id] = List.empty,
     score: Option[Double] = None
 ) extends Entity:
 
-  def addMember(userId: users.Id, role: MemberRole): Project =
+  def addMember(userId: Id, role: MemberRole): Project =
     role match {
       case Owner  => copy(owners = (userId :: owners).distinct)
       case Member => copy(members = (userId :: members).distinct)
     }
 
-  def removeMember(userId: users.Id): Project =
+  def removeMember(userId: Id): Project =
     copy(owners = owners.filterNot(_ == userId), members = members.filterNot(_ == userId))
 
 object Project:
   val entityType: String = "Project"
 
 final case class User(
-    id: users.Id,
+    id: Id,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
+    name: Option[Name] = None,
     email: Option[users.Email] = None,
     score: Option[Double] = None
 ) extends Entity
 
 object User:
   val entityType: String = "User"
+
+  def nameFrom(firstName: Option[String], lastName: Option[String]): Option[Name] =
+    Option(List(firstName, lastName).flatten.mkString(" "))
+      .filter(_.nonEmpty)
+      .map(Name.apply)
+
+  def of(
+      id: Id,
+      firstName: Option[users.FirstName] = None,
+      lastName: Option[users.LastName] = None,
+      email: Option[users.Email] = None,
+      score: Option[Double] = None
+  ): User =
+    User(
+      id,
+      firstName,
+      lastName,
+      nameFrom(firstName.map(_.value), lastName.map(_.value)),
+      email,
+      score
+    )

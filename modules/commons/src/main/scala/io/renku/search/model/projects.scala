@@ -88,3 +88,13 @@ object projects:
 
     def unsafeFromString(v: String): Visibility =
       valueOf(v.toLowerCase.capitalize)
+
+  enum MemberRole derives Codec:
+    lazy val name: String = productPrefix.toLowerCase
+    case Owner, Member
+
+  object MemberRole:
+    given Order[MemberRole] = Order.by(_.ordinal)
+
+    def unsafeFromString(v: String): MemberRole =
+      valueOf(v.toLowerCase.capitalize)

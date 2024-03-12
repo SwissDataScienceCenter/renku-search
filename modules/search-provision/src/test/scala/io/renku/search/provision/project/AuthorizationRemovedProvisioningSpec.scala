@@ -16,73 +16,67 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.project
+package io.renku.search.provision
+package project
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.github.arainko.ducktape.*
-import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.{ProjectCreated, ProjectRemoved}
+import io.renku.events.v1.*
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, projects, users}
-import io.renku.search.query.Query
-import io.renku.search.query.Query.Segment
-import io.renku.search.query.Query.Segment.typeIs
-import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.{Entity, Project}
-import munit.CatsEffectSuite
+import io.renku.search.model.users
 import io.renku.search.provision.TypeTransformers.given
+import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.solr.documents.Project
+import munit.CatsEffectSuite
+
 import scala.concurrent.duration.*
 
-class ProjectRemovedProvisioningSpec
+class AuthorizationRemovedProvisioningSpec
     extends CatsEffectSuite
     with QueueSpec
     with SearchSolrSpec:
 
-  private val avro = AvroIO(ProjectRemoved.SCHEMA$)
-
-  test(s"can fetch events, decode them, and remove Solr"):
+  test("can fetch events, decode them, and update docs in Solr"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
 
     clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
       for
-        solrDoc <- SignallingRef.of[IO, Option[Project]](None)
+        solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 
-        provisioningFiber <- provisioner.removalProcess.start
+        provisioningFiber <- provisioner.provisioningProcess.start
 
-        created = projectCreatedGen(prefix = "remove").generateOne
-        _ <- solrClient.insert(Seq(toSolrDocument(created).widen))
+        projectDoc = projectCreatedGen("member-remove").generateOne.toSolrDocument
+        _ <- solrClient.insert(Seq(projectDoc.widen))
+
+        authRemoved = ProjectAuthorizationRemoved(
+          projectDoc.id.value,
+          projectDoc.createdBy.value
+        )
+        _ <- queueClient.enqueue(
+          queue,
+          messageHeaderGen(ProjectAuthorizationRemoved.SCHEMA$).generateOne,
+          authRemoved
+        )
 
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.findById[Project](created.id))
-            .evalMap(e => solrDoc.update(_ => e))
+            .evalMap(_ => solrClient.findById[Project](projectDoc.id.value))
+            .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
             .compile
             .drain
             .start
 
-        _ <- solrDoc.waitUntil(
-          _.nonEmpty
-        )
-
-        removed = ProjectRemoved(created.id)
-        _ <- queueClient.enqueue(
-          queue,
-          messageHeaderGen(ProjectRemoved.SCHEMA$).generateOne,
-          removed
-        )
-
-        _ <- solrDoc.waitUntil(
-          _.isEmpty
+        _ <- solrDocs.waitUntil(
+          _ contains projectDoc.removeMember(projectDoc.createdBy)
         )
 
         _ <- provisioningFiber.cancel
@@ -90,12 +84,10 @@ class ProjectRemovedProvisioningSpec
       yield ()
     }
 
-  private lazy val queryProjects = Query(typeIs(EntityType.Project))
-
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)
       .flatMap { case (rc, sc) =>
-        ProjectRemovedProvisioning
+        AuthorizationRemovedProvisioning
           .make[IO](
             queueName,
             withRedisClient.redisConfig,
@@ -104,8 +96,8 @@ class ProjectRemovedProvisioningSpec
           .map((rc, sc, _))
       }
 
-  private def toSolrDocument(created: ProjectCreated): Project =
-    created
+  extension (created: ProjectCreated)
+    def toSolrDocument: Project = created
       .into[Project]
       .transform(
         Field.computed(_.owners, pc => List(users.Id(pc.createdBy))),

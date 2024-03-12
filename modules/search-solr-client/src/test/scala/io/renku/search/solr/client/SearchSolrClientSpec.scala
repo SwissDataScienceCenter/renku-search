@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.users
 import io.renku.search.query.Query
-import io.renku.search.solr.client.SearchSolrClientGenerators.*
+import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.documents.{Entity, Project, User}
 import munit.CatsEffectSuite

@@ -66,6 +66,39 @@ object Microservice extends IOApp:
           .map(_.removalProcess.start)
       ),
       (
+        "ProjectAuthorizationAdded",
+        cfg.queuesConfig.projectAuthorizationAdded,
+        AuthorizationAddedProvisioning
+          .make[IO](
+            cfg.queuesConfig.projectAuthorizationAdded,
+            cfg.redisConfig,
+            cfg.solrConfig
+          )
+          .map(_.provisioningProcess.start)
+      ),
+      (
+        "ProjectAuthorizationUpdated",
+        cfg.queuesConfig.projectAuthorizationUpdated,
+        AuthorizationUpdatedProvisioning
+          .make[IO](
+            cfg.queuesConfig.projectAuthorizationUpdated,
+            cfg.redisConfig,
+            cfg.solrConfig
+          )
+          .map(_.provisioningProcess.start)
+      ),
+      (
+        "ProjectAuthorizationRemoved",
+        cfg.queuesConfig.projectAuthorizationRemoved,
+        AuthorizationRemovedProvisioning
+          .make[IO](
+            cfg.queuesConfig.projectAuthorizationRemoved,
+            cfg.redisConfig,
+            cfg.solrConfig
+          )
+          .map(_.provisioningProcess.start)
+      ),
+      (
         "UserAdded",
         cfg.queuesConfig.userAdded,
         UserAddedProvisioning

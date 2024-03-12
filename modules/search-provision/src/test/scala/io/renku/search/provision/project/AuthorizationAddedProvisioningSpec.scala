@@ -23,16 +23,15 @@ import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.github.arainko.ducktape.*
-import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.{ProjectCreated, ProjectUpdated}
+import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectCreated, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.users
+import io.renku.search.model.{projects, users}
 import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, Project}
@@ -40,45 +39,46 @@ import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
 
-class ProjectUpdatedProvisioningSpec
+class AuthorizationAddedProvisioningSpec
     extends CatsEffectSuite
     with QueueSpec
     with SearchSolrSpec:
 
-  private val avro = AvroIO(ProjectUpdated.SCHEMA$)
-
-  (nameUpdate :: slugUpdate :: repositoriesUpdate :: visibilityUpdate :: descUpdate :: noUpdate :: Nil)
+  (memberAdded :: ownerAdded :: noUpdate :: Nil)
     .foreach { case TestCase(name, updateF) =>
-      test(s"can fetch events, decode them, and update in Solr in case of $name"):
+      test(s"can fetch events, decode them, and update docs in Solr in case of $name"):
         val queue = RedisClientGenerators.queueNameGen.generateOne
 
         clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
           for
-            solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
+            solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 
             provisioningFiber <- provisioner.provisioningProcess.start
 
-            created = projectCreatedGen(prefix = "update").generateOne
-            _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
+            projectDoc = projectCreatedGen("member-add").generateOne.toSolrDocument
+            _ <- solrClient.insert(Seq(projectDoc.widen))
 
-            updated = updateF(created)
+            authAdded = updateF(projectDoc)
             _ <- queueClient.enqueue(
               queue,
-              messageHeaderGen(ProjectUpdated.SCHEMA$).generateOne,
-              updated
+              messageHeaderGen(ProjectAuthorizationAdded.SCHEMA$).generateOne,
+              authAdded
             )
 
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalMap(_ => solrClient.findById[Project](created.id))
+                .evalMap(_ => solrClient.findById[Project](projectDoc.id.value))
                 .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
                 .compile
                 .drain
                 .start
 
             _ <- solrDocs.waitUntil(
-              _ contains created.update(updated).toSolrDocument
+              _ contains projectDoc.addMember(
+                users.Id(authAdded.userId),
+                projects.MemberRole.unsafeFromString(authAdded.role.name())
+              )
             )
 
             _ <- provisioningFiber.cancel
@@ -90,7 +90,7 @@ class ProjectUpdatedProvisioningSpec
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)
       .flatMap { case (rc, sc) =>
-        ProjectUpdatedProvisioning
+        AuthorizationAddedProvisioning
           .make[IO](
             queueName,
             withRedisClient.redisConfig,
@@ -100,7 +100,6 @@ class ProjectUpdatedProvisioningSpec
       }
 
   extension (created: ProjectCreated)
-
     def toSolrDocument: Project = created
       .into[Project]
       .transform(
@@ -109,79 +108,25 @@ class ProjectUpdatedProvisioningSpec
         Field.default(_.score)
       )
 
-    def update(updated: ProjectUpdated): ProjectCreated =
-      created.copy(
-        name = updated.name,
-        slug = updated.slug,
-        repositories = updated.repositories,
-        visibility = updated.visibility,
-        description = updated.description
-      )
+  private case class TestCase(name: String, f: Project => ProjectAuthorizationAdded)
+  private lazy val memberAdded = TestCase(
+    "member added",
+    pd => projectAuthorizationAddedGen(pd.id.value, ProjectMemberRole.MEMBER).generateOne
+  )
 
-  private case class TestCase(name: String, f: ProjectCreated => ProjectUpdated)
-  private lazy val nameUpdate = TestCase(
-    "name update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        stringGen(max = 5).generateOne,
-        pc.slug,
-        pc.repositories,
-        pc.visibility,
-        pc.description
-      )
+  private lazy val ownerAdded = TestCase(
+    "owner added",
+    pd => projectAuthorizationAddedGen(pd.id.value, ProjectMemberRole.OWNER).generateOne
   )
-  private lazy val slugUpdate = TestCase(
-    "slug update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        stringGen(max = 5).generateOne,
-        pc.repositories,
-        pc.visibility,
-        pc.description
-      )
-  )
-  private lazy val repositoriesUpdate = TestCase(
-    "repositories update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        pc.slug,
-        stringGen(max = 5).generateList,
-        pc.visibility,
-        pc.description
-      )
-  )
-  private lazy val visibilityUpdate = TestCase(
-    "repositories update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        pc.slug,
-        pc.repositories,
-        projectVisibilityGen.generateOne,
-        pc.description
-      )
-  )
-  private lazy val descUpdate = TestCase(
-    "repositories update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        pc.slug,
-        pc.repositories,
-        pc.visibility,
-        stringGen(max = 5).generateSome
-      )
-  )
+
   private lazy val noUpdate = TestCase(
     "no update",
-    _.to[ProjectUpdated]
+    pd =>
+      ProjectAuthorizationAdded(
+        pd.id.value,
+        pd.owners.head.value,
+        ProjectMemberRole.OWNER
+      )
   )
 
   override def munitFixtures: Seq[Fixture[_]] =

@@ -28,3 +28,6 @@ trait TypeTransformers:
 
   given Transformer[v1.Visibility, projects.Visibility] =
     (from: v1.Visibility) => projects.Visibility.unsafeFromString(from.name())
+
+  given memberRoleTransformer: Transformer[v1.ProjectMemberRole, projects.MemberRole] =
+    (from: v1.ProjectMemberRole) => projects.MemberRole.unsafeFromString(from.name())

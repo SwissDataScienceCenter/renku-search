@@ -32,12 +32,9 @@ import io.renku.queue.client.{DataContentType, QueueSpec}
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, projects, users}
-import io.renku.search.query.Query
-import io.renku.search.query.Query.Segment
-import io.renku.search.query.Query.Segment.typeIs
+import io.renku.search.model.{projects, users}
+import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
@@ -59,24 +56,23 @@ class ProjectCreatedProvisioningSpec
 
         provisioningFiber <- provisioner.provisioningProcess.start
 
-        message1 = projectCreatedGen(prefix = "binary").generateOne
+        created = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queue,
           messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
-          message1
+          created
         )
 
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.queryEntity(queryProjects, 20, 0))
-            .flatMap(qr => Stream.emits(qr.responseBody.docs))
-            .evalMap(e => solrDocs.update(_ + e.noneScore))
+            .evalMap(_ => solrClient.findById[Project](created.id))
+            .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
             .compile
             .drain
             .start
 
-        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
+        _ <- solrDocs.waitUntil(_ contains toSolrDocument(created))
 
         _ <- provisioningFiber.cancel
         _ <- docsCollectorFiber.cancel
@@ -92,32 +88,28 @@ class ProjectCreatedProvisioningSpec
 
         provisioningFiber <- provisioner.provisioningProcess.start
 
-        message1 = projectCreatedGen(prefix = "json").generateOne
+        created = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queue,
           messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Json).generateOne,
-          message1
+          created
         )
 
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.queryEntity(queryProjects, 10, 0))
-            .flatMap(qr => Stream.emits(qr.responseBody.docs))
-            .evalTap(IO.println)
-            .evalMap(e => solrDocs.update(_ + e.noneScore))
+            .evalMap(_ => solrClient.findById[Project](created.id))
+            .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
             .compile
             .drain
             .start
 
-        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
+        _ <- solrDocs.waitUntil(_ contains toSolrDocument(created))
 
         _ <- provisioningFiber.cancel
         _ <- docsCollectorFiber.cancel
       yield ()
     }
-
-  private lazy val queryProjects = Query(typeIs(EntityType.Project))
 
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)
@@ -135,10 +127,8 @@ class ProjectCreatedProvisioningSpec
     created
       .into[Project]
       .transform(
-        Field.computed(
-          _.visibility,
-          pc => projects.Visibility.unsafeFromString(pc.visibility.name())
-        ),
+        Field.computed(_.owners, pc => List(users.Id(pc.createdBy))),
+        Field.default(_.members),
         Field.default(_.score)
       )
 

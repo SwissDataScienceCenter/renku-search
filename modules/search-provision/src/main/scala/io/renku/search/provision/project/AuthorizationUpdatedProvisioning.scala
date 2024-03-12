@@ -16,45 +16,51 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.project
+package io.renku.search.provision
+package project
 
 import cats.Show
 import cats.effect.{Async, Resource}
-import cats.syntax.all.*
 import fs2.io.net.Network
-import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
-import io.renku.events.v1
-import io.renku.events.v1.{ProjectCreated, Visibility}
+import io.renku.events.v1.ProjectAuthorizationUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
-import io.renku.search.model.*
+import io.renku.search.model.users
 import io.renku.search.provision.TypeTransformers.given
-import io.renku.search.provision.UpsertProvisioningProcess
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
-object ProjectCreatedProvisioning:
+object AuthorizationUpdatedProvisioning:
 
   def make[F[_]: Async: Network](
       queueName: QueueName,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
-  ): Resource[F, UpsertProvisioningProcess[F]] =
+  ): Resource[F, UpdateProvisioningProcess[F]] =
     given Scribe[F] = scribe.cats[F]
-    UpsertProvisioningProcess.make[F, ProjectCreated, documents.Project](
+
+    UpdateProvisioningProcess.make[F, ProjectAuthorizationUpdated, documents.Project](
       queueName,
-      ProjectCreated.SCHEMA$,
+      ProjectAuthorizationUpdated.SCHEMA$,
+      idExtractor,
+      docUpdate,
       redisConfig,
       solrConfig
     )
 
-  private given Show[ProjectCreated] =
-    Show.show[ProjectCreated](pc => show"slug '${pc.slug}'")
-
-  private given Transformer[ProjectCreated, documents.Project] =
-    _.into[documents.Project].transform(
-      Field.computed(_.owners, pc => List(users.Id(pc.createdBy))),
-      Field.default(_.members),
-      Field.default(_.score)
+  private given Show[ProjectAuthorizationUpdated] =
+    Show.show[ProjectAuthorizationUpdated](v =>
+      s"projectId '${v.projectId}', userId '${v.userId}', role '${v.role}'"
     )
+
+  private lazy val idExtractor: ProjectAuthorizationUpdated => String = _.projectId
+
+  private lazy val docUpdate
+      : ((ProjectAuthorizationUpdated, documents.Project)) => documents.Project = {
+    case (update, orig) =>
+      orig.addMember(
+        users.Id(update.userId),
+        memberRoleTransformer.transform(update.role)
+      )
+  }

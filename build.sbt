@@ -55,6 +55,7 @@ lazy val root = project
   )
   .aggregate(
     commons,
+    jwt,
     httpClient,
     events,
     redisClient,
@@ -98,6 +99,18 @@ lazy val commons = project
   )
   .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
+
+lazy val jwt = project
+  .in(file("modules/jwt"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "jwt",
+    description := "jwt with borer",
+    libraryDependencies ++= Dependencies.borer ++
+      Dependencies.jwtScala
+  )
 
 lazy val http4sBorer = project
   .in(file("modules/http4s-borer"))

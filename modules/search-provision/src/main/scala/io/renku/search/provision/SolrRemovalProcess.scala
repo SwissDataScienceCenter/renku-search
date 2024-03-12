@@ -25,7 +25,7 @@ import cats.syntax.all.*
 import fs2.io.net.Network
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroDecoder
-import io.renku.queue.client.{QueueClient, QueueMessage}
+import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.DocumentId
@@ -44,7 +44,8 @@ object SolrRemovalProcess:
       queueName: QueueName,
       inSchema: Schema,
       redisConfig: RedisConfig,
-      solrConfig: SolrConfig
+      solrConfig: SolrConfig,
+      onSolrPersist: Option[OnSolrPersist[F, In]]
   )(using
       Show[In],
       Transformer[In, DocumentId],
@@ -56,7 +57,8 @@ object SolrRemovalProcess:
         ProvisioningProcess.clientId,
         QueueClient.make[F](redisConfig),
         _,
-        QueueMessageDecoder[F, In](inSchema)
+        QueueMessageDecoder[F, In](inSchema),
+        onSolrPersist
       )
     }
 
@@ -65,7 +67,8 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
     clientId: ClientId,
     queueClientResource: Resource[F, QueueClient[F]],
     solrClient: SearchSolrClient[F],
-    messageDecoder: QueueMessageDecoder[F, In]
+    messageDecoder: QueueMessageDecoder[F, In],
+    onSolrPersist: Option[OnSolrPersist[F, In]]
 )(using Show[In], Transformer[In, DocumentId], AvroDecoder[In])
     extends SolrRemovalProcess[F]:
   override def removalProcess: F[Unit] =
@@ -109,12 +112,22 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
       queueClient: QueueClient[F]
   ): ((QueueMessage, Seq[In])) => F[Unit] = { case (message, ins) =>
     toDocumentIds(ins).fold(().pure[F]) { ids =>
-      solrClient
-        .deleteIds(ids)
+      (solrClient.deleteIds(ids) >> onPersist(queueClient, message, ins))
         .flatMap(_ => markProcessed(message, queueClient))
         .onError(markProcessedOnFailure(message, queueClient))
     }
   }
+
+  private def onPersist(
+      queueClient: QueueClient[F],
+      message: QueueMessage,
+      ins: Seq[In]
+  ) =
+    onSolrPersist.fold(().pure[F]) { p =>
+      ins.toList.traverse_(
+        p.execute(_, RequestId(message.header.requestId))(queueClient, solrClient)
+      )
+    }
 
   private lazy val toDocumentIds: Seq[In] => Option[NonEmptyList[DocumentId]] =
     _.map(_.to[DocumentId]).toList.toNel

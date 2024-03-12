@@ -18,17 +18,17 @@
 
 package io.renku.search.solr.client
 
+import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
-import io.bullet.borer.Encoder
+import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.query.Query
 import io.renku.search.solr.documents.{DocumentId, Entity}
 import io.renku.search.solr.query.LuceneQueryInterpreter
-import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
-import cats.data.NonEmptyList
-import io.renku.solr.client.schema.FieldName
-import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.search.solr.schema.EntityDocumentSchema
+import io.renku.solr.client.facet.{Facet, Facets}
+import io.renku.solr.client.schema.FieldName
+import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
 
 import scala.reflect.ClassTag
 
@@ -65,6 +65,9 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
             .withFields(FieldName.all, FieldName.score)
         )
     } yield res
+
+  override def query[D: Decoder](query: QueryData): F[QueryResponse[D]] =
+    solrClient.query[D](query)
 
   override def findById[D <: Entity](id: String)(using ct: ClassTag[D]): F[Option[D]] =
     solrClient.findById[Entity](id).map(_.responseBody.docs.headOption).flatMap {

@@ -18,13 +18,10 @@
 
 package io.renku.search.provision.project
 
-import scala.concurrent.duration.*
-
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
@@ -42,7 +39,9 @@ import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
-class ProjectRemovedProvisioningSpec
+import scala.concurrent.duration.*
+
+class ProjectRemovedProcessSpec
     extends CatsEffectSuite
     with QueueSpec
     with SearchSolrSpec
@@ -96,7 +95,7 @@ class ProjectRemovedProvisioningSpec
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)
       .flatMap { case (rc, sc) =>
-        ProjectRemovedProvisioning
+        ProjectRemovedProcess
           .make[IO](
             queueName,
             withRedisClient.redisConfig,

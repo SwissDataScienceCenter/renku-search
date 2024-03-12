@@ -31,7 +31,8 @@ final case class QueuesConfig(
     projectAuthorizationUpdated: QueueName,
     projectAuthorizationRemoved: QueueName,
     userAdded: QueueName,
-    userUpdated: QueueName
+    userUpdated: QueueName,
+    userRemoved: QueueName
 )
 
 object QueuesConfig:
@@ -44,5 +45,6 @@ object QueuesConfig:
       ConfigValues.eventQueue("projectAuthorizationUpdated"),
       ConfigValues.eventQueue("projectAuthorizationRemoved"),
       ConfigValues.eventQueue("userAdded"),
-      ConfigValues.eventQueue("userUpdated")
+      ConfigValues.eventQueue("userUpdated"),
+      ConfigValues.eventQueue("userRemoved")
     ).mapN(QueuesConfig.apply)

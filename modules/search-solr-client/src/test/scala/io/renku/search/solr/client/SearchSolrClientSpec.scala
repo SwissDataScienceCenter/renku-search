@@ -20,12 +20,16 @@ package io.renku.search.solr.client
 
 import cats.effect.IO
 import cats.syntax.all.*
+import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.users
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.documents.{Entity, Project, User}
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields
+import io.renku.solr.client.QueryData
 import munit.CatsEffectSuite
 
 class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
@@ -53,5 +57,25 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
         _ = assert(qr.responseBody.docs.map(_.noneScore) contains user)
         gr <- client.findById[User](user.id.value)
         _ = assert(gr contains user)
+      } yield ()
+    }
+
+  test("be able to find by the given query"):
+    withSearchSolrClient().use { client =>
+      val firstName = users.FirstName("Ian")
+      val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
+      case class UserId(id: String)
+      given Decoder[UserId] = deriveDecoder[UserId]
+      for {
+        _ <- client.insert(Seq(user.widen))
+        gr <- client.query[UserId](
+          QueryData(
+            s"firstName:$firstName",
+            filter = Seq.empty,
+            limit = 100,
+            offset = 0
+          ).withFields(Fields.id)
+        )
+        _ = assert(gr.responseBody.docs.map(_.id) contains user.id.value)
       } yield ()
     }

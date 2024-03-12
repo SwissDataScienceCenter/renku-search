@@ -22,7 +22,6 @@ import cats.Show
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
-
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1
@@ -33,9 +32,7 @@ import io.renku.search.solr.documents.DocumentId
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
-trait ProjectRemovedProvisioning[F[_]] extends SolrRemovalProcess[F]
-
-object ProjectRemovedProvisioning:
+object ProjectRemovedProcess:
 
   def make[F[_]: Async: Network](
       queueName: QueueName,
@@ -47,12 +44,12 @@ object ProjectRemovedProvisioning:
       queueName,
       ProjectRemoved.SCHEMA$,
       redisConfig,
-      solrConfig
+      solrConfig,
+      onSolrPersist = None
     )
 
   private given Show[ProjectRemoved] =
     Show.show[ProjectRemoved](pr => show"slug '${pr.id}'")
 
   private given Transformer[ProjectRemoved, DocumentId] =
-    // _.id.into[DocumentId].transform()
     r => DocumentId(r.id)

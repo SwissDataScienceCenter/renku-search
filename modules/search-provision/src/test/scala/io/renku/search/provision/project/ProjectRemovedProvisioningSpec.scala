@@ -18,34 +18,35 @@
 
 package io.renku.search.provision.project
 
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.github.arainko.ducktape.*
+
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.{ProjectCreated, ProjectRemoved}
+import io.renku.events.v1.ProjectRemoved
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, projects, users}
+import io.renku.search.model.EntityType
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
-import io.renku.search.provision.TypeTransformers.given
-import scala.concurrent.duration.*
 
 class ProjectRemovedProvisioningSpec
     extends CatsEffectSuite
     with QueueSpec
-    with SearchSolrSpec:
+    with SearchSolrSpec
+    with ProjectSyntax:
 
   private val avro = AvroIO(ProjectRemoved.SCHEMA$)
 
@@ -59,7 +60,7 @@ class ProjectRemovedProvisioningSpec
         provisioningFiber <- provisioner.removalProcess.start
 
         created = projectCreatedGen(prefix = "remove").generateOne
-        _ <- solrClient.insert(Seq(toSolrDocument(created).widen))
+        _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
 
         docsCollectorFiber <-
           Stream
@@ -103,15 +104,6 @@ class ProjectRemovedProvisioningSpec
           )
           .map((rc, sc, _))
       }
-
-  private def toSolrDocument(created: ProjectCreated): Project =
-    created
-      .into[Project]
-      .transform(
-        Field.computed(_.owners, pc => List(users.Id(pc.createdBy))),
-        Field.default(_.members),
-        Field.default(_.score)
-      )
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

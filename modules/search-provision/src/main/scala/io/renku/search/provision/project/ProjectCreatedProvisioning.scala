@@ -22,6 +22,7 @@ import cats.Show
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
+
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1
@@ -54,7 +55,7 @@ object ProjectCreatedProvisioning:
 
   private given Transformer[ProjectCreated, documents.Project] =
     _.into[documents.Project].transform(
-      Field.computed(_.owners, pc => List(users.Id(pc.createdBy))),
+      Field.computed(_.owners, pc => List(Id(pc.createdBy))),
       Field.default(_.members),
       Field.default(_.score)
     )

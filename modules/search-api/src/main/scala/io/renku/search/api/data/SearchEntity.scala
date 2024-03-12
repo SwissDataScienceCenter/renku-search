@@ -18,23 +18,23 @@
 
 package io.renku.search.api.data
 
-import io.bullet.borer.*
+import java.time.Instant
+
 import io.bullet.borer.NullOptions.given
+import io.bullet.borer.*
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
-import io.renku.search.model.*
 import io.renku.search.api.tapir.SchemaSyntax.*
+import io.renku.search.model.*
 import sttp.tapir.Schema.SName
-import sttp.tapir.SchemaType.{SCoproduct, SDateTime, SProductField, SRef}
+import sttp.tapir.SchemaType._
 import sttp.tapir.generic.Configuration
 import sttp.tapir.{FieldName, Schema, SchemaType}
-
-import java.time.Instant
 
 sealed trait SearchEntity
 
 final case class Project(
-    id: projects.Id,
-    name: projects.Name,
+    id: Id,
+    name: Name,
     slug: projects.Slug,
     repositories: Seq[projects.Repository],
     visibility: projects.Visibility,
@@ -45,8 +45,8 @@ final case class Project(
 ) extends SearchEntity
 
 object Project:
-  private given Schema[projects.Id] = Schema.string[projects.Id]
-  private given Schema[projects.Name] = Schema.string[projects.Name]
+  private given Schema[Id] = Schema.string[Id]
+  private given Schema[Name] = Schema.string[Name]
   private given Schema[projects.Slug] = Schema.string[projects.Slug]
   private given Schema[projects.Repository] = Schema.string[projects.Repository]
   private given Schema[projects.Visibility] =
@@ -57,29 +57,29 @@ object Project:
     .derived[Project]
     .jsonExample(
       Project(
-        projects.Id("01HRA7AZ2Q234CDQWGA052F8MK"),
-        projects.Name("renku"),
+        Id("01HRA7AZ2Q234CDQWGA052F8MK"),
+        Name("renku"),
         projects.Slug("renku"),
         Seq(projects.Repository("https://github.com/renku")),
         projects.Visibility.Public,
         Some(projects.Description("Renku project")),
-        UserId(users.Id("1CAF4C73F50D4514A041C9EDDB025A36")),
+        UserId(Id("1CAF4C73F50D4514A041C9EDDB025A36")),
         projects.CreationDate(Instant.now),
         Some(1.0)
       ): SearchEntity
     )
 
-final case class UserId(id: users.Id)
+final case class UserId(id: Id)
 object UserId:
   given Codec[UserId] = deriveCodec[UserId]
 
-  private given Schema[users.Id] = Schema.string[users.Id]
+  private given Schema[Id] = Schema.string[Id]
   given Schema[UserId] = Schema
     .derived[UserId]
-    .jsonExample(UserId(users.Id("01HRA7AZ2Q234CDQWGA052F8MK")))
+    .jsonExample(UserId(Id("01HRA7AZ2Q234CDQWGA052F8MK")))
 
 final case class User(
-    id: users.Id,
+    id: Id,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     email: Option[users.Email] = None,
@@ -87,7 +87,7 @@ final case class User(
 ) extends SearchEntity
 
 object User:
-  private given Schema[users.Id] = Schema.string[users.Id]
+  private given Schema[Id] = Schema.string[Id]
   private given Schema[users.FirstName] = Schema.string[users.FirstName]
   private given Schema[users.LastName] = Schema.string[users.LastName]
   private given Schema[users.Email] = Schema.string[users.Email]
@@ -95,7 +95,7 @@ object User:
     .derived[User]
     .jsonExample(
       User(
-        users.Id("1CAF4C73F50D4514A041C9EDDB025A36"),
+        Id("1CAF4C73F50D4514A041C9EDDB025A36"),
         Some(users.FirstName("Albert")),
         Some(users.LastName("Einstein")),
         Some(users.Email("albert.einstein@mail.com")),

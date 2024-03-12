@@ -18,30 +18,16 @@
 
 package io.renku.search.model
 
+import java.time.Instant
+
 import cats.kernel.Order
+
 import io.bullet.borer.derivation.MapBasedCodecs.*
 import io.bullet.borer.{Codec, Decoder, Encoder}
 import io.github.arainko.ducktape.*
 import io.renku.search.borer.codecs.all.given
 
-import java.time.Instant
-
 object projects:
-
-  opaque type Id = String
-  object Id:
-    def apply(v: String): Id = v
-    extension (self: Id) def value: String = self
-    given Transformer[String, Id] = apply
-    given Codec[Id] = Codec.of[String]
-
-  opaque type Name = String
-  object Name:
-    def apply(v: String): Name = v
-    extension (self: Name) def value: String = self
-    given Transformer[String, Name] = apply
-    given Codec[Name] = Codec.of[String]
-
   opaque type Slug = String
   object Slug:
     def apply(v: String): Slug = v
@@ -83,8 +69,6 @@ object projects:
 
   object Visibility:
     given Order[Visibility] = Order.by(_.ordinal)
-    given Decoder[Visibility] = Decoder.forString.map(Visibility.unsafeFromString)
-    given Encoder[Visibility] = Encoder.forString.contramap(_.name)
 
     def unsafeFromString(v: String): Visibility =
       valueOf(v.toLowerCase.capitalize)

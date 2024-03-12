@@ -19,14 +19,16 @@
 package io.renku.search.provision.user
 
 import cats.Show
-import cats.effect.{Async, Resource}
+import cats.effect.Async
+import cats.effect.Resource
 import cats.syntax.all.*
 import fs2.io.net.Network
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1
 import io.renku.events.v1.UserAdded
-import io.renku.redis.client.{QueueName, RedisConfig}
+import io.renku.redis.client.QueueName
+import io.renku.redis.client.RedisConfig
 import io.renku.search.provision.UpsertProvisioningProcess
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
@@ -55,4 +57,7 @@ object UserAddedProvisioning:
     )
 
   private given Transformer[UserAdded, documents.User] =
-    _.into[documents.User].transform(Field.default(_.score))
+    _.into[documents.User].transform(
+      Field.default(_.score),
+      Field.computed(_.name, u => documents.User.nameFrom(u.firstName, u.lastName))
+    )

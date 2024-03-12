@@ -18,17 +18,18 @@
 
 package io.renku.search.model
 
-import cats.syntax.all.*
-import org.scalacheck.Gen
-import org.scalacheck.cats.implicits.*
-
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-object ModelGenerators:
+import cats.syntax.all.*
 
-  val projectNameGen: Gen[projects.Name] =
-    alphaStringGen(max = 10).map(projects.Name.apply)
+import org.scalacheck.Gen
+import org.scalacheck.cats.implicits.*
+
+object ModelGenerators:
+  val idGen: Gen[Id] = Gen.uuid.map(uuid => Id(uuid.toString))
+  val nameGen: Gen[Name] =
+    alphaStringGen(max = 10).map(Name.apply)
   val projectDescGen: Gen[projects.Description] =
     alphaStringGen(max = 30).map(projects.Description.apply)
 
@@ -52,7 +53,6 @@ object ModelGenerators:
       .chooseNum(min.toEpochMilli, max.toEpochMilli)
       .map(Instant.ofEpochMilli(_).truncatedTo(ChronoUnit.MILLIS))
 
-  val userIdGen: Gen[users.Id] = Gen.uuid.map(uuid => users.Id(uuid.toString))
   val userFirstNameGen: Gen[users.FirstName] = Gen
     .oneOf("Eike", "Kuba", "Ralf", "Lorenzo", "Jean-Pierre", "Alfonso")
     .map(users.FirstName.apply)

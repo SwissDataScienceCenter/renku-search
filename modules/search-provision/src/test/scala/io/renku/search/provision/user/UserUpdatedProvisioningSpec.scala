@@ -22,7 +22,6 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.{stringGen, userAddedGen}
@@ -32,13 +31,13 @@ import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, users}
+import io.renku.search.model.EntityType
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.{Entity, User}
+import io.renku.search.solr.documents.Entity
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
@@ -46,7 +45,8 @@ import scala.concurrent.duration.*
 class UserUpdatedProvisioningSpec
     extends CatsEffectSuite
     with QueueSpec
-    with SearchSolrSpec:
+    with SearchSolrSpec
+    with UserSyntax:
 
   private val avro = AvroIO(UserUpdated.SCHEMA$)
 
@@ -104,15 +104,6 @@ class UserUpdatedProvisioningSpec
           )
           .map((rc, sc, _))
       }
-
-  extension (added: UserAdded)
-    def toSolrDocument: User = added.into[User].transform(Field.default(_.score))
-    def update(updated: UserUpdated): UserAdded =
-      added.copy(
-        firstName = updated.firstName,
-        lastName = updated.lastName,
-        email = updated.email
-      )
 
   private case class TestCase(name: String, f: UserAdded => UserUpdated)
   private lazy val firstNameUpdate = TestCase(

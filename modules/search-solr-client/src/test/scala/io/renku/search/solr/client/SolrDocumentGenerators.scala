@@ -19,30 +19,31 @@
 package io.renku.search.solr.client
 
 import cats.syntax.all.*
+
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.*
 import io.renku.search.model.ModelGenerators.*
+import io.renku.search.model.*
 import io.renku.search.solr.documents.*
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
 
 object SolrDocumentGenerators:
 
-  private def projectIdGen: Gen[projects.Id] =
-    Gen.uuid.map(uuid => projects.Id(uuid.toString))
+  private def projectIdGen: Gen[Id] =
+    Gen.uuid.map(uuid => Id(uuid.toString))
 
   val projectDocumentGen: Gen[Project] =
     projectDocumentGen(
-      s"proj-${projectNameGen.generateOne}",
+      s"proj-${nameGen.generateOne}",
       s"proj desc ${projectDescGen.generateOne}"
     )
 
   def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    (projectIdGen, userIdGen, projectVisibilityGen, projectCreationDateGen)
+    (projectIdGen, idGen, projectVisibilityGen, projectCreationDateGen)
       .mapN((projectId, creatorId, visibility, creationDate) =>
         Project(
           projectId,
-          projects.Name(name),
+          Name(name),
           projects.Slug(name),
           Seq(projects.Repository(s"http://github.com/$name")),
           visibility,
@@ -53,8 +54,8 @@ object SolrDocumentGenerators:
       )
 
   def userDocumentGen: Gen[User] =
-    (userIdGen, Gen.option(userFirstNameGen), Gen.option(userLastNameGen))
+    (idGen, Gen.option(userFirstNameGen), Gen.option(userLastNameGen))
       .flatMapN { case (id, f, l) =>
         val e = (f, l).flatMapN(userEmailGen(_, _).generateSome)
-        User(id, f, l, e)
+        User.of(id, f, l, e)
       }

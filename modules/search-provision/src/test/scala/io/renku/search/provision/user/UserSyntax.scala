@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 Swiss Data Science Center (SDSC)
+ * Copyright 2024 Swiss Data Science Center (SDSC)
  * A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
  * Eidgenössische Technische Hochschule Zürich (ETHZ).
  *
@@ -16,13 +16,24 @@
  * limitations under the License.
  */
 
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.12.0")
-addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.11.0")
-addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.0.1")
-addSbtPlugin("com.github.sbt" % "sbt-git" % "2.0.1")
-addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.9.16")
-addSbtPlugin("com.github.sbt" % "sbt-release" % "1.4.0")
-addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.8.3")
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0")
-addSbtPlugin("io.spray" % "sbt-revolver" % "0.10.0")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
+package io.renku.search.provision.user
+
+import io.github.arainko.ducktape.*
+import io.renku.events.v1.UserAdded
+import io.renku.events.v1.UserUpdated
+import io.renku.search.solr.documents.User
+
+trait UserSyntax:
+  extension (added: UserAdded)
+    def toSolrDocument: User = added
+      .into[User]
+      .transform(
+        Field.default(_.score),
+        Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName))
+      )
+    def update(updated: UserUpdated): UserAdded =
+      added.copy(
+        firstName = updated.firstName,
+        lastName = updated.lastName,
+        email = updated.email
+      )

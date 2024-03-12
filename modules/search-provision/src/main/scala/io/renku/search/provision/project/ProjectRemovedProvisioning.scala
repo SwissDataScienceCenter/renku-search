@@ -21,16 +21,17 @@ package io.renku.search.provision.project
 import cats.Show
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
-import io.renku.events.v1
-import io.renku.events.v1.ProjectRemoved
 import fs2.io.net.Network
-import io.renku.redis.client.{QueueName, RedisConfig}
-import io.renku.search.provision.SolrRemovalProcess
-import io.renku.solr.client.SolrConfig
-import scribe.Scribe
-import io.renku.search.solr.documents.DocumentId
+
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
+import io.renku.events.v1
+import io.renku.events.v1.ProjectRemoved
+import io.renku.redis.client.{QueueName, RedisConfig}
+import io.renku.search.provision.SolrRemovalProcess
+import io.renku.search.solr.documents.DocumentId
+import io.renku.solr.client.SolrConfig
+import scribe.Scribe
 
 trait ProjectRemovedProvisioning[F[_]] extends SolrRemovalProcess[F]
 

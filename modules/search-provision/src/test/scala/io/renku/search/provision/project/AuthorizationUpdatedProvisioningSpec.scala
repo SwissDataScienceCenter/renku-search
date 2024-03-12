@@ -19,31 +19,31 @@
 package io.renku.search.provision
 package project
 
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.github.arainko.ducktape.*
+
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectCreated, ProjectMemberRole}
+import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{projects, users}
-import io.renku.search.provision.TypeTransformers.given
+import io.renku.search.model.{Id, projects}
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
-import scala.concurrent.duration.*
-
 class AuthorizationUpdatedProvisioningSpec
     extends CatsEffectSuite
     with QueueSpec
-    with SearchSolrSpec:
+    with SearchSolrSpec
+    with ProjectSyntax:
 
   (memberAdded :: ownerAdded :: noUpdate :: Nil)
     .foreach { case TestCase(name, updateF) =>
@@ -77,7 +77,7 @@ class AuthorizationUpdatedProvisioningSpec
 
             _ <- solrDocs.waitUntil(
               _ contains projectDoc.addMember(
-                users.Id(authAdded.userId),
+                Id(authAdded.userId),
                 projects.MemberRole.unsafeFromString(authAdded.role.name())
               )
             )
@@ -99,15 +99,6 @@ class AuthorizationUpdatedProvisioningSpec
           )
           .map((rc, sc, _))
       }
-
-  extension (created: ProjectCreated)
-    def toSolrDocument: Project = created
-      .into[Project]
-      .transform(
-        Field.computed(_.owners, pc => List(users.Id(pc.createdBy))),
-        Field.default(_.members),
-        Field.default(_.score)
-      )
 
   private case class TestCase(name: String, f: Project => ProjectAuthorizationUpdated)
 

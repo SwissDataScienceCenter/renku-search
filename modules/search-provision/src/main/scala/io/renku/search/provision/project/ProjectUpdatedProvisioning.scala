@@ -22,6 +22,7 @@ package project
 import cats.Show
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
+
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectUpdated

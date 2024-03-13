@@ -42,7 +42,6 @@ object ProjectUpdatedProvisioning:
     given Scribe[F] = scribe.cats[F]
     UpdateProvisioningProcess.make[F, ProjectUpdated, documents.Project](
       queueName,
-      ProjectUpdated.SCHEMA$,
       idExtractor,
       docUpdate,
       redisConfig,

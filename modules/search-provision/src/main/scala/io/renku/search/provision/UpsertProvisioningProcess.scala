@@ -31,7 +31,7 @@ import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity
 import io.renku.solr.client.SolrConfig
-import org.apache.avro.Schema
+
 import scribe.Scribe
 
 import scala.concurrent.duration.*
@@ -42,22 +42,21 @@ object UpsertProvisioningProcess:
 
   def make[F[_]: Async: Network: Scribe, In, Out <: Entity](
       queueName: QueueName,
-      inSchema: Schema,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
   )(using
       Show[In],
       Transformer[In, Out],
       AvroDecoder[In],
-      Encoder[Entity]
+      Encoder[Entity],
+      QueueMessageDecoder[F, In]
   ): Resource[F, UpsertProvisioningProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
       new UpsertProvisioningProcessImpl[F, In, Out](
         queueName,
         ProvisioningProcess.clientId,
         QueueClient.make[F](redisConfig),
-        _,
-        QueueMessageDecoder[F, In](inSchema)
+        _
       )
     }
 
@@ -65,10 +64,14 @@ private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
     queueName: QueueName,
     clientId: ClientId,
     queueClientResource: Resource[F, QueueClient[F]],
-    solrClient: SearchSolrClient[F],
-    messageDecoder: QueueMessageDecoder[F, In]
-)(using Show[In], Transformer[In, Out], AvroDecoder[In], Encoder[Entity])
-    extends UpsertProvisioningProcess[F]:
+    solrClient: SearchSolrClient[F]
+)(using
+    Show[In],
+    Transformer[In, Out],
+    AvroDecoder[In],
+    Encoder[Entity],
+    QueueMessageDecoder[F, In]
+) extends UpsertProvisioningProcess[F]:
 
   def process: F[Unit] = provisioningProcess
 
@@ -104,7 +107,7 @@ private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
   private def decodeMessage(queueClient: QueueClient[F])(
       message: QueueMessage
   ): F[(QueueMessage, Seq[In])] =
-    messageDecoder
+    QueueMessageDecoder[F, In]
       .decodeMessage(message)
       .tupleLeft(message)
       .onError(markProcessedOnFailure(message, queueClient))

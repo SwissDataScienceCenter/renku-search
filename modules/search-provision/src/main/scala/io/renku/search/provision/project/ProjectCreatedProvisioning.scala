@@ -45,7 +45,6 @@ object ProjectCreatedProvisioning:
     given Scribe[F] = scribe.cats[F]
     UpsertProvisioningProcess.make[F, ProjectCreated, documents.Project](
       queueName,
-      ProjectCreated.SCHEMA$,
       redisConfig,
       solrConfig
     )

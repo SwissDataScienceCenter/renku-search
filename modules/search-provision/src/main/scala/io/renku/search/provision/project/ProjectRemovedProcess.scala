@@ -42,7 +42,6 @@ object ProjectRemovedProcess:
     given Scribe[F] = scribe.cats[F]
     SolrRemovalProcess.make[F, ProjectRemoved](
       queueName,
-      ProjectRemoved.SCHEMA$,
       redisConfig,
       solrConfig,
       onSolrPersist = None

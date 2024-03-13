@@ -30,7 +30,6 @@ import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity
 import io.renku.solr.client.SolrConfig
-import org.apache.avro.Schema
 import scribe.Scribe
 
 import scala.reflect.ClassTag
@@ -41,7 +40,6 @@ object UpdateProvisioningProcess:
 
   def make[F[_]: Async: Network: Scribe, In, Out <: Entity](
       queueName: QueueName,
-      inSchema: Schema,
       idExtractor: In => Id,
       docUpdate: ((In, Out)) => Out,
       redisConfig: RedisConfig,
@@ -50,6 +48,7 @@ object UpdateProvisioningProcess:
       Show[In],
       AvroDecoder[In],
       Codec[Entity],
+      QueueMessageDecoder[F, In],
       ClassTag[Out]
   ): Resource[F, UpdateProvisioningProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
@@ -59,8 +58,7 @@ object UpdateProvisioningProcess:
         idExtractor,
         docUpdate,
         QueueClient.make[F](redisConfig),
-        _,
-        QueueMessageDecoder[F, In](inSchema)
+        _
       )
     }
 
@@ -70,9 +68,8 @@ private class UpdateProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
     idExtractor: In => Id,
     docUpdate: ((In, Out)) => Out,
     queueClientResource: Resource[F, QueueClient[F]],
-    solrClient: SearchSolrClient[F],
-    messageDecoder: QueueMessageDecoder[F, In]
-)(using Show[In], Codec[Entity], ClassTag[Out])
+    solrClient: SearchSolrClient[F]
+)(using Show[In], Codec[Entity], ClassTag[Out], QueueMessageDecoder[F, In])
     extends UpdateProvisioningProcess[F]:
 
   def process: F[Unit] = provisioningProcess
@@ -109,7 +106,7 @@ private class UpdateProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
   private def decodeMessage(queueClient: QueueClient[F])(
       message: QueueMessage
   ): F[(QueueMessage, Seq[In])] =
-    messageDecoder
+    QueueMessageDecoder[F, In]
       .decodeMessage(message)
       .tupleLeft(message)
       .onError(markProcessedOnFailure(message, queueClient))

@@ -46,7 +46,6 @@ object UserAddedProvisioning:
     given Scribe[F] = scribe.cats[F]
     UpsertProvisioningProcess.make[F, UserAdded, documents.User](
       queueName,
-      UserAdded.SCHEMA$,
       redisConfig,
       solrConfig
     )

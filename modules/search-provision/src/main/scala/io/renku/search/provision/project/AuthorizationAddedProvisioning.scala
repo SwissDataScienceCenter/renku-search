@@ -42,7 +42,6 @@ object AuthorizationAddedProvisioning:
 
     UpdateProvisioningProcess.make[F, ProjectAuthorizationAdded, documents.Project](
       queueName,
-      ProjectAuthorizationAdded.SCHEMA$,
       idExtractor,
       docUpdate,
       redisConfig,

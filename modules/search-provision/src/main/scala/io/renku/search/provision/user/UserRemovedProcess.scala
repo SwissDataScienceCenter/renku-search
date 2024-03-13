@@ -54,7 +54,6 @@ object UserRemovedProcess:
 
     SolrRemovalProcess.make[F, UserRemoved](
       userRemovedQueue,
-      UserRemoved.SCHEMA$,
       redisConfig,
       solrConfig,
       onSolrPersist = Some(onSolrPersist[F](authRemovedQueue))

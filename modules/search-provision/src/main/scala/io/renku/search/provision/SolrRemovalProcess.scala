@@ -30,7 +30,6 @@ import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
 import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.solr.client.SolrConfig
-import org.apache.avro.Schema
 import scribe.Scribe
 
 trait SolrRemovalProcess[F[_]] extends BackgroundProcess[F]:
@@ -40,14 +39,14 @@ object SolrRemovalProcess:
 
   def make[F[_]: Async: Network: Scribe, In](
       queueName: QueueName,
-      inSchema: Schema,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig,
       onSolrPersist: Option[OnSolrPersist[F, In]]
   )(using
       Show[In],
       Transformer[In, Id],
-      AvroDecoder[In]
+    AvroDecoder[In],
+    QueueMessageDecoder[F, In]
   ): Resource[F, SolrRemovalProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
       new SolrRemovalProcessImpl[F, In](
@@ -55,7 +54,6 @@ object SolrRemovalProcess:
         ProvisioningProcess.clientId,
         QueueClient.make[F](redisConfig),
         _,
-        QueueMessageDecoder[F, In](inSchema),
         onSolrPersist
       )
     }
@@ -65,9 +63,8 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
     clientId: ClientId,
     queueClientResource: Resource[F, QueueClient[F]],
     solrClient: SearchSolrClient[F],
-    messageDecoder: QueueMessageDecoder[F, In],
     onSolrPersist: Option[OnSolrPersist[F, In]]
-)(using Show[In], Transformer[In, Id], AvroDecoder[In])
+)(using Show[In], Transformer[In, Id], AvroDecoder[In], QueueMessageDecoder[F, In])
     extends SolrRemovalProcess[F]:
 
   def process: F[Unit] = removalProcess
@@ -102,7 +99,7 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
   private def decodeMessage(queueClient: QueueClient[F])(
       message: QueueMessage
   ): F[(QueueMessage, Seq[In])] =
-    messageDecoder
+    QueueMessageDecoder[F, In]
       .decodeMessage(message)
       .tupleLeft(message)
       .onError(markProcessedOnFailure(message, queueClient))

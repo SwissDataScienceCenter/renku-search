@@ -133,6 +133,20 @@ lazy val httpClient = project
     http4sBorer % "compile->compile;test->test"
   )
 
+lazy val http4sMetrics = project
+  .in(file("modules/http4s-metrics"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .withId("http4s-metrics")
+  .settings(commonSettings)
+  .settings(
+    name := "http4s-metrics",
+    description := "Prometheus metrics for http4s",
+    libraryDependencies ++=
+      Dependencies.http4sCore ++
+        Dependencies.http4sPrometheusMetrics
+  )
+
 lazy val redisClient = project
   .in(file("modules/redis-client"))
   .withId("redis-client")
@@ -316,12 +330,14 @@ lazy val searchApi = project
       Dependencies.ciris ++
         Dependencies.http4sDsl ++
         Dependencies.http4sServer ++
+        Dependencies.http4sPrometheusMetrics ++
         Dependencies.tapirHttp4sServer ++
         Dependencies.tapirOpenAPI
   )
   .dependsOn(
     commons % "compile->compile;test->test",
     http4sBorer % "compile->compile;test->test",
+    http4sMetrics % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test",
     searchQueryDocs % "compile->compile;test->test"

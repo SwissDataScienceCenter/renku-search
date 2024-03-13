@@ -21,28 +21,40 @@ package io.renku.search.api
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
+import io.renku.search.api.routes.*
+import io.renku.search.http.metrics.MetricsRoutes
+import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.solr.client.SolrConfig
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 import org.http4s.{HttpApp, HttpRoutes, Response}
-import io.renku.search.api.routes.*
 
 object HttpApplication:
-  def apply[F[_]: Async: Network](
-      solrConfig: SolrConfig
-  ): Resource[F, HttpApp[F]] =
-    SearchApi[F](solrConfig).map(new HttpApplication[F](_).router)
 
-final class HttpApplication[F[_]: Async](searchApi: SearchApi[F]) extends Http4sDsl[F]:
+  def apply[F[_]: Async: Network](solrConfig: SolrConfig): Resource[F, HttpApp[F]] =
+    for
+      search <- SearchApi[F](solrConfig).map(api => SearchRoutes[F](api))
+      metricsRoutes <- MetricsRoutes[F](
+        search.routes,
+        CollectorRegistryBuilder[F].withStandardJVMMetrics
+      ).makeRoutes
+    yield new HttpApplication[F](search, metricsRoutes).router
+
+final class HttpApplication[F[_]: Async](
+    search: SearchRoutes[F],
+    metricsRoutes: HttpRoutes[F]
+) extends Http4sDsl[F]:
 
   private val prefix = "/search"
 
-  private val search = SearchRoutes[F](searchApi)
   private val openapi =
     OpenApiRoute[F](s"/api$prefix", "Renku Search API", search.endpoints)
 
-  lazy val router: HttpApp[F] =
+  private lazy val searchAndOperationRoutes =
     Router[F](
       prefix -> (openapi.routes <+> search.routes),
       "/" -> OperationRoutes[F]
-    ).orNotFound
+    )
+
+  lazy val router: HttpApp[F] =
+    (searchAndOperationRoutes <+> metricsRoutes).orNotFound

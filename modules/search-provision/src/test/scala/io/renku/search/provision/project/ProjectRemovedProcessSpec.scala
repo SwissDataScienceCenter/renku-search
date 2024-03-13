@@ -18,13 +18,10 @@
 
 package io.renku.search.provision.project
 
-import scala.concurrent.duration.*
-
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-
 import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
@@ -34,7 +31,7 @@ import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.EntityType
+import io.renku.search.model.{EntityType, Id}
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
@@ -42,7 +39,9 @@ import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
-class ProjectRemovedProvisioningSpec
+import scala.concurrent.duration.*
+
+class ProjectRemovedProcessSpec
     extends CatsEffectSuite
     with QueueSpec
     with SearchSolrSpec
@@ -65,7 +64,7 @@ class ProjectRemovedProvisioningSpec
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.findById[Project](created.id))
+            .evalMap(_ => solrClient.findById[Project](Id(created.id)))
             .evalMap(e => solrDoc.update(_ => e))
             .compile
             .drain
@@ -96,7 +95,7 @@ class ProjectRemovedProvisioningSpec
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)
       .flatMap { case (rc, sc) =>
-        ProjectRemovedProvisioning
+        ProjectRemovedProcess
           .make[IO](
             queueName,
             withRedisClient.redisConfig,

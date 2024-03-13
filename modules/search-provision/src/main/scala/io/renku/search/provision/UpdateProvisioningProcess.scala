@@ -26,6 +26,7 @@ import io.bullet.borer.Codec
 import io.renku.avro.codec.AvroDecoder
 import io.renku.queue.client.{QueueClient, QueueMessage}
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
+import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity
 import io.renku.solr.client.SolrConfig
@@ -42,7 +43,7 @@ object UpdateProvisioningProcess:
   def make[F[_]: Async: Network: Scribe, In, Out <: Entity](
       queueName: QueueName,
       inSchema: Schema,
-      idExtractor: In => String,
+      idExtractor: In => Id,
       docUpdate: ((In, Out)) => Out,
       redisConfig: RedisConfig,
       solrConfig: SolrConfig
@@ -67,7 +68,7 @@ object UpdateProvisioningProcess:
 private class UpdateProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Entity](
     queueName: QueueName,
     clientId: ClientId,
-    idExtractor: In => String,
+    idExtractor: In => Id,
     docUpdate: ((In, Out)) => Out,
     queueClientResource: Resource[F, QueueClient[F]],
     solrClient: SearchSolrClient[F],

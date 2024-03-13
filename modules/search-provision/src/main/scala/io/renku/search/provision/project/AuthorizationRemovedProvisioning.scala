@@ -20,14 +20,11 @@ package io.renku.search.provision
 package project
 
 import cats.Show
-import cats.effect.Async
-import cats.effect.Resource
+import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectAuthorizationRemoved
-import io.renku.redis.client.QueueName
-import io.renku.redis.client.RedisConfig
+import io.renku.redis.client.{QueueName, RedisConfig}
 import io.renku.search.model.Id
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
@@ -56,7 +53,8 @@ object AuthorizationRemovedProvisioning:
       s"projectId '${v.projectId}', userId '${v.userId}'"
     )
 
-  private lazy val idExtractor: ProjectAuthorizationRemoved => String = _.projectId
+  private lazy val idExtractor: ProjectAuthorizationRemoved => Id = par =>
+    Id(par.projectId)
 
   private lazy val docUpdate
       : ((ProjectAuthorizationRemoved, documents.Project)) => documents.Project = {

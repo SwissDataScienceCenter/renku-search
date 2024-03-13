@@ -18,17 +18,18 @@
 
 package io.renku.search.solr.client
 
+import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
-import io.bullet.borer.Encoder
+import io.bullet.borer.{Decoder, Encoder}
+import io.renku.search.model.Id
 import io.renku.search.query.Query
-import io.renku.search.solr.documents.{DocumentId, Entity}
+import io.renku.search.solr.documents.Entity
 import io.renku.search.solr.query.LuceneQueryInterpreter
-import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
-import cats.data.NonEmptyList
-import io.renku.solr.client.schema.FieldName
-import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.search.solr.schema.EntityDocumentSchema
+import io.renku.solr.client.facet.{Facet, Facets}
+import io.renku.solr.client.schema.FieldName
+import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
 
 import scala.reflect.ClassTag
 
@@ -46,8 +47,8 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   override def insert[D: Encoder](documents: Seq[D]): F[Unit] =
     solrClient.insert(documents).void
 
-  override def deleteIds(ids: NonEmptyList[DocumentId]): F[Unit] =
-    solrClient.deleteIds(ids.map(_.name)).void
+  override def deleteIds(ids: NonEmptyList[Id]): F[Unit] =
+    solrClient.deleteIds(ids.map(_.value)).void
 
   override def queryEntity(
       query: Query,
@@ -66,8 +67,11 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
         )
     } yield res
 
-  override def findById[D <: Entity](id: String)(using ct: ClassTag[D]): F[Option[D]] =
-    solrClient.findById[Entity](id).map(_.responseBody.docs.headOption).flatMap {
+  override def query[D: Decoder](query: QueryData): F[QueryResponse[D]] =
+    solrClient.query[D](query)
+
+  override def findById[D <: Entity](id: Id)(using ct: ClassTag[D]): F[Option[D]] =
+    solrClient.findById[Entity](id.value).map(_.responseBody.docs.headOption) >>= {
       case Some(e: D) => Some(e).pure[F]
       case Some(e) =>
         new Exception(s"Entity '$id' is of type ${e.getClass} not ${ct.runtimeClass}")

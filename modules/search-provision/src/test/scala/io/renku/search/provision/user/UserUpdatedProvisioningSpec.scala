@@ -31,13 +31,9 @@ import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.EntityType
-import io.renku.search.query.Query
-import io.renku.search.query.Query.Segment
-import io.renku.search.query.Query.Segment.typeIs
+import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.Entity
+import io.renku.search.solr.documents.{Entity, User}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
@@ -57,11 +53,11 @@ class UserUpdatedProvisioningSpec
 
         clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
           for
-            solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
+            solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
 
             provisioningFiber <- provisioner.provisioningProcess.start
 
-            userAdded = userAddedGen(prefix = "update").generateOne
+            userAdded = userAddedGen(prefix = "user-update").generateOne
             _ <- solrClient.insert(Seq(userAdded.toSolrDocument.widen))
 
             userUpdated = updateF(userAdded)
@@ -74,14 +70,13 @@ class UserUpdatedProvisioningSpec
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
-                .flatMap(qr => Stream.emits(qr.responseBody.docs))
-                .evalMap(e => solrDocs.update(_ + e.noneScore))
+                .evalMap(_ => solrClient.findById[User](Id(userAdded.id)))
+                .evalMap(e => solrDoc.update(_ => e))
                 .compile
                 .drain
                 .start
 
-            _ <- solrDocs.waitUntil(
+            _ <- solrDoc.waitUntil(
               _ contains userAdded.update(userUpdated).toSolrDocument
             )
 
@@ -90,8 +85,6 @@ class UserUpdatedProvisioningSpec
           yield ()
         }
   }
-
-  private lazy val queryUsers = Query(typeIs(EntityType.User))
 
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)

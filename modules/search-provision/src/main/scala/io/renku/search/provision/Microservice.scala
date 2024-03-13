@@ -61,7 +61,7 @@ object Microservice extends IOApp:
       (
         "ProjectRemoved",
         cfg.queuesConfig.projectRemoved,
-        ProjectRemovedProvisioning
+        ProjectRemovedProcess
           .make[IO](cfg.queuesConfig.projectRemoved, cfg.redisConfig, cfg.solrConfig)
           .map(_.removalProcess.start)
       ),
@@ -111,6 +111,18 @@ object Microservice extends IOApp:
         UserUpdatedProvisioning
           .make[IO](cfg.queuesConfig.userUpdated, cfg.redisConfig, cfg.solrConfig)
           .map(_.provisioningProcess.start)
+      ),
+      (
+        "UserRemoved",
+        cfg.queuesConfig.userRemoved,
+        UserRemovedProcess
+          .make[IO](
+            cfg.queuesConfig.userRemoved,
+            cfg.queuesConfig.projectAuthorizationRemoved,
+            cfg.redisConfig,
+            cfg.solrConfig
+          )
+          .map(_.removalProcess.start)
       )
     ).parTraverse_(startProcess(cfg))
       .flatMap(_ => IO.never)

@@ -36,6 +36,9 @@ trait GeneratorSyntax:
 
     def generateList: List[A] = Gen.listOf(self).generateOne
 
+    def generateList(min: Int, max: Int): List[A] =
+      Gen.choose(min, max).flatMap(Gen.listOfN(_, self)).generateOne
+
     def stream: Stream[Gen, A] =
       Stream.repeatEval(self)
 

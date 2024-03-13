@@ -27,8 +27,8 @@ import io.github.arainko.ducktape.*
 import io.renku.avro.codec.AvroDecoder
 import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
 import io.renku.redis.client.{ClientId, QueueName, RedisConfig}
+import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.DocumentId
 import io.renku.solr.client.SolrConfig
 import org.apache.avro.Schema
 import scribe.Scribe
@@ -48,7 +48,7 @@ object SolrRemovalProcess:
       onSolrPersist: Option[OnSolrPersist[F, In]]
   )(using
       Show[In],
-      Transformer[In, DocumentId],
+      Transformer[In, Id],
       AvroDecoder[In]
   ): Resource[F, SolrRemovalProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
@@ -69,7 +69,7 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
     solrClient: SearchSolrClient[F],
     messageDecoder: QueueMessageDecoder[F, In],
     onSolrPersist: Option[OnSolrPersist[F, In]]
-)(using Show[In], Transformer[In, DocumentId], AvroDecoder[In])
+)(using Show[In], Transformer[In, Id], AvroDecoder[In])
     extends SolrRemovalProcess[F]:
   override def removalProcess: F[Unit] =
     queueClientResource
@@ -129,8 +129,8 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
       )
     }
 
-  private lazy val toDocumentIds: Seq[In] => Option[NonEmptyList[DocumentId]] =
-    _.map(_.to[DocumentId]).toList.toNel
+  private lazy val toDocumentIds: Seq[In] => Option[NonEmptyList[Id]] =
+    _.map(_.to[Id]).toList.toNel
 
   private def markProcessedOnFailure(
       message: QueueMessage,

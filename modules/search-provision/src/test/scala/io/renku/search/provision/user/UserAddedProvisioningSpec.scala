@@ -30,6 +30,7 @@ import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, User}
 import munit.CatsEffectSuite
@@ -61,7 +62,7 @@ class UserAddedProvisioningSpec
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.findById[User](userAdded.id))
+            .evalMap(_ => solrClient.findById[User](Id(userAdded.id)))
             .evalMap(e => solrDoc.update(_ => e))
             .compile
             .drain

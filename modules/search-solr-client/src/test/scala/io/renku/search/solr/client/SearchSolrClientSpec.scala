@@ -42,7 +42,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
         _ <- client.insert(Seq(project.widen))
         qr <- client.queryEntity(Query.parse("solr").toOption.get, 10, 0)
         _ = assert(qr.responseBody.docs.map(_.noneScore) contains project)
-        gr <- client.findById[Project](project.id.value)
+        gr <- client.findById[Project](project.id)
         _ = assert(gr contains project)
       } yield ()
     }
@@ -55,7 +55,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
         _ <- client.insert(Seq(user.widen))
         qr <- client.queryEntity(Query.parse(firstName.value).toOption.get, 10, 0)
         _ = assert(qr.responseBody.docs.map(_.noneScore) contains user)
-        gr <- client.findById[User](user.id.value)
+        gr <- client.findById[User](user.id)
         _ = assert(gr contains user)
       } yield ()
     }

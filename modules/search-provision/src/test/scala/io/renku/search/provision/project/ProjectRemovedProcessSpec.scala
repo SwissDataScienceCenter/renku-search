@@ -31,7 +31,7 @@ import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.EntityType
+import io.renku.search.model.{EntityType, Id}
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
@@ -64,7 +64,7 @@ class ProjectRemovedProcessSpec
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.findById[Project](created.id))
+            .evalMap(_ => solrClient.findById[Project](Id(created.id)))
             .evalMap(e => solrDoc.update(_ => e))
             .compile
             .drain

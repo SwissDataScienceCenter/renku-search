@@ -22,7 +22,6 @@ package project
 import cats.Show
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectAuthorizationUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
@@ -55,7 +54,8 @@ object AuthorizationUpdatedProvisioning:
       s"projectId '${v.projectId}', userId '${v.userId}', role '${v.role}'"
     )
 
-  private lazy val idExtractor: ProjectAuthorizationUpdated => String = _.projectId
+  private lazy val idExtractor: ProjectAuthorizationUpdated => Id =
+    pau => Id(pau.projectId)
 
   private lazy val docUpdate
       : ((ProjectAuthorizationUpdated, documents.Project)) => documents.Project = {

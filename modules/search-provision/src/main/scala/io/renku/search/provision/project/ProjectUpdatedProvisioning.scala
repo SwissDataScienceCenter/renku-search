@@ -22,11 +22,11 @@ package project
 import cats.Show
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
-
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.ProjectUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
+import io.renku.search.model.Id
 import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
@@ -52,7 +52,7 @@ object ProjectUpdatedProvisioning:
   private given Show[ProjectUpdated] =
     Show.show[ProjectUpdated](v => s"slug '${v.slug}'")
 
-  private lazy val idExtractor: ProjectUpdated => String = _.id
+  private lazy val idExtractor: ProjectUpdated => Id = pu => Id(pu.id)
 
   private lazy val docUpdate
       : ((ProjectUpdated, documents.Project)) => documents.Project = {

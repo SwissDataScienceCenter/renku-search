@@ -33,10 +33,11 @@ import io.renku.events.v1.{ProjectAuthorizationRemoved, UserRemoved}
 import io.renku.queue.client.*
 import io.renku.queue.client.DataContentType.Binary
 import io.renku.redis.client.{QueueName, RedisConfig}
+import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningProcess.clientId
 import io.renku.search.provision.{OnSolrPersist, SolrRemovalProcess}
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.{DocumentId, Project}
+import io.renku.search.solr.documents.Project
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.{QueryData, SolrConfig}
 import scribe.Scribe
@@ -62,8 +63,8 @@ object UserRemovedProcess:
   private given Show[UserRemoved] =
     Show.show[UserRemoved](e => show"id '${e.id}'")
 
-  private given Transformer[UserRemoved, DocumentId] =
-    r => DocumentId(r.id)
+  private given Transformer[UserRemoved, Id] =
+    r => Id(r.id)
 
   private def onSolrPersist[F[_]: Async](authRemovedQueue: QueueName) =
 

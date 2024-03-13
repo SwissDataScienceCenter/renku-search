@@ -27,8 +27,8 @@ import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1
 import io.renku.events.v1.ProjectRemoved
 import io.renku.redis.client.{QueueName, RedisConfig}
+import io.renku.search.model.Id
 import io.renku.search.provision.SolrRemovalProcess
-import io.renku.search.solr.documents.DocumentId
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
 
@@ -51,5 +51,5 @@ object ProjectRemovedProcess:
   private given Show[ProjectRemoved] =
     Show.show[ProjectRemoved](pr => show"slug '${pr.id}'")
 
-  private given Transformer[ProjectRemoved, DocumentId] =
-    r => DocumentId(r.id)
+  private given Transformer[ProjectRemoved, Id] =
+    r => Id(r.id)

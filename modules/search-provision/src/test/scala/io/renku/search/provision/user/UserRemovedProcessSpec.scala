@@ -86,7 +86,7 @@ class UserRemovedProcessSpec
           docsCollectorFiber <-
             Stream
               .awakeEvery[IO](500 millis)
-              .evalMap(_ => solrClient.findById[User](user.id.value))
+              .evalMap(_ => solrClient.findById[User](user.id))
               .evalMap(e => solrDoc.update(_ => e))
               .compile
               .drain

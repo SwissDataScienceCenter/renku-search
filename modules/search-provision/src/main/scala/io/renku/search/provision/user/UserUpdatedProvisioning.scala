@@ -27,7 +27,7 @@ import io.github.arainko.ducktape.*
 import io.renku.avro.codec.decoders.all.given
 import io.renku.events.v1.UserUpdated
 import io.renku.redis.client.{QueueName, RedisConfig}
-import io.renku.search.model.{Name, users}
+import io.renku.search.model.{Id, Name, users}
 import io.renku.search.solr.documents
 import io.renku.solr.client.SolrConfig
 import scribe.Scribe
@@ -52,7 +52,7 @@ object UserUpdatedProvisioning:
   private given Show[UserUpdated] =
     Show.show[UserUpdated](u => s"id '${u.id}'")
 
-  private lazy val idExtractor: UserUpdated => String = _.id
+  private lazy val idExtractor: UserUpdated => Id = uu => Id(uu.id)
 
   private lazy val docUpdate: ((UserUpdated, documents.User)) => documents.User = {
     case (update, _) =>

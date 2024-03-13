@@ -69,7 +69,7 @@ class AuthorizationRemovedProvisioningSpec
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.findById[Project](projectDoc.id.value))
+            .evalMap(_ => solrClient.findById[Project](projectDoc.id))
             .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
             .compile
             .drain

@@ -41,9 +41,9 @@ object QueuesConfig:
       ConfigValues.eventQueue("projectCreated"),
       ConfigValues.eventQueue("projectUpdated"),
       ConfigValues.eventQueue("projectRemoved"),
-      ConfigValues.eventQueue("projectAuthorizationAdded"),
-      ConfigValues.eventQueue("projectAuthorizationUpdated"),
-      ConfigValues.eventQueue("projectAuthorizationRemoved"),
+      ConfigValues.eventQueue("projectAuthAdded"),
+      ConfigValues.eventQueue("projectAuthUpdated"),
+      ConfigValues.eventQueue("projectAuthRemoved"),
       ConfigValues.eventQueue("userAdded"),
       ConfigValues.eventQueue("userUpdated"),
       ConfigValues.eventQueue("userRemoved")

@@ -82,7 +82,6 @@ final case class User(
     id: Id,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
-    email: Option[users.Email] = None,
     score: Option[Double] = None
 ) extends SearchEntity
 
@@ -98,7 +97,6 @@ object User:
         Id("1CAF4C73F50D4514A041C9EDDB025A36"),
         Some(users.FirstName("Albert")),
         Some(users.LastName("Einstein")),
-        Some(users.Email("albert.einstein@mail.com")),
         Some(2.1)
       ): SearchEntity
     )

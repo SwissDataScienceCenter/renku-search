@@ -30,7 +30,7 @@ import scribe.Scribe
 import scribe.cats.*
 
 object Microservice extends IOApp:
-
+  private val logger = scribe.cats.io
   private val loadConfig: IO[SearchProvisionConfig] =
     SearchProvisionConfig.config.load[IO]
 
@@ -39,111 +39,84 @@ object Microservice extends IOApp:
       config <- loadConfig
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
       _ <- runSolrMigrations(config)
-      _ <- startProvisioners(config)
+      tasks = provisionProcesses(config)
+      pm <- BackgroundProcessManage[IO](config.retryOnErrorDelay, 15)
+      _ <- tasks.traverse(e => e.task.map(_ -> e.queue)).use { ps =>
+        ps.traverse_(e => pm.register(e._2, e._1.process)) >> pm.startAll
+      }
     } yield ExitCode.Success
 
-  private def startProvisioners(cfg: SearchProvisionConfig): IO[Unit] =
-    List(
-      (
-        "ProjectCreated",
-        cfg.queuesConfig.projectCreated,
-        ProjectCreatedProvisioning
-          .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectUpdated",
-        cfg.queuesConfig.projectUpdated,
-        ProjectUpdatedProvisioning
-          .make[IO](cfg.queuesConfig.projectUpdated, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectRemoved",
-        cfg.queuesConfig.projectRemoved,
-        ProjectRemovedProcess
-          .make[IO](cfg.queuesConfig.projectRemoved, cfg.redisConfig, cfg.solrConfig)
-          .map(_.removalProcess.start)
-      ),
-      (
-        "ProjectAuthorizationAdded",
-        cfg.queuesConfig.projectAuthorizationAdded,
-        AuthorizationAddedProvisioning
-          .make[IO](
-            cfg.queuesConfig.projectAuthorizationAdded,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectAuthorizationUpdated",
-        cfg.queuesConfig.projectAuthorizationUpdated,
-        AuthorizationUpdatedProvisioning
-          .make[IO](
-            cfg.queuesConfig.projectAuthorizationUpdated,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectAuthorizationRemoved",
-        cfg.queuesConfig.projectAuthorizationRemoved,
-        AuthorizationRemovedProvisioning
-          .make[IO](
-            cfg.queuesConfig.projectAuthorizationRemoved,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "UserAdded",
-        cfg.queuesConfig.userAdded,
-        UserAddedProvisioning
-          .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "UserUpdated",
-        cfg.queuesConfig.userUpdated,
-        UserUpdatedProvisioning
-          .make[IO](cfg.queuesConfig.userUpdated, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "UserRemoved",
-        cfg.queuesConfig.userRemoved,
-        UserRemovedProcess
-          .make[IO](
-            cfg.queuesConfig.userRemoved,
-            cfg.queuesConfig.projectAuthorizationRemoved,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.removalProcess.start)
-      )
-    ).parTraverse_(startProcess(cfg))
-      .flatMap(_ => IO.never)
+  final case class Provision(
+      queue: QueueName,
+      task: Resource[IO, BackgroundProcess[IO]]
+  )
 
-  private def startProcess(
-      cfg: SearchProvisionConfig
-  ): ((String, QueueName, Resource[IO, IO[FiberIO[Unit]]])) => IO[Unit] = {
-    case t @ (name, queue, resource) =>
-      resource
-        .use(_ =>
-          Scribe[IO].info(s"'$name' provisioning process started on '$queue' queue")
+  def provisionProcesses(cfg: SearchProvisionConfig) = List(
+    Provision(
+      cfg.queuesConfig.projectCreated,
+      ProjectCreatedProvisioning
+        .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
+    ),
+    Provision(
+      cfg.queuesConfig.projectUpdated,
+      ProjectUpdatedProvisioning
+        .make[IO](cfg.queuesConfig.projectUpdated, cfg.redisConfig, cfg.solrConfig)
+    ),
+    Provision(
+      cfg.queuesConfig.projectRemoved,
+      ProjectRemovedProcess
+        .make[IO](cfg.queuesConfig.projectRemoved, cfg.redisConfig, cfg.solrConfig)
+    ),
+    Provision(
+      cfg.queuesConfig.projectAuthorizationAdded,
+      AuthorizationAddedProvisioning
+        .make[IO](
+          cfg.queuesConfig.projectAuthorizationAdded,
+          cfg.redisConfig,
+          cfg.solrConfig
         )
-        .handleErrorWith { err =>
-          Scribe[IO].error(
-            s"Starting provisioning process for '$name' failed, retrying",
-            err
-          ) >> Temporal[IO].delayBy(startProcess(cfg)(t), cfg.retryOnErrorDelay)
-        }
-  }
+    ),
+    Provision(
+      cfg.queuesConfig.projectAuthorizationUpdated,
+      AuthorizationUpdatedProvisioning
+        .make[IO](
+          cfg.queuesConfig.projectAuthorizationUpdated,
+          cfg.redisConfig,
+          cfg.solrConfig
+        )
+    ),
+    Provision(
+      cfg.queuesConfig.projectAuthorizationRemoved,
+      AuthorizationRemovedProvisioning
+        .make[IO](
+          cfg.queuesConfig.projectAuthorizationRemoved,
+          cfg.redisConfig,
+          cfg.solrConfig
+        )
+    ),
+    Provision(
+      cfg.queuesConfig.userAdded,
+      UserAddedProvisioning
+        .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
+    ),
+    Provision(
+      cfg.queuesConfig.userUpdated,
+      UserUpdatedProvisioning
+        .make[IO](cfg.queuesConfig.userUpdated, cfg.redisConfig, cfg.solrConfig)
+    ),
+    Provision(
+      cfg.queuesConfig.userRemoved,
+      UserRemovedProcess
+        .make[IO](
+          cfg.queuesConfig.userRemoved,
+          cfg.queuesConfig.projectAuthorizationRemoved,
+          cfg.redisConfig,
+          cfg.solrConfig
+        )
+    )
+  )
 
-  private def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =
+  def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =
     SchemaMigrator[IO](cfg.solrConfig)
       .use(_.migrate(Migrations.all))
       .handleErrorWith { err =>

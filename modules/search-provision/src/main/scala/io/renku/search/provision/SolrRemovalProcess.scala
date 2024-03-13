@@ -20,7 +20,7 @@ package io.renku.search.provision
 
 import cats.Show
 import cats.data.NonEmptyList
-import cats.effect.{Async, Resource, Temporal}
+import cats.effect.*
 import cats.syntax.all.*
 import fs2.io.net.Network
 import io.github.arainko.ducktape.*
@@ -33,9 +33,7 @@ import io.renku.solr.client.SolrConfig
 import org.apache.avro.Schema
 import scribe.Scribe
 
-import scala.concurrent.duration.*
-
-trait SolrRemovalProcess[F[_]]:
+trait SolrRemovalProcess[F[_]] extends BackgroundProcess[F]:
   def removalProcess: F[Unit]
 
 object SolrRemovalProcess:
@@ -71,6 +69,9 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
     onSolrPersist: Option[OnSolrPersist[F, In]]
 )(using Show[In], Transformer[In, Id], AvroDecoder[In])
     extends SolrRemovalProcess[F]:
+
+  def process: F[Unit] = removalProcess
+
   override def removalProcess: F[Unit] =
     queueClientResource
       .use { queueClient =>
@@ -82,10 +83,8 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
             .evalMap(deleteFromSolr(queueClient))
             .compile
             .drain
-            .handleErrorWith(logAndRestart)
         }
       }
-      .handleErrorWith(logAndRestart)
 
   private def findLastProcessed(queueClient: QueueClient[F]) =
     queueClient.findLastProcessed(clientId, queueName)
@@ -141,7 +140,3 @@ private class SolrRemovalProcessImpl[F[_]: Async: Scribe, In](
 
   private def markProcessed(message: QueueMessage, queueClient: QueueClient[F]): F[Unit] =
     queueClient.markProcessed(clientId, queueName, message.id)
-
-  private def logAndRestart: Throwable => F[Unit] = err =>
-    Scribe[F].error(s"Failure in the provisioning process for '$queueName'", err) >>
-      Temporal[F].delayBy(removalProcess, 30 seconds)

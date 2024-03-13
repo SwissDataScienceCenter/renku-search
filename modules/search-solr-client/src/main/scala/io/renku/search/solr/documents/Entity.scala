@@ -24,6 +24,7 @@ import io.renku.search.model.*
 import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.solr.client.EncoderSupport.*
+import io.renku.search.model.projects.Visibility
 
 sealed trait Entity:
   val score: Option[Double]
@@ -72,8 +73,8 @@ final case class User(
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
-    email: Option[users.Email] = None,
-    score: Option[Double] = None
+    score: Option[Double] = None,
+    visibility: Visibility = Visibility.Public
 ) extends Entity
 
 object User:
@@ -88,7 +89,6 @@ object User:
       id: Id,
       firstName: Option[users.FirstName] = None,
       lastName: Option[users.LastName] = None,
-      email: Option[users.Email] = None,
       score: Option[Double] = None
   ): User =
     User(
@@ -96,6 +96,5 @@ object User:
       firstName,
       lastName,
       nameFrom(firstName.map(_.value), lastName.map(_.value)),
-      email,
       score
     )

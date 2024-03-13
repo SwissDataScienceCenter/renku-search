@@ -19,7 +19,7 @@
 package io.renku.search.provision
 
 import cats.Show
-import cats.effect.{Async, Resource, Temporal}
+import cats.effect.*
 import cats.syntax.all.*
 import fs2.Chunk
 import fs2.io.net.Network
@@ -70,6 +70,8 @@ private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
 )(using Show[In], Transformer[In, Out], AvroDecoder[In], Encoder[Entity])
     extends UpsertProvisioningProcess[F]:
 
+  def process: F[Unit] = provisioningProcess
+
   override def provisioningProcess: F[Unit] =
     queueClientResource
       .use { queueClient =>
@@ -82,10 +84,8 @@ private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
             .evalMap(pushToSolr(queueClient))
             .compile
             .drain
-            .handleErrorWith(logAndRestart)
         }
       }
-      .handleErrorWith(logAndRestart)
 
   private def findLastProcessed(queueClient: QueueClient[F]) =
     queueClient.findLastProcessed(clientId, queueName)
@@ -135,7 +135,3 @@ private class UpsertProvisioningProcessImpl[F[_]: Async: Scribe, In, Out <: Enti
 
   private def markProcessed(message: QueueMessage, queueClient: QueueClient[F]): F[Unit] =
     queueClient.markProcessed(clientId, queueName, message.id)
-
-  private def logAndRestart: Throwable => F[Unit] = err =>
-    Scribe[F].error(s"Failure in the provisioning process for '$queueName'", err) >>
-      Temporal[F].delayBy(provisioningProcess, 30 seconds)

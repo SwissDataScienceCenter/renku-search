@@ -60,6 +60,7 @@ object UserUpdatedProvisioning:
         .into[documents.User]
         .transform(
           Field.default(_.score),
-          Field.computed(_.name, u => documents.User.nameFrom(u.firstName, u.lastName))
+          Field.computed(_.name, u => documents.User.nameFrom(u.firstName, u.lastName)),
+          Field.default(_.visibility)
         )
   }

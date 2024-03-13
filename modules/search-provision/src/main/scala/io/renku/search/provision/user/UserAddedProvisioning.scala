@@ -59,5 +59,6 @@ object UserAddedProvisioning:
   private given Transformer[UserAdded, documents.User] =
     _.into[documents.User].transform(
       Field.default(_.score),
-      Field.computed(_.name, u => documents.User.nameFrom(u.firstName, u.lastName))
+      Field.computed(_.name, u => documents.User.nameFrom(u.firstName, u.lastName)),
+      Field.default(_.visibility)
     )

@@ -18,10 +18,5 @@
 
 package io.renku.search.provision
 
-import io.renku.redis.client.ClientId
-
-trait ProvisioningProcess[F[_]] extends BackgroundProcess[F]:
-  def provisioningProcess: F[Unit]
-
-object ProvisioningProcess:
-  val clientId: ClientId = ClientId("search-provisioner")
+trait BackgroundProcess[F[_]]:
+  def process: F[Unit]

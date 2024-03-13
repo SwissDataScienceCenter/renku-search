@@ -58,6 +58,5 @@ trait SolrDocumentGenerators:
   def userDocumentGen: Gen[User] =
     (idGen, Gen.option(userFirstNameGen), Gen.option(userLastNameGen))
       .flatMapN { case (id, f, l) =>
-        val e = (f, l).flatMapN(userEmailGen(_, _).generateSome)
-        User.of(id, f, l, e)
+        User.of(id, f, l)
       }

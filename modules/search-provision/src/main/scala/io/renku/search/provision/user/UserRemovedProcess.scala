@@ -36,7 +36,7 @@ import io.renku.redis.client.{QueueName, RedisConfig}
 import io.renku.search.provision.ProvisioningProcess.clientId
 import io.renku.search.provision.{OnSolrPersist, SolrRemovalProcess}
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.DocumentId
+import io.renku.search.solr.documents.{DocumentId, Project}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.{QueryData, SolrConfig}
 import scribe.Scribe
@@ -95,7 +95,7 @@ object UserRemovedProcess:
 
       private def prepareQuery(userId: String, page: Int) =
         QueryData(
-          s"${Fields.owners}:$userId ${Fields.members}:$userId",
+          s"${Fields.entityType}:${Project.entityType} ${Fields.owners}:$userId ${Fields.members}:$userId",
           filter = Seq.empty,
           limit = pageSize * page,
           offset = pageSize * (page - 1)

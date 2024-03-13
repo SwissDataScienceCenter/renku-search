@@ -22,22 +22,16 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.userAddedGen
 import io.renku.events.v1.UserAdded
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.{DataContentType, QueueSpec}
+import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.EntityType
-import io.renku.search.query.Query
-import io.renku.search.query.Query.Segment
-import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.Entity
+import io.renku.search.solr.documents.{Entity, User}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
@@ -48,76 +42,37 @@ class UserAddedProvisioningSpec
     with SearchSolrSpec
     with UserSyntax:
 
-  private val avro = AvroIO(UserAdded.SCHEMA$)
-
-  test("can fetch events binary encoded, decode them, and send them to Solr"):
+  test("can fetch events, decode them, and send them to Solr"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
 
     clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
       for
-        solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
+        solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
 
         provisioningFiber <- provisioner.provisioningProcess.start
 
-        message1 = userAddedGen(prefix = "binary").generateOne
+        userAdded = userAddedGen(prefix = "user-added").generateOne
         _ <- queueClient.enqueue(
           queue,
-          messageHeaderGen(UserAdded.SCHEMA$, DataContentType.Binary).generateOne,
-          message1
+          messageHeaderGen(UserAdded.SCHEMA$).generateOne,
+          userAdded
         )
 
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
-            .flatMap(qr => Stream.emits(qr.responseBody.docs))
-            .evalMap(e => solrDocs.update(_ + e.noneScore))
+            .evalMap(_ => solrClient.findById[User](userAdded.id))
+            .evalMap(e => solrDoc.update(_ => e))
             .compile
             .drain
             .start
 
-        _ <- solrDocs.waitUntil(_ contains message1.toSolrDocument)
+        _ <- solrDoc.waitUntil(_ contains userAdded.toSolrDocument)
 
         _ <- provisioningFiber.cancel
         _ <- docsCollectorFiber.cancel
       yield ()
     }
-
-  test("can fetch events JSON encoded, decode them, and send them to Solr"):
-    val queue = RedisClientGenerators.queueNameGen.generateOne
-
-    clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
-      for
-        solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
-
-        provisioningFiber <- provisioner.provisioningProcess.start
-
-        message1 = userAddedGen(prefix = "json").generateOne
-        _ <- queueClient.enqueue(
-          queue,
-          messageHeaderGen(UserAdded.SCHEMA$, DataContentType.Json).generateOne,
-          message1
-        )
-
-        docsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.queryEntity(queryUsers, 10, 0))
-            .flatMap(qr => Stream.emits(qr.responseBody.docs))
-            .evalTap(IO.println)
-            .evalMap(e => solrDocs.update(_ + e.noneScore))
-            .compile
-            .drain
-            .start
-
-        _ <- solrDocs.waitUntil(_ contains toSolrDocument(message1))
-
-        _ <- provisioningFiber.cancel
-        _ <- docsCollectorFiber.cancel
-      yield ()
-    }
-
-  private lazy val queryUsers = Query(typeIs(EntityType.User))
 
   private def clientsAndProvisioning(queueName: QueueName) =
     (withQueueClient() >>= withSearchSolrClient().tupleLeft)

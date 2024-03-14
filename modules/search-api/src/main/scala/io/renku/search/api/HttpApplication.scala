@@ -23,6 +23,7 @@ import cats.syntax.all.*
 import fs2.io.net.Network
 import io.renku.search.api.routes.*
 import io.renku.search.http.metrics.MetricsRoutes
+import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.solr.client.SolrConfig
 import org.http4s.dsl.Http4sDsl
@@ -35,9 +36,8 @@ object HttpApplication:
     for
       search <- SearchApi[F](solrConfig).map(api => SearchRoutes[F](api))
       metricsRoutes <- MetricsRoutes[F](
-        search.routes,
         CollectorRegistryBuilder[F].withStandardJVMMetrics
-      ).makeRoutes
+      ).makeRoutes(search.routes)
     yield new HttpApplication[F](search, metricsRoutes).router
 
 final class HttpApplication[F[_]: Async](

@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.http
 
 import cats.effect.{Async, Resource}
-import com.comcast.ip4s.{Port, ipv4, port}
+import com.comcast.ip4s.{Port, ipv4}
 import fs2.io.net.Network
 import org.http4s.HttpApp
 import org.http4s.ember.server.EmberServerBuilder
@@ -27,9 +27,7 @@ import org.http4s.server.Server
 
 object HttpServer:
 
-  val port: Port = port"8080"
-
-  def build[F[_]: Async: Network](app: HttpApp[F]): Resource[F, Server] =
+  def build[F[_]: Async: Network](app: HttpApp[F], port: Port): Resource[F, Server] =
     EmberServerBuilder
       .default[F]
       .withHost(ipv4"0.0.0.0")

@@ -20,8 +20,10 @@ package io.renku.search.provision
 
 import cats.effect.*
 import cats.syntax.all.*
+import com.comcast.ip4s.port
 import io.renku.logging.LoggingSetup
 import io.renku.redis.client.QueueName
+import io.renku.search.http.HttpServer
 import io.renku.search.provision.project.*
 import io.renku.search.provision.user.*
 import io.renku.search.solr.schema.Migrations
@@ -31,6 +33,7 @@ import scribe.cats.*
 
 object Microservice extends IOApp:
 
+  private val port = port"8081"
   private val loadConfig: IO[SearchProvisionConfig] =
     SearchProvisionConfig.config.load[IO]
 
@@ -38,6 +41,7 @@ object Microservice extends IOApp:
     for {
       config <- loadConfig
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
+      _ <- HttpApplication[IO].flatMap(HttpServer.build(_, port)).use(_ => IO.never).start
       _ <- runSolrMigrations(config)
       _ <- startProvisioners(config)
     } yield ExitCode.Success

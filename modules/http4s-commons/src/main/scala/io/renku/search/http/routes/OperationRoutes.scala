@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.api.routes
+package io.renku.search.http.routes
 
 import cats.effect.Async
 import cats.syntax.all.*

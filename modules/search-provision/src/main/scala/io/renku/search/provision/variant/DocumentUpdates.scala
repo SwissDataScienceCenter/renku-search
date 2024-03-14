@@ -18,6 +18,7 @@
 
 package io.renku.search.provision.variant
 
+import cats.syntax.all.*
 import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.documents.Entity as Document
 import io.renku.search.solr.documents.Project as ProjectDocument
@@ -28,7 +29,7 @@ import io.renku.search.model.Id
 
 object DocumentUpdates:
 
-  def project(update: ProjectUpdated, orig: Document): Document = orig match
+  def project(update: ProjectUpdated, orig: Document): Option[Document] = orig match
     case orig: ProjectDocument =>
       update
         .into[ProjectDocument]
@@ -39,9 +40,10 @@ object DocumentUpdates:
           Field.const(_.members, orig.members),
           Field.default(_.score)
         )
-    case _ => orig // todo really throw here?
+        .some
+    case _ => None // todo really throw here?
 
-  def user(update: UserUpdated, orig: Document): Document = orig match
+  def user(update: UserUpdated, orig: Document): Option[Document] = orig match
     case _: UserDocument =>
       update
         .into[UserDocument]
@@ -50,29 +52,39 @@ object DocumentUpdates:
           Field.computed(_.name, u => UserDocument.nameFrom(u.firstName, u.lastName)),
           Field.default(_.visibility)
         )
-    case _ => orig
+        .some
+    case _ => None
 
-  def projectAuthAdded(update: ProjectAuthorizationAdded, orig: Document): Document =
+  def projectAuthAdded(
+      update: ProjectAuthorizationAdded,
+      orig: Document
+  ): Option[Document] =
     orig match
       case pd: ProjectDocument =>
         pd.addMember(
           Id(update.userId),
           memberRoleTransformer.transform(update.role)
-        )
-      case _ => orig
+        ).some
+      case _ => None
 
-  def projectAuthUpdated(update: ProjectAuthorizationUpdated, orig: Document): Document =
+  def projectAuthUpdated(
+      update: ProjectAuthorizationUpdated,
+      orig: Document
+  ): Option[Document] =
     orig match
       case pd: ProjectDocument =>
         pd.addMember(
           Id(update.userId),
           memberRoleTransformer.transform(update.role)
-        )
+        ).some
 
-      case _ => orig
+      case _ => None
 
-  def projectAuthRemoved(update: ProjectAuthorizationRemoved, orig: Document): Document =
+  def projectAuthRemoved(
+      update: ProjectAuthorizationRemoved,
+      orig: Document
+  ): Option[Document] =
     orig match
       case pd: ProjectDocument =>
-        pd.removeMember(Id(update.userId))
-      case _ => orig
+        pd.removeMember(Id(update.userId)).some
+      case _ => None

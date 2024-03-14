@@ -48,14 +48,14 @@ object FetchFromSolr:
       message: MessageReader.Message[A],
       documents: Map[Id, Document]
   ):
-    def update(f: (A, Document) => Document): Message[Document] =
+    def update(f: (A, Document) => Option[Document]): Message[Document] =
       Message(
         message.raw,
         message.decoded
           .map(a =>
             documents
               .get(IdExtractor[A].getId(a))
-              .map(doc => f(a, doc))
+              .flatMap(doc => f(a, doc))
           )
           .flatten
       )

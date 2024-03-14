@@ -111,7 +111,7 @@ final class MessageHandlers[F[_]: Async](
       .through(ps.converter.convertChunk)
       .through(ps.pushToSolr.pushChunk)
 
-  private def makeUpdated[A](queue: QueueName, docUpdate: (A, Document) => Document)(using
+  private def makeUpdated[A](queue: QueueName, docUpdate: (A, Document) => Option[Document])(using
       QueueMessageDecoder[F, A],
       Show[A],
       IdExtractor[A]

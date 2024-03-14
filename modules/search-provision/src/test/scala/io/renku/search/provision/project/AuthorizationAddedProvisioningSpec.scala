@@ -29,38 +29,30 @@ import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{Id, projects}
-import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
-class AuthorizationAddedProvisioningSpec
-    extends CatsEffectSuite
-    with QueueSpec
-    with SearchSolrSpec
-    with ProjectSyntax:
+class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
 
   (memberAdded :: ownerAdded :: noUpdate :: Nil)
     .foreach { case TestCase(name, updateF) =>
       test(s"can fetch events, decode them, and update docs in Solr in case of $name"):
-        val queue = RedisClientGenerators.queueNameGen.generateOne
 
-        clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+        withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
           for
             solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
 
-            provisioningFiber <- provisioner.provisioningProcess.start
+            provisioningFiber <- handlers.projectAuthAdded.compile.drain.start
 
             projectDoc = projectCreatedGen("member-add").generateOne.toSolrDocument
             _ <- solrClient.insert(Seq(projectDoc.widen))
 
             authAdded = updateF(projectDoc)
             _ <- queueClient.enqueue(
-              queue,
+              queueConfig.projectAuthorizationAdded,
               messageHeaderGen(ProjectAuthorizationAdded.SCHEMA$).generateOne,
               authAdded
             )
@@ -68,8 +60,9 @@ class AuthorizationAddedProvisioningSpec
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalMap(_ => solrClient.findById[Project](projectDoc.id))
-                .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
+                .evalTap(_ => scribe.cats.io.info(s"Looking for project with id ${projectDoc.id}..."))
+                .evalMap(_ => solrClient.findById[Entity](projectDoc.id))
+                .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e.asInstanceOf[Project]))))
                 .compile
                 .drain
                 .start
@@ -86,18 +79,6 @@ class AuthorizationAddedProvisioningSpec
           yield ()
         }
     }
-
-  private def clientsAndProvisioning(queueName: QueueName) =
-    (withQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .flatMap { case (rc, sc) =>
-        AuthorizationAddedProvisioning
-          .make[IO](
-            queueName,
-            withRedisClient.redisConfig,
-            withSearchSolrClient.solrConfig
-          )
-          .map((rc, sc, _))
-      }
 
   private case class TestCase(name: String, f: Project => ProjectAuthorizationAdded)
   private lazy val memberAdded = TestCase(

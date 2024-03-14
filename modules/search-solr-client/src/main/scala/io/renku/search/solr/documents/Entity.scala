@@ -58,12 +58,16 @@ final case class Project(
 
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
-      case Owner  => copy(owners = (userId :: owners).distinct)
-      case Member => copy(members = (userId :: members).distinct)
+      case Owner  => copy(owners = (userId :: owners).distinct, score = None)
+      case Member => copy(members = (userId :: members).distinct, score = None)
     }
 
   def removeMember(userId: Id): Project =
-    copy(owners = owners.filterNot(_ == userId), members = members.filterNot(_ == userId))
+    copy(
+      owners = owners.filterNot(_ == userId),
+      members = members.filterNot(_ == userId),
+      score = None
+    )
 
 object Project:
   val entityType: String = "Project"

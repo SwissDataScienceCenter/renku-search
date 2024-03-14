@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.variant
 
-import io.renku.search.solr.documents.Entity as Document
+import io.renku.search.solr.documents.Entity as Document //TODO rename
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
 import io.github.arainko.ducktape.*

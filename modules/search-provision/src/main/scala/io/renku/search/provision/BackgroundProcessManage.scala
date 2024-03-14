@@ -20,21 +20,24 @@ package io.renku.search.provision
 
 import cats.syntax.all.*
 import cats.effect.*
-import io.renku.redis.client.QueueName
 import cats.effect.kernel.Fiber
 import cats.effect.kernel.Ref
 import scala.concurrent.duration.FiniteDuration
 
 trait BackgroundProcessManage[F[_]]:
-  def register(name: QueueName, process: F[Unit]): F[Unit]
+  def register(name: String, process: F[Unit]): F[Unit]
+
+  /** Starts all registered tasks in the background, represented by `F[Unit]`. */
   def background: Resource[F, F[Unit]]
+
+  /** Same as `.background.useForever`   */
   def startAll: F[Nothing]
 
 object BackgroundProcessManage:
   type Process[F[_]] = Fiber[F, Throwable, Unit]
 
-  private case class State[F[_]](tasks: Map[QueueName, F[Unit]]):
-    def put(name: QueueName, p: F[Unit]): State[F] =
+  private case class State[F[_]](tasks: Map[String, F[Unit]]):
+    def put(name: String, p: F[Unit]): State[F] =
       State(tasks.updated(name, p))
 
     def getTasks: List[F[Unit]] = tasks.values.toList
@@ -44,12 +47,12 @@ object BackgroundProcessManage:
 
   def apply[F[_]: Async](
       retryDelay: FiniteDuration,
-      maxRetries: Int
+      maxRetries: Option[Int] = None
   ): F[BackgroundProcessManage[F]] =
     val logger = scribe.cats.effect[F]
     Ref.of[F, State[F]](State.empty[F]).map { state =>
       new BackgroundProcessManage[F] {
-        def register(name: QueueName, task: F[Unit]): F[Unit] =
+        def register(name: String, task: F[Unit]): F[Unit] =
           state.update(_.put(name, wrapTask(name, task)))
 
         def startAll: F[Nothing] =
@@ -62,22 +65,23 @@ object BackgroundProcessManage:
             y = x.traverse_(_.map(_.embed(logger.info(s"Got cancelled"))))
           } yield y
 
-        def wrapTask(name: QueueName, task: F[Unit]): F[Unit] =
-          def run(c: Ref[F, Int]): F[Unit] =
-            logger.info(s"Starting process for: ${name.name}") >>
+        def wrapTask(name: String, task: F[Unit]): F[Unit] =
+          def run(c: Ref[F, Long]): F[Unit] =
+            logger.info(s"Starting process for: ${name}") >>
               task.handleErrorWith { err =>
                 c.updateAndGet(_ + 1).flatMap {
-                  case n if n >= maxRetries =>
+                  case n if maxRetries.exists(_ <= n) =>
                     logger.error(
-                      s"Max retries ($maxRetries) for process ${name.name} exceeded"
+                      s"Max retries ($maxRetries) for process ${name} exceeded"
                     ) >> Async[F].raiseError(err)
                   case n =>
+                    val maxRetriesLabel = maxRetries.map(m => s"/$m").getOrElse("")
                     logger.error(
-                      s"Starting process for '${name.name}' failed ($n/$maxRetries), retrying",
+                      s"Starting process for '${name}' failed ($n$maxRetriesLabel), retrying",
                       err
                     ) >> Async[F].delayBy(run(c), retryDelay)
                 }
               }
-          Ref.of[F, Int](0).flatMap(run)
+          Ref.of[F, Long](0).flatMap(run)
       }
     }

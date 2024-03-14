@@ -21,7 +21,7 @@ package io.renku.search.provision.variant
 import cats.syntax.all.*
 import fs2.Pipe
 import io.renku.queue.client.QueueClient
-import cats.effect.Sync
+import cats.effect.{Resource, Sync}
 import io.renku.queue.client.RequestId
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.ProjectAuthorizationRemoved
@@ -41,7 +41,7 @@ trait PushToRedis[F[_]]:
 object PushToRedis:
 
   def apply[F[_]: Sync](
-      queueClient: QueueClient[F],
+      queueClient: Resource[F, QueueClient[F]],
       clientId: ClientId,
       queueConfig: QueuesConfig
   ): PushToRedis[F] =
@@ -55,10 +55,12 @@ object PushToRedis:
         _.evalMap(payload =>
           createHeader(requestId).flatMap { header =>
             logger.debug(show"Pushing $payload to redis") >>
-              queueClient.enqueue(
-                queueConfig.projectAuthorizationRemoved,
-                header,
-                payload
+              queueClient.use(
+                _.enqueue(
+                  queueConfig.projectAuthorizationRemoved,
+                  header,
+                  payload
+                )
               )
           }
         )

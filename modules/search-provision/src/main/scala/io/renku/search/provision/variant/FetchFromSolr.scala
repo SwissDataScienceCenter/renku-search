@@ -18,12 +18,10 @@
 
 package io.renku.search.provision.variant
 
-import cats.effect.kernel.Sync
+import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 
-import io.renku.queue.client.QueueClient
-import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.model.Id
 import io.renku.search.provision.variant.FetchFromSolr.MessageDocument
 import io.renku.search.provision.variant.MessageReader.Message
@@ -64,9 +62,6 @@ object FetchFromSolr:
 
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F],
-      queueClient: QueueClient[F],
-      clientId: ClientId,
-      queue: QueueName
   ): FetchFromSolr[F] =
     new FetchFromSolr[F] {
       val logger = scribe.cats.effect[F]

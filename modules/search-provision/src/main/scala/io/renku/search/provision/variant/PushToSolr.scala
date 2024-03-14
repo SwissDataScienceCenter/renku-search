@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.variant
 
-import cats.effect.kernel.Sync
+import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe}
 
@@ -38,7 +38,7 @@ object PushToSolr:
 
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F],
-      queueClient: QueueClient[F],
+      queueClient: Resource[F, QueueClient[F]],
       clientId: ClientId,
       queue: QueueName
   ): PushToSolr[F] =
@@ -51,7 +51,7 @@ object PushToSolr:
             case Some(lastMessage) =>
               solrClient
                 .insert(docSeq)
-                .flatMap(_ => queueClient.markProcessed(clientId, queue, lastMessage.id))
+                .flatMap(_ => queueClient.use(_.markProcessed(clientId, queue, lastMessage.id)))
                 .onError(markProcessedOnFailure(lastMessage))
             case None =>
               Sync[F].unit
@@ -60,7 +60,7 @@ object PushToSolr:
       private def markProcessedOnFailure(
           message: QueueMessage
       ): PartialFunction[Throwable, F[Unit]] = err =>
-        queueClient.markProcessed(clientId, queue, message.id) >>
+        queueClient.use(_.markProcessed(clientId, queue, message.id)) >>
           logger.error(
             s"Processing messageId: ${message.id} for '${queue.name}' failed",
             err

@@ -24,45 +24,33 @@ import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.github.arainko.ducktape.*
-import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.{ProjectCreated, ProjectUpdated}
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
-class ProjectUpdatedProvisioningSpec
-    extends CatsEffectSuite
-    with QueueSpec
-    with SearchSolrSpec
-    with ProjectSyntax:
-
-  private val avro = AvroIO(ProjectUpdated.SCHEMA$)
+class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
   (nameUpdate :: slugUpdate :: repositoriesUpdate :: visibilityUpdate :: descUpdate :: noUpdate :: Nil)
     .foreach { case TestCase(name, updateF) =>
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
-        val queue = RedisClientGenerators.queueNameGen.generateOne
-
-        clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+        withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
           for
             solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
 
-            provisioningFiber <- provisioner.provisioningProcess.start
+            provisioningFiber <- handlers.projectUpdated.compile.drain.start
 
             created = projectCreatedGen(prefix = "update").generateOne
             _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
 
             updated = updateF(created)
             _ <- queueClient.enqueue(
-              queue,
+              queueConfig.projectUpdated,
               messageHeaderGen(ProjectUpdated.SCHEMA$).generateOne,
               updated
             )
@@ -85,18 +73,6 @@ class ProjectUpdatedProvisioningSpec
           yield ()
         }
     }
-
-  private def clientsAndProvisioning(queueName: QueueName) =
-    (withQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .flatMap { case (rc, sc) =>
-        ProjectUpdatedProvisioning
-          .make[IO](
-            queueName,
-            withRedisClient.redisConfig,
-            withSearchSolrClient.solrConfig
-          )
-          .map((rc, sc, _))
-      }
 
   private case class TestCase(name: String, f: ProjectCreated => ProjectUpdated)
   private lazy val nameUpdate = TestCase(

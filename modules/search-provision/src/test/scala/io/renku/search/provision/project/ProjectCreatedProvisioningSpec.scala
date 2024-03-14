@@ -23,40 +23,30 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.projectCreatedGen
 import io.renku.events.v1.{ProjectCreated, Visibility}
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.{DataContentType, QueueSpec}
-import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.{QueueName, RedisClientGenerators}
+import io.renku.queue.client.DataContentType
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
-class ProjectCreatedProvisioningSpec
-    extends CatsEffectSuite
-    with QueueSpec
-    with SearchSolrSpec
-    with ProjectSyntax:
-
-  private val avro = AvroIO(ProjectCreated.SCHEMA$)
+class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 
   test("can fetch events binary encoded, decode them, and send them to Solr"):
-    val queue = RedisClientGenerators.queueNameGen.generateOne
 
-    clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
         solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
 
-        provisioningFiber <- provisioner.provisioningProcess.start
+        provisioningFiber <- handlers.projectCreated.compile.drain.start
 
         created = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
-          queue,
+          queueConfig.projectCreated,
           messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
           created
         )
@@ -78,17 +68,15 @@ class ProjectCreatedProvisioningSpec
     }
 
   test("can fetch events JSON encoded, decode them, and send them to Solr"):
-    val queue = RedisClientGenerators.queueNameGen.generateOne
-
-    clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
         solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
 
-        provisioningFiber <- provisioner.provisioningProcess.start
+        provisioningFiber <- handlers.projectCreated.compile.drain.start
 
         created = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
-          queue,
+          queueConfig.projectCreated,
           messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Json).generateOne,
           created
         )
@@ -108,18 +96,6 @@ class ProjectCreatedProvisioningSpec
         _ <- docsCollectorFiber.cancel
       yield ()
     }
-
-  private def clientsAndProvisioning(queueName: QueueName) =
-    (withQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .flatMap { case (rc, sc) =>
-        ProjectCreatedProvisioning
-          .make[IO](
-            queueName,
-            withRedisClient.redisConfig,
-            withSearchSolrClient.solrConfig
-          )
-          .map((rc, sc, _))
-      }
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

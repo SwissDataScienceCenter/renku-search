@@ -27,7 +27,7 @@ import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.provision.QueueMessageDecoder
 import scala.concurrent.duration.FiniteDuration
 import fs2.Chunk
-import cats.effect.kernel.Async
+import cats.effect.{Async, Resource}
 import cats.Show
 import io.renku.queue.client.RequestId
 
@@ -55,7 +55,7 @@ object MessageReader:
     * message is marked as processed and the next message is read.
     */
   def apply[F[_]: Sync](
-      queueClient: QueueClient[F],
+      queueClient: Resource[F, QueueClient[F]],
       queue: QueueName,
       clientId: ClientId,
       chunkSize: Int
@@ -65,8 +65,9 @@ object MessageReader:
 
       def read[A](using QueueMessageDecoder[F, A], Show[A]): Stream[F, Message[A]] =
         for {
-          last <- Stream.eval(queueClient.findLastProcessed(clientId, queue))
-          qmsg <- queueClient.acquireEventsStream(queue, chunkSize, last)
+          client <- Stream.resource(queueClient)
+          last <- Stream.eval(client.findLastProcessed(clientId, queue))
+          qmsg <- client.acquireEventsStream(queue, chunkSize, last)
           dec <- Stream
             .eval(QueueMessageDecoder[F, A].decodeMessage(qmsg).attempt)
             .flatMap {
@@ -79,7 +80,7 @@ object MessageReader:
                       err
                     )
                   )
-                  _ <- Stream.eval(queueClient.markProcessed(clientId, queue, qmsg.id))
+                  _ <- Stream.eval(client.markProcessed(clientId, queue, qmsg.id))
                 } yield Message(qmsg, Seq.empty)
             }
           _ <- Stream.eval(logInfo(dec))

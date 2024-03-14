@@ -23,7 +23,6 @@ import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroIO
-import io.renku.avro.codec.decoders.all.given
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.*
@@ -60,9 +59,7 @@ class UserRemovedProcessSpec
   ):
     val userRemovedQueue = RedisClientGenerators.queueNameGen.generateOne
     val authRemovedQueue = RedisClientGenerators.queueNameGen.generateOne
-    val messageDecoder = QueueMessageDecoder[IO, ProjectAuthorizationRemoved](
-      ProjectAuthorizationRemoved.SCHEMA$
-    )
+    val messageDecoder = QueueMessageDecoder[IO, ProjectAuthorizationRemoved]
 
     clientsAndProvisioning(userRemovedQueue, authRemovedQueue).use {
       case (queueClient, solrClient, provisioner) =>

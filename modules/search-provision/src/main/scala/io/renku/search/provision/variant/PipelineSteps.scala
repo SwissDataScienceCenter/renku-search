@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.variant
 
-import cats.effect.kernel.Sync
+import cats.effect.{Resource, Sync}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.ClientId
@@ -32,11 +32,12 @@ trait PipelineSteps[F[_]]:
   def fetchFromSolr: FetchFromSolr[F]
   def deleteFromSolr: DeleteFromSolr[F]
   def pushToRedis: PushToRedis[F]
+  def userUtils: UserUtils[F]
 
 object PipelineSteps:
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F],
-      queueClient: QueueClient[F],
+      queueClient: Resource[F, QueueClient[F]],
       queueConfig: QueuesConfig,
       inChunkSize: Int,
       clientId: ClientId
@@ -51,9 +52,12 @@ object PipelineSteps:
       val pushToSolr: PushToSolr[F] =
         PushToSolr[F](solrClient, queueClient, clientId, queue)
       val fetchFromSolr: FetchFromSolr[F] =
-        FetchFromSolr[F](solrClient, queueClient, clientId, queue)
+        FetchFromSolr[F](solrClient)
       val deleteFromSolr: DeleteFromSolr[F] =
         DeleteFromSolr[F](solrClient, queueClient, clientId, queue)
       val pushToRedis: PushToRedis[F] =
         PushToRedis[F](queueClient, clientId, queueConfig)
+
+      val userUtils: UserUtils[F] =
+        UserUtils[F](fetchFromSolr, pushToRedis)
     }

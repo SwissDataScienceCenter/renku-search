@@ -41,35 +41,37 @@ object Microservice extends IOApp:
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
       _ <- runSolrMigrations(config)
       tasks = provisionProcesses(config)
-      pm <- BackgroundProcessManage[IO](config.retryOnErrorDelay, 15)
+      pm <- BackgroundProcessManage[IO](config.retryOnErrorDelay)
       _ <- tasks.traverse(e => e.task.map(_ -> e.queue)).use { ps =>
-        ps.traverse_(e => pm.register(e._2, e._1.process)) >> pm.startAll
+        ps.traverse_(e => pm.register(e._2.name, e._1.process)) >> pm.startAll
       }
     } yield ExitCode.Success
 
   def newRun(args: List[String]): IO[ExitCode] =
     loadConfig.flatMap { cfg =>
-      resources(cfg).use { case (solrClient, queueClient) =>
+      resources(cfg).use { solrClient =>
+        // The redis client must be initialized on each operation to
+        // be able to connect to the cluster
+        val queueClientResource = QueueClient.make[IO](cfg.redisConfig)
         val stepsForQueue = variant
-          .PipelineSteps[IO](solrClient, queueClient, cfg.queuesConfig, 1, ProvisioningProcess.clientId)
+          .PipelineSteps[IO](
+            solrClient,
+            queueClientResource,
+            cfg.queuesConfig,
+            1,
+            ProvisioningProcess.clientId
+          )
         val handlers = variant.MessageHandlers[IO](stepsForQueue, cfg.queuesConfig)
         for {
-          pm <- BackgroundProcessManage[IO](cfg.retryOnErrorDelay, 15)
-          tasks = List(
-            cfg.queuesConfig.projectCreated -> handlers.projectCreated,
-            cfg.queuesConfig.projectUpdated -> handlers.projectUpdated,
-            cfg.queuesConfig.userAdded -> handlers.userAdded,
-            cfg.queuesConfig.userUpdated -> handlers.userUpdated
-            //... and more
-          ).map(t => t._1 -> t._2.compile.drain)
+          pm <- BackgroundProcessManage[IO](cfg.retryOnErrorDelay)
+          tasks = handlers.getAll.toList
           _ <- tasks.traverse_(pm.register.tupled) >> pm.startAll
         } yield ExitCode.Success
       }
     }
 
   def resources(cfg: SearchProvisionConfig) =
-    (SearchSolrClient.make[IO](cfg.solrConfig), QueueClient.make[IO](cfg.redisConfig))
-      .mapN(_ -> _)
+    SearchSolrClient.make[IO](cfg.solrConfig)
 
   final case class Provision(
       queue: QueueName,

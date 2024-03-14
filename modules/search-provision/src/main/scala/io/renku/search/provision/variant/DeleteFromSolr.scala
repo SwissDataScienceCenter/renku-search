@@ -19,7 +19,7 @@
 package io.renku.search.provision.variant
 
 import cats.data.NonEmptyList
-import cats.effect.kernel.Sync
+import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
 
@@ -48,7 +48,7 @@ object DeleteFromSolr:
 
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F],
-      queueClient: QueueClient[F],
+      queueClient: Resource[F, QueueClient[F]],
       clientId: ClientId,
       queue: QueueName
   ): DeleteFromSolr[F] =
@@ -82,7 +82,7 @@ object DeleteFromSolr:
           .through(markProcessed)
 
       private def markProcessed[A]: Pipe[F, DeleteResult[A], Unit] =
-        _.evalTap(result => queueClient.markProcessed(clientId, queue, result.message.id))
+        _.evalTap(result => queueClient.use(_.markProcessed(clientId, queue, result.message.id)))
           .evalMap {
             case DeleteResult.Success(_) => Sync[F].unit
 

@@ -18,8 +18,6 @@
 
 package io.renku.search.provision.variant
 
-import scala.concurrent.duration.*
-
 import cats.Show
 import cats.effect.*
 import fs2.Stream
@@ -32,56 +30,74 @@ import io.renku.search.solr.documents.Entity as Document
 
 final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
-    cfg: QueuesConfig,
-    chunkSize: Int = 10,
-    timeout: FiniteDuration = 500.millis
+    cfg: QueuesConfig
 ) extends ShowInstances:
+  private[this] var tasks: Map[String, F[Unit]] = Map.empty
+  private[this] def add(queue: QueueName, task: Stream[F, Unit]): Stream[F, Unit] =
+    tasks = tasks.updated(queue.name, task.compile.drain)
+    task
 
-  def projectCreated: Stream[F, Unit] = makeCreated[ProjectCreated](cfg.projectCreated)
+  lazy val getAll: Map[String, F[Unit]] = tasks
+
+  def projectCreated: Stream[F, Unit] =
+    add(cfg.projectCreated, makeCreated[ProjectCreated](cfg.projectCreated))
 
   def projectUpdated =
-    makeUpdated[ProjectUpdated](cfg.projectUpdated, DocumentUpdates.project)
+    add(
+      cfg.projectUpdated,
+      makeUpdated[ProjectUpdated](cfg.projectUpdated, DocumentUpdates.project)
+    )
 
   def projectRemoved: Stream[F, Unit] =
-    makeRemovedSimple[ProjectRemoved](cfg.projectRemoved)
+    add(cfg.projectRemoved, makeRemovedSimple[ProjectRemoved](cfg.projectRemoved))
 
-  def projectAuthAdded: Stream[F, Unit] = makeUpdated[ProjectAuthorizationAdded](
-    cfg.projectAuthorizationAdded,
-    DocumentUpdates.projectAuthAdded
-  )
+  def projectAuthAdded: Stream[F, Unit] =
+    add(
+      cfg.projectAuthorizationAdded,
+      makeUpdated[ProjectAuthorizationAdded](
+        cfg.projectAuthorizationAdded,
+        DocumentUpdates.projectAuthAdded
+      )
+    )
 
-  def projectAuthUpdated: Stream[F, Unit] = makeUpdated[ProjectAuthorizationUpdated](
-    cfg.projectAuthorizationUpdated,
-    DocumentUpdates.projectAuthUpdated
-  )
+  def projectAuthUpdated: Stream[F, Unit] =
+    add(
+      cfg.projectAuthorizationUpdated,
+      makeUpdated[ProjectAuthorizationUpdated](
+        cfg.projectAuthorizationUpdated,
+        DocumentUpdates.projectAuthUpdated
+      )
+    )
 
-  def projectAuthRemoved: Stream[F, Unit] = makeUpdated[ProjectAuthorizationRemoved](
+  def projectAuthRemoved: Stream[F, Unit] = add(
     cfg.projectAuthorizationRemoved,
-    DocumentUpdates.projectAuthRemoved
+    makeUpdated[ProjectAuthorizationRemoved](
+      cfg.projectAuthorizationRemoved,
+      DocumentUpdates.projectAuthRemoved
+    )
   )
 
-  def userAdded: Stream[F, Unit] = makeCreated[UserAdded](cfg.userAdded)
+  def userAdded: Stream[F, Unit] =
+    add(cfg.userAdded, makeCreated[UserAdded](cfg.userAdded))
 
-  def userUpdated = makeUpdated[UserUpdated](cfg.userUpdated, DocumentUpdates.user)
+  def userUpdated =
+    add(cfg.userUpdated, makeUpdated[UserUpdated](cfg.userUpdated, DocumentUpdates.user))
 
   def userRemoved =
     val ps = steps(cfg.userRemoved)
-    ps.reader
-      .readGrouped[UserRemoved](chunkSize, timeout)
-      .flatMap(Stream.chunk)
-      .through(ps.deleteFromSolr.tryDeleteAll)
-      .through(ps.deleteFromSolr.whenSuccess { msg =>
-        val userIds = msg.decoded.map(IdExtractor[UserRemoved].getId)
-        Stream
-          .emits(userIds)
-          .flatMap(id => ps.fetchFromSolr.fetchProjectForUser(id).map(_ -> id))
-          .map { case (projectId, userId) =>
-            ProjectAuthorizationRemoved(projectId.id.value, userId.value)
-          }
-          .through(ps.pushToRedis.pushAuthorizationRemoved(msg.requestId))
-          .compile
-          .drain
-      })
+    add(
+      cfg.userRemoved,
+      ps.reader
+        .read[UserRemoved]
+        .through(ps.deleteFromSolr.tryDeleteAll)
+        .through(ps.deleteFromSolr.whenSuccess { msg =>
+          Stream
+            .emit(msg.map(IdExtractor[UserRemoved].getId))
+            .through(ps.userUtils.removeFromProjects)
+            .compile
+            .drain
+        })
+    )
 
   private def makeCreated[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],
@@ -90,7 +106,8 @@ final class MessageHandlers[F[_]: Async](
   ): Stream[F, Unit] =
     val ps = steps(queue)
     ps.reader
-      .readGrouped[A](chunkSize, timeout)
+      .read[A]
+      .chunks
       .through(ps.converter.convertChunk)
       .through(ps.pushToSolr.pushChunk)
 
@@ -101,8 +118,7 @@ final class MessageHandlers[F[_]: Async](
   ): Stream[F, Unit] =
     val ps = steps(queue)
     ps.reader
-      .readGrouped[A](chunkSize, timeout)
-      .flatMap(Stream.chunk)
+      .read[A]
       .through(ps.fetchFromSolr.fetch1)
       .map(_.update(docUpdate))
       .through(ps.pushToSolr.push)
@@ -114,5 +130,6 @@ final class MessageHandlers[F[_]: Async](
   ): Stream[F, Unit] =
     val ps = steps(queue)
     ps.reader
-      .readGrouped[A](chunkSize, timeout)
+      .read[A]
+      .chunks
       .through(ps.deleteFromSolr.deleteAll)

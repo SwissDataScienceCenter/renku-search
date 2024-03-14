@@ -18,45 +18,33 @@
 
 package io.renku.search.provision.project
 
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Resource}
-import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.renku.avro.codec.AvroIO
+
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.ProjectRemoved
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{EntityType, Id}
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
-import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, Project}
 import munit.CatsEffectSuite
 
-import scala.concurrent.duration.*
-
-class ProjectRemovedProcessSpec
-    extends CatsEffectSuite
-    with QueueSpec
-    with SearchSolrSpec
-    with ProjectSyntax:
-
-  private val avro = AvroIO(ProjectRemoved.SCHEMA$)
+class ProjectRemovedProcessSpec extends ProvisioningSuite:
 
   test(s"can fetch events, decode them, and remove Solr"):
-    val queue = RedisClientGenerators.queueNameGen.generateOne
-
-    clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
         solrDoc <- SignallingRef.of[IO, Option[Project]](None)
 
-        provisioningFiber <- provisioner.removalProcess.start
+        provisioningFiber <- handlers.projectRemoved.compile.drain.start
 
         created = projectCreatedGen(prefix = "remove").generateOne
         _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
@@ -76,7 +64,7 @@ class ProjectRemovedProcessSpec
 
         removed = ProjectRemoved(created.id)
         _ <- queueClient.enqueue(
-          queue,
+          queueConfig.projectRemoved,
           messageHeaderGen(ProjectRemoved.SCHEMA$).generateOne,
           removed
         )
@@ -91,18 +79,6 @@ class ProjectRemovedProcessSpec
     }
 
   private lazy val queryProjects = Query(typeIs(EntityType.Project))
-
-  private def clientsAndProvisioning(queueName: QueueName) =
-    (withQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .flatMap { case (rc, sc) =>
-        ProjectRemovedProcess
-          .make[IO](
-            queueName,
-            withRedisClient.redisConfig,
-            withSearchSolrClient.solrConfig
-          )
-          .map((rc, sc, _))
-      }
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

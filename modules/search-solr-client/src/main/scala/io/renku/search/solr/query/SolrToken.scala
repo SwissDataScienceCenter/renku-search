@@ -21,7 +21,7 @@ package io.renku.search.solr.query
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import io.renku.search.model.EntityType
+import io.renku.search.model.{EntityType, Id}
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.{Comparison, Field}
 import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
@@ -35,6 +35,7 @@ opaque type SolrToken = String
 object SolrToken:
   val empty: SolrToken = ""
   def fromString(str: String): SolrToken = StringEscape.queryChars(str)
+  def fromId(id: Id): SolrToken = fromString(id.value)
   def fromVisibility(v: Visibility): SolrToken = v.name
   def fromEntityType(et: EntityType): SolrToken =
     et match
@@ -82,6 +83,9 @@ object SolrToken:
 
   def fieldIs(field: Field, value: SolrToken): SolrToken =
     fieldOp(field, Comparison.Is, value)
+
+  def fieldIs(field: FieldName, value: SolrToken): SolrToken =
+    s"${field.name}:$value"
 
   def unsafeFromString(s: String): SolrToken = s
 

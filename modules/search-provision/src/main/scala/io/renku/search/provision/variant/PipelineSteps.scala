@@ -50,11 +50,11 @@ object PipelineSteps:
       val converter: ConvertDocument[F] =
         ConvertDocument[F]
       val pushToSolr: PushToSolr[F] =
-        PushToSolr[F](solrClient, queueClient, clientId, queue)
+        PushToSolr[F](solrClient, reader)
       val fetchFromSolr: FetchFromSolr[F] =
         FetchFromSolr[F](solrClient)
       val deleteFromSolr: DeleteFromSolr[F] =
-        DeleteFromSolr[F](solrClient, queueClient, clientId, queue)
+        DeleteFromSolr[F](solrClient, reader)
       val pushToRedis: PushToRedis[F] =
         PushToRedis[F](queueClient, clientId, queueConfig)
 

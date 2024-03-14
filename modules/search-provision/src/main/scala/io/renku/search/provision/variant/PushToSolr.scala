@@ -18,12 +18,11 @@
 
 package io.renku.search.provision.variant
 
-import cats.effect.{Resource, Sync}
+import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe}
 
-import io.renku.queue.client.{QueueClient, QueueMessage}
-import io.renku.redis.client.{ClientId, QueueName}
+import io.renku.queue.client.QueueMessage
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity as Document
 
@@ -38,9 +37,7 @@ object PushToSolr:
 
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F],
-      queueClient: Resource[F, QueueClient[F]],
-      clientId: ClientId,
-      queue: QueueName
+      reader: MessageReader[F]
   ): PushToSolr[F] =
     new PushToSolr[F] {
       val logger = scribe.cats.effect[F]
@@ -49,20 +46,12 @@ object PushToSolr:
           val docSeq = docs.toList.flatMap(_.decoded)
           docs.last.map(_.raw) match
             case Some(lastMessage) =>
-              solrClient
-                .insert(docSeq)
-                .flatMap(_ => queueClient.use(_.markProcessed(clientId, queue, lastMessage.id)))
-                .onError(markProcessedOnFailure(lastMessage))
+              logger.debug(s"Push ${docSeq} to solr") >>
+                solrClient
+                  .insert(docSeq)
+                  .flatMap(_ => reader.markProcessed(lastMessage.id))
+                  .onError(reader.markProcessedError(_, lastMessage.id)(using logger))
             case None =>
               Sync[F].unit
         }
-
-      private def markProcessedOnFailure(
-          message: QueueMessage
-      ): PartialFunction[Throwable, F[Unit]] = err =>
-        queueClient.use(_.markProcessed(clientId, queue, message.id)) >>
-          logger.error(
-            s"Processing messageId: ${message.id} for '${queue.name}' failed",
-            err
-          )
     }

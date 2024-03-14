@@ -37,21 +37,21 @@ final class MessageHandlers[F[_]: Async](
     tasks = tasks.updated(queue.name, task.compile.drain)
     task
 
-  lazy val getAll: Map[String, F[Unit]] = tasks
+  def getAll: Map[String, F[Unit]] = tasks
 
-  def projectCreated: Stream[F, Unit] =
+  val projectCreated: Stream[F, Unit] =
     add(cfg.projectCreated, makeCreated[ProjectCreated](cfg.projectCreated))
 
-  def projectUpdated =
+  val projectUpdated =
     add(
       cfg.projectUpdated,
       makeUpdated[ProjectUpdated](cfg.projectUpdated, DocumentUpdates.project)
     )
 
-  def projectRemoved: Stream[F, Unit] =
+  val projectRemoved: Stream[F, Unit] =
     add(cfg.projectRemoved, makeRemovedSimple[ProjectRemoved](cfg.projectRemoved))
 
-  def projectAuthAdded: Stream[F, Unit] =
+  val projectAuthAdded: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationAdded,
       makeUpdated[ProjectAuthorizationAdded](
@@ -60,7 +60,7 @@ final class MessageHandlers[F[_]: Async](
       )
     )
 
-  def projectAuthUpdated: Stream[F, Unit] =
+  val projectAuthUpdated: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationUpdated,
       makeUpdated[ProjectAuthorizationUpdated](
@@ -69,7 +69,7 @@ final class MessageHandlers[F[_]: Async](
       )
     )
 
-  def projectAuthRemoved: Stream[F, Unit] = add(
+  val projectAuthRemoved: Stream[F, Unit] = add(
     cfg.projectAuthorizationRemoved,
     makeUpdated[ProjectAuthorizationRemoved](
       cfg.projectAuthorizationRemoved,
@@ -77,13 +77,13 @@ final class MessageHandlers[F[_]: Async](
     )
   )
 
-  def userAdded: Stream[F, Unit] =
+  val userAdded: Stream[F, Unit] =
     add(cfg.userAdded, makeCreated[UserAdded](cfg.userAdded))
 
-  def userUpdated =
+  val userUpdated =
     add(cfg.userUpdated, makeUpdated[UserUpdated](cfg.userUpdated, DocumentUpdates.user))
 
-  def userRemoved =
+  val userRemoved =
     val ps = steps(cfg.userRemoved)
     add(
       cfg.userRemoved,

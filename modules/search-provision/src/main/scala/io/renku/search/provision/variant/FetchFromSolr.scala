@@ -27,13 +27,14 @@ import io.renku.search.provision.variant.FetchFromSolr.MessageDocument
 import io.renku.search.provision.variant.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity as Document
-import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.query.Query
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.Decoder
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryString
 import io.renku.solr.client.QueryData
+import io.renku.search.solr.query.SolrToken
+import io.renku.search.model.EntityType
 
 trait FetchFromSolr[F[_]]:
   def fetch1[A](using IdExtractor[A]): Pipe[F, Message[A], MessageDocument[A]]
@@ -61,7 +62,7 @@ object FetchFromSolr:
       )
 
   def apply[F[_]: Sync](
-      solrClient: SearchSolrClient[F],
+      solrClient: SearchSolrClient[F]
   ): FetchFromSolr[F] =
     new FetchFromSolr[F] {
       val logger = scribe.cats.effect[F]
@@ -73,10 +74,15 @@ object FetchFromSolr:
       def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId] =
         val query = QueryString(
           List(
-            s"${Fields.entityType}:${ProjectDocument.entityType}",
-            s"${Fields.owners}:${userId.value}",
-            s"${Fields.members}:${userId.value}"
-          ).mkString(" ")
+            SolrToken.fieldIs(
+              Fields.entityType,
+              SolrToken.fromEntityType(EntityType.Project)
+            ),
+            List(
+              SolrToken.fieldIs(Fields.owners, SolrToken.fromId(userId)),
+              SolrToken.fieldIs(Fields.members, SolrToken.fromId(userId))
+            ).foldOr
+          ).foldAnd.value
         )
         solrClient.queryAll[ProjectId](QueryData(query))
 

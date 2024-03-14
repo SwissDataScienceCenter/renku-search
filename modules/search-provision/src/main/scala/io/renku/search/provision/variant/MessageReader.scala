@@ -30,6 +30,8 @@ import fs2.Chunk
 import cats.effect.{Async, Resource}
 import cats.Show
 import io.renku.queue.client.RequestId
+import io.renku.redis.client.MessageId
+import scribe.Scribe
 
 trait MessageReader[F[_]]:
   def read[A](using
@@ -43,6 +45,9 @@ trait MessageReader[F[_]]:
       Async[F]
   ): Stream[F, Chunk[MessageReader.Message[A]]] =
     read[A].groupWithin(chunkSize, timeout)
+
+  def markProcessed(id: MessageId): F[Unit]
+  def markProcessedError(err: Throwable, id: MessageId)(using logger: Scribe[F]): F[Unit]
 
 object MessageReader:
   final case class Message[A](raw: QueueMessage, decoded: Seq[A]):
@@ -85,6 +90,15 @@ object MessageReader:
             }
           _ <- Stream.eval(logInfo(dec))
         } yield dec
+
+      def markProcessed(id: MessageId): F[Unit] =
+        queueClient.use(_.markProcessed(clientId, queue, id))
+
+      def markProcessedError(err: Throwable, id: MessageId)(using
+          logger: Scribe[F]
+      ): F[Unit] =
+        markProcessed(id) >>
+          logger.error(s"Processing messageId: ${id} for '${queue}' failed", err)
 
       private def logInfo[A: Show](m: Message[A]): F[Unit] =
         lazy val values = m.decoded.mkString_(", ")

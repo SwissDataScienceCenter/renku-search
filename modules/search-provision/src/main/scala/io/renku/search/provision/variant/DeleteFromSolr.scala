@@ -19,13 +19,10 @@
 package io.renku.search.provision.variant
 
 import cats.data.NonEmptyList
-import cats.effect.{Resource, Sync}
+import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
 
-import io.renku.queue.client.QueueClient
-import io.renku.redis.client.ClientId
-import io.renku.redis.client.QueueName
 import io.renku.search.provision.variant.DeleteFromSolr.DeleteResult
 import io.renku.search.provision.variant.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
@@ -48,9 +45,7 @@ object DeleteFromSolr:
 
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F],
-      queueClient: Resource[F, QueueClient[F]],
-      clientId: ClientId,
-      queue: QueueName
+      reader: MessageReader[F]
   ): DeleteFromSolr[F] =
     new DeleteFromSolr[F] {
       val logger = scribe.cats.effect[F]
@@ -60,10 +55,11 @@ object DeleteFromSolr:
         _.evalMap { msg =>
           NonEmptyList.fromList(msg.decoded.map(IdExtractor[A].getId).toList) match
             case Some(nel) =>
-              solrClient
-                .deleteIds(nel)
-                .attempt
-                .map(DeleteResult.from(msg))
+              logger.debug(s"Deleting documents with ids: $nel") >>
+                solrClient
+                  .deleteIds(nel)
+                  .attempt
+                  .map(DeleteResult.from(msg))
 
             case None =>
               Sync[F].pure(DeleteResult.NoIds(msg))
@@ -71,10 +67,12 @@ object DeleteFromSolr:
 
       def whenSuccess[A](fb: Message[A] => F[Unit]): Pipe[F, DeleteResult[A], Unit] =
         _.evalMap {
-          case DeleteResult.Success(m) => fb(m).attempt.map(DeleteResult.from(m))
-          case result => result.pure[F]
+          case DeleteResult.Success(m) =>
+            logger.debug(s"Deletion ${m.id} successful, running post processing action") >>
+              fb(m).attempt.map(DeleteResult.from(m))
+          case result                  => result.pure[F]
         }
-        .through(markProcessed)
+          .through(markProcessed)
 
       def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[Message[A]], Unit] =
         _.flatMap(Stream.chunk)
@@ -82,7 +80,7 @@ object DeleteFromSolr:
           .through(markProcessed)
 
       private def markProcessed[A]: Pipe[F, DeleteResult[A], Unit] =
-        _.evalTap(result => queueClient.use(_.markProcessed(clientId, queue, result.message.id)))
+        _.evalTap(result => reader.markProcessed(result.message.id))
           .evalMap {
             case DeleteResult.Success(_) => Sync[F].unit
 

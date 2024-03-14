@@ -34,7 +34,7 @@ object Microservice extends IOApp:
   private val loadConfig: IO[SearchProvisionConfig] =
     SearchProvisionConfig.config.load[IO]
 
-  override def run(args: List[String]): IO[ExitCode] = prevRun(args)
+  override def run(args: List[String]): IO[ExitCode] = newRun(args)
   def prevRun(args: List[String]): IO[ExitCode] =
     for {
       config <- loadConfig
@@ -49,25 +49,28 @@ object Microservice extends IOApp:
 
   def newRun(args: List[String]): IO[ExitCode] =
     loadConfig.flatMap { cfg =>
-      resources(cfg).use { solrClient =>
-        // The redis client must be initialized on each operation to
-        // be able to connect to the cluster
-        val queueClientResource = QueueClient.make[IO](cfg.redisConfig)
-        val stepsForQueue = variant
-          .PipelineSteps[IO](
-            solrClient,
-            queueClientResource,
-            cfg.queuesConfig,
-            1,
-            ProvisioningProcess.clientId
-          )
-        val handlers = variant.MessageHandlers[IO](stepsForQueue, cfg.queuesConfig)
-        for {
-          pm <- BackgroundProcessManage[IO](cfg.retryOnErrorDelay)
-          tasks = handlers.getAll.toList
-          _ <- tasks.traverse_(pm.register.tupled) >> pm.startAll
-        } yield ExitCode.Success
-      }
+      IO(LoggingSetup.doConfigure(cfg.verbosity)) >>
+        resources(cfg).use { solrClient =>
+          // The redis client must be initialized on each operation to
+          // be able to connect to the cluster
+          val queueClientResource = QueueClient.make[IO](cfg.redisConfig)
+          val stepsForQueue = variant
+            .PipelineSteps[IO](
+              solrClient,
+              queueClientResource,
+              cfg.queuesConfig,
+              1,
+              ProvisioningProcess.clientId
+            )
+          val handlers = variant.MessageHandlers[IO](stepsForQueue, cfg.queuesConfig)
+          for {
+            _ <- runSolrMigrations(cfg)
+            pm <- BackgroundProcessManage[IO](cfg.retryOnErrorDelay)
+            tasks = handlers.getAll.toList
+            _ <- tasks.traverse_(pm.register.tupled)
+            _ <- pm.startAll
+          } yield ExitCode.Success
+        }
     }
 
   def resources(cfg: SearchProvisionConfig) =

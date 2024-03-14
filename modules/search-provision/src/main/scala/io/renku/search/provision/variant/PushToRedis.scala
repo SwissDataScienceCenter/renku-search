@@ -18,18 +18,17 @@
 
 package io.renku.search.provision.variant
 
+import cats.Show
+import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
 import fs2.Pipe
-import io.renku.queue.client.QueueClient
-import cats.effect.{Resource, Sync}
-import io.renku.queue.client.RequestId
+
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.ProjectAuthorizationRemoved
 import io.renku.queue.client.*
 import io.renku.redis.client.ClientId
-import io.renku.search.provision.QueuesConfig
-import cats.Show
 import io.renku.redis.client.MessageId
+import io.renku.search.provision.QueuesConfig
 
 trait PushToRedis[F[_]]:
   def pushAuthorizationRemoved(

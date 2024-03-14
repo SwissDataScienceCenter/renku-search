@@ -56,7 +56,8 @@ object BackgroundProcessManage:
           state.update(_.put(name, wrapTask(name, task)))
 
         def startAll: F[Nothing] =
-          background.useForever
+          state.get.flatMap(s => logger.info(s"Starting ${s.tasks.size} background tasks")) >>
+            background.useForever
 
         def background: Resource[F, F[Unit]] =
           for {

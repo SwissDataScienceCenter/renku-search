@@ -39,6 +39,7 @@
         [
           redis
           jq
+          coreutils
           scala-cli
           devshellToolsPkgs.sbt17
           devshellToolsPkgs.openapi-docs
@@ -49,11 +50,12 @@
         "projectCreated"
         "projectUpdated"
         "projectRemoved"
-        "projectAuthorizationAdded"
-        "projectAuthorizationUpdated"
-        "projectAuthorizationRemoved"
+        "projectAuthAdded"
+        "projectAuthUpdated"
+        "projectAuthRemoved"
         "userAdded"
         "userUpdated"
+        "userRemoved"
       ];
       queueNameConfig = builtins.listToAttrs (builtins.map (qn: {
           name = "RS_REDIS_QUEUE_${qn}";

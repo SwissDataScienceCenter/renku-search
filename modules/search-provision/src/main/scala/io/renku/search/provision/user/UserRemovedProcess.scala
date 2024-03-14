@@ -84,21 +84,22 @@ object UserRemovedProcess:
           sc: SearchSolrClient[F],
           userId: String
       ): Stream[F, ProjectId] =
-        Stream
-          .iterate(1)(_ + 1)
-          .evalMap(p => sc.query[ProjectId](prepareQuery(userId, p)))
-          .map(_.responseBody.docs)
-          .takeWhile(_.nonEmpty)
-          .flatMap(Stream.emits)
+        sc.queryAll[ProjectId](prepareQuery(userId))
+        // Stream
+        //   .iterate(1)(_ + 1)
+        //   .evalMap(p => sc.query[ProjectId](prepareQuery(userId, p)))
+        //   .map(_.responseBody.docs)
+        //   .takeWhile(_.nonEmpty)
+        //   .flatMap(Stream.emits)
 
       private val pageSize = 20
 
-      private def prepareQuery(userId: String, page: Int) =
+      private def prepareQuery(userId: String) =
         QueryData(
           s"${Fields.entityType}:${Project.entityType} ${Fields.owners}:$userId ${Fields.members}:$userId",
           filter = Seq.empty,
-          limit = pageSize * page,
-          offset = pageSize * (page - 1)
+          limit = pageSize,
+          offset = 0
         ).withFields(Fields.id)
 
       private def enqueueAuthRemoved(

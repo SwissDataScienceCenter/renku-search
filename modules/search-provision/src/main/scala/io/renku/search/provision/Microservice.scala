@@ -26,15 +26,16 @@ import io.renku.search.provision.project.*
 import io.renku.search.provision.user.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
-import scribe.Scribe
-import scribe.cats.*
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.queue.client.QueueClient
 
 object Microservice extends IOApp:
   private val logger = scribe.cats.io
   private val loadConfig: IO[SearchProvisionConfig] =
     SearchProvisionConfig.config.load[IO]
 
-  override def run(args: List[String]): IO[ExitCode] =
+  override def run(args: List[String]): IO[ExitCode] = prevRun(args)
+  def prevRun(args: List[String]): IO[ExitCode] =
     for {
       config <- loadConfig
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
@@ -45,6 +46,30 @@ object Microservice extends IOApp:
         ps.traverse_(e => pm.register(e._2, e._1.process)) >> pm.startAll
       }
     } yield ExitCode.Success
+
+  def newRun(args: List[String]): IO[ExitCode] =
+    loadConfig.flatMap { cfg =>
+      resources(cfg).use { case (solrClient, queueClient) =>
+        val stepsForQueue = variant
+          .PipelineSteps[IO](solrClient, queueClient, cfg.queuesConfig, 1, ProvisioningProcess.clientId)
+        val handlers = variant.MessageHandlers[IO](stepsForQueue, cfg.queuesConfig)
+        for {
+          pm <- BackgroundProcessManage[IO](cfg.retryOnErrorDelay, 15)
+          tasks = List(
+            cfg.queuesConfig.projectCreated -> handlers.projectCreated,
+            cfg.queuesConfig.projectUpdated -> handlers.projectUpdated,
+            cfg.queuesConfig.userAdded -> handlers.userAdded,
+            cfg.queuesConfig.userUpdated -> handlers.userUpdated
+            //... and more
+          ).map(t => t._1 -> t._2.compile.drain)
+          _ <- tasks.traverse_(pm.register.tupled) >> pm.startAll
+        } yield ExitCode.Success
+      }
+    }
+
+  def resources(cfg: SearchProvisionConfig) =
+    (SearchSolrClient.make[IO](cfg.solrConfig), QueueClient.make[IO](cfg.redisConfig))
+      .mapN(_ -> _)
 
   final case class Provision(
       queue: QueueName,
@@ -120,6 +145,6 @@ object Microservice extends IOApp:
     SchemaMigrator[IO](cfg.solrConfig)
       .use(_.migrate(Migrations.all))
       .handleErrorWith { err =>
-        Scribe[IO].error("Running solr migrations failure, retrying", err) >>
+        logger.error("Running solr migrations failure, retrying", err) >>
           Temporal[IO].delayBy(runSolrMigrations(cfg), cfg.retryOnErrorDelay)
       }

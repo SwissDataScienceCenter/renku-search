@@ -21,6 +21,7 @@ package io.renku.search.solr.client
 import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
+import fs2.Stream
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.Id
 import io.renku.search.query.Query
@@ -69,6 +70,12 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
 
   override def query[D: Decoder](query: QueryData): F[QueryResponse[D]] =
     solrClient.query[D](query)
+
+  override def queryAll[D: Decoder](query: QueryData): Stream[F, D] =
+    Stream.iterate(query)(_.nextPage)
+      .evalMap(this.query)
+      .takeWhile(_.responseBody.numFound > 0)
+      .flatMap(r => Stream.emits(r.responseBody.docs))
 
   override def findById[D <: Entity](id: Id)(using ct: ClassTag[D]): F[Option[D]] =
     solrClient.findById[Entity](id.value).map(_.responseBody.docs.headOption) >>= {

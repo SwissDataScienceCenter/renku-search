@@ -66,7 +66,7 @@ final case class Project(
     copy(owners = owners.filterNot(_ == userId), members = members.filterNot(_ == userId))
 
 object Project:
-  val entityType: String = "project"
+  val entityType: String = "Project"
 
 final case class User(
     id: Id,
@@ -78,7 +78,7 @@ final case class User(
 ) extends Entity
 
 object User:
-  val entityType: String = "user"
+  val entityType: String = "User"
 
   def nameFrom(firstName: Option[String], lastName: Option[String]): Option[Name] =
     Option(List(firstName, lastName).flatten.mkString(" "))

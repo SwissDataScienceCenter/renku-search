@@ -21,6 +21,7 @@ package io.renku.search.solr.client
 import cats.data.NonEmptyList
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
+import fs2.Stream
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.Id
 import io.renku.search.query.Query
@@ -35,6 +36,7 @@ trait SearchSolrClient[F[_]]:
   def deleteIds(ids: NonEmptyList[Id]): F[Unit]
   def queryEntity(query: Query, limit: Int, offset: Int): F[QueryResponse[Entity]]
   def query[D: Decoder](query: QueryData): F[QueryResponse[D]]
+  def queryAll[D: Decoder](query: QueryData): Stream[F, D]
 
 object SearchSolrClient:
   def make[F[_]: Async: Network](

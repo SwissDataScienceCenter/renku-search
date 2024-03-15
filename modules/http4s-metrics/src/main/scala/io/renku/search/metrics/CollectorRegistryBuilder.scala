@@ -20,7 +20,7 @@ package io.renku.search.metrics
 
 import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
-import io.prometheus.client.{Collector, CollectorRegistry}
+import io.prometheus.client.{CollectorRegistry, Collector as JCollector}
 import org.http4s.metrics.prometheus.PrometheusExportService
 
 final case class CollectorRegistryBuilder[F[_]: Sync](
@@ -32,18 +32,20 @@ final case class CollectorRegistryBuilder[F[_]: Sync](
   def withStandardJVMMetrics: CollectorRegistryBuilder[F] =
     copy(standardJVMMetrics = true)
 
+  def add(c: Collector): CollectorRegistryBuilder[F] =
+    copy(collectors = collectors + c)
+
   def makeRegistry: Resource[F, CollectorRegistry] =
     (registerJVM >> registerCollectors)
       .as(registry)
 
-  private def registerCollectors =
+  private def registerCollectors: Resource[F, Unit] =
     collectors.toList.map(registerCollector).sequence.void
 
-  private def registerCollector(collector: Collector): Resource[F, Collector] =
-    val F = summon[Sync[F]]
-    Resource.make(F.blocking(collector.register[Collector](registry)))(c =>
-      F.blocking(registry.unregister(c))
-    )
+  private def registerCollector(collector: Collector) =
+    val F = Sync[F]
+    val acq = F.blocking(collector.asJCollector.register[JCollector](registry))
+    Resource.make(acq)(c => F.blocking(registry.unregister(c)))
 
   private def registerJVM =
     if standardJVMMetrics then PrometheusExportService.addDefaults(registry)

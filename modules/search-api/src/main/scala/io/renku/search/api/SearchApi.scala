@@ -25,7 +25,7 @@ import io.renku.solr.client.SolrConfig
 import io.renku.search.api.data.*
 
 trait SearchApi[F[_]]:
-  def query(query: QueryInput): F[Either[String, SearchResult]]
+  def query(auth: AuthContext)(query: QueryInput): F[Either[String, SearchResult]]
 
 object SearchApi:
   def apply[F[_]: Async: Network](

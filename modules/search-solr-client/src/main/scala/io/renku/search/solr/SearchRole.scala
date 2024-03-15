@@ -16,12 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision
+package io.renku.search.solr
 
-import io.renku.redis.client.ClientId
+import io.renku.search.model.Id
 
-trait ProvisioningProcess[F[_]]:
-  def provisioningProcess: F[Unit]
+enum SearchRole:
+  case Admin
+  case User(id: Id)
+  case Anonymous
 
-object ProvisioningProcess:
-  val clientId: ClientId = ClientId("search-provisioner")
+object SearchRole:
+  val admin: SearchRole = Admin
+  val anonymous: SearchRole = Anonymous
+  def user(id: Id): SearchRole = User(id)

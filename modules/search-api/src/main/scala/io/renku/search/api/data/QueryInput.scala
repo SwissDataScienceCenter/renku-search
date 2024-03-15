@@ -22,6 +22,7 @@ import io.renku.search.query.Query
 import io.bullet.borer.Encoder
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
 import io.bullet.borer.Decoder
+import cats.Show
 
 final case class QueryInput(
     query: Query,
@@ -31,6 +32,8 @@ final case class QueryInput(
 object QueryInput:
   given Encoder[QueryInput] = deriveEncoder
   given Decoder[QueryInput] = deriveDecoder
+
+  given Show[QueryInput] = Show.show(i => s"(${i.query.render}, ${i.page})")
 
   def pageOne(query: Query): QueryInput =
     QueryInput(query, PageDef.default)

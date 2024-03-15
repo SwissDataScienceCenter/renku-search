@@ -38,36 +38,6 @@ numpy flight visibility:public,private
 Searches for entities containing `numpy` _and_ `flight` that are
 _either_ `public` _or_ `private`.
 
-### Query JSON
-
-The JSON format allows to specify the same query as a JSON object. A
-JSON object may contain specific terms by including the corresponding
-field-value pair. For unspecific terms, the special field `_text` is
-used.
-
-Example:
-```json
-{
-  "_text": "numpy flight",
-  "visibility": "public"
-}
-```
-
-JSON objects are sequences of key-value pairs. As such, the encoding
-allows to specifiy multiple same named fields in one JSON object. This
-would be a valid query:
-
-```json
-{
-  "_text": "numpy",
-  "visibility": "public",
-  "_text": "flight"
-}
-```
-
-The JSON variant follows the same rules for specifying field values.
-Multiple alternative values can be given as a comma separated list.
-
 ### Fields
 
 The following fields are available:

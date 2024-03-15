@@ -28,14 +28,14 @@ class SolrTokenSpec extends FunSuite:
     assertEquals(
       List(
         SolrToken.fieldIs(Field.Name, SolrToken.fromString("john")),
-        SolrToken.fieldIs(Field.ProjectId, SolrToken.fromString("1"))
+        SolrToken.fieldIs(Field.Id, SolrToken.fromString("1"))
       ).foldAnd,
       SolrToken.unsafeFromString("(name:john AND id:1)")
     )
     assertEquals(
       List(
         SolrToken.fieldIs(Field.Name, SolrToken.fromString("john")),
-        SolrToken.fieldIs(Field.ProjectId, SolrToken.fromString("1"))
+        SolrToken.fieldIs(Field.Id, SolrToken.fromString("1"))
       ).foldOr,
       SolrToken.unsafeFromString("(name:john OR id:1)")
     )

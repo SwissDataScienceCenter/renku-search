@@ -18,11 +18,14 @@
 
 package io.renku.queue.client
 
+import cats.syntax.all.*
 import io.renku.events.v1.Header
 import org.apache.avro.Schema
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import cats.effect.Clock
+import cats.Functor
 
 final case class MessageHeader(
     source: MessageSource,
@@ -66,6 +69,7 @@ object MessageSource:
 
 opaque type SchemaVersion = String
 object SchemaVersion:
+  val V1: SchemaVersion = "V1"
   def apply(v: String): SchemaVersion = v
   extension (self: SchemaVersion) def value: String = self
 
@@ -73,6 +77,9 @@ opaque type CreationTime = Instant
 object CreationTime:
   def apply(v: Instant): CreationTime = v
   def now: CreationTime = Instant.now().truncatedTo(ChronoUnit.MILLIS)
+  def nowF[F[_]: Clock: Functor]: F[CreationTime] =
+    Clock[F].realTimeInstant.map(_.truncatedTo(ChronoUnit.MILLIS))
+
   extension (self: CreationTime) def value: Instant = self
 
 opaque type RequestId = String

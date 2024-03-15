@@ -24,7 +24,12 @@ object Dependencies {
     val scribe = "3.13.0"
     val sttpApiSpec = "0.7.4"
     val tapir = "1.9.11"
+    val jwtScala = "10.0.0";
   }
+
+  val jwtScala = Seq(
+    "com.github.jwt-scala" %% "jwt-core" % V.jwtScala
+  )
 
   val catsScalaCheck = Seq(
     "io.chrisdavenport" %% "cats-scalacheck" % V.catsScalaCheck

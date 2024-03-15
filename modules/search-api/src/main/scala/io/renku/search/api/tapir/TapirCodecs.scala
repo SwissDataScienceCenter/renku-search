@@ -18,10 +18,12 @@
 
 package io.renku.search.api.tapir
 
+import cats.syntax.all.*
 import sttp.tapir.*
 import io.renku.search.api.data.*
 import io.renku.search.query.Query
-import io.renku.search.model.EntityType
+import io.renku.search.model.{EntityType, Id}
+import io.renku.search.jwt.JwtBorer
 
 trait TapirCodecs:
   given Codec[String, Query, CodecFormat.TextPlain] =
@@ -34,5 +36,19 @@ trait TapirCodecs:
     Codec.string.mapEither(EntityType.fromString(_))(_.name)
 
   given Schema[EntityType] = Schema.derivedEnumeration.defaultStringBased
+
+  given Codec[String, AuthContext.Authenticated, CodecFormat.TextPlain] =
+    Codec.string.mapEither(str =>
+      JwtBorer
+        .decodeNoSignatureCheck(str)
+        .toEither
+        .leftMap(_.getMessage)
+        .flatMap(c => c.subject.toRight(s"Claim contains no subject"))
+        .map(Id.apply)
+        .map(AuthContext.Authenticated(_))
+    )(_.render)
+
+  given Codec[String, AuthContext.AnonymousId, CodecFormat.TextPlain] =
+    Codec.string.map(s => AuthContext.AnonymousId(Id(s)))(_.render)
 
 object TapirCodecs extends TapirCodecs

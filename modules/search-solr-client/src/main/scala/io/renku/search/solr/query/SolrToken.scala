@@ -18,23 +18,25 @@
 
 package io.renku.search.solr.query
 
+import java.time.Instant
+
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import io.renku.search.model.EntityType
+import io.renku.search.model.{EntityType, Id}
+
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.{Comparison, Field}
 import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.schema.FieldName
 
-import java.time.Instant
-
 opaque type SolrToken = String
 
 object SolrToken:
   val empty: SolrToken = ""
   def fromString(str: String): SolrToken = StringEscape.queryChars(str)
+  def fromId(id: Id): SolrToken = fromString(id.value)
   def fromVisibility(v: Visibility): SolrToken = v.name
   def fromEntityType(et: EntityType): SolrToken =
     et match
@@ -43,7 +45,7 @@ object SolrToken:
 
   def fromField(field: Field): SolrToken =
     (field match
-      case Field.ProjectId  => SolrField.id
+      case Field.Id         => SolrField.id
       case Field.Name       => SolrField.name
       case Field.Slug       => SolrField.slug
       case Field.Visibility => SolrField.visibility
@@ -75,6 +77,15 @@ object SolrToken:
 
   val allTypes: SolrToken = fieldIs(Field.Type, "*")
 
+  val publicOnly: SolrToken =
+    fieldIs(Field.Visibility, fromVisibility(Visibility.Public))
+
+  def ownerIs(id: Id): SolrToken = SolrField.owners.name === fromString(id.value)
+  def memberIs(id: Id): SolrToken = SolrField.members.name === fromString(id.value)
+
+  def forUser(id: Id): SolrToken =
+    Seq(publicOnly, ownerIs(id), memberIs(id)).foldOr
+
   private def fieldOp(field: Field, op: Comparison, value: SolrToken): SolrToken =
     val cmp = fromComparison(op)
     val f = fromField(field)
@@ -82,6 +93,9 @@ object SolrToken:
 
   def fieldIs(field: Field, value: SolrToken): SolrToken =
     fieldOp(field, Comparison.Is, value)
+
+  def fieldIs(field: FieldName, value: SolrToken): SolrToken =
+    s"${field.name}:$value"
 
   def unsafeFromString(s: String): SolrToken = s
 
@@ -103,6 +117,7 @@ object SolrToken:
     def &&(next: SolrToken): SolrToken = andMonoid.combine(self, next)
     def ||(next: SolrToken): SolrToken = orMonoid.combine(self, next)
     def ===(next: SolrToken): SolrToken = self ~ Comparison.Is.token ~ next
+    def parens: SolrToken = "(" ~ self ~ ")"
 
   extension (self: Comparison) def token: SolrToken = fromComparison(self)
 

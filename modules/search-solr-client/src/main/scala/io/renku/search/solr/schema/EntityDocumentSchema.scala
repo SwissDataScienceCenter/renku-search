@@ -26,7 +26,6 @@ object EntityDocumentSchema:
     val createdBy: FieldName = FieldName("createdBy")
     val creationDate: FieldName = FieldName("creationDate")
     val description: FieldName = FieldName("description")
-    val email: FieldName = FieldName("email")
     val entityType: FieldName = FieldName("_type")
     val firstName: FieldName = FieldName("firstName")
     val id: FieldName = FieldName("id")
@@ -82,7 +81,6 @@ object EntityDocumentSchema:
   val userFields: Seq[SchemaCommand] = Seq(
     SchemaCommand.Add(Field(Fields.firstName, FieldTypes.string)),
     SchemaCommand.Add(Field(Fields.lastName, FieldTypes.string)),
-    SchemaCommand.Add(Field(Fields.email, FieldTypes.string)),
     SchemaCommand.Add(CopyFieldRule(Fields.firstName, Fields.contentAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.lastName, Fields.contentAll))
   )

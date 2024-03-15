@@ -29,9 +29,11 @@ import io.renku.search.model.users.FirstName
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.{Entity as SolrEntity, User as SolrUser}
+import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
 import munit.CatsEffectSuite
 import scribe.Scribe
+import org.scalacheck.Gen
+import io.renku.search.model.projects.Visibility
 
 class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
 
@@ -39,32 +41,52 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
 
   test("do a lookup in Solr to find entities matching the given phrase"):
     withSearchSolrClient().use { client =>
-      val project1 = projectDocumentGen("matching", "matching description").generateOne
-      val project2 = projectDocumentGen("disparate", "disparate description").generateOne
+      val project1 = projectDocumentGen(
+        "matching",
+        "matching description",
+        Gen.const(Visibility.Public)
+      ).generateOne
+      val project2 = projectDocumentGen(
+        "disparate",
+        "disparate description",
+        Gen.const(Visibility.Public)
+      ).generateOne
       val searchApi = new SearchApiImpl[IO](client)
       for {
         _ <- client.insert((project1 :: project2 :: Nil).map(_.widen))
         results <- searchApi
-          .query(mkQuery("matching"))
+          .query(AuthContext.anonymous)(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
-      } yield assert {
-        results.items.map(scoreToNone) contains toApiEntity(project1)
-      }
+
+        expected = toApiEntities(project1).toSet
+        obtained = results.items.map(scoreToNone).toSet
+      } yield assert(
+        expected.diff(obtained).isEmpty,
+        s"Expected $expected, bot got $obtained"
+      )
     }
 
   test("return Project and User entities"):
     withSearchSolrClient().use { client =>
-      val project = projectDocumentGen("exclusive", "exclusive description").generateOne
+      val project = projectDocumentGen(
+        "exclusive",
+        "exclusive description",
+        Gen.const(Visibility.Public)
+      ).generateOne
       val user = SolrUser(project.createdBy, FirstName("exclusive").some)
       val searchApi = new SearchApiImpl[IO](client)
       for {
         _ <- client.insert(project :: user :: Nil)
         results <- searchApi
-          .query(mkQuery("exclusive"))
+          .query(AuthContext.anonymous)(mkQuery("exclusive"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
-      } yield assert {
-        toApiEntities(project, user).diff(results.items.map(scoreToNone)).isEmpty
-      }
+
+        expected = toApiEntities(project, user).toSet
+        obtained = results.items.map(scoreToNone).toSet
+      } yield assert(
+        expected.diff(obtained).isEmpty,
+        s"Expected $expected, bot got $obtained"
+      )
     }
 
   private def scoreToNone(e: SearchEntity): SearchEntity = e match
@@ -74,8 +96,8 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
   private def mkQuery(phrase: String): QueryInput =
     QueryInput.pageOne(Query.parse(s"Fields $phrase").fold(sys.error, identity))
 
-  private def toApiEntities(e: SolrEntity*) = e.map(toApiEntity)
+  private def toApiEntities(e: EntityDocument*) = e.map(toApiEntity)
 
-  private def toApiEntity(e: SolrEntity) =
+  private def toApiEntity(e: EntityDocument) =
     given Transformer[Id, UserId] = (id: Id) => UserId(id)
     e.to[SearchEntity]

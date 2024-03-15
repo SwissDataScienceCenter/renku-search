@@ -25,9 +25,10 @@ import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.users
 import io.renku.search.query.Query
+import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.{Entity, Project, User}
+import io.renku.search.solr.documents.{EntityDocument, Project, User}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryData
 import munit.CatsEffectSuite
@@ -40,7 +41,12 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
         projectDocumentGen("solr-project", "solr project description").generateOne
       for {
         _ <- client.insert(Seq(project.widen))
-        qr <- client.queryEntity(Query.parse("solr").toOption.get, 10, 0)
+        qr <- client.queryEntity(
+          SearchRole.Admin,
+          Query.parse("solr").toOption.get,
+          10,
+          0
+        )
         _ = assert(qr.responseBody.docs.map(_.noneScore) contains project)
         gr <- client.findById[Project](project.id)
         _ = assert(gr contains project)
@@ -53,7 +59,12 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
       val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
       for {
         _ <- client.insert(Seq(user.widen))
-        qr <- client.queryEntity(Query.parse(firstName.value).toOption.get, 10, 0)
+        qr <- client.queryEntity(
+          SearchRole.Admin,
+          Query.parse(firstName.value).toOption.get,
+          10,
+          0
+        )
         _ = assert(qr.responseBody.docs.map(_.noneScore) contains user)
         gr <- client.findById[User](user.id)
         _ = assert(gr contains user)

@@ -34,6 +34,5 @@ trait UserSyntax:
     def update(updated: UserUpdated): UserAdded =
       added.copy(
         firstName = updated.firstName,
-        lastName = updated.lastName,
-        email = updated.email
+        lastName = updated.lastName
       )

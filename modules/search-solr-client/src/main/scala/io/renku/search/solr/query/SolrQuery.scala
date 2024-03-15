@@ -20,6 +20,8 @@ package io.renku.search.solr.query
 
 import cats.Monoid
 import cats.syntax.all.*
+
+import io.renku.search.model.Id
 import io.renku.search.query.Order
 import io.renku.solr.client.SolrSort
 
@@ -30,6 +32,12 @@ final case class SolrQuery(
   def withQuery(q: SolrToken): SolrQuery = copy(query = q)
   def ++(next: SolrQuery): SolrQuery =
     SolrQuery(query && next.query, sort ++ next.sort)
+
+  def asAnonymous: SolrQuery =
+    SolrQuery(query.parens && SolrToken.publicOnly, sort)
+
+  def asUser(id: Id): SolrQuery =
+    SolrQuery(query.parens && SolrToken.forUser(id), sort)
 
 object SolrQuery:
   val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)

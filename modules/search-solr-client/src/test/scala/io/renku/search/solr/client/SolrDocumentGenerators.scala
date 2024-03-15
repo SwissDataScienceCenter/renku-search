@@ -25,6 +25,7 @@ import io.renku.search.model.ModelGenerators.*
 import io.renku.search.solr.documents.*
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
+import io.renku.search.model.projects.Visibility
 
 object SolrDocumentGenerators extends SolrDocumentGenerators
 
@@ -40,8 +41,12 @@ trait SolrDocumentGenerators:
       s"proj desc $differentiator"
     )
 
-  def projectDocumentGen(name: String, desc: String): Gen[Project] =
-    (projectIdGen, idGen, projectVisibilityGen, projectCreationDateGen)
+  def projectDocumentGen(
+      name: String,
+      desc: String,
+      visibilityGen: Gen[Visibility] = projectVisibilityGen
+  ): Gen[Project] =
+    (projectIdGen, idGen, visibilityGen, projectCreationDateGen)
       .mapN((projectId, creatorId, visibility, creationDate) =>
         Project(
           projectId,
@@ -58,6 +63,5 @@ trait SolrDocumentGenerators:
   def userDocumentGen: Gen[User] =
     (idGen, Gen.option(userFirstNameGen), Gen.option(userLastNameGen))
       .flatMapN { case (id, f, l) =>
-        val e = (f, l).flatMapN(userEmailGen(_, _).generateSome)
-        User.of(id, f, l, e)
+        User.of(id, f, l)
       }

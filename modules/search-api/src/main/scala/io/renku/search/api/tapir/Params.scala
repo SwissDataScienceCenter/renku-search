@@ -18,6 +18,7 @@
 
 package io.renku.search.api.tapir
 
+import cats.syntax.all.*
 import sttp.tapir.{query as queryParam, *}
 import io.renku.search.api.data.*
 import io.renku.search.query.Query
@@ -66,4 +67,13 @@ object Params extends TapirCodecs with TapirBorerJson {
 
   val searchResult: EndpointOutput[SearchResult] =
     borerJsonBody[SearchResult].and(pagingInfo).map(_._1)(r => (r, r.pagingInfo))
+
+  private val renkuAuthIdToken: EndpointInput[Option[AuthContext.Authenticated]] =
+    header[Option[AuthContext.Authenticated]]("Renku-Auth-Id-Token")
+  private val renkuAuthAnonId: EndpointInput[Option[AuthContext.AnonymousId]] =
+    header[Option[AuthContext.AnonymousId]]("Renku-Auth-Anon-Id")
+  val renkuAuth: EndpointInput[AuthContext] =
+    (renkuAuthIdToken / renkuAuthAnonId).map { case (token, id) =>
+      token.orElse(id).getOrElse(AuthContext.anonymous)
+    }(_.fold(a => (a.some, None), b => (None, b.some), (None, None)))
 }

@@ -25,7 +25,7 @@ enum EntityType:
   case Project
   case User
 
-  def name: String = productPrefix.toLowerCase
+  def name: String = productPrefix
 
 object EntityType:
   def fromString(str: String): Either[String, EntityType] =

@@ -21,11 +21,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.sys.process.*
 import scala.util.Try
 
-object RedisServer extends RedisServer("graph", port = 6379)
+object RedisServer extends RedisServer("graph", None)
 
 @annotation.nowarn()
-class RedisServer(module: String, val port: Int) {
+class RedisServer(module: String, val redisPort: Option[Int]) {
 
+  val port = redisPort.orElse(sys.env.get("RS_REDIS_PORT").map(_.toInt)).getOrElse(6379)
   val host: String = sys.env.get("RS_REDIS_HOST").getOrElse("localhost")
   val url: String = s"redis://$host:$port"
 

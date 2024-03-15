@@ -22,135 +22,35 @@ import cats.effect.*
 import cats.syntax.all.*
 import com.comcast.ip4s.port
 import io.renku.logging.LoggingSetup
-import io.renku.redis.client.QueueName
 import io.renku.search.http.HttpServer
-import io.renku.search.provision.project.*
-import io.renku.search.provision.user.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
-import scribe.Scribe
-import scribe.cats.*
 
 object Microservice extends IOApp:
 
   private val port = port"8081"
-  private val loadConfig: IO[SearchProvisionConfig] =
-    SearchProvisionConfig.config.load[IO]
+  private val logger = scribe.cats.io
 
   override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- HttpApplication[IO].flatMap(HttpServer.build(_, port)).use(_ => IO.never).start
-      _ <- runSolrMigrations(config)
-      _ <- startProvisioners(config)
-    } yield ExitCode.Success
+    Services.make[IO].use { services =>
+      for {
+        _ <- IO(LoggingSetup.doConfigure(services.config.verbosity))
+        _ <- runSolrMigrations(services.config)
+        tasks = services.messageHandlers.getAll + ("http server" -> httpServer)
+        pm <- BackgroundProcessManage[IO](services.config.retryOnErrorDelay)
+        _ <- tasks.toList.traverse_(pm.register.tupled)
+        _ <- pm.startAll
+      } yield ExitCode.Success
+    }
 
-  private def startProvisioners(cfg: SearchProvisionConfig): IO[Unit] =
-    List(
-      (
-        "ProjectCreated",
-        cfg.queuesConfig.projectCreated,
-        ProjectCreatedProvisioning
-          .make[IO](cfg.queuesConfig.projectCreated, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectUpdated",
-        cfg.queuesConfig.projectUpdated,
-        ProjectUpdatedProvisioning
-          .make[IO](cfg.queuesConfig.projectUpdated, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectRemoved",
-        cfg.queuesConfig.projectRemoved,
-        ProjectRemovedProcess
-          .make[IO](cfg.queuesConfig.projectRemoved, cfg.redisConfig, cfg.solrConfig)
-          .map(_.removalProcess.start)
-      ),
-      (
-        "ProjectAuthorizationAdded",
-        cfg.queuesConfig.projectAuthorizationAdded,
-        AuthorizationAddedProvisioning
-          .make[IO](
-            cfg.queuesConfig.projectAuthorizationAdded,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectAuthorizationUpdated",
-        cfg.queuesConfig.projectAuthorizationUpdated,
-        AuthorizationUpdatedProvisioning
-          .make[IO](
-            cfg.queuesConfig.projectAuthorizationUpdated,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "ProjectAuthorizationRemoved",
-        cfg.queuesConfig.projectAuthorizationRemoved,
-        AuthorizationRemovedProvisioning
-          .make[IO](
-            cfg.queuesConfig.projectAuthorizationRemoved,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "UserAdded",
-        cfg.queuesConfig.userAdded,
-        UserAddedProvisioning
-          .make[IO](cfg.queuesConfig.userAdded, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "UserUpdated",
-        cfg.queuesConfig.userUpdated,
-        UserUpdatedProvisioning
-          .make[IO](cfg.queuesConfig.userUpdated, cfg.redisConfig, cfg.solrConfig)
-          .map(_.provisioningProcess.start)
-      ),
-      (
-        "UserRemoved",
-        cfg.queuesConfig.userRemoved,
-        UserRemovedProcess
-          .make[IO](
-            cfg.queuesConfig.userRemoved,
-            cfg.queuesConfig.projectAuthorizationRemoved,
-            cfg.redisConfig,
-            cfg.solrConfig
-          )
-          .map(_.removalProcess.start)
-      )
-    ).parTraverse_(startProcess(cfg))
-      .flatMap(_ => IO.never)
-
-  private def startProcess(
-      cfg: SearchProvisionConfig
-  ): ((String, QueueName, Resource[IO, IO[FiberIO[Unit]]])) => IO[Unit] = {
-    case t @ (name, queue, resource) =>
-      resource
-        .use(_ =>
-          Scribe[IO].info(s"'$name' provisioning process started on '$queue' queue")
-        )
-        .handleErrorWith { err =>
-          Scribe[IO].error(
-            s"Starting provisioning process for '$name' failed, retrying",
-            err
-          ) >> Temporal[IO].delayBy(startProcess(cfg)(t), cfg.retryOnErrorDelay)
-        }
-  }
+  private lazy val httpServer =
+    (HttpApplication[IO] >>= (HttpServer.build(_, port)))
+      .use(_ => IO.never)
 
   private def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =
     SchemaMigrator[IO](cfg.solrConfig)
       .use(_.migrate(Migrations.all))
       .handleErrorWith { err =>
-        Scribe[IO].error("Running solr migrations failure, retrying", err) >>
+        logger.error("Running solr migrations failure, retrying", err) >>
           Temporal[IO].delayBy(runSolrMigrations(cfg), cfg.retryOnErrorDelay)
       }

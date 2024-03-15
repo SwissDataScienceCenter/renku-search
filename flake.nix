@@ -39,6 +39,7 @@
         [
           redis
           jq
+          coreutils
           scala-cli
           devshellToolsPkgs.sbt17
           devshellToolsPkgs.openapi-docs
@@ -49,11 +50,12 @@
         "projectCreated"
         "projectUpdated"
         "projectRemoved"
-        "projectAuthorizationAdded"
-        "projectAuthorizationUpdated"
-        "projectAuthorizationRemoved"
+        "projectAuthAdded"
+        "projectAuthUpdated"
+        "projectAuthRemoved"
         "userAdded"
         "userUpdated"
+        "userRemoved"
       ];
       queueNameConfig = builtins.listToAttrs (builtins.map (qn: {
           name = "RS_REDIS_QUEUE_${qn}";
@@ -86,6 +88,8 @@
           });
         vm = pkgs.mkShellNoCC (queueNameConfig
           // {
+            RS_SOLR_HOST = "localhost";
+            RS_SOLR_PORT = "18983";
             RS_SOLR_URL = "http://localhost:18983/solr";
             RS_SOLR_CORE = "rsdev-test";
             RS_REDIS_HOST = "localhost";

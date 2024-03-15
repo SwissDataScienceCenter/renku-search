@@ -26,7 +26,7 @@ import io.renku.search.api.data.*
 import io.renku.search.model.EntityType
 import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.Entity as SolrEntity
+import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryResponse
 import io.renku.solr.client.facet.FacetResponse
@@ -37,28 +37,36 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
     with SearchApi[F]:
 
-  private given Scribe[F] = scribe.cats[F]
+  private val logger: Scribe[F] = scribe.cats[F]
 
-  override def query(query: QueryInput): F[Either[String, SearchResult]] =
-    solrClient
-      .queryEntity(query.query, query.page.limit + 1, query.page.offset)
-      .map(toApiResult(query.page))
-      .map(_.asRight[String])
-      .handleErrorWith(errorResponse(query.query.render))
-      .widen
+  override def query(
+      auth: AuthContext
+  )(query: QueryInput): F[Either[String, SearchResult]] =
+    logger.debug(show"Running query '$query' as '$auth'") >>
+      solrClient
+        .queryEntity(
+          auth.searchRole,
+          query.query,
+          query.page.limit + 1,
+          query.page.offset
+        )
+        .map(toApiResult(query.page))
+        .map(_.asRight[String])
+        .handleErrorWith(errorResponse(query.query.render))
+        .widen
 
   private def errorResponse(
       phrase: String
   ): Throwable => F[Either[String, SearchResult]] =
     err =>
       val message = s"Finding by '$phrase' phrase failed: ${err.getMessage}"
-      Scribe[F]
+      logger
         .error(message, err)
         .as(message)
         .map(_.asLeft[SearchResult])
 
   private def toApiResult(currentPage: PageDef)(
-      solrResult: QueryResponse[SolrEntity]
+      solrResult: QueryResponse[EntityDocument]
   ): SearchResult =
     val hasMore = solrResult.responseBody.docs.size > currentPage.limit
     val pageInfo = PageWithTotals(currentPage, solrResult.responseBody.numFound, hasMore)
@@ -76,6 +84,6 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     if (hasMore) SearchResult(items.init, facets, pageInfo)
     else SearchResult(items, facets, pageInfo)
 
-  private lazy val toApiEntity: SolrEntity => SearchEntity =
+  private lazy val toApiEntity: EntityDocument => SearchEntity =
     given Transformer[Id, UserId] = (id: Id) => UserId(id)
     _.to[SearchEntity]

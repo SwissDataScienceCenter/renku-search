@@ -21,8 +21,8 @@ package io.renku.search.solr.documents
 object EntityOps extends EntityOps
 trait EntityOps:
 
-  extension (entity: Entity)
-    def noneScore: Entity = entity match {
+  extension (entity: EntityDocument)
+    def noneScore: EntityDocument = entity match {
       case e: Project => e.copy(score = None)
       case e: User    => e.copy(score = None)
     }

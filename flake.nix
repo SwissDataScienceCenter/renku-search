@@ -88,6 +88,8 @@
           });
         vm = pkgs.mkShellNoCC (queueNameConfig
           // {
+            RS_SOLR_HOST = "localhost";
+            RS_SOLR_PORT = "18983";
             RS_SOLR_URL = "http://localhost:18983/solr";
             RS_SOLR_CORE = "rsdev-test";
             RS_REDIS_HOST = "localhost";

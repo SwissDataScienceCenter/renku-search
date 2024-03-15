@@ -18,34 +18,35 @@
 
 package io.renku.search.solr.query
 
+import java.time.Instant
+import java.time.ZoneId
+
 import cats.Id
 import cats.effect.IO
 import cats.syntax.all.*
-import io.bullet.borer.{Decoder, Reader}
-import io.renku.search.query.Query
-import io.renku.search.solr.schema.Migrations
-import io.renku.solr.client.{QueryData, QueryString}
-import io.renku.solr.client.migration.SchemaMigrator
-import io.renku.solr.client.util.SolrSpec
-import munit.CatsEffectSuite
 
-import java.time.Instant
-import java.time.ZoneId
-import io.renku.search.query.QueryGenerators
-import munit.ScalaCheckEffectSuite
-import org.scalacheck.effect.PropF
-import io.renku.search.model
+import io.bullet.borer.{Decoder, Reader}
 import io.renku.search.LoggingConfigure
-import io.renku.search.solr.SearchRole
-import io.renku.search.solr.schema.EntityDocumentSchema.Fields
+import io.renku.search.model
 import io.renku.search.model.EntityType
+import io.renku.search.query.Query
+import io.renku.search.query.QueryGenerators
+import io.renku.search.solr.SearchRole
+import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields
+import io.renku.search.solr.schema.Migrations
+import io.renku.solr.client.migration.SchemaMigrator
+import io.renku.solr.client.{QueryData, QueryString}
+import munit.CatsEffectSuite
+import munit.ScalaCheckEffectSuite
 import org.scalacheck.Test.Parameters
+import org.scalacheck.effect.PropF
 
 class LuceneQueryInterpreterSpec
     extends CatsEffectSuite
     with LoggingConfigure
     with ScalaCheckEffectSuite
-    with SolrSpec:
+    with SearchSolrSpec:
 
   override protected lazy val coreName: String = server.testCoreName2
 
@@ -127,4 +128,34 @@ class LuceneQueryInterpreterSpec
           )
         } yield ()
       }
+    }
+
+  test("auth scenarios"):
+    withSearchSolrClient().use { solr =>
+      for {
+        data <- AuthTestData.generate
+        _ <- solr.insert(data.all)
+        query = data.queryAll
+
+        publicEntities <- solr.queryEntity(SearchRole.Anonymous, query, 50, 0)
+        user1Entities <- solr.queryEntity(SearchRole.User(data.user1.id), query, 50, 0)
+        user2Entities <- solr.queryEntity(SearchRole.User(data.user2.id), query, 50, 0)
+        user3Entities <- solr.queryEntity(SearchRole.User(data.user3.id), query, 50, 0)
+        _ = assertEquals(
+          publicEntities.responseBody.docs.map(_.id).toSet,
+          data.publicEntityIds.toSet
+        )
+        _ = assertEquals(
+          user1Entities.responseBody.docs.map(_.id).toSet,
+          data.user1EntityIds.toSet
+        )
+        _ = assertEquals(
+          user2Entities.responseBody.docs.map(_.id).toSet,
+          data.user2EntityIds.toSet
+        )
+        _ = assertEquals(
+          user3Entities.responseBody.docs.map(_.id).toSet,
+          data.user3EntityIds.toSet
+        )
+      } yield ()
     }

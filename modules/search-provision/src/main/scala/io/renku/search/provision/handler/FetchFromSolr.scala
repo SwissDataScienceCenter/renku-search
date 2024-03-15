@@ -16,15 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.variant
+package io.renku.search.provision.handler
 
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 
 import io.renku.search.model.Id
-import io.renku.search.provision.variant.FetchFromSolr.MessageDocument
-import io.renku.search.provision.variant.MessageReader.Message
+import io.renku.search.provision.handler.FetchFromSolr.MessageDocument
+import io.renku.search.provision.handler.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.Entity as Document
 import io.renku.search.query.Query

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.variant
+package io.renku.search.provision.handler
 
 import fs2.Pipe
 

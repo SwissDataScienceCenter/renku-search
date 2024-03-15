@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.variant
+package io.renku.search.provision.handler
 
 import io.renku.search.solr.documents.Entity as Document //TODO rename
 import io.renku.search.solr.documents.Project as ProjectDocument

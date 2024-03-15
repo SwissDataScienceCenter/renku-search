@@ -25,8 +25,7 @@ import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.ClientId
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.project.ProjectSyntax
-import io.renku.search.provision.variant.MessageHandlers
-import io.renku.search.provision.variant.PipelineSteps
+import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.SearchSolrSpec
 import munit.CatsEffectSuite
 import io.renku.queue.client.QueueClient

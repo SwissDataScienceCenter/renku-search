@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.variant
+package io.renku.search.provision
 
 import cats.Show
 import cats.effect.*
@@ -24,10 +24,14 @@ import fs2.Stream
 
 import io.renku.events.v1.*
 import io.renku.redis.client.QueueName
-import io.renku.search.provision.QueueMessageDecoder
-import io.renku.search.provision.QueuesConfig
+import io.renku.search.provision.handler.*
 import io.renku.search.solr.documents.Entity as Document
 
+/** The entry point for defining all message handlers.
+  *
+  * They are defined as vals to have them automatically added to a collection, to be
+  * easier accessed from the main method.
+  */
 final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
     cfg: QueuesConfig

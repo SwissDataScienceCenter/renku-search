@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.variant
+package io.renku.search.provision.handler
 
 import io.renku.search.model.Id
 import io.renku.events.v1.*

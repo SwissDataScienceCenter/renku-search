@@ -16,15 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.variant
+package io.renku.search.provision.handler
 
 import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
 
-import io.renku.search.provision.variant.DeleteFromSolr.DeleteResult
-import io.renku.search.provision.variant.MessageReader.Message
+import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
+import io.renku.search.provision.handler.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
 
 trait DeleteFromSolr[F[_]]:

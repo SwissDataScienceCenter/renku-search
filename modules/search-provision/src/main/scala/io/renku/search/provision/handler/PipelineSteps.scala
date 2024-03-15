@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.variant
+package io.renku.search.provision.handler
 
 import cats.effect.{Resource, Sync}
 import io.renku.search.solr.client.SearchSolrClient

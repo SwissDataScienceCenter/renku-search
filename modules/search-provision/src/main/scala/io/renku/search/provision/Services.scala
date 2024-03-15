@@ -24,8 +24,7 @@ import fs2.io.net.Network
 
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.ClientId
-import io.renku.search.provision.variant.MessageHandlers
-import io.renku.search.provision.variant.PipelineSteps
+import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.SearchSolrClient
 
 final case class Services[F[_]](

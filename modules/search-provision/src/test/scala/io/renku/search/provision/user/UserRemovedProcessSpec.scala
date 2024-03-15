@@ -35,8 +35,6 @@ import scala.concurrent.duration.*
 import io.renku.search.provision.ProvisioningSuite
 
 class UserRemovedProcessSpec extends ProvisioningSuite:
-  override val defaultVerbosity: Int = 2
-
   test(
     "can fetch events, decode them, and remove from Solr relevant User document " +
       "and issue ProjectAuthorizationRemoved events for all affected projects"

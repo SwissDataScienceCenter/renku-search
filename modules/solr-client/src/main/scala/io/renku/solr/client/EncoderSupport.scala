@@ -31,11 +31,19 @@ object EncoderSupport {
   inline def deriveWithDiscriminator[A <: Product](using
       Mirror.ProductOf[A]
   ): Encoder[A] =
-    Macros.createEncoder[String, A](discriminatorField)
+    Macros.createEncoder[String, String, A](Map.empty, Some(discriminatorField))
+
+  inline def deriveWithAdditional[V: Encoder, A <: Product](key: String, value: V)(using
+      Mirror.ProductOf[A]
+  ): Encoder[A] =
+    Macros.createEncoder[String, V, A](Map(key -> value), None)
 
   private object Macros {
 
-    final inline def createEncoder[K: Encoder, T <: Product](discriminatorName: K)(using
+    final inline def createEncoder[K: Encoder, V: Encoder, T <: Product](
+        additionalFields: Map[String, V],
+        discriminatorField: Option[K]
+    )(using
         m: Mirror.ProductOf[T]
     ): Encoder[T] =
       val names = summonLabels[m.MirroredElemLabels]
@@ -45,8 +53,9 @@ object EncoderSupport {
         def write(w: Writer, value: T): Writer =
           val kind = value.asInstanceOf[Product].productPrefix
           val values = value.asInstanceOf[Product].productIterator.toList
-          w.writeMapOpen(names.size + 1)
-          w.writeMapMember(discriminatorName, kind)
+          w.writeMapOpen(names.size + additionalFields.size + discriminatorField.size)
+          additionalFields.foreach { case (k, v) => w.writeMapMember(k, v) }
+          discriminatorField.foreach(k => w.writeMapMember(k, kind))
           names.zip(values).zip(encoders).foreach { case ((k, v), e) =>
             w.writeMapMember(k, v)(Encoder[String], e.asInstanceOf[Encoder[Any]])
           }

@@ -31,12 +31,16 @@ import io.renku.search.solr.client.SearchSolrSpec
 import munit.CatsEffectSuite
 import io.renku.queue.client.QueueClient
 import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.provision.user.UserSyntax
+import io.renku.search.LoggingConfigure
 
 trait ProvisioningSuite
     extends CatsEffectSuite
+    with LoggingConfigure
     with QueueSpec
     with SearchSolrSpec
-    with ProjectSyntax:
+    with ProjectSyntax
+    with UserSyntax:
 
   val queueConfig: QueuesConfig = QueuesConfig(
     projectCreated = QueueName("projectCreated"),
@@ -56,7 +60,13 @@ trait ProvisioningSuite
     val clientId = ClientId("provision-test-client")
     (withSearchSolrClient(), withQueueClient()).mapN { (solrClient, queueClient) =>
       val steps =
-        PipelineSteps[IO](solrClient, Resource.pure(queueClient), queueConfig, 1, clientId)
+        PipelineSteps[IO](
+          solrClient,
+          Resource.pure(queueClient),
+          queueConfig,
+          1,
+          clientId
+        )
       val handlers = MessageHandlers[IO](steps, queueConfig)
       (handlers, queueClient, solrClient)
     }

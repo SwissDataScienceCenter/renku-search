@@ -19,124 +19,94 @@
 package io.renku.search.provision.user
 
 import cats.effect.{IO, Resource}
-import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.renku.avro.codec.AvroIO
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.*
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.EntityType
 import io.renku.search.model.ModelGenerators.projectMemberRoleGen
 import io.renku.search.provision.QueueMessageDecoder
-import io.renku.search.provision.project.ProjectSyntax
-import io.renku.search.query.Query
-import io.renku.search.query.Query.Segment
-import io.renku.search.query.Query.Segment.typeIs
-import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{Entity, User}
-import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
+import io.renku.search.provision.ProvisioningSuite
 
-class UserRemovedProcessSpec
-    extends CatsEffectSuite
-    with QueueSpec
-    with SearchSolrSpec
-    with ProjectSyntax:
-
-  private val avro = AvroIO(UserRemoved.SCHEMA$)
+class UserRemovedProcessSpec extends ProvisioningSuite:
+  override val defaultVerbosity: Int = 2
 
   test(
     "can fetch events, decode them, and remove from Solr relevant User document " +
       "and issue ProjectAuthorizationRemoved events for all affected projects"
   ):
-    val userRemovedQueue = RedisClientGenerators.queueNameGen.generateOne
-    val authRemovedQueue = RedisClientGenerators.queueNameGen.generateOne
     val messageDecoder = QueueMessageDecoder[IO, ProjectAuthorizationRemoved]
 
-    clientsAndProvisioning(userRemovedQueue, authRemovedQueue).use {
-      case (queueClient, solrClient, provisioner) =>
-        for
-          solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
-          authRemovalEvents <- SignallingRef.of[IO, Set[ProjectAuthorizationRemoved]](
-            Set.empty
-          )
+    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
+      for
+        solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
+        authRemovalEvents <- SignallingRef.of[IO, Set[ProjectAuthorizationRemoved]](
+          Set.empty
+        )
 
-          provisioningFiber <- provisioner.removalProcess.start
+        provisioningFiber <- handlers.userRemoved.compile.drain.start
 
-          user = userDocumentGen.generateOne
-          affectedProjects = projectCreatedGen("affected")
-            .map(_.toSolrDocument.addMember(user.id, projectMemberRoleGen.generateOne))
-            .generateList(min = 20, max = 25)
-          notAffectedProject = projectCreatedGen(
-            "not-affected"
-          ).generateOne.toSolrDocument
-          _ <- solrClient.insert(user :: notAffectedProject :: affectedProjects)
+        user = userDocumentGen.generateOne
+        affectedProjects = projectCreatedGen("affected")
+          .map(_.toSolrDocument.addMember(user.id, projectMemberRoleGen.generateOne))
+          .generateList(min = 20, max = 25)
+        notAffectedProject = projectCreatedGen(
+          "not-affected"
+        ).generateOne.toSolrDocument
+        _ <- solrClient.insert(user :: notAffectedProject :: affectedProjects)
 
-          docsCollectorFiber <-
-            Stream
-              .awakeEvery[IO](500 millis)
-              .evalMap(_ => solrClient.findById[User](user.id))
-              .evalMap(e => solrDoc.update(_ => e))
-              .compile
-              .drain
-              .start
+        docsCollectorFiber <-
+          Stream
+            .awakeEvery[IO](500 millis)
+            .evalMap(_ => solrClient.findById[User](user.id))
+            .evalMap(e => solrDoc.update(_ => e))
+            .compile
+            .drain
+            .start
+        eventsCollectorFiber <-
+          queueClient
+            .acquireEventsStream(queueConfig.projectAuthorizationRemoved, 1, None)
+            .evalMap(messageDecoder.decodeMessage)
+            .evalMap(e => authRemovalEvents.update(_ ++ e))
+            .compile
+            .drain
+            .start
 
-          _ <- solrDoc.waitUntil(_.nonEmpty)
+        _ <- scribe.cats.io.info("Waiting for test documents to be inserted")
+        _ <- solrDoc.waitUntil(_.nonEmpty)
+        _ <- scribe.cats.io.info("Test documents inserted")
 
-          eventsCollectorFiber <-
-            queueClient
-              .acquireEventsStream(authRemovedQueue, 1, None)
-              .evalMap(messageDecoder.decodeMessage)
-              .evalMap(e => authRemovalEvents.update(_ ++ e))
-              .compile
-              .drain
-              .start
+        _ <- queueClient.enqueue(
+          queueConfig.userRemoved,
+          messageHeaderGen(UserRemoved.SCHEMA$).generateOne,
+          UserRemoved(user.id.value)
+        )
 
-          _ <- queueClient.enqueue(
-            userRemovedQueue,
-            messageHeaderGen(UserRemoved.SCHEMA$).generateOne,
-            UserRemoved(user.id.value)
-          )
+        _ <- solrDoc.waitUntil(_.isEmpty)
+        _ <- scribe.cats.io.info(
+          "User has been removed. Waiting for project auth removals"
+        )
 
-          _ <- solrDoc.waitUntil(_.isEmpty)
+        expectedAuthRemovals =
+          affectedProjects
+            .map(ap => ProjectAuthorizationRemoved(ap.id.value, user.id.value))
+            .toSet
 
-          _ <- authRemovalEvents.waitUntil(
-            _ == affectedProjects
-              .map(ap => ProjectAuthorizationRemoved(ap.id.value, user.id.value))
-              .toSet
-          )
+        _ <- authRemovalEvents.waitUntil(
+          x => expectedAuthRemovals.diff(x).isEmpty
+        )
 
-          _ <- provisioningFiber.cancel
-          _ <- docsCollectorFiber.cancel
-          _ <- eventsCollectorFiber.cancel
-        yield ()
+        _ <- provisioningFiber.cancel
+        _ <- docsCollectorFiber.cancel
+        _ <- eventsCollectorFiber.cancel
+      yield ()
     }
-
-  private lazy val queryProjects = Query(typeIs(EntityType.Project))
-
-  private def clientsAndProvisioning(
-      userRemovedQueue: QueueName,
-      authRemovedQueue: QueueName
-  ) =
-    (withQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .flatMap { case (rc, sc) =>
-        UserRemovedProcess
-          .make[IO](
-            userRemovedQueue,
-            authRemovedQueue,
-            withRedisClient.redisConfig,
-            withSearchSolrClient.solrConfig
-          )
-          .map((rc, sc, _))
-      }
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

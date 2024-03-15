@@ -19,42 +19,32 @@
 package io.renku.search.provision.user
 
 import cats.effect.{IO, Resource}
-import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.userAddedGen
 import io.renku.events.v1.UserAdded
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.documents.{Entity, User}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
+import io.renku.search.provision.ProvisioningSuite
 
-class UserAddedProvisioningSpec
-    extends CatsEffectSuite
-    with QueueSpec
-    with SearchSolrSpec
-    with UserSyntax:
+class UserAddedProvisioningSpec extends ProvisioningSuite:
 
   test("can fetch events, decode them, and send them to Solr"):
-    val queue = RedisClientGenerators.queueNameGen.generateOne
-
-    clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
         solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
 
-        provisioningFiber <- provisioner.provisioningProcess.start
+        provisioningFiber <- handlers.userAdded.compile.drain.start
 
         userAdded = userAddedGen(prefix = "user-added").generateOne
         _ <- queueClient.enqueue(
-          queue,
+          queueConfig.userAdded,
           messageHeaderGen(UserAdded.SCHEMA$).generateOne,
           userAdded
         )
@@ -74,18 +64,6 @@ class UserAddedProvisioningSpec
         _ <- docsCollectorFiber.cancel
       yield ()
     }
-
-  private def clientsAndProvisioning(queueName: QueueName) =
-    (withQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .flatMap { case (rc, sc) =>
-        UserAddedProvisioning
-          .make[IO](
-            queueName,
-            withRedisClient.redisConfig,
-            withSearchSolrClient.solrConfig
-          )
-          .map((rc, sc, _))
-      }
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

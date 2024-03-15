@@ -74,7 +74,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   override def queryAll[D: Decoder](query: QueryData): Stream[F, D] =
     Stream.iterate(query)(_.nextPage)
       .evalMap(this.query)
-      .takeWhile(_.responseBody.numFound > 0)
+      .takeWhile(_.responseBody.docs.nonEmpty)
       .flatMap(r => Stream.emits(r.responseBody.docs))
 
   override def findById[D <: Entity](id: Id)(using ct: ClassTag[D]): F[Option[D]] =

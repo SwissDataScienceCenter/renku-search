@@ -26,7 +26,7 @@ import io.renku.search.model.Id
 import io.renku.search.provision.handler.FetchFromSolr.MessageDocument
 import io.renku.search.provision.handler.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.Entity as Document
+import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.query.Query
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.Decoder
@@ -47,9 +47,11 @@ object FetchFromSolr:
 
   final case class MessageDocument[A: IdExtractor](
       message: MessageReader.Message[A],
-      documents: Map[Id, Document]
+      documents: Map[Id, EntityDocument]
   ):
-    def update(f: (A, Document) => Option[Document]): Message[Document] =
+    def update(
+        f: (A, EntityDocument) => Option[EntityDocument]
+    ): Message[EntityDocument] =
       Message(
         message.raw,
         message.decoded
@@ -104,7 +106,7 @@ object FetchFromSolr:
                   s"Document ids: '$notFound' for update doesn't exist in Solr; skipping"
                 )
             }
-            .map(_.foldLeft(Map.empty[Id, Document]) {
+            .map(_.foldLeft(Map.empty[Id, EntityDocument]) {
               case (result, (id, Some(doc))) => result.updated(id, doc)
               case (result, (id, None))      => result
             })

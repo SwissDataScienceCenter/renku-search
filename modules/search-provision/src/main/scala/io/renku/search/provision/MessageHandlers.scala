@@ -25,7 +25,7 @@ import fs2.Stream
 import io.renku.events.v1.*
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.handler.*
-import io.renku.search.solr.documents.Entity as Document
+import io.renku.search.solr.documents.EntityDocument
 
 /** The entry point for defining all message handlers.
   *
@@ -117,7 +117,7 @@ final class MessageHandlers[F[_]: Async](
 
   private def makeUpdated[A](
       queue: QueueName,
-      docUpdate: (A, Document) => Option[Document]
+      docUpdate: (A, EntityDocument) => Option[EntityDocument]
   )(using
       QueueMessageDecoder[F, A],
       Show[A],

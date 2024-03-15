@@ -31,7 +31,7 @@ import io.renku.queue.client.DataContentType
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.documents.{Entity, Project}
+import io.renku.search.solr.documents.{EntityDocument, Project}
 import munit.CatsEffectSuite
 
 class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
@@ -40,7 +40,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
+        solrDocs <- SignallingRef.of[IO, Set[EntityDocument]](Set.empty)
 
         provisioningFiber <- handlers.projectCreated.compile.drain.start
 
@@ -70,7 +70,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
   test("can fetch events JSON encoded, decode them, and send them to Solr"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
+        solrDocs <- SignallingRef.of[IO, Set[EntityDocument]](Set.empty)
 
         provisioningFiber <- handlers.projectCreated.compile.drain.start
 

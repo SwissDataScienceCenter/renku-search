@@ -20,7 +20,7 @@ package io.renku.search.provision.handler
 
 import cats.syntax.all.*
 import io.renku.search.provision.TypeTransformers.given
-import io.renku.search.solr.documents.Entity as Document
+import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
 import io.github.arainko.ducktape.*
@@ -29,21 +29,22 @@ import io.renku.search.model.Id
 
 object DocumentUpdates:
 
-  def project(update: ProjectUpdated, orig: Document): Option[Document] = orig match
-    case orig: ProjectDocument =>
-      update
-        .into[ProjectDocument]
-        .transform(
-          Field.const(_.createdBy, orig.createdBy),
-          Field.const(_.creationDate, orig.creationDate),
-          Field.const(_.owners, orig.owners),
-          Field.const(_.members, orig.members),
-          Field.default(_.score)
-        )
-        .some
-    case _ => None // todo really throw here?
+  def project(update: ProjectUpdated, orig: EntityDocument): Option[EntityDocument] =
+    orig match
+      case orig: ProjectDocument =>
+        update
+          .into[ProjectDocument]
+          .transform(
+            Field.const(_.createdBy, orig.createdBy),
+            Field.const(_.creationDate, orig.creationDate),
+            Field.const(_.owners, orig.owners),
+            Field.const(_.members, orig.members),
+            Field.default(_.score)
+          )
+          .some
+      case _ => None // todo really throw here?
 
-  def user(update: UserUpdated, orig: Document): Option[Document] = orig match
+  def user(update: UserUpdated, orig: EntityDocument): Option[EntityDocument] = orig match
     case _: UserDocument =>
       update
         .into[UserDocument]
@@ -57,8 +58,8 @@ object DocumentUpdates:
 
   def projectAuthAdded(
       update: ProjectAuthorizationAdded,
-      orig: Document
-  ): Option[Document] =
+      orig: EntityDocument
+  ): Option[EntityDocument] =
     orig match
       case pd: ProjectDocument =>
         pd.addMember(
@@ -69,8 +70,8 @@ object DocumentUpdates:
 
   def projectAuthUpdated(
       update: ProjectAuthorizationUpdated,
-      orig: Document
-  ): Option[Document] =
+      orig: EntityDocument
+  ): Option[EntityDocument] =
     orig match
       case pd: ProjectDocument =>
         pd.addMember(
@@ -82,8 +83,8 @@ object DocumentUpdates:
 
   def projectAuthRemoved(
       update: ProjectAuthorizationRemoved,
-      orig: Document
-  ): Option[Document] =
+      orig: EntityDocument
+  ): Option[EntityDocument] =
     orig match
       case pd: ProjectDocument =>
         pd.removeMember(Id(update.userId)).some

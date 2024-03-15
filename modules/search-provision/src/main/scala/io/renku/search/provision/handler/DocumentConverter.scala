@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.handler
 
-import io.renku.search.solr.documents.Entity as Document //TODO rename
+import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
 import io.github.arainko.ducktape.*
@@ -27,13 +27,13 @@ import io.renku.search.model.Id
 import io.renku.search.provision.TypeTransformers.given
 
 trait DocumentConverter[A]:
-  def convert(a: A): Document
+  def convert(a: A): EntityDocument
 
 object DocumentConverter:
-  def create[A](f: A => Document): DocumentConverter[A] =
+  def create[A](f: A => EntityDocument): DocumentConverter[A] =
     (a: A) => f(a)
 
-  def fromTransformer[A](t: Transformer[A, Document]): DocumentConverter[A] =
+  def fromTransformer[A](t: Transformer[A, EntityDocument]): DocumentConverter[A] =
     create(t.transform)
 
   def apply[A](using d: DocumentConverter[A]): DocumentConverter[A] = d

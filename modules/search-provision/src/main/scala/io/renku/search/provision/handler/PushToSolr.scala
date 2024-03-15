@@ -24,13 +24,13 @@ import fs2.{Chunk, Pipe}
 
 import io.renku.queue.client.QueueMessage
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.Entity as Document
+import io.renku.search.solr.documents.EntityDocument
 
 trait PushToSolr[F[_]]:
-  def pushChunk: Pipe[F, Chunk[MessageReader.Message[Document]], Unit]
-  def push: Pipe[F, MessageReader.Message[Document], Unit] =
+  def pushChunk: Pipe[F, Chunk[MessageReader.Message[EntityDocument]], Unit]
+  def push: Pipe[F, MessageReader.Message[EntityDocument], Unit] =
     _.chunks.through(pushChunk)
-  def push1: Pipe[F, MessageReader.Message[Document], Unit] =
+  def push1: Pipe[F, MessageReader.Message[EntityDocument], Unit] =
     _.map(Chunk(_)).through(pushChunk)
 
 object PushToSolr:
@@ -41,7 +41,7 @@ object PushToSolr:
   ): PushToSolr[F] =
     new PushToSolr[F] {
       val logger = scribe.cats.effect[F]
-      def pushChunk: Pipe[F, Chunk[MessageReader.Message[Document]], Unit] =
+      def pushChunk: Pipe[F, Chunk[MessageReader.Message[EntityDocument]], Unit] =
         _.evalMap { docs =>
           val docSeq = docs.toList.flatMap(_.decoded)
           docs.last.map(_.raw) match

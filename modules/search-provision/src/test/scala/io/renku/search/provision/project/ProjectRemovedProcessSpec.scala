@@ -34,7 +34,7 @@ import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
-import io.renku.search.solr.documents.{Entity, Project}
+import io.renku.search.solr.documents.{EntityDocument, Project}
 import munit.CatsEffectSuite
 
 class ProjectRemovedProcessSpec extends ProvisioningSuite:

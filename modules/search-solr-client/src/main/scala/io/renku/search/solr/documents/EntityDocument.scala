@@ -26,21 +26,21 @@ import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.solr.client.EncoderSupport.*
 import io.renku.search.model.projects.Visibility
 
-sealed trait Entity:
+sealed trait EntityDocument:
   val score: Option[Double]
   val id: Id
-  def widen: Entity = this
+  def widen: EntityDocument = this
 
-object Entity:
+object EntityDocument:
 
   val allTypes: Set[String] = Set(Project.entityType, User.entityType)
 
   given AdtEncodingStrategy =
     AdtEncodingStrategy.flat(typeMemberName = discriminatorField)
 
-  given Encoder[Entity] = deriveAllEncoders[Entity]
-  given Decoder[Entity] = deriveAllDecoders[Entity]
-  given Codec[Entity] = Codec.of[Entity]
+  given Encoder[EntityDocument] = deriveAllEncoders[EntityDocument]
+  given Decoder[EntityDocument] = deriveAllDecoders[EntityDocument]
+  given Codec[EntityDocument] = Codec.of[EntityDocument]
 
 final case class Project(
     id: Id,
@@ -54,7 +54,7 @@ final case class Project(
     owners: List[Id] = List.empty,
     members: List[Id] = List.empty,
     score: Option[Double] = None
-) extends Entity:
+) extends EntityDocument:
 
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
@@ -79,7 +79,7 @@ final case class User(
     name: Option[Name] = None,
     score: Option[Double] = None,
     visibility: Visibility = Visibility.Public
-) extends Entity
+) extends EntityDocument
 
 object User:
   val entityType: String = "User"

@@ -25,7 +25,7 @@ import fs2.Stream
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.Id
 import io.renku.search.query.Query
-import io.renku.search.solr.documents.Entity
+import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.facet.{Facet, Facets}
@@ -55,12 +55,12 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
       query: Query,
       limit: Int,
       offset: Int
-  ): F[QueryResponse[Entity]] =
+  ): F[QueryResponse[EntityDocument]] =
     for {
       solrQuery <- interpreter.run(query)
       _ <- logger.debug(s"Query: ${query.render} ->Solr: $solrQuery")
       res <- solrClient
-        .query[Entity](
+        .query[EntityDocument](
           QueryData(QueryString(solrQuery.query.value, limit, offset))
             .withSort(solrQuery.sort)
             .withFacet(Facets(typeTerms))
@@ -78,8 +78,12 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
       .takeWhile(_.responseBody.docs.nonEmpty)
       .flatMap(r => Stream.emits(r.responseBody.docs))
 
-  override def findById[D <: Entity](id: Id)(using ct: ClassTag[D]): F[Option[D]] =
-    solrClient.findById[Entity](id.value).map(_.responseBody.docs.headOption) >>= {
+  override def findById[D <: EntityDocument](
+      id: Id
+  )(using ct: ClassTag[D]): F[Option[D]] =
+    solrClient
+      .findById[EntityDocument](id.value)
+      .map(_.responseBody.docs.headOption) >>= {
       case Some(e: D) => Some(e).pure[F]
       case Some(e) =>
         new Exception(s"Entity '$id' is of type ${e.getClass} not ${ct.runtimeClass}")

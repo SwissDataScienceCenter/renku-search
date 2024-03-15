@@ -20,17 +20,18 @@ package io.renku.search.provision.handler
 
 import fs2.Pipe
 
-import io.renku.search.solr.documents.Entity as Document
+import io.renku.search.solr.documents.EntityDocument
 import fs2.Chunk
+import MessageReader.Message
 
 trait ConvertDocument[F[_]]:
   def convert[A](using
       c: DocumentConverter[A]
-  ): Pipe[F, MessageReader.Message[A], MessageReader.Message[Document]]
+  ): Pipe[F, Message[A], Message[EntityDocument]]
 
   def convertChunk[A](using
       c: DocumentConverter[A]
-  ): Pipe[F, Chunk[MessageReader.Message[A]], Chunk[MessageReader.Message[Document]]]
+  ): Pipe[F, Chunk[Message[A]], Chunk[Message[EntityDocument]]]
 
 object ConvertDocument:
   /** Converts input messages into solr document values. */
@@ -38,12 +39,10 @@ object ConvertDocument:
     new ConvertDocument[F]:
       def convert[A](using
           c: DocumentConverter[A]
-      ): Pipe[F, MessageReader.Message[A], MessageReader.Message[Document]] =
+      ): Pipe[F, Message[A], Message[EntityDocument]] =
         _.map(m => m.map(c.convert))
 
       def convertChunk[A](using
           c: DocumentConverter[A]
-      ): Pipe[F, Chunk[MessageReader.Message[A]], Chunk[
-        MessageReader.Message[Document]
-      ]] =
+      ): Pipe[F, Chunk[Message[A]], Chunk[Message[EntityDocument]]] =
         _.map(_.map(_.map(c.convert)))

@@ -29,7 +29,7 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.ModelGenerators.projectMemberRoleGen
 import io.renku.search.provision.QueueMessageDecoder
 import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.{Entity, User}
+import io.renku.search.solr.documents.{EntityDocument, User}
 
 import scala.concurrent.duration.*
 import io.renku.search.provision.ProvisioningSuite
@@ -45,7 +45,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
 
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
+        solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
         authRemovalEvents <- SignallingRef.of[IO, Set[ProjectAuthorizationRemoved]](
           Set.empty
         )

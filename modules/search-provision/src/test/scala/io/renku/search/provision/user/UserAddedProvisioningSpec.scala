@@ -27,7 +27,7 @@ import io.renku.events.v1.UserAdded
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.solr.documents.{Entity, User}
+import io.renku.search.solr.documents.{EntityDocument, User}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
@@ -38,7 +38,7 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
   test("can fetch events, decode them, and send them to Solr"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
+        solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
 
         provisioningFiber <- handlers.userAdded.compile.drain.start
 

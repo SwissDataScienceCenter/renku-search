@@ -32,7 +32,7 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{Id, projects}
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.documents.{Entity, Project}
+import io.renku.search.solr.documents.{EntityDocument, Project}
 import munit.CatsEffectSuite
 
 class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
@@ -63,7 +63,7 @@ class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
                 .evalTap(_ =>
                   scribe.cats.io.info(s"Looking for project with id ${projectDoc.id}...")
                 )
-                .evalMap(_ => solrClient.findById[Entity](projectDoc.id))
+                .evalMap(_ => solrClient.findById[EntityDocument](projectDoc.id))
                 .evalMap(
                   _.fold(().pure[IO])(e =>
                     solrDocs.update(_ => Set(e.asInstanceOf[Project]))

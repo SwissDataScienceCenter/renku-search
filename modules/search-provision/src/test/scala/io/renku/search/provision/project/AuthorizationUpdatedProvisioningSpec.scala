@@ -32,7 +32,7 @@ import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{Id, projects}
-import io.renku.search.solr.documents.{Entity, Project}
+import io.renku.search.solr.documents.{EntityDocument, Project}
 import munit.CatsEffectSuite
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:

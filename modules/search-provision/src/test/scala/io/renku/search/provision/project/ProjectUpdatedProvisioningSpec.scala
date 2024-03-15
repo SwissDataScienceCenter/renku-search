@@ -31,7 +31,7 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.documents.{Entity, Project}
+import io.renku.search.solr.documents.{EntityDocument, Project}
 import munit.CatsEffectSuite
 
 class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
@@ -41,7 +41,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
         withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
           for
-            solrDocs <- SignallingRef.of[IO, Set[Entity]](Set.empty)
+            solrDocs <- SignallingRef.of[IO, Set[EntityDocument]](Set.empty)
 
             provisioningFiber <- handlers.projectUpdated.compile.drain.start
 

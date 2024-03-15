@@ -18,24 +18,31 @@
 
 package io.renku.search.solr.client
 
+import scala.reflect.ClassTag
+
 import cats.data.NonEmptyList
 import cats.effect.{Async, Resource}
-import fs2.io.net.Network
 import fs2.Stream
+import fs2.io.net.Network
+
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.Id
 import io.renku.search.query.Query
+import io.renku.search.solr.SearchRole
 import io.renku.search.solr.documents.EntityDocument
-import io.renku.solr.client.{QueryData, QueryResponse, SolrClient, SolrConfig}
-
-import scala.reflect.ClassTag
+import io.renku.solr.client.*
 
 trait SearchSolrClient[F[_]]:
   def findById[D <: EntityDocument](id: Id)(using ct: ClassTag[D]): F[Option[D]]
   def insert[D: Encoder](documents: Seq[D]): F[Unit]
   def deleteIds(ids: NonEmptyList[Id]): F[Unit]
-  def queryEntity(query: Query, limit: Int, offset: Int): F[QueryResponse[EntityDocument]]
   def query[D: Decoder](query: QueryData): F[QueryResponse[D]]
+  def queryEntity(
+      role: SearchRole,
+      query: Query,
+      limit: Int,
+      offset: Int
+  ): F[QueryResponse[EntityDocument]]
   def queryAll[D: Decoder](query: QueryData): Stream[F, D]
 
 object SearchSolrClient:

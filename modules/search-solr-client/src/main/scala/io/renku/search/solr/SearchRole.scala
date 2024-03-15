@@ -16,24 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.search.api.data
+package io.renku.search.solr
 
-import io.renku.search.query.Query
-import io.bullet.borer.Encoder
-import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
-import io.bullet.borer.Decoder
-import cats.Show
+import io.renku.search.model.Id
 
-final case class QueryInput(
-    query: Query,
-    page: PageDef
-)
+enum SearchRole:
+  case Admin
+  case User(id: Id)
+  case Anonymous
 
-object QueryInput:
-  given Encoder[QueryInput] = deriveEncoder
-  given Decoder[QueryInput] = deriveDecoder
-
-  given Show[QueryInput] = Show.show(i => s"(${i.query.render}, ${i.page})")
-
-  def pageOne(query: Query): QueryInput =
-    QueryInput(query, PageDef.default)
+object SearchRole:
+  val admin: SearchRole = Admin
+  val anonymous: SearchRole = Anonymous
+  def user(id: Id): SearchRole = User(id)

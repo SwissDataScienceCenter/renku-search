@@ -30,6 +30,7 @@ import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.query.Query
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.Decoder
+import io.renku.search.solr.SearchRole
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryString
 import io.renku.solr.client.QueryData
@@ -70,8 +71,7 @@ object FetchFromSolr:
       val logger = scribe.cats.effect[F]
 
       private def idQuery(id: Id): Query =
-        // TODO this must be renamed to "idIs" since we have only one id type
-        Query(Query.Segment.projectIdIs(id.value))
+        Query(Query.Segment.idIs(id.value))
 
       def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId] =
         val query = QueryString(
@@ -94,7 +94,7 @@ object FetchFromSolr:
           val loaded = ids
             .traverse(id =>
               solrClient
-                .queryEntity(idQuery(id), 1, 0)
+                .queryEntity(SearchRole.Admin, idQuery(id), 1, 0)
                 .map(_.responseBody.docs.headOption)
                 .map(doc => id -> doc)
             )

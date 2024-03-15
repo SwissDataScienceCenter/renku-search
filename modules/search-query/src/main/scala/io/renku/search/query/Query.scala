@@ -80,8 +80,8 @@ object Query:
     def typeIs(value: EntityType, more: EntityType*): Segment =
       Segment.Field(FieldTerm.TypeIs(NonEmptyList(value, more.toList)))
 
-    def projectIdIs(value: String, more: String*): Segment =
-      Segment.Field(FieldTerm.ProjectIdIs(NonEmptyList(value, more.toList)))
+    def idIs(value: String, more: String*): Segment =
+      Segment.Field(FieldTerm.IdIs(NonEmptyList(value, more.toList)))
 
     def nameIs(value: String, more: String*): Segment =
       Segment.Field(FieldTerm.NameIs(NonEmptyList(value, more.toList)))

@@ -21,7 +21,7 @@ package io.renku.search.query
 import io.bullet.borer.{Decoder, Encoder}
 
 enum Field:
-  case ProjectId
+  case Id
   case Name
   case Slug
   case Visibility

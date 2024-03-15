@@ -30,9 +30,9 @@ import io.renku.search.query.Comparison
 
 trait LuceneQueryEncoders:
 
-  given projectIdIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.ProjectIdIs] =
-    SolrTokenEncoder.basic { case FieldTerm.ProjectIdIs(ids) =>
-      SolrQuery(SolrToken.orFieldIs(Field.ProjectId, ids.map(SolrToken.fromString)))
+  given projectIdIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.IdIs] =
+    SolrTokenEncoder.basic { case FieldTerm.IdIs(ids) =>
+      SolrQuery(SolrToken.orFieldIs(Field.Id, ids.map(SolrToken.fromString)))
     }
 
   given nameIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.NameIs] =

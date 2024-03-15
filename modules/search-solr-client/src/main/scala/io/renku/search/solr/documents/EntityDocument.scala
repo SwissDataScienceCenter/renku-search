@@ -25,6 +25,8 @@ import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.solr.client.EncoderSupport.*
 import io.renku.search.model.projects.Visibility
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields
+import io.renku.solr.client.EncoderSupport
 
 sealed trait EntityDocument:
   val score: Option[Double]
@@ -77,12 +79,14 @@ final case class User(
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
-    score: Option[Double] = None,
-    visibility: Visibility = Visibility.Public
+    score: Option[Double] = None
 ) extends EntityDocument
 
 object User:
   val entityType: String = "User"
+  // auto-add a visibility:public to users
+  given Encoder[User] =
+    EncoderSupport.deriveWithAdditional(Fields.visibility.name, Visibility.Public)
 
   def nameFrom(firstName: Option[String], lastName: Option[String]): Option[Name] =
     Option(List(firstName, lastName).flatten.mkString(" "))

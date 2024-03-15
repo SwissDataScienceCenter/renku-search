@@ -51,8 +51,7 @@ object DocumentConverter:
     fromTransformer(
       _.into[UserDocument].transform(
         Field.default(_.score),
-        Field.computed(_.name, u => UserDocument.nameFrom(u.firstName, u.lastName)),
-        Field.default(_.visibility)
+        Field.computed(_.name, u => UserDocument.nameFrom(u.firstName, u.lastName))
       )
     )
 

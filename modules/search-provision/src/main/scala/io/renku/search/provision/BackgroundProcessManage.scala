@@ -30,7 +30,7 @@ trait BackgroundProcessManage[F[_]]:
   /** Starts all registered tasks in the background, represented by `F[Unit]`. */
   def background: Resource[F, F[Unit]]
 
-  /** Same as `.background.useForever`   */
+  /** Same as `.background.useForever` */
   def startAll: F[Nothing]
 
 object BackgroundProcessManage:
@@ -56,7 +56,8 @@ object BackgroundProcessManage:
           state.update(_.put(name, wrapTask(name, task)))
 
         def startAll: F[Nothing] =
-          state.get.flatMap(s => logger.info(s"Starting ${s.tasks.size} background tasks")) >>
+          state.get
+            .flatMap(s => logger.info(s"Starting ${s.tasks.size} background tasks")) >>
             background.useForever
 
         def background: Resource[F, F[Unit]] =

@@ -45,8 +45,8 @@ object SolrRemovalProcess:
   )(using
       Show[In],
       Transformer[In, Id],
-    AvroDecoder[In],
-    QueueMessageDecoder[F, In]
+      AvroDecoder[In],
+      QueueMessageDecoder[F, In]
   ): Resource[F, SolrRemovalProcess[F]] =
     SearchSolrClient.make[F](solrConfig).map {
       new SolrRemovalProcessImpl[F, In](

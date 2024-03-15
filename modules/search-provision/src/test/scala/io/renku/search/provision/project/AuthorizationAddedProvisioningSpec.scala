@@ -60,9 +60,15 @@ class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalTap(_ => scribe.cats.io.info(s"Looking for project with id ${projectDoc.id}..."))
+                .evalTap(_ =>
+                  scribe.cats.io.info(s"Looking for project with id ${projectDoc.id}...")
+                )
                 .evalMap(_ => solrClient.findById[Entity](projectDoc.id))
-                .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e.asInstanceOf[Project]))))
+                .evalMap(
+                  _.fold(().pure[IO])(e =>
+                    solrDocs.update(_ => Set(e.asInstanceOf[Project]))
+                  )
+                )
                 .compile
                 .drain
                 .start

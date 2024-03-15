@@ -72,7 +72,8 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     solrClient.query[D](query)
 
   override def queryAll[D: Decoder](query: QueryData): Stream[F, D] =
-    Stream.iterate(query)(_.nextPage)
+    Stream
+      .iterate(query)(_.nextPage)
       .evalMap(this.query)
       .takeWhile(_.responseBody.docs.nonEmpty)
       .flatMap(r => Stream.emits(r.responseBody.docs))

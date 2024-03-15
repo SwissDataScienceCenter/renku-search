@@ -68,9 +68,11 @@ object DeleteFromSolr:
       def whenSuccess[A](fb: Message[A] => F[Unit]): Pipe[F, DeleteResult[A], Unit] =
         _.evalMap {
           case DeleteResult.Success(m) =>
-            logger.debug(s"Deletion ${m.id} successful, running post processing action") >>
+            logger.debug(
+              s"Deletion ${m.id} successful, running post processing action"
+            ) >>
               fb(m).attempt.map(DeleteResult.from(m))
-          case result                  => result.pure[F]
+          case result => result.pure[F]
         }
           .through(markProcessed)
 

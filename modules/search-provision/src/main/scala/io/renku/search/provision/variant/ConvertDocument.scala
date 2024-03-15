@@ -42,6 +42,8 @@ object ConvertDocument:
         _.map(m => m.map(c.convert))
 
       def convertChunk[A](using
-        c: DocumentConverter[A]
-      ): Pipe[F, Chunk[MessageReader.Message[A]], Chunk[MessageReader.Message[Document]]] =
+          c: DocumentConverter[A]
+      ): Pipe[F, Chunk[MessageReader.Message[A]], Chunk[
+        MessageReader.Message[Document]
+      ]] =
         _.map(_.map(_.map(c.convert)))

@@ -98,9 +98,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
             .map(ap => ProjectAuthorizationRemoved(ap.id.value, user.id.value))
             .toSet
 
-        _ <- authRemovalEvents.waitUntil(
-          x => expectedAuthRemovals.diff(x).isEmpty
-        )
+        _ <- authRemovalEvents.waitUntil(x => expectedAuthRemovals.diff(x).isEmpty)
 
         _ <- provisioningFiber.cancel
         _ <- docsCollectorFiber.cancel

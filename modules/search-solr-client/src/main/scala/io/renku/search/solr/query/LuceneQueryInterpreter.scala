@@ -21,7 +21,9 @@ package io.renku.search.solr.query
 import cats.Monad
 import cats.effect.Sync
 import cats.syntax.all.*
+
 import io.renku.search.query.Query
+import io.renku.search.solr.SearchRole
 
 /** Provides conversion into solrs standard query. See
   * https://solr.apache.org/guide/solr/latest/query-guide/standard-query-parser.html
@@ -31,9 +33,19 @@ final class LuceneQueryInterpreter[F[_]: Monad]
     with LuceneQueryEncoders:
   private val encoder = SolrTokenEncoder[F, Query]
 
-  def run(ctx: Context[F], query: Query): F[SolrQuery] =
-    if (query.isEmpty) SolrQuery(SolrToken.allTypes).pure[F]
-    else encoder.encode(ctx, query)
+  def run(ctx: Context[F], role: SearchRole, query: Query): F[SolrQuery] =
+    amendUserId(role) {
+      if (query.isEmpty) SolrQuery(SolrToken.allTypes).pure[F]
+      else encoder.encode(ctx, query)
+    }
+
+  private def amendUserId(role: SearchRole)(sq: F[SolrQuery]): F[SolrQuery] =
+    sq.map { query =>
+      role match
+        case SearchRole.Anonymous => query.asAnonymous
+        case SearchRole.User(id)  => query.asUser(id)
+        case SearchRole.Admin     => query
+    }
 
 object LuceneQueryInterpreter:
   def forSync[F[_]: Sync]: QueryInterpreter.WithContext[F] =

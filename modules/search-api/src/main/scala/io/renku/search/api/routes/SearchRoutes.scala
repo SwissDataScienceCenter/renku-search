@@ -19,51 +19,39 @@
 package io.renku.search.api.routes
 
 import cats.effect.Async
-import org.http4s.HttpRoutes
-import sttp.tapir.*
+import cats.syntax.all.*
+
+import io.renku.search.api.SearchApi
 import io.renku.search.api.data.*
 import io.renku.search.api.tapir.*
-import io.renku.search.api.SearchApi
 import io.renku.search.http.borer.TapirBorerJson
-import io.renku.search.query.Query
 import io.renku.search.query.docs.SearchQueryManual
+import org.http4s.HttpRoutes
+import sttp.tapir.*
 import sttp.tapir.server.ServerEndpoint
+import sttp.tapir.server.http4s.Http4sServerInterpreter
 import sttp.tapir.server.http4s.Http4sServerOptions
 import sttp.tapir.server.interceptor.cors.CORSInterceptor
-import sttp.tapir.server.http4s.Http4sServerInterpreter
 
 final class SearchRoutes[F[_]: Async](api: SearchApi[F])
     extends TapirBorerJson
     with TapirCodecs {
 
-  private val searchEndpointGet: PublicEndpoint[QueryInput, String, SearchResult, Any] =
+  private val searchEndpointGet
+      : Endpoint[AuthContext, QueryInput, String, SearchResult, Any] =
     endpoint.get
       .in("")
       .in(Params.queryInput)
+      .securityIn(Params.renkuAuth)
       .errorOut(borerJsonBody[String])
-      .out(Params.searchResult)
-      .description(SearchQueryManual.markdown)
-
-  private val searchEndpointPost: PublicEndpoint[QueryInput, String, SearchResult, Any] =
-    endpoint.post
-      .in("")
-      .errorOut(borerJsonBody[String])
-      .in(
-        borerJsonBody[QueryInput]
-          .example(
-            QueryInput(
-              Query(Query.Segment.nameIs("proj-name1"), Query.Segment.text("flight sim")),
-              PageDef.default
-            )
-          )
-      )
       .out(Params.searchResult)
       .description(SearchQueryManual.markdown)
 
   val endpoints: List[ServerEndpoint[Any, F]] =
     List(
-      searchEndpointGet.serverLogic(api.query),
-      searchEndpointPost.serverLogic(api.query)
+      searchEndpointGet
+        .serverSecurityLogicSuccess(_.pure[F])
+        .serverLogic(api.query)
     )
 
   val routes: HttpRoutes[F] =

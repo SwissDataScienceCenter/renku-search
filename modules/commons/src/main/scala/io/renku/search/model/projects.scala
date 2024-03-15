@@ -63,22 +63,36 @@ object projects:
     given Transformer[Instant, CreationDate] = apply
     given Codec[CreationDate] = Codec.of[Instant]
 
-  enum Visibility derives Codec:
+  enum Visibility:
     lazy val name: String = productPrefix.toLowerCase
     case Public, Private
 
   object Visibility:
     given Order[Visibility] = Order.by(_.ordinal)
+    given Encoder[Visibility] = Encoder.forString.contramap(_.name)
+    given Decoder[Visibility] = Decoder.forString.mapEither(Visibility.fromString)
+
+    def fromString(v: String): Either[String, Visibility] =
+      Visibility.values
+        .find(_.name.equalsIgnoreCase(v))
+        .toRight(s"Invalid visibility: $v")
 
     def unsafeFromString(v: String): Visibility =
-      valueOf(v.toLowerCase.capitalize)
+      fromString(v).fold(sys.error, identity)
 
-  enum MemberRole derives Codec:
+  enum MemberRole:
     lazy val name: String = productPrefix.toLowerCase
     case Owner, Member
 
   object MemberRole:
     given Order[MemberRole] = Order.by(_.ordinal)
+    given Encoder[MemberRole] = Encoder.forString.contramap(_.name)
+    given Decoder[MemberRole] = Decoder.forString.mapEither(MemberRole.fromString)
+
+    def fromString(v: String): Either[String, MemberRole] =
+      MemberRole.values
+        .find(_.name.equalsIgnoreCase(v))
+        .toRight(s"Invalid member-role: $v")
 
     def unsafeFromString(v: String): MemberRole =
-      valueOf(v.toLowerCase.capitalize)
+      fromString(v).fold(sys.error, identity)

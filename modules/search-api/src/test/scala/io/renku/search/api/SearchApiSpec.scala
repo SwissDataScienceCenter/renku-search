@@ -45,7 +45,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       for {
         _ <- client.insert((project1 :: project2 :: Nil).map(_.widen))
         results <- searchApi
-          .query(mkQuery("matching"))
+          .query(AuthContext.anonymous)(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
       } yield assert {
         results.items.map(scoreToNone) contains toApiEntity(project1)
@@ -60,7 +60,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
       for {
         _ <- client.insert(project :: user :: Nil)
         results <- searchApi
-          .query(mkQuery("exclusive"))
+          .query(AuthContext.anonymous)(mkQuery("exclusive"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
       } yield assert {
         toApiEntities(project, user).diff(results.items.map(scoreToNone)).isEmpty

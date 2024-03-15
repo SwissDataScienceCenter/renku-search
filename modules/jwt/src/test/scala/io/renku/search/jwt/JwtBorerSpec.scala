@@ -24,8 +24,9 @@ import pdi.jwt.JwtAlgorithm
 
 class JwtBorerSpec extends FunSuite:
 
-  val secret =  new javax.crypto.spec.SecretKeySpec("abcdefg".getBytes, "HS256")
-  val exampleToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJteS11c2VyLWlkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.d7F1v9sfcQzVrEGXXhJoGukbfXhm3zKn0fUyvFAMzm0"
+  val secret = new javax.crypto.spec.SecretKeySpec("abcdefg".getBytes, "HS256")
+  val exampleToken =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJteS11c2VyLWlkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.d7F1v9sfcQzVrEGXXhJoGukbfXhm3zKn0fUyvFAMzm0"
 
   val regexDecode = Jwt.decodeAll(exampleToken, secret).get
 

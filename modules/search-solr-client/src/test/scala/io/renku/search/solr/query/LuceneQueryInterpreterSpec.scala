@@ -34,7 +34,9 @@ import java.time.ZoneId
 import io.renku.search.query.QueryGenerators
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.effect.PropF
+import io.renku.search.model
 import io.renku.search.LoggingConfigure
+import io.renku.search.solr.SearchRole
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.search.model.EntityType
 import org.scalacheck.Test.Parameters
@@ -56,22 +58,44 @@ class LuceneQueryInterpreterSpec
       ()
   }
 
-  def query(s: String | Query): QueryData =
+  def query(s: String | Query, role: SearchRole = SearchRole.Admin): QueryData =
     val userQuery: Query = s match
       case str: String => Query.parse(str).fold(sys.error, identity)
       case qq: Query   => qq
 
     val ctx = Context.fixed[Id](Instant.EPOCH, ZoneId.of("UTC"))
-    val q = LuceneQueryInterpreter[Id].run(ctx, userQuery)
+    val q = LuceneQueryInterpreter[Id].run(ctx, role, userQuery)
     QueryData(QueryString(q.query.value, 10, 0)).withSort(q.sort)
 
   def withSolr =
     withSolrClient().evalTap(c => SchemaMigrator[IO](c).migrate(Migrations.all).void)
 
+  test("amend query with auth data"):
+    assertEquals(
+      query("help", SearchRole.user(model.Id("13"))).query,
+      "(content_all:help) AND (visibility:public OR owners:13 OR members:13)"
+    )
+    assertEquals(
+      query("help", SearchRole.Anonymous).query,
+      "(content_all:help) AND visibility:public"
+    )
+    assertEquals(query("help", SearchRole.Admin).query, "content_all:help")
+
+  test("amend empty query with auth data"):
+    assertEquals(
+      query("", SearchRole.user(model.Id("13"))).query,
+      "(_type:*) AND (visibility:public OR owners:13 OR members:13)"
+    )
+    assertEquals(
+      query("", SearchRole.Anonymous).query,
+      "(_type:*) AND visibility:public"
+    )
+    assertEquals(query("", SearchRole.Admin).query, "_type:*")
+
   test("valid content_all query"):
     withSolr.use { client =>
       List("hello world", "role:test")
-        .map(query)
+        .map(query(_))
         .traverse_(client.query[Unit])
     }
 

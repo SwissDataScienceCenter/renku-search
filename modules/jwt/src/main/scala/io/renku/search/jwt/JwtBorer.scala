@@ -47,6 +47,5 @@ class JwtBorer(override val clock: Clock)
   def decodeNoSignatureCheck(token: String): Try[JwtClaim] =
     decode(token, noSigOptions)
 
-
 object JwtBorer extends JwtBorer(Clock.systemUTC()):
   def apply(clock: Clock): JwtBorer = new JwtBorer(clock)

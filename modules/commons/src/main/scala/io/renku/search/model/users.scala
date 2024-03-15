@@ -42,4 +42,11 @@ object users:
     def apply(v: String): Email = v
     extension (self: Email) def value: String = self
     given Transformer[String, Email] = apply
-    given Codec[Email] = Codec.bimap[String, Email](_.value, LastName.apply)
+    given Codec[Email] = Codec.bimap[String, Email](_.value, Email.apply)
+
+  opaque type Username = String
+  object Username:
+    def apply(v: String): Username = v
+    extension (self: Username) def value: String = self
+    given Transformer[String, Username] = apply
+    given Codec[Username] = Codec.bimap[String, Username](_.value, Username.apply)

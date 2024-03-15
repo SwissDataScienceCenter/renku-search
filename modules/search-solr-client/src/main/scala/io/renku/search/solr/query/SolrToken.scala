@@ -18,17 +18,18 @@
 
 package io.renku.search.solr.query
 
+import java.time.Instant
+
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 import io.renku.search.model.{EntityType, Id}
+
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.{Comparison, Field}
 import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.schema.FieldName
-
-import java.time.Instant
 
 opaque type SolrToken = String
 
@@ -76,6 +77,15 @@ object SolrToken:
 
   val allTypes: SolrToken = fieldIs(Field.Type, "*")
 
+  val publicOnly: SolrToken =
+    fieldIs(Field.Visibility, fromVisibility(Visibility.Public))
+
+  def ownerIs(id: Id): SolrToken = SolrField.owners.name === fromString(id.value)
+  def memberIs(id: Id): SolrToken = SolrField.members.name === fromString(id.value)
+
+  def forUser(id: Id): SolrToken =
+    Seq(publicOnly, ownerIs(id), memberIs(id)).foldOr
+
   private def fieldOp(field: Field, op: Comparison, value: SolrToken): SolrToken =
     val cmp = fromComparison(op)
     val f = fromField(field)
@@ -107,6 +117,7 @@ object SolrToken:
     def &&(next: SolrToken): SolrToken = andMonoid.combine(self, next)
     def ||(next: SolrToken): SolrToken = orMonoid.combine(self, next)
     def ===(next: SolrToken): SolrToken = self ~ Comparison.Is.token ~ next
+    def parens: SolrToken = "(" ~ self ~ ")"
 
   extension (self: Comparison) def token: SolrToken = fromComparison(self)
 

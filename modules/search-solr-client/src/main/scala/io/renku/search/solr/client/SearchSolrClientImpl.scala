@@ -18,21 +18,23 @@
 
 package io.renku.search.solr.client
 
+import scala.reflect.ClassTag
+
 import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
+
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.Id
 import io.renku.search.query.Query
+import io.renku.search.solr.SearchRole
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.search.solr.schema.EntityDocumentSchema
+import io.renku.solr.client._
 import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.FieldName
-import io.renku.solr.client.{QueryData, QueryResponse, QueryString, SolrClient}
-
-import scala.reflect.ClassTag
 
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
@@ -52,12 +54,13 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     solrClient.deleteIds(ids.map(_.value)).void
 
   override def queryEntity(
+      role: SearchRole,
       query: Query,
       limit: Int,
       offset: Int
   ): F[QueryResponse[EntityDocument]] =
     for {
-      solrQuery <- interpreter.run(query)
+      solrQuery <- interpreter.run(role, query)
       _ <- logger.debug(s"Query: ${query.render} ->Solr: $solrQuery")
       res <- solrClient
         .query[EntityDocument](

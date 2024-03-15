@@ -337,7 +337,8 @@ lazy val searchApi = project
     http4sBorer % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test",
-    searchQueryDocs % "compile->compile;test->test"
+    searchQueryDocs % "compile->compile;test->test",
+    jwt % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
 

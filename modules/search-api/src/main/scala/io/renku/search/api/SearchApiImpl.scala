@@ -37,22 +37,30 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
     extends Http4sDsl[F]
     with SearchApi[F]:
 
-  private given Scribe[F] = scribe.cats[F]
+  private val logger: Scribe[F] = scribe.cats[F]
 
-  override def query(query: QueryInput): F[Either[String, SearchResult]] =
-    solrClient
-      .queryEntity(query.query, query.page.limit + 1, query.page.offset)
-      .map(toApiResult(query.page))
-      .map(_.asRight[String])
-      .handleErrorWith(errorResponse(query.query.render))
-      .widen
+  override def query(
+      auth: AuthContext
+  )(query: QueryInput): F[Either[String, SearchResult]] =
+    logger.debug(show"Running query '$query' as '$auth'") >>
+      solrClient
+        .queryEntity(
+          auth.searchRole,
+          query.query,
+          query.page.limit + 1,
+          query.page.offset
+        )
+        .map(toApiResult(query.page))
+        .map(_.asRight[String])
+        .handleErrorWith(errorResponse(query.query.render))
+        .widen
 
   private def errorResponse(
       phrase: String
   ): Throwable => F[Either[String, SearchResult]] =
     err =>
       val message = s"Finding by '$phrase' phrase failed: ${err.getMessage}"
-      Scribe[F]
+      logger
         .error(message, err)
         .as(message)
         .map(_.asLeft[SearchResult])

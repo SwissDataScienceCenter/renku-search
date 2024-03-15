@@ -22,47 +22,34 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.renku.avro.codec.AvroIO
-import io.renku.avro.codec.encoders.all.given
+import io.renku.avro.codec.all.given
 import io.renku.events.EventsGenerators.{stringGen, userAddedGen}
 import io.renku.events.v1.{UserAdded, UserUpdated}
 import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.RedisClientGenerators.*
-import io.renku.redis.client.{QueueName, RedisClientGenerators}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.solr.client.SearchSolrSpec
-import io.renku.search.solr.documents.{Entity, User}
+import io.renku.search.solr.documents.{EntityDocument, User}
 import munit.CatsEffectSuite
 
 import scala.concurrent.duration.*
+import io.renku.search.provision.ProvisioningSuite
 
-class UserUpdatedProvisioningSpec
-    extends CatsEffectSuite
-    with QueueSpec
-    with SearchSolrSpec
-    with UserSyntax:
-
-  private val avro = AvroIO(UserUpdated.SCHEMA$)
-
+class UserUpdatedProvisioningSpec extends ProvisioningSuite:
   (firstNameUpdate :: lastNameUpdate :: emailUpdate :: noUpdate :: Nil).foreach {
     case TestCase(name, updateF) =>
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
-        val queue = RedisClientGenerators.queueNameGen.generateOne
-
-        clientsAndProvisioning(queue).use { case (queueClient, solrClient, provisioner) =>
+        withMessageHandlers(queueConfig).use { case (handler, queueClient, solrClient) =>
           for
-            solrDoc <- SignallingRef.of[IO, Option[Entity]](None)
+            solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
 
-            provisioningFiber <- provisioner.provisioningProcess.start
+            provisioningFiber <- handler.userUpdated.compile.drain.start
 
             userAdded = userAddedGen(prefix = "user-update").generateOne
             _ <- solrClient.insert(Seq(userAdded.toSolrDocument.widen))
 
             userUpdated = updateF(userAdded)
             _ <- queueClient.enqueue(
-              queue,
+              queueConfig.userUpdated,
               messageHeaderGen(UserUpdated.SCHEMA$).generateOne,
               userUpdated
             )
@@ -85,18 +72,6 @@ class UserUpdatedProvisioningSpec
           yield ()
         }
   }
-
-  private def clientsAndProvisioning(queueName: QueueName) =
-    (withQueueClient() >>= withSearchSolrClient().tupleLeft)
-      .flatMap { case (rc, sc) =>
-        UserUpdatedProvisioning
-          .make[IO](
-            queueName,
-            withRedisClient.redisConfig,
-            withSearchSolrClient.solrConfig
-          )
-          .map((rc, sc, _))
-      }
 
   private case class TestCase(name: String, f: UserAdded => UserUpdated)
   private lazy val firstNameUpdate = TestCase(

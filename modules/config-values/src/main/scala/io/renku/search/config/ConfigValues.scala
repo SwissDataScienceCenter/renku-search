@@ -48,10 +48,10 @@ object ConfigValues extends ConfigDecoders:
   }
 
   def eventQueue(eventType: String): ConfigValue[Effect, QueueName] =
-    renv(s"REDIS_QUEUE_$eventType").default("events").as[QueueName]
+    renv(s"REDIS_QUEUE_$eventType").as[QueueName]
 
   val retryOnErrorDelay: ConfigValue[Effect, FiniteDuration] =
-    renv("RETRY_ON_ERROR_DELAY").default("2 seconds").as[FiniteDuration]
+    renv("RETRY_ON_ERROR_DELAY").default("10 seconds").as[FiniteDuration]
 
   val solrConfig: ConfigValue[Effect, SolrConfig] = {
     val url = renv("SOLR_URL").default("http://localhost:8983/solr").as[Uri]

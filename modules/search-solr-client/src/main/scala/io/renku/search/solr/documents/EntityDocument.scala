@@ -24,22 +24,23 @@ import io.renku.search.model.*
 import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.solr.client.EncoderSupport.*
+import io.renku.search.model.projects.Visibility
 
-sealed trait Entity:
+sealed trait EntityDocument:
   val score: Option[Double]
   val id: Id
-  def widen: Entity = this
+  def widen: EntityDocument = this
 
-object Entity:
+object EntityDocument:
 
   val allTypes: Set[String] = Set(Project.entityType, User.entityType)
 
   given AdtEncodingStrategy =
     AdtEncodingStrategy.flat(typeMemberName = discriminatorField)
 
-  given Encoder[Entity] = deriveAllEncoders[Entity]
-  given Decoder[Entity] = deriveAllDecoders[Entity]
-  given Codec[Entity] = Codec.of[Entity]
+  given Encoder[EntityDocument] = deriveAllEncoders[EntityDocument]
+  given Decoder[EntityDocument] = deriveAllDecoders[EntityDocument]
+  given Codec[EntityDocument] = Codec.of[EntityDocument]
 
 final case class Project(
     id: Id,
@@ -53,31 +54,35 @@ final case class Project(
     owners: List[Id] = List.empty,
     members: List[Id] = List.empty,
     score: Option[Double] = None
-) extends Entity:
+) extends EntityDocument:
 
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
-      case Owner  => copy(owners = (userId :: owners).distinct)
-      case Member => copy(members = (userId :: members).distinct)
+      case Owner  => copy(owners = (userId :: owners).distinct, score = None)
+      case Member => copy(members = (userId :: members).distinct, score = None)
     }
 
   def removeMember(userId: Id): Project =
-    copy(owners = owners.filterNot(_ == userId), members = members.filterNot(_ == userId))
+    copy(
+      owners = owners.filterNot(_ == userId),
+      members = members.filterNot(_ == userId),
+      score = None
+    )
 
 object Project:
-  val entityType: String = "project"
+  val entityType: String = "Project"
 
 final case class User(
     id: Id,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
-    email: Option[users.Email] = None,
-    score: Option[Double] = None
-) extends Entity
+    score: Option[Double] = None,
+    visibility: Visibility = Visibility.Public
+) extends EntityDocument
 
 object User:
-  val entityType: String = "user"
+  val entityType: String = "User"
 
   def nameFrom(firstName: Option[String], lastName: Option[String]): Option[Name] =
     Option(List(firstName, lastName).flatten.mkString(" "))
@@ -88,7 +93,6 @@ object User:
       id: Id,
       firstName: Option[users.FirstName] = None,
       lastName: Option[users.LastName] = None,
-      email: Option[users.Email] = None,
       score: Option[Double] = None
   ): User =
     User(
@@ -96,6 +100,5 @@ object User:
       firstName,
       lastName,
       nameFrom(firstName.map(_.value), lastName.map(_.value)),
-      email,
       score
     )

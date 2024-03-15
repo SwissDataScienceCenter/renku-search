@@ -29,11 +29,11 @@ trait UserSyntax:
       .into[User]
       .transform(
         Field.default(_.score),
-        Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName))
+        Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName)),
+        Field.default(_.visibility)
       )
     def update(updated: UserUpdated): UserAdded =
       added.copy(
         firstName = updated.firstName,
-        lastName = updated.lastName,
-        email = updated.email
+        lastName = updated.lastName
       )

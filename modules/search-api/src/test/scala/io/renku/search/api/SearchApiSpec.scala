@@ -29,7 +29,7 @@ import io.renku.search.model.users.FirstName
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSpec
 import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.{Entity as SolrEntity, User as SolrUser}
+import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
 import munit.CatsEffectSuite
 import scribe.Scribe
 
@@ -74,8 +74,8 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
   private def mkQuery(phrase: String): QueryInput =
     QueryInput.pageOne(Query.parse(s"Fields $phrase").fold(sys.error, identity))
 
-  private def toApiEntities(e: SolrEntity*) = e.map(toApiEntity)
+  private def toApiEntities(e: EntityDocument*) = e.map(toApiEntity)
 
-  private def toApiEntity(e: SolrEntity) =
+  private def toApiEntity(e: EntityDocument) =
     given Transformer[Id, UserId] = (id: Id) => UserId(id)
     e.to[SearchEntity]

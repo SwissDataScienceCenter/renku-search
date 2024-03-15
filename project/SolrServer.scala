@@ -23,11 +23,13 @@ import scala.annotation.tailrec
 import scala.sys.process.*
 import scala.util.Try
 
-object SolrServer extends SolrServer("graph", port = 8983)
+object SolrServer extends SolrServer("graph", None)
 
 @annotation.nowarn()
-class SolrServer(module: String, port: Int) {
+class SolrServer(module: String, solrPort: Option[Int]) {
 
+  private val port =
+    solrPort.orElse(sys.env.get("RS_SOLR_PORT").map(_.toInt)).getOrElse(8983)
   private val host: String = sys.env.get("RS_SOLR_HOST").getOrElse("localhost")
   val url: String = s"http://$host:$port"
 

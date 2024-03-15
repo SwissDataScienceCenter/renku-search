@@ -24,10 +24,10 @@ import scribe.Scribe
 class RedisLogger[F[_]](scribe: Scribe[F]) extends Log[F]:
 
   override def debug(msg: => String): F[Unit] =
-    scribe.debug(msg)
+    scribe.trace(msg)
 
   override def info(msg: => String): F[Unit] =
-    scribe.info(msg)
+    scribe.debug(msg)
 
   override def error(msg: => String): F[Unit] =
     scribe.error(msg)

@@ -107,7 +107,7 @@ private[query] object QueryParser {
     ((field <* is) ~ values).map { case (f, v) =>
       f match
         case Field.Name      => FieldTerm.NameIs(v)
-        case Field.ProjectId => FieldTerm.ProjectIdIs(v)
+        case Field.Id        => FieldTerm.IdIs(v)
         case Field.Slug      => FieldTerm.SlugIs(v)
         case Field.CreatedBy => FieldTerm.CreatedByIs(v)
         // other fields are excluded from the field list above

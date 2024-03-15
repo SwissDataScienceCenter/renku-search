@@ -115,7 +115,7 @@ object QueryGenerators:
     Gen.choose(1, 4).flatMap(n => CommonGenerators.nelOfN(n, phrase))
 
   val projectIdTerm: Gen[FieldTerm] =
-    stringValues.map(FieldTerm.ProjectIdIs(_))
+    stringValues.map(FieldTerm.IdIs(_))
 
   val nameTerm: Gen[FieldTerm] =
     stringValues.map(FieldTerm.NameIs(_))

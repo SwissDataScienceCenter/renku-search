@@ -71,8 +71,7 @@ object FetchFromSolr:
       val logger = scribe.cats.effect[F]
 
       private def idQuery(id: Id): Query =
-        // TODO this must be renamed to "idIs" since we have only one id type
-        Query(Query.Segment.projectIdIs(id.value))
+        Query(Query.Segment.idIs(id.value))
 
       def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId] =
         val query = QueryString(

@@ -35,8 +35,8 @@ import scala.collection.mutable.ListBuffer
   * {{{
   *  [
   *   {
-  *     "projectId": ["p1", "p2"],
-  *     "projectId": "p2",
+  *     "id": ["p1", "p2"],
+  *     "id": "p2",
   *     "name": "test",
   *     "_text": "some phrase",
   *     "creationDate": ["<", "2024-01-29T12:00"]
@@ -69,7 +69,7 @@ private[query] object QueryJsonCodec:
       case FieldTerm.TypeIs(values) =>
         writeNelValue(w, values)
 
-      case FieldTerm.ProjectIdIs(values) =>
+      case FieldTerm.IdIs(values) =>
         writeNelValue(w, values)
 
       case FieldTerm.NameIs(values) =>
@@ -117,9 +117,9 @@ private[query] object QueryJsonCodec:
         val values = readNel[EntityType](r)
         Segment.Field(TypeIs(values))
 
-      case Name.FieldName(Field.ProjectId) =>
+      case Name.FieldName(Field.Id) =>
         val values = readNel[String](r)
-        Segment.Field(ProjectIdIs(values))
+        Segment.Field(IdIs(values))
 
       case Name.FieldName(Field.Name) =>
         val values = readNel[String](r)

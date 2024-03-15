@@ -52,8 +52,8 @@ class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
 
   test("field name") {
     val p = QueryParser.fieldNameFrom(Field.values.toSet)
-    List("projectId", "projectid").foreach { s =>
-      assertEquals(p.run(s), Field.ProjectId)
+    List("createdBy", "createdby").foreach { s =>
+      assertEquals(p.run(s), Field.CreatedBy)
     }
     Field.values.foreach { f =>
       assertEquals(p.run(f.name), f)
@@ -81,7 +81,7 @@ class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
   test("field term") {
     val p = QueryParser.fieldTerm
     val data = List(
-      "projectId:id5" -> FieldTerm.ProjectIdIs(Nel.of("id5")),
+      "id:id5" -> FieldTerm.IdIs(Nel.of("id5")),
       "name:\"my project\"" -> FieldTerm.NameIs(Nel.of("my project")),
       "slug:ab1,ab2" -> FieldTerm.SlugIs(Nel.of("ab1", "ab2")),
       "type:project" -> FieldTerm.TypeIs(Nel.of(EntityType.Project))
@@ -98,8 +98,8 @@ class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
       Query.Segment.Text("hello")
     )
     assertEquals(
-      p.run("projectId:id5"),
-      Query.Segment.Field(FieldTerm.ProjectIdIs(Nel.of("id5")))
+      p.run("id:id5"),
+      Query.Segment.Field(FieldTerm.IdIs(Nel.of("id5")))
     )
     assertEquals(
       p.run("foo:bar"),
@@ -109,8 +109,8 @@ class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
 
   test("invalid field terms converted as text".ignore) {
     assertEquals(
-      Query.parse("projectId:"),
-      Right(Query(Segment.Text("projectId:")))
+      Query.parse("id:"),
+      Right(Query(Segment.Text("id:")))
     )
     assertEquals(
       Query.parse("projectId1"),

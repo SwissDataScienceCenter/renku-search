@@ -45,7 +45,7 @@ object SolrToken:
 
   def fromField(field: Field): SolrToken =
     (field match
-      case Field.ProjectId  => SolrField.id
+      case Field.Id         => SolrField.id
       case Field.Name       => SolrField.name
       case Field.Slug       => SolrField.slug
       case Field.Visibility => SolrField.visibility

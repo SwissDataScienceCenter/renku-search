@@ -22,7 +22,7 @@ object Dependencies {
     val scodecBits = "1.1.38"
     val scribe = "3.13.0"
     val sttpApiSpec = "0.7.4"
-    val tapir = "1.9.11"
+    val tapir = "1.10.0"
     val jwtScala = "10.0.0";
   }
 

@@ -23,6 +23,8 @@ import cats.syntax.all.*
 import com.comcast.ip4s.port
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
+import io.renku.search.metrics.CollectorRegistryBuilder
+import io.renku.search.provision.metrics.MetricsCollectorsUpdater
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 
@@ -36,16 +38,34 @@ object Microservice extends IOApp:
       for {
         _ <- IO(LoggingSetup.doConfigure(services.config.verbosity))
         _ <- runSolrMigrations(services.config)
-        tasks = services.messageHandlers.getAll + ("http server" -> httpServer)
+        registryBuilder = CollectorRegistryBuilder[IO].withStandardJVMMetrics
+        metrics = metricsUpdaterTask(services, registryBuilder)
+        httpServer = httpServerTask(registryBuilder)
+        tasks = services.messageHandlers.getAll + metrics + httpServer
         pm <- BackgroundProcessManage[IO](services.config.retryOnErrorDelay)
         _ <- tasks.toList.traverse_(pm.register.tupled)
         _ <- pm.startAll
       } yield ExitCode.Success
     }
 
-  private lazy val httpServer =
-    (HttpApplication[IO] >>= (HttpServer.build(_, port)))
+  private def httpServerTask(collectorRegistryBuilder: CollectorRegistryBuilder[IO]) =
+    val io = HttpApplication[IO](collectorRegistryBuilder)
+      .flatMap(HttpServer.build(_, port))
       .use(_ => IO.never)
+    "http server" -> io
+
+  private def metricsUpdaterTask(
+      services: Services[IO],
+      registryBuilder: CollectorRegistryBuilder[IO]
+  ) =
+    val io = MetricsCollectorsUpdater[IO](
+      services.config.clientId,
+      registryBuilder,
+      services.config.queuesConfig,
+      services.config.metricsUpdateInterval,
+      services.queueClient
+    ).run()
+    "metrics updater" -> io
 
   private def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =
     SchemaMigrator[IO](cfg.solrConfig)

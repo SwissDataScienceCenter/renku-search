@@ -18,45 +18,65 @@
 
 package io.renku.search.provision.metrics
 
-import cats.MonadThrow
-import cats.effect.Resource
+import cats.effect.{Async, Resource}
 import cats.syntax.all.*
-import io.renku.redis.client.{ClientId, RedisQueueClient}
+import fs2.Stream
+import io.renku.queue.client.QueueClient
+import io.renku.redis.client.ClientId
 import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.QueuesConfig
 
+import scala.concurrent.duration.FiniteDuration
+
 object MetricsCollectorsUpdater:
 
-  def make[F[_]: MonadThrow](
+  def apply[F[_]: Async](
       clientId: ClientId,
       registryBuilder: CollectorRegistryBuilder[F],
       queuesConfig: QueuesConfig,
-      rcR: Resource[F, RedisQueueClient[F]]
-  ): Resource[F, MetricsCollectorsUpdater[F]] =
-    rcR.map { rc =>
-      val queueSizeGauge = QueueSizeGauge()
-      registryBuilder.add(queueSizeGauge)
+      updateInterval: FiniteDuration,
+      qcResource: Resource[F, QueueClient[F]]
+  ): MetricsCollectorsUpdater[F] =
 
-      val unprocessedGauge = UnprocessedCountGauge()
-      registryBuilder.add(unprocessedGauge)
+    val queueSizeGauge = QueueSizeGauge()
+    registryBuilder.add(queueSizeGauge)
 
-      MetricsCollectorsUpdater[F](
-        queuesConfig,
-        List(
-          new QueueSizeGaugeUpdater[F](rc, queueSizeGauge),
-          new UnprocessedCountGaugeUpdater[F](clientId, rc, unprocessedGauge)
-        )
-      )
-    }
+    val unprocessedGauge = UnprocessedCountGauge()
+    registryBuilder.add(unprocessedGauge)
 
-class MetricsCollectorsUpdater[F[_]: MonadThrow](
+    new MetricsCollectorsUpdater[F](
+      qcResource,
+      queuesConfig,
+      List(
+        new QueueSizeGaugeUpdater[F](_, queueSizeGauge),
+        new UnprocessedCountGaugeUpdater[F](clientId, _, unprocessedGauge)
+      ),
+      updateInterval
+    )
+
+class MetricsCollectorsUpdater[F[_]: Async](
+    qcResource: Resource[F, QueueClient[F]],
     queuesConfig: QueuesConfig,
-    collectors: List[CollectorUpdater[F]]
+    collectors: List[QueueClient[F] => CollectorUpdater[F]],
+    updateInterval: FiniteDuration
 ):
 
   private val allQueues = queuesConfig.all.toList
 
   def run(): F[Unit] =
+    val queueClient: Stream[F, QueueClient[F]] =
+      Stream.resource(qcResource)
+    val awake: Stream[F, Unit] =
+      Stream.awakeEvery[F](updateInterval).void
+    queueClient
+      .flatTap(_ => awake)
+      .evalMap(runUpdate)
+      .compile
+      .drain
+
+  private def runUpdate(qc: QueueClient[F]) =
     allQueues.traverse_ { q =>
-      collectors.traverse_(_.update(q))
+      collectors
+        .map(_.apply(qc))
+        .traverse_(_.update(q))
     }

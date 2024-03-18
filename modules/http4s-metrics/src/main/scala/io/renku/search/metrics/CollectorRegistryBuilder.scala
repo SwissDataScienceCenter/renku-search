@@ -23,34 +23,35 @@ import cats.syntax.all.*
 import io.prometheus.client.{CollectorRegistry, Collector as JCollector}
 import org.http4s.metrics.prometheus.PrometheusExportService
 
-final case class CollectorRegistryBuilder[F[_]: Sync](
-    collectors: Set[Collector],
-    standardJVMMetrics: Boolean
-):
-  private[this] val registry = new CollectorRegistry()
+final class CollectorRegistryBuilder[F[_]: Sync]:
+  private[this] val collectors = collection.mutable.Set[Collector]()
+  private[this] var standardJVMMetrics: Boolean = false
 
   def withStandardJVMMetrics: CollectorRegistryBuilder[F] =
-    copy(standardJVMMetrics = true)
+    standardJVMMetrics = true
+    this
 
   def add(c: Collector): CollectorRegistryBuilder[F] =
-    copy(collectors = collectors + c)
+    collectors += c
+    this
 
   def makeRegistry: Resource[F, CollectorRegistry] =
-    (registerJVM >> registerCollectors)
+    val registry = new CollectorRegistry()
+    (registerJVM(registry) >> registerCollectors(registry))
       .as(registry)
 
-  private def registerCollectors: Resource[F, Unit] =
-    collectors.toList.map(registerCollector).sequence.void
+  private def registerCollectors(registry: CollectorRegistry): Resource[F, Unit] =
+    collectors.toList.map(registerCollector(registry)).sequence.void
 
-  private def registerCollector(collector: Collector) =
+  private def registerCollector(registry: CollectorRegistry)(collector: Collector) =
     val F = Sync[F]
     val acq = F.blocking(collector.asJCollector.register[JCollector](registry))
     Resource.make(acq)(c => F.blocking(registry.unregister(c)))
 
-  private def registerJVM =
+  private def registerJVM(registry: CollectorRegistry) =
     if standardJVMMetrics then PrometheusExportService.addDefaults(registry)
     else Resource.pure[F, Unit](())
 
 object CollectorRegistryBuilder:
   def apply[F[_]: Sync]: CollectorRegistryBuilder[F] =
-    new CollectorRegistryBuilder[F](collectors = Set.empty, standardJVMMetrics = false)
+    new CollectorRegistryBuilder[F]

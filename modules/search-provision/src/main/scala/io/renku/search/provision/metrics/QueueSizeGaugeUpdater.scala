@@ -20,12 +20,13 @@ package io.renku.search.provision.metrics
 
 import cats.MonadThrow
 import cats.syntax.all.*
-import io.renku.redis.client.{QueueName, RedisQueueClient}
+import io.renku.queue.client.QueueClient
+import io.renku.redis.client.QueueName
 
 private class QueueSizeGaugeUpdater[F[_]: MonadThrow](
-    rc: RedisQueueClient[F],
+    qc: QueueClient[F],
     gauge: QueueSizeGauge
 ) extends CollectorUpdater[F]:
 
   override def update(queueName: QueueName): F[Unit] =
-    rc.getSize(queueName).map(s => gauge.set(queueName, s.toDouble))
+    qc.getSize(queueName).map(s => gauge.set(queueName, s.toDouble))

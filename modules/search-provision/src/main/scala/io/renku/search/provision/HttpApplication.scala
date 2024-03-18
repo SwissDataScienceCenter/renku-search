@@ -30,8 +30,10 @@ import org.http4s.{HttpApp, HttpRoutes, Response}
 
 object HttpApplication:
 
-  def apply[F[_]: Async: Network]: Resource[F, HttpApp[F]] =
-    MetricsRoutes[F](CollectorRegistryBuilder[F].withStandardJVMMetrics).makeRoutes
+  def apply[F[_]: Async: Network](
+      registryBuilder: CollectorRegistryBuilder[F]
+  ): Resource[F, HttpApp[F]] =
+    MetricsRoutes[F](registryBuilder).makeRoutes
       .map(new HttpApplication[F](_).router)
 
 final class HttpApplication[F[_]: Async](metricsRoutes: HttpRoutes[F])

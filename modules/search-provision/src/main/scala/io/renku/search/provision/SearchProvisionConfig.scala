@@ -20,7 +20,7 @@ package io.renku.search.provision
 
 import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
-import io.renku.redis.client.RedisConfig
+import io.renku.redis.client.{ClientId, RedisConfig}
 import io.renku.search.config.ConfigValues
 import io.renku.solr.client.SolrConfig
 
@@ -30,8 +30,10 @@ final case class SearchProvisionConfig(
     redisConfig: RedisConfig,
     solrConfig: SolrConfig,
     retryOnErrorDelay: FiniteDuration,
+    metricsUpdateInterval: FiniteDuration,
     verbosity: Int,
-    queuesConfig: QueuesConfig
+    queuesConfig: QueuesConfig,
+    clientId: ClientId
 )
 
 object SearchProvisionConfig:
@@ -41,6 +43,8 @@ object SearchProvisionConfig:
       ConfigValues.redisConfig,
       ConfigValues.solrConfig,
       ConfigValues.retryOnErrorDelay,
+      ConfigValues.metricsUpdateInterval,
       ConfigValues.logLevel,
-      QueuesConfig.config
+      QueuesConfig.config,
+      ConfigValues.clientId(ClientId("search-provisioner"))
     ).mapN(SearchProvisionConfig.apply)

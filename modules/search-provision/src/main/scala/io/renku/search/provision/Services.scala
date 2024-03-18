@@ -18,12 +18,9 @@
 
 package io.renku.search.provision
 
-import cats.effect.kernel.Async
-import cats.effect.kernel.Resource
+import cats.effect.kernel.{Async, Resource}
 import fs2.io.net.Network
-
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.ClientId
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.SearchSolrClient
 
@@ -35,7 +32,7 @@ final case class Services[F[_]](
 )
 
 object Services:
-  val clientId: ClientId = ClientId("search-provisioner")
+
   def make[F[_]: Async: Network]: Resource[F, Services[F]] =
     for {
       cfg <- Resource.eval(SearchProvisionConfig.config.load[F])
@@ -45,6 +42,12 @@ object Services:
       // be able to connect to the cluster
       redis = QueueClient.make[F](cfg.redisConfig)
 
-      steps = PipelineSteps[F](solr, redis, cfg.queuesConfig, 1, clientId)
+      steps = PipelineSteps[F](
+        solr,
+        redis,
+        cfg.queuesConfig,
+        inChunkSize = 1,
+        cfg.clientId
+      )
       handlers = MessageHandlers[F](steps, cfg.queuesConfig)
     } yield Services(cfg, solr, redis, handlers)

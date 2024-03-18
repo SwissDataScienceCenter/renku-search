@@ -50,3 +50,5 @@ trait ConfigDecoders:
 
   given ConfigDecoder[String, QueueName] =
     ConfigDecoder[String].map(s => QueueName(s))
+  given ConfigDecoder[String, ClientId] =
+    ConfigDecoder[String].map(s => ClientId(s))

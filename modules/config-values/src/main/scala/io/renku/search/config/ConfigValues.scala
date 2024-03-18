@@ -53,6 +53,12 @@ object ConfigValues extends ConfigDecoders:
   val retryOnErrorDelay: ConfigValue[Effect, FiniteDuration] =
     renv("RETRY_ON_ERROR_DELAY").default("10 seconds").as[FiniteDuration]
 
+  val metricsUpdateInterval: ConfigValue[Effect, FiniteDuration] =
+    renv("METRICS_UPDATE_INTERVAL").default("15 seconds").as[FiniteDuration]
+
+  def clientId(default: ClientId): ConfigValue[Effect, ClientId] =
+    renv("CLIENT_ID").default(default.value).as[ClientId]
+
   val solrConfig: ConfigValue[Effect, SolrConfig] = {
     val url = renv("SOLR_URL").default("http://localhost:8983/solr").as[Uri]
     val core = renv("SOLR_CORE").default("search-core-test")

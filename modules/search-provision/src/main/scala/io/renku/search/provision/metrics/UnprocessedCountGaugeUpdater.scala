@@ -20,11 +20,12 @@ package io.renku.search.provision.metrics
 
 import cats.MonadThrow
 import cats.syntax.all.*
-import io.renku.redis.client.{ClientId, QueueName, RedisQueueClient}
+import io.renku.queue.client.QueueClient
+import io.renku.redis.client.{ClientId, QueueName}
 
 private class UnprocessedCountGaugeUpdater[F[_]: MonadThrow](
     clientId: ClientId,
-    rc: RedisQueueClient[F],
+    rc: QueueClient[F],
     gauge: UnprocessedCountGauge
 ) extends CollectorUpdater[F]:
 

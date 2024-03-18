@@ -83,8 +83,8 @@ private class QueueClientImpl[F[_]: Async](redisQueueClient: RedisQueueClient[F]
   ): F[Option[MessageId]] =
     redisQueueClient.findLastProcessed(clientId, queueName)
 
-  override def getSize(queueName: QueueName): F[Long] = 
+  override def getSize(queueName: QueueName): F[Long] =
     redisQueueClient.getSize(queueName)
 
-  override def getSize(queueName: QueueName, from: MessageId): F[Long] = 
+  override def getSize(queueName: QueueName, from: MessageId): F[Long] =
     redisQueueClient.getSize(queueName, from)

@@ -64,7 +64,8 @@ lazy val root = project
     searchQuery,
     searchSolrClient,
     searchProvision,
-    searchApi
+    searchApi,
+    perfTests
   )
 
 lazy val commons = project
@@ -341,6 +342,24 @@ lazy val searchApi = project
     jwt % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
+
+lazy val perfTests = project
+  .in(file("modules/perf-tests"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .withId("perf-tests")
+  .settings(commonSettings)
+  .settings(
+    name := "perf-tests",
+    description := "A set of tools for performance testing",
+    libraryDependencies ++=
+      Dependencies.http4sClient
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    httpClient % "compile->compile;test->test",
+    renkuRedisClient % "compile->compile;test->test"
+  )
 
 lazy val commonSettings = Seq(
   organization := "io.renku",

@@ -21,49 +21,62 @@ package io.renku.search.solr.query
 import cats.syntax.all.*
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.FieldTerm
-import io.renku.search.query.Field
 import io.renku.search.query.Query
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 
 import cats.Monad
 import cats.Applicative
 import io.renku.search.query.Comparison
+import io.renku.search.solr.SearchRole
 
 trait LuceneQueryEncoders:
 
   given projectIdIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.IdIs] =
     SolrTokenEncoder.basic { case FieldTerm.IdIs(ids) =>
-      SolrQuery(SolrToken.orFieldIs(Field.Id, ids.map(SolrToken.fromString)))
+      SolrQuery(SolrToken.orFieldIs(SolrField.id, ids.map(SolrToken.fromString)))
     }
 
   given nameIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.NameIs] =
     SolrTokenEncoder.basic { case FieldTerm.NameIs(names) =>
-      SolrQuery(SolrToken.orFieldIs(Field.Name, names.map(SolrToken.fromString)))
+      SolrQuery(SolrToken.orFieldIs(SolrField.name, names.map(SolrToken.fromString)))
     }
 
   given typeIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.TypeIs] =
     SolrTokenEncoder.basic { case FieldTerm.TypeIs(values) =>
-      SolrQuery(SolrToken.orFieldIs(Field.Type, values.map(SolrToken.fromEntityType)))
+      SolrQuery(
+        SolrToken.orFieldIs(SolrField.entityType, values.map(SolrToken.fromEntityType))
+      )
     }
 
   given slugIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.SlugIs] =
     SolrTokenEncoder.basic { case FieldTerm.SlugIs(names) =>
-      SolrQuery(SolrToken.orFieldIs(Field.Slug, names.map(SolrToken.fromString)))
+      SolrQuery(SolrToken.orFieldIs(SolrField.slug, names.map(SolrToken.fromString)))
     }
 
   given createdByIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.CreatedByIs] =
     SolrTokenEncoder.basic { case FieldTerm.CreatedByIs(names) =>
-      SolrQuery(SolrToken.orFieldIs(Field.CreatedBy, names.map(SolrToken.fromString)))
+      SolrQuery(SolrToken.orFieldIs(SolrField.createdBy, names.map(SolrToken.fromString)))
     }
 
   given visibilityIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.VisibilityIs] =
     SolrTokenEncoder.basic { case FieldTerm.VisibilityIs(values) =>
       SolrQuery(
-        SolrToken.orFieldIs(Field.Visibility, values.map(SolrToken.fromVisibility))
+        SolrToken.orFieldIs(SolrField.visibility, values.map(SolrToken.fromVisibility))
       )
     }
 
+  given roleIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.RoleIs] =
+    SolrTokenEncoder.create[F, FieldTerm.RoleIs] { case (ctx, FieldTerm.RoleIs(values)) =>
+      SolrQuery {
+        ctx.role match
+          case SearchRole.Admin     => SolrToken.empty
+          case SearchRole.Anonymous => SolrToken.publicOnly
+          case SearchRole.User(id)  => SolrToken.roleIn(id, values)
+      }.pure[F]
+    }
+
   given created[F[_]: Monad]: SolrTokenEncoder[F, FieldTerm.Created] =
-    val created = SolrToken.fromField(Field.Created)
+    val createdIs = SolrToken.fieldIs(SolrField.creationDate, _)
     SolrTokenEncoder.create[F, FieldTerm.Created] {
       case (ctx, FieldTerm.Created(Comparison.Is, values)) =>
         (ctx.currentTime, ctx.zoneId).mapN { (ref, zone) =>
@@ -72,8 +85,8 @@ trait LuceneQueryEncoders:
               .map(_.resolve(ref, zone))
               .map { case (min, maxOpt) =>
                 maxOpt
-                  .map(max => created === SolrToken.fromDateRange(min, max))
-                  .getOrElse(created === SolrToken.fromInstant(min))
+                  .map(max => createdIs(SolrToken.fromDateRange(min, max)))
+                  .getOrElse(createdIs(SolrToken.fromInstant(min)))
               }
               .toList
               .foldOr
@@ -86,7 +99,7 @@ trait LuceneQueryEncoders:
             values
               .map(_.resolve(ref, zone))
               .map { case (min, maxOpt) =>
-                SolrToken.dateGt(Field.Created, maxOpt.getOrElse(min))
+                SolrToken.createdDateGt(maxOpt.getOrElse(min))
               }
               .toList
               .foldOr
@@ -99,7 +112,7 @@ trait LuceneQueryEncoders:
             values
               .map(_.resolve(ref, zone))
               .map { case (min, _) =>
-                SolrToken.dateLt(Field.Created, min)
+                SolrToken.createdDateLt(min)
               }
               .toList
               .foldOr

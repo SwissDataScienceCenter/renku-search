@@ -78,8 +78,7 @@ lazy val commons = project
         Dependencies.catsEffect ++
         Dependencies.ducktape ++
         Dependencies.fs2Core ++
-        Dependencies.scodecBits ++
-        Dependencies.scribe,
+        Dependencies.scodecBits,
     Test / sourceGenerators += Def.task {
       val sourceDir =
         (LocalRootProject / baseDirectory).value / "project"

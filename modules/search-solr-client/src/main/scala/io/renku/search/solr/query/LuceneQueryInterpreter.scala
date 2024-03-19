@@ -33,8 +33,8 @@ final class LuceneQueryInterpreter[F[_]: Monad]
     with LuceneQueryEncoders:
   private val encoder = SolrTokenEncoder[F, Query]
 
-  def run(ctx: Context[F], role: SearchRole, query: Query): F[SolrQuery] =
-    amendUserId(role) {
+  def run(ctx: Context[F], query: Query): F[SolrQuery] =
+    amendUserId(ctx.role) {
       if (query.isEmpty) SolrQuery(SolrToken.allTypes).pure[F]
       else encoder.encode(ctx, query)
     }
@@ -48,5 +48,5 @@ final class LuceneQueryInterpreter[F[_]: Monad]
     }
 
 object LuceneQueryInterpreter:
-  def forSync[F[_]: Sync]: QueryInterpreter.WithContext[F] =
-    QueryInterpreter.withContext(LuceneQueryInterpreter[F], Context.forSync[F])
+  def forSync[F[_]: Sync](role: SearchRole): QueryInterpreter.WithContext[F] =
+    QueryInterpreter.withContext(LuceneQueryInterpreter[F], Context.forSync[F](role))

@@ -21,6 +21,7 @@ package io.renku.search.query
 import cats.data.NonEmptyList
 import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
+import io.renku.search.model.projects.MemberRole
 
 enum FieldTerm(val field: Field, val cmp: Comparison):
   case TypeIs(values: NonEmptyList[EntityType])
@@ -34,6 +35,8 @@ enum FieldTerm(val field: Field, val cmp: Comparison):
       extends FieldTerm(Field.Created, cmp)
   case CreatedByIs(values: NonEmptyList[String])
       extends FieldTerm(Field.CreatedBy, Comparison.Is)
+  case RoleIs(values: NonEmptyList[MemberRole])
+      extends FieldTerm(Field.Role, Comparison.Is)
 
   private[query] def asString =
     val value = this match
@@ -48,6 +51,7 @@ enum FieldTerm(val field: Field, val cmp: Comparison):
         vis.mkString(",")
       case Created(_, values)  => FieldTerm.nelToString(values.map(_.asString))
       case CreatedByIs(values) => FieldTerm.nelToString(values)
+      case RoleIs(values)      => FieldTerm.nelToString(values.map(_.name))
 
     s"${field.name}${cmp.asString}${value}"
 

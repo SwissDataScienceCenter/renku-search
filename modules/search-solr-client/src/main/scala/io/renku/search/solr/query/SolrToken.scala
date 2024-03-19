@@ -75,7 +75,7 @@ object SolrToken:
   def memberIs(id: Id): SolrToken = SolrField.members.name === fromId(id)
 
   def roleIs(id: Id, role: MemberRole): SolrToken = role match
-    case MemberRole.Owner => fieldIs(SolrField.owners, fromId(id))
+    case MemberRole.Owner  => fieldIs(SolrField.owners, fromId(id))
     case MemberRole.Member => fieldIs(SolrField.members, fromId(id))
 
   def roleIn(id: Id, roles: NonEmptyList[MemberRole]): SolrToken =

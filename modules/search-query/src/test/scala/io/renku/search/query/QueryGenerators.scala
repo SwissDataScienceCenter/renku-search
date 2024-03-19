@@ -18,16 +18,18 @@
 
 package io.renku.search.query
 
+import java.time._
+
 import cats.data.NonEmptyList
-import cats.Order as CatsOrder
 import cats.syntax.all.*
-import io.renku.search.model.{CommonGenerators, ModelGenerators}
+import cats.Order as CatsOrder
+
+import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.Visibility
+import io.renku.search.model.{CommonGenerators, ModelGenerators}
 import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
-
-import java.time.{Period, YearMonth, ZoneId, ZoneOffset}
 
 object QueryGenerators:
   val utc: Gen[Option[ZoneId]] =
@@ -134,6 +136,14 @@ object QueryGenerators:
       )
       .map(vs => FieldTerm.VisibilityIs(vs.distinct))
 
+  val roleTerm: Gen[FieldTerm] =
+    Gen
+      .frequency(
+        10 -> ModelGenerators.projectMemberRoleGen.map(NonEmptyList.one),
+        1 -> CommonGenerators.nelOfN(2, ModelGenerators.projectMemberRoleGen)
+      )
+      .map(vs => FieldTerm.RoleIs(vs))
+
   private val comparison: Gen[Comparison] =
     Gen.oneOf(Comparison.values.toSeq)
 
@@ -151,7 +161,8 @@ object QueryGenerators:
       slugTerm,
       createdByTerm,
       visibilityTerm,
-      createdTerm
+      createdTerm,
+      roleTerm
     )
 
   val freeText: Gen[String] =

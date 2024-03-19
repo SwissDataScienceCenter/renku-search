@@ -23,8 +23,12 @@ import cats.parse.{Parser as P, Parser0 as P0}
 import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.*
+import io.renku.search.model.projects.MemberRole
 
 private[query] object QueryParser {
+  private def candidates(names: Set[String]): Set[String] =
+    names ++ names.map(_.toLowerCase())
+
   val basicString =
     P.charsWhile(c => c > ' ' && !c.isWhitespace && c != '"' && c != '\\' && c != ',')
 
@@ -37,24 +41,18 @@ private[query] object QueryParser {
   val commaSep = comma.surroundedBy(sp0).backtrack
 
   def mkFieldNames(fs: Set[Field]) =
-    fs.map(_.name) ++ fs.map(_.name.toLowerCase)
+    candidates(fs.map(_.name))
 
-  def fieldNameFrom(candidates: Set[Field]) =
-    P.stringIn(mkFieldNames(candidates)).map(Field.unsafeFromString)
+  def fieldNameFrom(fields: Set[Field]) =
+    P.stringIn(candidates(fields.map(_.name))).map(Field.unsafeFromString)
 
   val sortableField: P[SortableField] =
-    P.stringIn(
-      SortableField.values
-        .map(_.name)
-        .toSeq ++ SortableField.values.map(_.name.toLowerCase).toSeq
-    ).map(SortableField.unsafeFromString)
+    P.stringIn(candidates(SortableField.values.map(_.name).toSet))
+      .map(SortableField.unsafeFromString)
 
   val sortDirection: P[Order.Direction] =
-    P.stringIn(
-      Order.Direction.values
-        .map(_.name)
-        .toSeq ++ Order.Direction.values.map(_.name.toLowerCase).toSeq
-    ).map(Order.Direction.unsafeFromString)
+    P.stringIn(candidates(Order.Direction.values.map(_.name).toSet))
+      .map(Order.Direction.unsafeFromString)
 
   val orderedBy: P[Order.OrderedBy] =
     (sortableField ~ (P.string("-") *> sortDirection)).map { case (f, s) =>
@@ -75,11 +73,8 @@ private[query] object QueryParser {
     (P.string("sort").with1 *> (is *> orderedByNel)).map(Order.apply)
 
   val visibility: P[Visibility] =
-    P.stringIn(
-      Visibility.values
-        .map(_.name.toLowerCase)
-        .toSet ++ Visibility.values.map(_.name).toSet
-    ).map(Visibility.unsafeFromString)
+    P.stringIn(candidates(Visibility.values.map(_.name).toSet))
+      .map(Visibility.unsafeFromString)
 
   def nelOf[A](p: P[A], sep: P[Unit]) =
     (p ~ (sep *> p).rep0).map { case (h, t) => NonEmptyList(h, t) }
@@ -91,18 +86,22 @@ private[query] object QueryParser {
     nelOf(visibility, commaSep)
 
   val entityType: P[EntityType] =
-    P.stringIn(
-      EntityType.values
-        .map(_.name.toLowerCase)
-        .toSet ++ EntityType.values.map(_.name).toSet
-    ).map(EntityType.unsafeFromString)
+    P.stringIn(candidates(EntityType.values.map(_.name).toSet))
+      .map(EntityType.unsafeFromString)
 
   val entityTypes: P[NonEmptyList[EntityType]] =
     nelOf(entityType, commaSep)
 
+  val memberRole: P[MemberRole] =
+    P.stringIn(candidates(MemberRole.values.map(_.name).toSet))
+      .map(MemberRole.unsafeFromString)
+
+  val memberRoles: P[NonEmptyList[MemberRole]] =
+    nelOf(memberRole, commaSep)
+
   val termIs: P[FieldTerm] = {
     val field = fieldNameFrom(
-      Field.values.toSet - Field.Created - Field.Visibility - Field.Type
+      Field.values.toSet - Field.Created - Field.Visibility - Field.Type - Field.Role
     )
     ((field <* is) ~ values).map { case (f, v) =>
       f match
@@ -132,7 +131,12 @@ private[query] object QueryParser {
     }
   }
 
-  val fieldTerm: P[FieldTerm] = termIs | visibilityIs | typeIs | created
+  val roleIs: P[FieldTerm] = {
+    val field = fieldNameFrom(Set(Field.Role))
+    ((field *> is).void *> memberRoles).map(v => FieldTerm.RoleIs(v))
+  }
+
+  val fieldTerm: P[FieldTerm] = termIs | visibilityIs | typeIs | created | roleIs
 
   val freeText: P[String] =
     P.charsWhile(c => !c.isWhitespace)

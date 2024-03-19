@@ -99,3 +99,56 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
         ).foldOr
       )
     )
+
+  List(SearchRole.Admin, SearchRole.Anonymous, SearchRole.User(model.Id("5"))).foreach {
+    role =>
+      val encoder = SolrTokenEncoder[Id, FieldTerm.RoleIs]
+      val ctx = Context.fixed[Id](refDate, utc, role)
+      val encode = encoder.encode(ctx, _)
+
+      test(s"role filter: $role"):
+        val memberQuery: FieldTerm.RoleIs = FieldTerm.RoleIs(Nel.of(MemberRole.Member))
+        val ownerQuery: FieldTerm.RoleIs = FieldTerm.RoleIs(Nel.of(MemberRole.Owner))
+        val allQuery: FieldTerm.RoleIs =
+          FieldTerm.RoleIs(Nel.of(MemberRole.Member, MemberRole.Owner, MemberRole.Member))
+        role match
+          case SearchRole.Admin =>
+            assertEquals(
+              encode(memberQuery),
+              SolrQuery(SolrToken.empty)
+            )
+            assertEquals(
+              encode(ownerQuery),
+              SolrQuery(SolrToken.empty)
+            )
+            assertEquals(
+              encode(allQuery),
+              SolrQuery(SolrToken.empty)
+            )
+          case SearchRole.Anonymous =>
+            assertEquals(
+              encode(memberQuery),
+              SolrQuery(SolrToken.publicOnly)
+            )
+            assertEquals(
+              encode(ownerQuery),
+              SolrQuery(SolrToken.publicOnly)
+            )
+            assertEquals(
+              encode(allQuery),
+              SolrQuery(SolrToken.publicOnly)
+            )
+          case SearchRole.User(id) =>
+            assertEquals(
+              encode(memberQuery),
+              SolrQuery(SolrToken.roleIs(id, MemberRole.Member))
+            )
+            assertEquals(
+              encode(ownerQuery),
+              SolrQuery(SolrToken.roleIs(id, MemberRole.Owner))
+            )
+            assertEquals(
+              encode(allQuery),
+              SolrQuery(SolrToken.roleIn(id, Nel.of(MemberRole.Member, MemberRole.Owner)))
+            )
+  }

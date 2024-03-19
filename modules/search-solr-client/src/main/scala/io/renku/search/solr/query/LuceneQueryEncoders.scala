@@ -27,6 +27,7 @@ import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import cats.Monad
 import cats.Applicative
 import io.renku.search.query.Comparison
+import io.renku.search.solr.SearchRole
 
 trait LuceneQueryEncoders:
 
@@ -42,7 +43,9 @@ trait LuceneQueryEncoders:
 
   given typeIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.TypeIs] =
     SolrTokenEncoder.basic { case FieldTerm.TypeIs(values) =>
-      SolrQuery(SolrToken.orFieldIs(SolrField.entityType, values.map(SolrToken.fromEntityType)))
+      SolrQuery(
+        SolrToken.orFieldIs(SolrField.entityType, values.map(SolrToken.fromEntityType))
+      )
     }
 
   given slugIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.SlugIs] =
@@ -60,6 +63,16 @@ trait LuceneQueryEncoders:
       SolrQuery(
         SolrToken.orFieldIs(SolrField.visibility, values.map(SolrToken.fromVisibility))
       )
+    }
+
+  given roleIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.RoleIs] =
+    SolrTokenEncoder.create[F, FieldTerm.RoleIs] { case (ctx, FieldTerm.RoleIs(values)) =>
+      SolrQuery {
+        ctx.role match
+          case SearchRole.Admin     => SolrToken.empty
+          case SearchRole.Anonymous => SolrToken.publicOnly
+          case SearchRole.User(id)  => SolrToken.roleIn(id, values)
+      }.pure[F]
     }
 
   given created[F[_]: Monad]: SolrTokenEncoder[F, FieldTerm.Created] =

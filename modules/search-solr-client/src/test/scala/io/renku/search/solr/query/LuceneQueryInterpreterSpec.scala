@@ -95,7 +95,7 @@ class LuceneQueryInterpreterSpec
 
   test("valid content_all query"):
     withSolr.use { client =>
-      List("hello world", "role:test")
+      List("hello world", "bla:test")
         .map(query(_))
         .traverse_(client.query[Unit])
     }

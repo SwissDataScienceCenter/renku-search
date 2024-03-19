@@ -64,8 +64,8 @@ class LuceneQueryInterpreterSpec
       case str: String => Query.parse(str).fold(sys.error, identity)
       case qq: Query   => qq
 
-    val ctx = Context.fixed[Id](Instant.EPOCH, ZoneId.of("UTC"))
-    val q = LuceneQueryInterpreter[Id].run(ctx, role, userQuery)
+    val ctx = Context.fixed[Id](Instant.EPOCH, ZoneId.of("UTC"), role)
+    val q = LuceneQueryInterpreter[Id].run(ctx, userQuery)
     QueryData(QueryString(q.query.value, 10, 0)).withSort(q.sort)
 
   def withSolr =

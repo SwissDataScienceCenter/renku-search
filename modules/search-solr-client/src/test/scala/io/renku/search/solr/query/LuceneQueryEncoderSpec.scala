@@ -18,19 +18,25 @@
 
 package io.renku.search.solr.query
 
-import munit.FunSuite
+import java.time.{Instant, ZoneId}
+
 import cats.Id
 import cats.data.NonEmptyList as Nel
-import io.renku.search.query.{Comparison, FieldTerm}
-import java.time.{Instant, ZoneId}
+
+import io.renku.search.model
+import io.renku.search.model.projects.MemberRole
 import io.renku.search.query.*
+import io.renku.search.query.{Comparison, FieldTerm}
+import io.renku.search.solr.SearchRole
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
+import munit.FunSuite
 
 class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
 
   val refDate: Instant = Instant.parse("2024-02-27T15:34:55Z")
   val utc: ZoneId = ZoneId.of("UTC")
 
-  val ctx: Context[Id] = Context.fixed(refDate, utc)
+  val ctx: Context[Id] = Context.fixed(refDate, utc, SearchRole.Admin)
   val createdEncoder = SolrTokenEncoder[Id, FieldTerm.Created]
 
   test("use date-max for greater-than"):
@@ -39,7 +45,7 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
       FieldTerm.Created(Comparison.GreaterThan, Nel.of(DateTimeRef(pd)))
     assertEquals(
       createdEncoder.encode(ctx, date),
-      SolrQuery(SolrToken.dateGt(Field.Created, pd.instantMax(utc)))
+      SolrQuery(SolrToken.createdDateGt(pd.instantMax(utc)))
     )
 
   test("use date-min for lower-than"):
@@ -48,7 +54,7 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
       FieldTerm.Created(Comparison.LowerThan, Nel.of(DateTimeRef(pd)))
     assertEquals(
       createdEncoder.encode(ctx, date),
-      SolrQuery(SolrToken.dateLt(Field.Created, pd.instantMin(utc)))
+      SolrQuery(SolrToken.createdDateLt(pd.instantMin(utc)))
     )
 
   test("created comparison is"):
@@ -56,7 +62,7 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
       FieldTerm.Created(Comparison.Is, Nel.of(DateTimeRef(RelativeDate.Today)))
     assertEquals(
       createdEncoder.encode(ctx, cToday),
-      SolrQuery(SolrToken.dateIs(Field.Created, refDate))
+      SolrQuery(SolrToken.createdDateIs(refDate))
     )
 
   test("single range"):
@@ -67,7 +73,7 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
       createdEncoder.encode(ctx, date),
       SolrQuery(
         SolrToken.fieldIs(
-          Field.Created,
+          SolrField.creationDate,
           SolrToken.fromDateRange(pd.instantMin(utc), pd.instantMax(utc))
         )
       )
@@ -83,11 +89,11 @@ class LuceneQueryEncoderSpec extends FunSuite with LuceneQueryEncoders:
       SolrQuery(
         List(
           SolrToken.fieldIs(
-            Field.Created,
+            SolrField.creationDate,
             SolrToken.fromDateRange(pd1.instantMin(utc), pd1.instantMax(utc))
           ),
           SolrToken.fieldIs(
-            Field.Created,
+            SolrField.creationDate,
             SolrToken.fromDateRange(pd2.instantMin(utc), pd2.instantMax(utc))
           )
         ).foldOr

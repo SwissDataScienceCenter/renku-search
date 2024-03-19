@@ -28,6 +28,7 @@ enum Field:
   case Created
   case CreatedBy
   case Type
+  case Role
 
   val name: String = Strings.lowerFirst(productPrefix)
 

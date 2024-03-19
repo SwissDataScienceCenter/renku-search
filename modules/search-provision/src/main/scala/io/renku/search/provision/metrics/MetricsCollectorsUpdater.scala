@@ -23,7 +23,6 @@ import cats.syntax.all.*
 import fs2.Stream
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.ClientId
-import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.QueuesConfig
 
 import scala.concurrent.duration.FiniteDuration
@@ -32,25 +31,14 @@ object MetricsCollectorsUpdater:
 
   def apply[F[_]: Async](
       clientId: ClientId,
-      registryBuilder: CollectorRegistryBuilder[F],
       queuesConfig: QueuesConfig,
       updateInterval: FiniteDuration,
       qcResource: Resource[F, QueueClient[F]]
   ): MetricsCollectorsUpdater[F] =
-
-    val queueSizeGauge = QueueSizeGauge()
-    registryBuilder.add(queueSizeGauge)
-
-    val unprocessedGauge = UnprocessedCountGauge()
-    registryBuilder.add(unprocessedGauge)
-
     new MetricsCollectorsUpdater[F](
       qcResource,
       queuesConfig,
-      List(
-        new QueueSizeGaugeUpdater[F](_, queueSizeGauge),
-        new UnprocessedCountGaugeUpdater[F](clientId, _, unprocessedGauge)
-      ),
+      RedisMetrics.updaterFactories(clientId),
       updateInterval
     )
 

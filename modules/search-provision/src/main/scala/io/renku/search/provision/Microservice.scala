@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 import io.renku.search.metrics.CollectorRegistryBuilder
-import io.renku.search.provision.metrics.MetricsCollectorsUpdater
+import io.renku.search.provision.metrics.{MetricsCollectorsUpdater, RedisMetrics}
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 
@@ -36,8 +36,10 @@ object Microservice extends IOApp:
       for {
         _ <- IO(LoggingSetup.doConfigure(services.config.verbosity))
         _ <- runSolrMigrations(services.config)
-        registryBuilder = CollectorRegistryBuilder[IO].withStandardJVMMetrics
-        metrics = metricsUpdaterTask(services, registryBuilder)
+        registryBuilder = CollectorRegistryBuilder[IO].withJVMMetrics
+          .add(RedisMetrics.queueSizeGauge)
+          .add(RedisMetrics.unprocessedGauge)
+        metrics = metricsUpdaterTask(services)
         httpServer = httpServerTask(registryBuilder, services.config)
         tasks = services.messageHandlers.getAll + metrics + httpServer
         pm <- BackgroundProcessManage[IO](services.config.retryOnErrorDelay)
@@ -47,21 +49,17 @@ object Microservice extends IOApp:
     }
 
   private def httpServerTask(
-      collectorRegistryBuilder: CollectorRegistryBuilder[IO],
+      registryBuilder: CollectorRegistryBuilder[IO],
       config: SearchProvisionConfig
   ) =
-    val io = Routes[IO](collectorRegistryBuilder)
+    val io = Routes[IO](registryBuilder)
       .flatMap(HttpServer.build(_, config.httpServerConfig))
       .use(_ => IO.never)
     "http server" -> io
 
-  private def metricsUpdaterTask(
-      services: Services[IO],
-      registryBuilder: CollectorRegistryBuilder[IO]
-  ) =
+  private def metricsUpdaterTask(services: Services[IO]) =
     val io = MetricsCollectorsUpdater[IO](
       services.config.clientId,
-      registryBuilder,
       services.config.queuesConfig,
       services.config.metricsUpdateInterval,
       services.queueClient

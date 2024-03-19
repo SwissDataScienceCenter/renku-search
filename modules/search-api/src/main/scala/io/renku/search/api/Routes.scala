@@ -34,9 +34,8 @@ private object Routes:
   def apply[F[_]: Async: Network](solrConfig: SolrConfig): Resource[F, HttpRoutes[F]] =
     for
       search <- SearchApi[F](solrConfig).map(api => SearchRoutes[F](api))
-      metricsRoutes <- MetricsRoutes[F](
-        CollectorRegistryBuilder[F].withStandardJVMMetrics
-      ).makeRoutes(search.routes)
+      metricsRoutes <- MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics)
+        .makeRoutes(search.routes)
     yield new Routes[F](search, metricsRoutes).routes
 
 final private class Routes[F[_]: Async](

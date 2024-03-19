@@ -23,17 +23,16 @@ import cats.syntax.all.*
 import io.prometheus.client.{CollectorRegistry, Collector as JCollector}
 import org.http4s.metrics.prometheus.PrometheusExportService
 
-final class CollectorRegistryBuilder[F[_]: Sync]:
-  private[this] val collectors = collection.mutable.Set[Collector]()
-  private[this] var standardJVMMetrics: Boolean = false
+final case class CollectorRegistryBuilder[F[_]: Sync](
+    collectors: Set[Collector],
+    standardJVMMetrics: Boolean
+):
 
-  def withStandardJVMMetrics: CollectorRegistryBuilder[F] =
-    standardJVMMetrics = true
-    this
+  def withJVMMetrics: CollectorRegistryBuilder[F] =
+    copy(standardJVMMetrics = true)
 
   def add(c: Collector): CollectorRegistryBuilder[F] =
-    collectors += c
-    this
+    copy(collectors = collectors + c)
 
   def makeRegistry: Resource[F, CollectorRegistry] =
     val registry = new CollectorRegistry()
@@ -54,4 +53,4 @@ final class CollectorRegistryBuilder[F[_]: Sync]:
 
 object CollectorRegistryBuilder:
   def apply[F[_]: Sync]: CollectorRegistryBuilder[F] =
-    new CollectorRegistryBuilder[F]
+    new CollectorRegistryBuilder[F](Set.empty, false)

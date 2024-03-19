@@ -19,21 +19,18 @@
 package io.renku.search.provision.metrics
 
 import cats.Monad
-import cats.syntax.all.*
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.{ClientId, QueueName}
+import io.renku.redis.client.ClientId
 
-private class UnprocessedCountGaugeUpdater[F[_]: Monad](
-    clientId: ClientId,
-    rc: QueueClient[F],
-    gauge: UnprocessedCountGauge
-) extends CollectorUpdater[F]:
+object RedisMetrics:
 
-  override def update(queueName: QueueName): F[Unit] =
-    rc
-      .findLastProcessed(clientId, queueName)
-      .flatMap {
-        case None     => rc.getSize(queueName)
-        case Some(lm) => rc.getSize(queueName, lm)
-      }
-      .map(s => gauge.set(queueName, s.toDouble))
+  val queueSizeGauge: QueueSizeGauge = QueueSizeGauge()
+  val unprocessedGauge: UnprocessedCountGauge = UnprocessedCountGauge()
+
+  def updaterFactories[F[_]: Monad](
+      clientId: ClientId
+  ): List[QueueClient[F] => CollectorUpdater[F]] =
+    List(
+      new QueueSizeGaugeUpdater[F](_, queueSizeGauge),
+      new UnprocessedCountGaugeUpdater[F](clientId, _, unprocessedGauge)
+    )

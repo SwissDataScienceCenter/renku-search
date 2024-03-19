@@ -27,7 +27,6 @@ import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.solr.client.SolrConfig
 import org.http4s.HttpRoutes
-import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 
 private object Routes:
@@ -43,7 +42,7 @@ private object Routes:
 final private class Routes[F[_]: Async](
     searchRoutes: SearchRoutes[F],
     metricsRoutes: HttpRoutes[F]
-) extends Http4sDsl[F]:
+):
 
   private val prefix = "/search"
 

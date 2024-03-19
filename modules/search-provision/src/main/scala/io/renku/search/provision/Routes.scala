@@ -25,7 +25,6 @@ import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
 import org.http4s.HttpRoutes
-import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 
 private object Routes:
@@ -36,8 +35,7 @@ private object Routes:
     MetricsRoutes[F](registryBuilder).makeRoutes
       .map(new Routes[F](_).routes)
 
-final private class Routes[F[_]: Async](metricsRoutes: HttpRoutes[F])
-    extends Http4sDsl[F]:
+final private class Routes[F[_]: Async](metricsRoutes: HttpRoutes[F]):
 
   private lazy val operationRoutes =
     Router[F](

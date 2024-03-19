@@ -18,21 +18,6 @@
 
 package io.renku.search.http
 
-import cats.effect.{Async, Resource}
-import fs2.io.net.Network
-import org.http4s.HttpRoutes
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Server
+import com.comcast.ip4s.{Ipv4Address, Port}
 
-object HttpServer:
-
-  def build[F[_]: Async: Network](
-      routes: HttpRoutes[F],
-      config: HttpServerConfig
-  ): Resource[F, Server] =
-    EmberServerBuilder
-      .default[F]
-      .withHost(config.bindAddress)
-      .withPort(config.port)
-      .withHttpApp(routes.orNotFound)
-      .build
+final case class HttpServerConfig(bindAddress: Ipv4Address, port: Port)

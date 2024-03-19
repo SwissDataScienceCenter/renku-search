@@ -302,6 +302,7 @@ lazy val configValues = project
   .dependsOn(
     commons % "compile->compile;test->test",
     events % "compile->compile;test->test",
+    http4sCommons % "compile->compile;test->test",
     renkuRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )

@@ -20,6 +20,7 @@ package io.renku.search.config
 
 import cats.syntax.all.*
 import ciris.{ConfigDecoder, ConfigError}
+import com.comcast.ip4s.{Ipv4Address, Port}
 import io.renku.redis.client.*
 import org.http4s.Uri
 
@@ -52,3 +53,10 @@ trait ConfigDecoders:
     ConfigDecoder[String].map(s => QueueName(s))
   given ConfigDecoder[String, ClientId] =
     ConfigDecoder[String].map(s => ClientId(s))
+
+  given ConfigDecoder[String, Ipv4Address] =
+    ConfigDecoder[String]
+      .mapOption(Ipv4Address.getClass.getSimpleName)(Ipv4Address.fromString)
+  given ConfigDecoder[String, Port] =
+    ConfigDecoder[String]
+      .mapOption(Port.getClass.getSimpleName)(Port.fromString)

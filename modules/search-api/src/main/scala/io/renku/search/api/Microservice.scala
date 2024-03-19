@@ -19,13 +19,11 @@
 package io.renku.search.api
 
 import cats.effect.{ExitCode, IO, IOApp}
-import com.comcast.ip4s.port
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 
 object Microservice extends IOApp:
 
-  private val port = port"8080"
   private val loadConfig = SearchApiConfig.config.load[IO]
 
   override def run(args: List[String]): IO[ExitCode] =
@@ -33,6 +31,6 @@ object Microservice extends IOApp:
       config <- loadConfig
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
       _ <- Routes[IO](config.solrConfig)
-        .flatMap(HttpServer.build(_, port))
+        .flatMap(HttpServer.build(_, config.httpServerConfig))
         .use(_ => IO.never)
     } yield ExitCode.Success

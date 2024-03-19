@@ -20,7 +20,6 @@ package io.renku.search.provision
 
 import cats.effect.*
 import cats.syntax.all.*
-import com.comcast.ip4s.port
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 import io.renku.search.metrics.CollectorRegistryBuilder
@@ -30,7 +29,6 @@ import io.renku.solr.client.migration.SchemaMigrator
 
 object Microservice extends IOApp:
 
-  private val port = port"8081"
   private val logger = scribe.cats.io
 
   override def run(args: List[String]): IO[ExitCode] =
@@ -40,7 +38,7 @@ object Microservice extends IOApp:
         _ <- runSolrMigrations(services.config)
         registryBuilder = CollectorRegistryBuilder[IO].withStandardJVMMetrics
         metrics = metricsUpdaterTask(services, registryBuilder)
-        httpServer = httpServerTask(registryBuilder)
+        httpServer = httpServerTask(registryBuilder, services.config)
         tasks = services.messageHandlers.getAll + metrics + httpServer
         pm <- BackgroundProcessManage[IO](services.config.retryOnErrorDelay)
         _ <- tasks.toList.traverse_(pm.register.tupled)
@@ -48,9 +46,12 @@ object Microservice extends IOApp:
       } yield ExitCode.Success
     }
 
-  private def httpServerTask(collectorRegistryBuilder: CollectorRegistryBuilder[IO]) =
+  private def httpServerTask(
+      collectorRegistryBuilder: CollectorRegistryBuilder[IO],
+      config: SearchProvisionConfig
+  ) =
     val io = Routes[IO](collectorRegistryBuilder)
-      .flatMap(HttpServer.build(_, port))
+      .flatMap(HttpServer.build(_, config.httpServerConfig))
       .use(_ => IO.never)
     "http server" -> io
 

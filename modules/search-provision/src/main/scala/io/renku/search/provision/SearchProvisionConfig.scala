@@ -20,8 +20,10 @@ package io.renku.search.provision
 
 import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
-import io.renku.redis.client.RedisConfig
+import com.comcast.ip4s.port
+import io.renku.redis.client.{ClientId, RedisConfig}
 import io.renku.search.config.ConfigValues
+import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.SolrConfig
 
 import scala.concurrent.duration.FiniteDuration
@@ -30,8 +32,11 @@ final case class SearchProvisionConfig(
     redisConfig: RedisConfig,
     solrConfig: SolrConfig,
     retryOnErrorDelay: FiniteDuration,
+    metricsUpdateInterval: FiniteDuration,
     verbosity: Int,
-    queuesConfig: QueuesConfig
+    queuesConfig: QueuesConfig,
+    httpServerConfig: HttpServerConfig,
+    clientId: ClientId
 )
 
 object SearchProvisionConfig:
@@ -41,6 +46,9 @@ object SearchProvisionConfig:
       ConfigValues.redisConfig,
       ConfigValues.solrConfig,
       ConfigValues.retryOnErrorDelay,
+      ConfigValues.metricsUpdateInterval,
       ConfigValues.logLevel,
-      QueuesConfig.config
+      QueuesConfig.config,
+      ConfigValues.httpServerConfig(defaultPort = port"8081"),
+      ConfigValues.clientId(ClientId("search-provisioner"))
     ).mapN(SearchProvisionConfig.apply)

@@ -25,10 +25,13 @@ import dev.profunktor.redis4cats.streams.data.XAddMessage
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import fs2.*
 import fs2.concurrent.SignallingRef
-import io.renku.search.GeneratorSyntax.*
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
+import io.renku.search.GeneratorSyntax.*
 import munit.CatsEffectSuite
+import org.scalacheck.Gen
+import org.scalacheck.Gen.alphaChar
+import org.scalacheck.cats.implicits.*
 import scodec.bits.ByteVector
 
 class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
@@ -129,6 +132,36 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
       yield ()
     }
 
+  test("can find out the total size of the given stream"):
+    withRedisClient.asRedisQueueClient().use { client =>
+      val queue = RedisClientGenerators.queueNameGen.generateOne
+      val messages = (stringGen, stringGen).mapN(_ -> _).generateList(1, 30)
+      for
+        _ <- messages.traverse_ { case (h, p) =>
+          client.enqueue(queue, toByteVector(h), toByteVector(p))
+        }
+        _ <- client.getSize(queue).map(s => assert(s == messages.size))
+      yield ()
+    }
+
+  test("can find out a size of the given stream from the given MessageId"):
+    withRedisClient.asRedisQueueClient().use { client =>
+      val queue = RedisClientGenerators.queueNameGen.generateOne
+      val olderMessages = (stringGen, stringGen).mapN(_ -> _).generateList(1, 30)
+      val (msgH, msgP) = (stringGen, stringGen).mapN(_ -> _).generateOne
+      val newerMessages = (stringGen, stringGen).mapN(_ -> _).generateList(1, 30)
+      for
+        _ <- olderMessages.traverse_ { case (h, p) =>
+          client.enqueue(queue, toByteVector(h), toByteVector(p))
+        }
+        messageId <- client.enqueue(queue, toByteVector(msgH), toByteVector(msgP))
+        _ <- newerMessages.traverse_ { case (h, p) =>
+          client.enqueue(queue, toByteVector(h), toByteVector(p))
+        }
+        _ <- client.getSize(queue, messageId).map(s => assert(s == newerMessages.size))
+      yield ()
+    }
+
   private def toByteVector(v: String): ByteVector =
     ByteVector.encodeUtf8(v).fold(throw _, identity)
 
@@ -151,6 +184,11 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
       .compile
       .toList
       .map(_.head)
+
+  private lazy val stringGen: Gen[String] =
+    Gen
+      .chooseNum(3, 10)
+      .flatMap(Gen.stringOfN(_, alphaChar))
 
   private def makeStreamingConnection(
       client: RedisClient

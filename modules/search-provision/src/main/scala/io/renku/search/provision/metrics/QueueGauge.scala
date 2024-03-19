@@ -16,21 +16,10 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.provision.metrics
 
-import cats.effect.{ExitCode, IO, IOApp}
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+import io.renku.redis.client.QueueName
+import io.renku.search.metrics.Collector
 
-object Microservice extends IOApp:
-
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig)
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+private trait QueueGauge extends Collector:
+  def set(q: QueueName, v: Double): Unit

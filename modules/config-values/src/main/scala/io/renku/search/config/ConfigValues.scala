@@ -20,7 +20,9 @@ package io.renku.search.config
 
 import cats.syntax.all.*
 import ciris.*
+import com.comcast.ip4s.{Ipv4Address, Port}
 import io.renku.redis.client.*
+import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.{SolrConfig, SolrUser}
 import org.http4s.Uri
 
@@ -53,6 +55,12 @@ object ConfigValues extends ConfigDecoders:
   val retryOnErrorDelay: ConfigValue[Effect, FiniteDuration] =
     renv("RETRY_ON_ERROR_DELAY").default("10 seconds").as[FiniteDuration]
 
+  val metricsUpdateInterval: ConfigValue[Effect, FiniteDuration] =
+    renv("METRICS_UPDATE_INTERVAL").default("15 seconds").as[FiniteDuration]
+
+  def clientId(default: ClientId): ConfigValue[Effect, ClientId] =
+    renv("CLIENT_ID").default(default.value).as[ClientId]
+
   val solrConfig: ConfigValue[Effect, SolrConfig] = {
     val url = renv("SOLR_URL").default("http://localhost:8983/solr").as[Uri]
     val core = renv("SOLR_CORE").default("search-core-test")
@@ -69,3 +77,8 @@ object ConfigValues extends ConfigDecoders:
       renv("SOLR_LOG_MESSAGE_BODIES").default("false").as[Boolean]
     (url, core, maybeUser, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)
   }
+
+  def httpServerConfig(defaultPort: Port): ConfigValue[Effect, HttpServerConfig] =
+    val bindAddress = renv("HTTP_SERVER_BIND_ADDRESS").default("0.0.0.0").as[Ipv4Address]
+    val port = renv("HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
+    (bindAddress, port).mapN(HttpServerConfig.apply)

@@ -16,21 +16,24 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.provision.metrics
 
-import cats.effect.{ExitCode, IO, IOApp}
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+import cats.Monad
+import cats.syntax.all.*
+import io.renku.queue.client.QueueClient
+import io.renku.redis.client.{ClientId, QueueName}
 
-object Microservice extends IOApp:
+private class UnprocessedCountGaugeUpdater[F[_]: Monad](
+    clientId: ClientId,
+    rc: QueueClient[F],
+    gauge: UnprocessedCountGauge
+) extends CollectorUpdater[F]:
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig)
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  override def update(queueName: QueueName): F[Unit] =
+    rc
+      .findLastProcessed(clientId, queueName)
+      .flatMap {
+        case None     => rc.getSize(queueName)
+        case Some(lm) => rc.getSize(queueName, lm)
+      }
+      .map(s => gauge.set(queueName, s.toDouble))

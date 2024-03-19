@@ -145,6 +145,36 @@ lazy val httpClient = project
     http4sBorer % "compile->compile;test->test"
   )
 
+lazy val http4sMetrics = project
+  .in(file("modules/http4s-metrics"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .withId("http4s-metrics")
+  .settings(commonSettings)
+  .settings(
+    name := "http4s-metrics",
+    description := "Prometheus metrics for http4s",
+    libraryDependencies ++=
+      Dependencies.http4sCore ++
+        Dependencies.http4sPrometheusMetrics
+  )
+
+lazy val http4sCommons = project
+  .in(file("modules/http4s-commons"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .withId("http4s-commons")
+  .settings(commonSettings)
+  .settings(
+    name := "http4s-commons",
+    description := "Commons for http services",
+    libraryDependencies ++=
+      Dependencies.http4sCore ++
+        Dependencies.http4sDsl ++
+        Dependencies.http4sServer ++
+        Dependencies.tapirHttp4sServer
+  )
+
 lazy val redisClient = project
   .in(file("modules/redis-client"))
   .withId("redis-client")
@@ -271,6 +301,7 @@ lazy val configValues = project
   .dependsOn(
     commons % "compile->compile;test->test",
     events % "compile->compile;test->test",
+    http4sCommons % "compile->compile;test->test",
     renkuRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test"
   )
@@ -312,6 +343,8 @@ lazy val searchProvision = project
   .dependsOn(
     commons % "compile->compile;test->test",
     events % "compile->compile;test->test",
+    http4sCommons % "compile->compile;test->test",
+    http4sMetrics % "compile->compile;test->test",
     renkuRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
@@ -326,14 +359,13 @@ lazy val searchApi = project
     name := "search-api",
     libraryDependencies ++=
       Dependencies.ciris ++
-        Dependencies.http4sDsl ++
-        Dependencies.http4sServer ++
-        Dependencies.tapirHttp4sServer ++
         Dependencies.tapirOpenAPI
   )
   .dependsOn(
     commons % "compile->compile;test->test",
     http4sBorer % "compile->compile;test->test",
+    http4sCommons % "compile->compile;test->test",
+    http4sMetrics % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test",
     searchQueryDocs % "compile->compile;test->test",

@@ -16,23 +16,9 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.metrics
 
-import cats.effect.{Async, Resource}
-import com.comcast.ip4s.{Port, ipv4, port}
-import fs2.io.net.Network
-import org.http4s.HttpApp
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Server
+import io.prometheus.client.Collector as JCollector
 
-object HttpServer:
-
-  val port: Port = port"8080"
-
-  def build[F[_]: Async: Network](app: HttpApp[F]): Resource[F, Server] =
-    EmberServerBuilder
-      .default[F]
-      .withHost(ipv4"0.0.0.0")
-      .withPort(port)
-      .withHttpApp(app)
-      .build
+trait Collector:
+  def asJCollector: JCollector

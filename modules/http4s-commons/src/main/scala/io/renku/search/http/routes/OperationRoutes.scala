@@ -16,21 +16,22 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.http.routes
 
-import cats.effect.{ExitCode, IO, IOApp}
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+import cats.effect.Async
+import cats.syntax.all.*
+import org.http4s.HttpRoutes
+import sttp.tapir.*
+import sttp.tapir.server.http4s.Http4sServerInterpreter
 
-object Microservice extends IOApp:
+object OperationRoutes {
+  private def pingEndpoint[F[_]: Async] =
+    endpoint.get
+      .in("ping")
+      .out(stringBody)
+      .description("Ping")
+      .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig)
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  def apply[F[_]: Async]: HttpRoutes[F] =
+    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))
+}

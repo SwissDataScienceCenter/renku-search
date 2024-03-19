@@ -16,22 +16,21 @@
  * limitations under the License.
  */
 
-package io.renku.search.api.routes
+package io.renku.search.provision.metrics
 
-import cats.effect.Async
-import cats.syntax.all.*
-import org.http4s.HttpRoutes
-import sttp.tapir.*
-import sttp.tapir.server.http4s.Http4sServerInterpreter
+import cats.Monad
+import io.renku.queue.client.QueueClient
+import io.renku.redis.client.ClientId
 
-object OperationRoutes {
-  private def pingEndpoint[F[_]: Async] =
-    endpoint.get
-      .in("ping")
-      .out(stringBody)
-      .description("Ping")
-      .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
+object RedisMetrics:
 
-  def apply[F[_]: Async]: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))
-}
+  val queueSizeGauge: QueueSizeGauge = QueueSizeGauge()
+  val unprocessedGauge: UnprocessedCountGauge = UnprocessedCountGauge()
+
+  def updaterFactories[F[_]: Monad](
+      clientId: ClientId
+  ): List[QueueClient[F] => CollectorUpdater[F]] =
+    List(
+      new QueueSizeGaugeUpdater[F](_, queueSizeGauge),
+      new UnprocessedCountGaugeUpdater[F](clientId, _, unprocessedGauge)
+    )

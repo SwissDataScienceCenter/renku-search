@@ -16,21 +16,22 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.provision.metrics
 
-import cats.effect.{ExitCode, IO, IOApp}
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+import io.prometheus.client.Gauge
+import io.renku.redis.client.QueueName
 
-object Microservice extends IOApp:
+private class QueueSizeGauge extends QueueGauge:
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
+  private[this] val underlying =
+    Gauge
+      .build()
+      .name("redis_stream_size")
+      .help("Total number of items in a stream")
+      .labelNames("queue_name")
+      .create()
 
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig)
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  override val asJCollector: Gauge = underlying
+
+  override def set(q: QueueName, v: Double): Unit =
+    underlying.labels(q.name).set(v)

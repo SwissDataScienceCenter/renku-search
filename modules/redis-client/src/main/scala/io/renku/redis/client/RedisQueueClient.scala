@@ -22,11 +22,14 @@ import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
-import dev.profunktor.redis4cats.effect.Log
+import dev.profunktor.redis4cats.effect.FutureLift.*
+import dev.profunktor.redis4cats.effect.{FutureLift, Log}
+import dev.profunktor.redis4cats.effects.ScriptOutputType
 import dev.profunktor.redis4cats.streams.data.{StreamingOffset, XAddMessage, XReadMessage}
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import fs2.Stream
+import io.lettuce.core.api.StatefulRedisConnection
 import scodec.bits.ByteVector
 import scribe.Scribe
 
@@ -51,6 +54,10 @@ trait RedisQueueClient[F[_]] {
   ): F[Unit]
 
   def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
+
+  def getSize(queueName: QueueName): F[Long]
+
+  def getSize(queueName: QueueName, from: MessageId): F[Long]
 }
 
 object RedisQueueClient:
@@ -131,10 +138,46 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
   private def formProcessedKey(clientId: ClientId, queueName: QueueName) =
     s"$queueName.$clientId"
 
+  override def getSize(queueName: QueueName): F[Long] =
+    val xlen: StatefulRedisConnection[String, ByteVector] => F[Long] =
+      _.async().xlen(queueName.name).futureLift.map(_.longValue())
+
+    makeLettuceStreamingConnection(StringBytesCodec.instance)
+      .use(xlen)
+
+  override def getSize(queueName: QueueName, from: MessageId): F[Long] =
+    val script =
+      """local xrange = redis.call('XRANGE', KEYS[1], ARGV[1], ARGV[2])
+        |return #xrange - 1""".stripMargin
+    createStringCommands.use(
+      _.eval(
+        script,
+        ScriptOutputType.Integer,
+        List(queueName.name),
+        List(from.value, "+")
+      )
+    )
+
   private def makeStreamingConnection
       : Stream[F, Streaming[[A] =>> Stream[F, A], String, ByteVector]] =
     RedisStream
       .mkStreamingConnection[F, String, ByteVector](client, StringBytesCodec.instance)
+
+  private def makeLettuceStreamingConnection[K, V](
+      codec: RedisCodec[K, V]
+  ): Resource[F, StatefulRedisConnection[K, V]] = {
+    val acquire =
+      FutureLift[F].lift(
+        client.underlying.connectAsync[K, V](codec.underlying, client.uri.underlying)
+      )
+
+    client.underlying.connect
+    val release: StatefulRedisConnection[K, V] => F[Unit] = c =>
+      FutureLift[F].lift(c.closeAsync()) *>
+        Log[F].info(s"Releasing Streaming connection: ${client.uri.underlying}")
+
+    Resource.make(acquire)(release)
+  }
 
   private def createStringCommands: Resource[F, RedisCommands[F, String, String]] =
     Redis[F].fromClient(client, RedisCodec.Utf8)

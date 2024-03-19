@@ -46,21 +46,25 @@ final case class MessageHeader(
     )
 
 object MessageHeader:
-  def apply(
+  def apply[F[_]: Clock: Functor](
       source: MessageSource,
       payloadSchema: Schema,
       dataContentType: DataContentType,
       schemaVersion: SchemaVersion,
       requestId: RequestId
-  ): MessageHeader =
-    MessageHeader(
-      source,
-      payloadSchema,
-      dataContentType,
-      schemaVersion,
-      CreationTime.now,
-      requestId
-    )
+  ): F[MessageHeader] =
+    CreationTime
+      .now[F]
+      .map(now =>
+        MessageHeader(
+          source,
+          payloadSchema,
+          dataContentType,
+          schemaVersion,
+          now,
+          requestId
+        )
+      )
 
 opaque type MessageSource = String
 object MessageSource:
@@ -76,8 +80,7 @@ object SchemaVersion:
 opaque type CreationTime = Instant
 object CreationTime:
   def apply(v: Instant): CreationTime = v
-  def now: CreationTime = Instant.now().truncatedTo(ChronoUnit.MILLIS)
-  def nowF[F[_]: Clock: Functor]: F[CreationTime] =
+  def now[F[_]: Clock: Functor]: F[CreationTime] =
     Clock[F].realTimeInstant.map(_.truncatedTo(ChronoUnit.MILLIS))
 
   extension (self: CreationTime) def value: Instant = self

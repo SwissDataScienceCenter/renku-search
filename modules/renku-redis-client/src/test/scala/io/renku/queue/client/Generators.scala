@@ -20,10 +20,19 @@ package io.renku.queue.client
 
 import org.apache.avro.Schema
 import org.scalacheck.Gen
+import java.time.Instant
 
 object Generators:
 
   val requestIdGen: Gen[RequestId] = Gen.uuid.map(_.toString).map(RequestId(_))
+
+  val creationTimeGen: Gen[CreationTime] =
+    Gen
+      .choose(
+        Instant.parse("2020-01-01T01:00:00Z").toEpochMilli(),
+        Instant.now().toEpochMilli()
+      )
+      .map(millis => CreationTime(Instant.ofEpochMilli(millis)))
 
   def messageHeaderGen(schema: Schema, contentType: DataContentType): Gen[MessageHeader] =
     messageHeaderGen(schema, Gen.const(contentType))
@@ -36,10 +45,12 @@ object Generators:
       contentType <- ctGen
       schemaVersion <- Gen.choose(1, 100).map(v => SchemaVersion(s"v$v"))
       requestId <- requestIdGen
+      creationTime <- creationTimeGen
     yield MessageHeader(
       MessageSource("test"),
       schema,
       contentType,
       schemaVersion,
+      creationTime,
       requestId
     )

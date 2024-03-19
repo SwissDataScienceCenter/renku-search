@@ -21,15 +21,15 @@ package io.renku.search.api.routes
 import cats.effect.Async
 import cats.syntax.all.*
 import io.circe.syntax.given
+import io.renku.search.BuildInfo
+import org.http4s.HttpRoutes
 import sttp.apispec.openapi.Server
 import sttp.apispec.openapi.circe.given
 import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.tapir.server.ServerEndpoint
-import sttp.tapir.server.http4s.Http4sServerInterpreter
-import sttp.tapir.server.http4s.Http4sServerOptions
+import sttp.tapir.server.http4s.{Http4sServerInterpreter, Http4sServerOptions}
 import sttp.tapir.server.interceptor.cors.CORSInterceptor
-import io.renku.search.BuildInfo
 
 final class OpenApiRoute[F[_]: Async](
     prefix: String,
@@ -52,7 +52,7 @@ final class OpenApiRoute[F[_]: Async](
       .description("OpenAPI docs")
       .serverLogic(_ => docs.asJson.spaces2.asRight.pure[F])
 
-  def routes =
+  val routes: HttpRoutes[F] =
     Http4sServerInterpreter[F](
       Http4sServerOptions.customiseInterceptors
         .corsInterceptor(CORSInterceptor.default)

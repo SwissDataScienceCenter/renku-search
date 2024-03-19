@@ -16,45 +16,33 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.provision
 
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
-import io.renku.search.api.routes.*
 import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
-import io.renku.solr.client.SolrConfig
+import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
-import org.http4s.{HttpApp, HttpRoutes, Response}
 
-object HttpApplication:
+private object Routes:
 
-  def apply[F[_]: Async: Network](solrConfig: SolrConfig): Resource[F, HttpApp[F]] =
-    for
-      search <- SearchApi[F](solrConfig).map(api => SearchRoutes[F](api))
-      metricsRoutes <- MetricsRoutes[F](
-        CollectorRegistryBuilder[F].withStandardJVMMetrics
-      ).makeRoutes(search.routes)
-    yield new HttpApplication[F](search, metricsRoutes).router
+  def apply[F[_]: Async: Network](
+      registryBuilder: CollectorRegistryBuilder[F]
+  ): Resource[F, HttpRoutes[F]] =
+    MetricsRoutes[F](registryBuilder).makeRoutes
+      .map(new Routes[F](_).routes)
 
-final class HttpApplication[F[_]: Async](
-    search: SearchRoutes[F],
-    metricsRoutes: HttpRoutes[F]
-) extends Http4sDsl[F]:
+final private class Routes[F[_]: Async](metricsRoutes: HttpRoutes[F])
+    extends Http4sDsl[F]:
 
-  private val prefix = "/search"
-
-  private val openapi =
-    OpenApiRoute[F](s"/api$prefix", "Renku Search API", search.endpoints)
-
-  private lazy val searchAndOperationRoutes =
+  private lazy val operationRoutes =
     Router[F](
-      prefix -> (openapi.routes <+> search.routes),
       "/" -> OperationRoutes[F]
     )
 
-  lazy val router: HttpApp[F] =
-    (searchAndOperationRoutes <+> metricsRoutes).orNotFound
+  lazy val routes: HttpRoutes[F] =
+    operationRoutes <+> metricsRoutes

@@ -49,7 +49,7 @@ object Microservice extends IOApp:
     }
 
   private def httpServerTask(collectorRegistryBuilder: CollectorRegistryBuilder[IO]) =
-    val io = HttpApplication[IO](collectorRegistryBuilder)
+    val io = Routes[IO](collectorRegistryBuilder)
       .flatMap(HttpServer.build(_, port))
       .use(_ => IO.never)
     "http server" -> io

@@ -31,28 +31,35 @@ import org.http4s.server.Router
 
 private object Routes:
 
-  def apply[F[_]: Async: Network](solrConfig: SolrConfig): Resource[F, HttpRoutes[F]] =
-    for
-      search <- SearchApi[F](solrConfig).map(api => SearchRoutes[F](api))
-      metricsRoutes <- MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics)
-        .makeRoutes(search.routes)
-    yield new Routes[F](search, metricsRoutes).routes
+  def apply[F[_]: Async: Network](solrConfig: SolrConfig): Routes[F] =
+    new Routes[F](
+      MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics),
+      solrConfig
+    )
 
-final private class Routes[F[_]: Async](
-    searchRoutes: SearchRoutes[F],
-    metricsRoutes: HttpRoutes[F]
+final private class Routes[F[_]: Async: Network](
+    metricsRoutes: MetricsRoutes[F],
+    solrConfig: SolrConfig
 ):
 
   private val prefix = "/search"
 
-  private val openapi =
-    OpenApiRoute[F](s"/api$prefix", "Renku Search API", searchRoutes.endpoints)
+  private lazy val makeSearchRoutes =
+    SearchApi[F](solrConfig).map(api => SearchRoutes[F](api))
 
-  private lazy val searchAndOperationRoutes =
+  private def searchHttpRoutes(searchRoutes: SearchRoutes[F]) =
     Router[F](
-      prefix -> (openapi.routes <+> searchRoutes.routes),
-      "/" -> OperationRoutes[F]
+      prefix -> (openApiRoute(searchRoutes).routes <+> searchRoutes.routes)
     )
 
-  lazy val routes: HttpRoutes[F] =
-    searchAndOperationRoutes <+> metricsRoutes
+  private def openApiRoute(searchRoutes: SearchRoutes[F]) =
+    OpenApiRoute[F](s"/api$prefix", "Renku Search API", searchRoutes.endpoints)
+
+  private lazy val operationHttpRoutes =
+    Router[F]("/" -> OperationRoutes[F])
+
+  lazy val makeRoutes: Resource[F, HttpRoutes[F]] =
+    for
+      searchRoutes <- makeSearchRoutes
+      measuredRoutes <- metricsRoutes.makeRoutes(searchHttpRoutes(searchRoutes))
+    yield measuredRoutes <+> operationHttpRoutes

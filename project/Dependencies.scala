@@ -14,7 +14,7 @@ object Dependencies {
     val catsScalaCheck = "0.3.2"
     val ciris = "3.5.0"
     val ducktape = "0.1.11"
-    val fs2 = "3.9.4"
+    val fs2 = "3.10.0"
     val http4s = "0.23.26"
     val redis4Cats = "1.6.0"
     val scalacheckEffectMunit = "1.0.4"

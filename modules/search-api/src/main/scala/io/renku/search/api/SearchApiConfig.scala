@@ -20,14 +20,21 @@ package io.renku.search.api
 
 import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
+import com.comcast.ip4s.port
 import io.renku.search.config.ConfigValues
+import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.SolrConfig
 
 final case class SearchApiConfig(
     solrConfig: SolrConfig,
+    httpServerConfig: HttpServerConfig,
     verbosity: Int
 )
 
 object SearchApiConfig:
   val config: ConfigValue[Effect, SearchApiConfig] =
-    (ConfigValues.solrConfig, ConfigValues.logLevel).mapN(SearchApiConfig.apply)
+    (
+      ConfigValues.solrConfig,
+      ConfigValues.httpServerConfig(port"8080"),
+      ConfigValues.logLevel
+    ).mapN(SearchApiConfig.apply)

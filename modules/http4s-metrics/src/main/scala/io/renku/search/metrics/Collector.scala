@@ -16,20 +16,9 @@
  * limitations under the License.
  */
 
-package io.renku.search.query.json
+package io.renku.search.metrics
 
-import io.bullet.borer.Json
-import io.renku.search.query.{Query, QueryGenerators}
-import munit.{FunSuite, ScalaCheckSuite}
-import org.scalacheck.Prop
+import io.prometheus.client.Collector as JCollector
 
-class QueryJsonSpec extends ScalaCheckSuite {
-
-  property("query json encode/decode") {
-    Prop.forAll(QueryGenerators.query) { q =>
-      val jsonStr = Json.encode(q).toUtf8String
-      val decoded = Json.decode(jsonStr.getBytes).to[Query].value
-      assertEquals(decoded, q)
-    }
-  }
-}
+trait Collector:
+  def asJCollector: JCollector

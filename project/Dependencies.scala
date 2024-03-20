@@ -14,15 +14,16 @@ object Dependencies {
     val catsScalaCheck = "0.3.2"
     val ciris = "3.5.0"
     val ducktape = "0.1.11"
-    val fs2 = "3.9.4"
+    val fs2 = "3.10.0"
     val http4s = "0.23.26"
+    val http4sPrometheusMetrics = "0.24.6"
     val redis4Cats = "1.6.0"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"
     val scodecBits = "1.1.38"
-    val scribe = "3.13.0"
-    val sttpApiSpec = "0.7.4"
-    val tapir = "1.9.11"
+    val scribe = "3.13.1"
+    val sttpApiSpec = "0.8.0"
+    val tapir = "1.10.0"
     val jwtScala = "10.0.0";
   }
 
@@ -101,6 +102,10 @@ object Dependencies {
   )
   val http4sServer = Seq(
     "org.http4s" %% "http4s-ember-server" % V.http4s
+  )
+  val http4sPrometheusMetrics = Seq(
+    "org.http4s" %% "http4s-server" % V.http4s,
+    "org.http4s" %% "http4s-prometheus-metrics" % V.http4sPrometheusMetrics
   )
 
   val scribe = Seq(

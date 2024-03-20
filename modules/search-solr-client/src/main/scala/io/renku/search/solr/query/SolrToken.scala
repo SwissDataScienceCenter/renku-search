@@ -26,10 +26,11 @@ import cats.syntax.all.*
 import io.renku.search.model.{EntityType, Id}
 
 import io.renku.search.model.projects.Visibility
-import io.renku.search.query.{Comparison, Field}
+import io.renku.search.query.Comparison
 import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.schema.FieldName
+import io.renku.search.model.projects.MemberRole
 
 opaque type SolrToken = String
 
@@ -43,17 +44,6 @@ object SolrToken:
       case EntityType.Project => SolrProject.entityType
       case EntityType.User    => SolrUser.entityType
 
-  def fromField(field: Field): SolrToken =
-    (field match
-      case Field.Id         => SolrField.id
-      case Field.Name       => SolrField.name
-      case Field.Slug       => SolrField.slug
-      case Field.Visibility => SolrField.visibility
-      case Field.CreatedBy  => SolrField.createdBy
-      case Field.Created    => SolrField.creationDate
-      case Field.Type       => SolrField.entityType
-    ).name
-
   def fromInstant(ts: Instant): SolrToken = StringEscape.escape(ts.toString, ":")
   def fromDateRange(min: Instant, max: Instant): SolrToken = s"[$min TO $max]"
 
@@ -66,33 +56,33 @@ object SolrToken:
   def contentAll(text: String): SolrToken =
     s"${SolrField.contentAll.name}:${StringEscape.queryChars(text)}"
 
-  def orFieldIs(field: Field, values: NonEmptyList[SolrToken]): SolrToken =
+  def orFieldIs(field: FieldName, values: NonEmptyList[SolrToken]): SolrToken =
     values.map(fieldIs(field, _)).toList.foldOr
 
-  def dateIs(field: Field, date: Instant): SolrToken = fieldIs(field, fromInstant(date))
-  def dateGt(field: Field, date: Instant): SolrToken =
-    fieldIs(field, s"[${fromInstant(date)} TO *]")
-  def dateLt(field: Field, date: Instant): SolrToken =
-    fieldIs(field, s"[* TO ${fromInstant(date)}]")
+  def createdDateIs(date: Instant): SolrToken =
+    fieldIs(SolrField.creationDate, fromInstant(date))
+  def createdDateGt(date: Instant): SolrToken =
+    fieldIs(SolrField.creationDate, s"[${fromInstant(date)} TO *]")
+  def createdDateLt(date: Instant): SolrToken =
+    fieldIs(SolrField.creationDate, s"[* TO ${fromInstant(date)}]")
 
-  val allTypes: SolrToken = fieldIs(Field.Type, "*")
+  val allTypes: SolrToken = fieldIs(SolrField.entityType, "*")
 
   val publicOnly: SolrToken =
-    fieldIs(Field.Visibility, fromVisibility(Visibility.Public))
+    fieldIs(SolrField.visibility, fromVisibility(Visibility.Public))
 
-  def ownerIs(id: Id): SolrToken = SolrField.owners.name === fromString(id.value)
-  def memberIs(id: Id): SolrToken = SolrField.members.name === fromString(id.value)
+  def ownerIs(id: Id): SolrToken = SolrField.owners.name === fromId(id)
+  def memberIs(id: Id): SolrToken = SolrField.members.name === fromId(id)
+
+  def roleIs(id: Id, role: MemberRole): SolrToken = role match
+    case MemberRole.Owner  => fieldIs(SolrField.owners, fromId(id))
+    case MemberRole.Member => fieldIs(SolrField.members, fromId(id))
+
+  def roleIn(id: Id, roles: NonEmptyList[MemberRole]): SolrToken =
+    roles.toList.distinct.map(roleIs(id, _)).foldOr
 
   def forUser(id: Id): SolrToken =
     Seq(publicOnly, ownerIs(id), memberIs(id)).foldOr
-
-  private def fieldOp(field: Field, op: Comparison, value: SolrToken): SolrToken =
-    val cmp = fromComparison(op)
-    val f = fromField(field)
-    f ~ cmp ~ value
-
-  def fieldIs(field: Field, value: SolrToken): SolrToken =
-    fieldOp(field, Comparison.Is, value)
 
   def fieldIs(field: FieldName, value: SolrToken): SolrToken =
     s"${field.name}:$value"

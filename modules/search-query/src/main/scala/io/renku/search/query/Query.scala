@@ -21,12 +21,10 @@ package io.renku.search.query
 import cats.data.NonEmptyList
 import cats.kernel.Monoid
 import cats.syntax.all.*
-import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.EntityType
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.FieldTerm.Created
 import io.renku.search.query.Query.Segment
-import io.renku.search.query.json.QueryJsonCodec
 import io.renku.search.query.parse.{QueryParser, QueryUtil}
 
 final case class Query(
@@ -44,9 +42,6 @@ final case class Query(
   def isEmpty: Boolean = segments.isEmpty
 
 object Query:
-  given Encoder[Query] = QueryJsonCodec.encoder.contramap(_.segments)
-  given Decoder[Query] = QueryJsonCodec.decoder.map(Query.apply)
-
   def parse(str: String): Either[String, Query] =
     val trimmed = str.trim
     if (trimmed.isEmpty) Right(empty)

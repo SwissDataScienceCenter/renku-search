@@ -20,6 +20,7 @@ package io.renku.search.api
 
 import cats.effect.{ExitCode, IO, IOApp}
 import io.renku.logging.LoggingSetup
+import io.renku.search.http.HttpServer
 
 object Microservice extends IOApp:
 
@@ -29,7 +30,7 @@ object Microservice extends IOApp:
     for {
       config <- loadConfig
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- HttpApplication[IO](config.solrConfig)
-        .flatMap(HttpServer.build)
+      _ <- Routes[IO](config.solrConfig).makeRoutes
+        .flatMap(HttpServer.build(_, config.httpServerConfig))
         .use(_ => IO.never)
     } yield ExitCode.Success

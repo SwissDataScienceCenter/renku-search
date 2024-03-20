@@ -65,14 +65,11 @@ object PushToRedis:
         )
 
       def createHeader(requestId: RequestId): F[MessageHeader] =
-        CreationTime.nowF.map { now =>
-          MessageHeader(
-            MessageSource(clientId.value),
-            ProjectAuthorizationRemoved.SCHEMA$,
-            DataContentType.Binary,
-            SchemaVersion.V1,
-            now,
-            requestId
-          )
-        }
+        MessageHeader[F](
+          MessageSource(clientId.value),
+          ProjectAuthorizationRemoved.SCHEMA$,
+          DataContentType.Binary,
+          SchemaVersion.V1,
+          requestId
+        )
     }

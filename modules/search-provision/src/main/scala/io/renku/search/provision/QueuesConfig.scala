@@ -33,7 +33,18 @@ final case class QueuesConfig(
     userAdded: QueueName,
     userUpdated: QueueName,
     userRemoved: QueueName
-)
+):
+  lazy val all: Set[QueueName] = Set(
+    projectCreated,
+    projectUpdated,
+    projectRemoved,
+    projectAuthorizationAdded,
+    projectAuthorizationUpdated,
+    projectAuthorizationRemoved,
+    userAdded,
+    userUpdated,
+    userRemoved
+  )
 
 object QueuesConfig:
   val config: ConfigValue[Effect, QueuesConfig] =

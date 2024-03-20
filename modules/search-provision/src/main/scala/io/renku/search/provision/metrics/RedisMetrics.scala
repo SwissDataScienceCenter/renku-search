@@ -16,23 +16,21 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.provision.metrics
 
-import cats.effect.{Async, Resource}
-import com.comcast.ip4s.{Port, ipv4, port}
-import fs2.io.net.Network
-import org.http4s.HttpApp
-import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.Server
+import cats.Monad
+import io.renku.queue.client.QueueClient
+import io.renku.redis.client.ClientId
 
-object HttpServer:
+object RedisMetrics:
 
-  val port: Port = port"8080"
+  val queueSizeGauge: QueueSizeGauge = QueueSizeGauge()
+  val unprocessedGauge: UnprocessedCountGauge = UnprocessedCountGauge()
 
-  def build[F[_]: Async: Network](app: HttpApp[F]): Resource[F, Server] =
-    EmberServerBuilder
-      .default[F]
-      .withHost(ipv4"0.0.0.0")
-      .withPort(port)
-      .withHttpApp(app)
-      .build
+  def updaterFactories[F[_]: Monad](
+      clientId: ClientId
+  ): List[QueueClient[F] => CollectorUpdater[F]] =
+    List(
+      new QueueSizeGaugeUpdater[F](_, queueSizeGauge),
+      new UnprocessedCountGaugeUpdater[F](clientId, _, unprocessedGauge)
+    )

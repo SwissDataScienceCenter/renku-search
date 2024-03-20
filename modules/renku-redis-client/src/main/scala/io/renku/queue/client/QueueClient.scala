@@ -45,6 +45,10 @@ trait QueueClient[F[_]]:
 
   def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
 
+  def getSize(queueName: QueueName): F[Long]
+
+  def getSize(queueName: QueueName, from: MessageId): F[Long]
+
 object QueueClient:
   def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
     RedisQueueClient.make[F](redisConfig).map(new QueueClientImpl[F](_))

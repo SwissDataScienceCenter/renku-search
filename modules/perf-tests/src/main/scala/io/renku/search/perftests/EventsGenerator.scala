@@ -29,10 +29,11 @@ object EventsGenerator extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     for
       given Random[IO] <- Random.scalaUtilRandom[IO]
+      config <- Config.parse[IO](args)
       _ <- DocumentsCreator
-        .make[IO](apiKeyFrom(args))
+        .make[IO](config.randommerIoApiKey)
         .map(df => EventsGeneratorImpl[IO](ProjectCreatedGenerator[IO](df)))
-        .use(_.generate(30).compile.toList.map(_.map(println)))
+        .use(_.generate(config.itemsToGenerate).compile.toList.map(_.map(println)))
     yield ExitCode.Success
 
   private def apiKeyFrom(args: List[String]) =

@@ -34,17 +34,14 @@ final class LuceneQueryInterpreter[F[_]: Monad]
   private val encoder = SolrTokenEncoder[F, Query]
 
   def run(ctx: Context[F], query: Query): F[SolrQuery] =
-    amendUserId(ctx.role) {
-      if (query.isEmpty) SolrQuery(SolrToken.allTypes).pure[F]
-      else encoder.encode(ctx, query)
-    }
+    amendQuery(ctx.role)(encoder.encode(ctx, query))
 
-  private def amendUserId(role: SearchRole)(sq: F[SolrQuery]): F[SolrQuery] =
+  private def amendQuery(role: SearchRole)(sq: F[SolrQuery]): F[SolrQuery] =
     sq.map { query =>
       role match
         case SearchRole.Anonymous => query.asAnonymous
         case SearchRole.User(id)  => query.asUser(id)
-        case SearchRole.Admin     => query
+        case SearchRole.Admin     => query.asAdmin
     }
 
 object LuceneQueryInterpreter:

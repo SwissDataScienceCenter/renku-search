@@ -18,21 +18,22 @@
 
 package io.renku.search.provision.user
 
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
+
 import io.renku.avro.codec.all.given
 import io.renku.events.EventsGenerators.{stringGen, userAddedGen}
 import io.renku.events.v1.{UserAdded, UserUpdated}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.solr.documents.{EntityDocument, User}
-import munit.CatsEffectSuite
-
-import scala.concurrent.duration.*
 import io.renku.search.provision.ProvisioningSuite
+import io.renku.search.solr.documents.{CompoundId, EntityDocument}
+import munit.CatsEffectSuite
 
 class UserUpdatedProvisioningSpec extends ProvisioningSuite:
   (firstNameUpdate :: lastNameUpdate :: emailUpdate :: noUpdate :: Nil).foreach {
@@ -57,7 +58,11 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalMap(_ => solrClient.findById[User](Id(userAdded.id)))
+                .evalMap(_ =>
+                  solrClient.findById[EntityDocument](
+                    CompoundId.userEntity(Id(userAdded.id))
+                  )
+                )
                 .evalMap(e => solrDoc.update(_ => e))
                 .compile
                 .drain

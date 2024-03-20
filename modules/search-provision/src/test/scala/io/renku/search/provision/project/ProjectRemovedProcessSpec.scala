@@ -34,7 +34,7 @@ import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
-import io.renku.search.solr.documents.{EntityDocument, Project}
+import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import munit.CatsEffectSuite
 
 class ProjectRemovedProcessSpec extends ProvisioningSuite:
@@ -42,7 +42,7 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
   test(s"can fetch events, decode them, and remove Solr"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        solrDoc <- SignallingRef.of[IO, Option[Project]](None)
+        solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
 
         provisioningFiber <- handlers.projectRemoved.compile.drain.start
 
@@ -52,7 +52,11 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
-            .evalMap(_ => solrClient.findById[Project](Id(created.id)))
+            .evalMap(_ =>
+              solrClient.findById[EntityDocument](
+                CompoundId.projectEntity(Id(created.id))
+              )
+            )
             .evalMap(e => solrDoc.update(_ => e))
             .compile
             .drain

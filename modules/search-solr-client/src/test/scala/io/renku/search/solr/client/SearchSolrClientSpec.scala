@@ -28,7 +28,7 @@ import io.renku.search.query.Query
 import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.EntityOps.*
-import io.renku.search.solr.documents.{EntityDocument, Project, User}
+import io.renku.search.solr.documents.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryData
 import munit.CatsEffectSuite
@@ -48,7 +48,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
           0
         )
         _ = assert(qr.responseBody.docs.map(_.noneScore) contains project)
-        gr <- client.findById[Project](project.id)
+        gr <- client.findById[EntityDocument](CompoundId.projectEntity(project.id))
         _ = assert(gr contains project)
       } yield ()
     }
@@ -66,7 +66,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
           0
         )
         _ = assert(qr.responseBody.docs.map(_.noneScore) contains user)
-        gr <- client.findById[User](user.id)
+        gr <- client.findById[EntityDocument](CompoundId.userEntity(user.id))
         _ = assert(gr contains user)
       } yield ()
     }

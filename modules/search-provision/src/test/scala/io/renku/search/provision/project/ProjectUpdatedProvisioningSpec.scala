@@ -19,10 +19,12 @@
 package io.renku.search.provision.project
 
 import scala.concurrent.duration.*
+
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
+
 import io.github.arainko.ducktape.*
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
@@ -31,7 +33,7 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.documents.{EntityDocument, Project}
+import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import munit.CatsEffectSuite
 
 class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
@@ -58,7 +60,11 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalMap(_ => solrClient.findById[Project](Id(created.id)))
+                .evalMap(_ =>
+                  solrClient.findById[EntityDocument](
+                    CompoundId.projectEntity(Id(created.id))
+                  )
+                )
                 .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
                 .compile
                 .drain

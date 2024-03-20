@@ -32,7 +32,7 @@ import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{Id, projects}
-import io.renku.search.solr.documents.{EntityDocument, Project}
+import io.renku.search.solr.documents.{CompoundId, EntityDocument, Project}
 import munit.CatsEffectSuite
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
@@ -42,7 +42,7 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
       test(s"can fetch events, decode them, and update docs in Solr in case of $name"):
         withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
           for
-            solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
+            solrDocs <- SignallingRef.of[IO, Set[EntityDocument]](Set.empty)
 
             provisioningFiber <- handlers.projectAuthUpdated.compile.drain.start
 
@@ -59,7 +59,11 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
             docsCollectorFiber <-
               Stream
                 .awakeEvery[IO](500 millis)
-                .evalMap(_ => solrClient.findById[Project](projectDoc.id))
+                .evalMap(_ =>
+                  solrClient.findById[EntityDocument](
+                    CompoundId.projectEntity(projectDoc.id)
+                  )
+                )
                 .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
                 .compile
                 .drain

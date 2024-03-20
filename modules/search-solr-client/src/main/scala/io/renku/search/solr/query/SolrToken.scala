@@ -23,26 +23,32 @@ import java.time.Instant
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import io.renku.search.model.{EntityType, Id}
 
-import io.renku.search.model.projects.Visibility
+import io.renku.search.model.projects.{MemberRole, Visibility}
+import io.renku.search.model.{EntityType, Id}
 import io.renku.search.query.Comparison
-import io.renku.search.solr.documents.{Project as SolrProject, User as SolrUser}
+import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.schema.FieldName
-import io.renku.search.model.projects.MemberRole
 
 opaque type SolrToken = String
 
 object SolrToken:
   val empty: SolrToken = ""
+
   def fromString(str: String): SolrToken = StringEscape.queryChars(str)
   def fromId(id: Id): SolrToken = fromString(id.value)
   def fromVisibility(v: Visibility): SolrToken = v.name
-  def fromEntityType(et: EntityType): SolrToken =
-    et match
-      case EntityType.Project => SolrProject.entityType
-      case EntityType.User    => SolrUser.entityType
+  private def fromEntityType(et: EntityType): SolrToken = et.name
+
+  def entityTypeIs(et: EntityType): SolrToken =
+    fieldIs(SolrField.entityType, fromEntityType(et))
+
+  def entityTypeIsAny(ets: NonEmptyList[EntityType]): SolrToken =
+    orFieldIs(SolrField.entityType, ets.map(fromEntityType))
+
+  def kindIs(kind: DocumentKind): SolrToken =
+    fieldIs(SolrField.kind, kind.name)
 
   def fromInstant(ts: Instant): SolrToken = StringEscape.escape(ts.toString, ":")
   def fromDateRange(min: Instant, max: Instant): SolrToken = s"[$min TO $max]"
@@ -66,7 +72,8 @@ object SolrToken:
   def createdDateLt(date: Instant): SolrToken =
     fieldIs(SolrField.creationDate, s"[* TO ${fromInstant(date)}]")
 
-  val allTypes: SolrToken = fieldIs(SolrField.entityType, "*")
+  lazy val allEntityTypes: SolrToken =
+    List(fieldIs(SolrField.entityType, "*"), kindIs(DocumentKind.Entity)).foldAnd
 
   val publicOnly: SolrToken =
     fieldIs(SolrField.visibility, fromVisibility(Visibility.Public))
@@ -86,6 +93,9 @@ object SolrToken:
 
   def fieldIs(field: FieldName, value: SolrToken): SolrToken =
     s"${field.name}:$value"
+
+  def fieldExists(field: FieldName): SolrToken =
+    fieldIs(field, "*")
 
   def unsafeFromString(s: String): SolrToken = s
 
@@ -107,7 +117,7 @@ object SolrToken:
     def &&(next: SolrToken): SolrToken = andMonoid.combine(self, next)
     def ||(next: SolrToken): SolrToken = orMonoid.combine(self, next)
     def ===(next: SolrToken): SolrToken = self ~ Comparison.Is.token ~ next
-    def parens: SolrToken = "(" ~ self ~ ")"
+    def parens: SolrToken = if (self.isEmpty) self else "(" ~ self ~ ")"
 
   extension (self: Comparison) def token: SolrToken = fromComparison(self)
 

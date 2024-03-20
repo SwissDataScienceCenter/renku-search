@@ -18,16 +18,30 @@
 
 package io.renku.search.perftests
 
+import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{ExitCode, IO, IOApp}
+import fs2.Stream
 
 object EventsGenerator extends IOApp:
 
+  private given UUIDGen[IO] = UUIDGen.fromSync[IO]
+
   def run(args: List[String]): IO[ExitCode] =
-    RandomDataFetcher
-      .make[IO](apiKeyFrom(args))
-      .map(UserAddedGenerator.apply)
-      .use(_.generateUserAdded.take(30).compile.toList.map(_.map(println)))
-      .as(ExitCode.Success)
+    for
+      given Random[IO] <- Random.scalaUtilRandom[IO]
+      _ <- DocumentsCreator
+        .make[IO](apiKeyFrom(args))
+        .map(df => EventsGeneratorImpl[IO](ProjectCreatedGenerator[IO](df)))
+        .use(_.generate(30).compile.toList.map(_.map(println)))
+    yield ExitCode.Success
 
   private def apiKeyFrom(args: List[String]) =
     args.headOption.getOrElse(sys.error("No API key given"))
+
+private class EventsGeneratorImpl[F[_]](
+    projectCreatedGenerator: ProjectCreatedGenerator[F]
+):
+
+  def generate(count: Int): Stream[F, NewProjectEvents] =
+    projectCreatedGenerator.generateNewProjectEvents
+      .take(count)

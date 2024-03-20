@@ -18,6 +18,7 @@
 
 package io.renku.search.perftests
 
+import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -25,9 +26,10 @@ import fs2.io.net.Network
 import io.bullet.borer.Decoder
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.users
+import io.renku.search.model.{Name, projects, users}
+import io.renku.search.solr.documents.{Project, User}
 import org.http4s.MediaType.application
-import org.http4s.Method.GET
+import org.http4s.Method.{GET, POST}
 import org.http4s.client.Client
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.headers.Accept
@@ -35,34 +37,102 @@ import org.http4s.implicits.*
 import org.http4s.{Header, MediaType, Method, Uri}
 import org.typelevel.ci.*
 
+/**
+ * For the API go here: https://randommer.io/api/swagger-docs/index.html
+ */
 object RandommerIoClient:
-  def make[F[_]: Async: Network](apiKey: String): Resource[F, RandomDataFetcher[F]] =
+  def make[F[_]: Async: Network: Random: UUIDGen](
+      apiKey: String
+  ): Resource[F, DocumentsCreator[F]] =
     EmberClientBuilder
       .default[F]
       .build
       .map(new RandommerIoClient[F](_, apiKey))
 
-private class RandommerIoClient[F[_]: Async](
+private class RandommerIoClient[F[_]: Async: Random: UUIDGen](
     client: Client[F],
     apiKey: String,
     chunkSize: Int = 20
-) extends RandomDataFetcher[F]
-    with HttpClientDsl[F]:
+) extends DocumentsCreator[F]
+    with HttpClientDsl[F]
+    with ModelTypesGenerators[F]:
 
-  override def findNames: Stream[F, (users.FirstName, users.LastName)] =
-    Stream.evals {
-      val req = get(
-        (api / "name")
-          .withQueryParam("nameType", "fullname")
-          .withQueryParam("quantity", chunkSize)
-      )
-      client.expect[List[String]](req).map(_.flatMap(toFirstAndLast))
-    } ++ findNames
+  override def findUser: Stream[F, User] =
+    Stream.evals(getUserNames).evalMap(toUser) ++ findUser
+
+  private lazy val getUserNames =
+    val req = get(
+      (api / "name")
+        .withQueryParam("nameType", "fullname")
+        .withQueryParam("quantity", chunkSize)
+    )
+    client.expect[List[String]](req).map(_.flatMap(toFirstAndLast))
+
+  private lazy val toUser: ((users.FirstName, users.LastName)) => F[User] = {
+    case (first, last) =>
+      generateId.map(id => User(id, first.some, last.some, Name(s"$first $last").some))
+  }
+
+  override def findProject: Stream[F, (Project, List[User])] =
+    Stream
+      .evals(getNames)
+      .zip(findUser.chunkN(2, allowFewer = false).map(_.toList))
+      .evalMap(toProject) ++ findProject
+
+  private lazy val toProject: ((Name, List[User])) => F[(Project, List[User])] = {
+    case (name, all @ user :: users) =>
+      (generateId, generateVisibility, getDescription, generateCreationDate).mapN {
+        case (id, visibility, desc, creationDate) =>
+          val slug = createSlug(name, user)
+          Project(
+            id,
+            name,
+            slug,
+            Seq(createRepo(slug)),
+            visibility,
+            desc,
+            createdBy = user.id,
+            creationDate
+          ) -> all
+      }
+    case (name, Nil) =>
+      new Exception("No users generated").raiseError[F, (Project, List[User])]
+  }
+
+  private def createSlug(name: Name, user: User) =
+    projects.Slug {
+      val nameConditioned = name.value.replace(" ", "_")
+      val namespace = user.name.map(_.value.replace(" ", "_")).getOrElse(nameConditioned)
+      s"$namespace/$nameConditioned"
+    }
+
+  private def createRepo(slug: projects.Slug) =
+    projects.Repository(s"https://github.com/$slug")
+
+  private lazy val getNames =
+    val req = get(
+      (api / "name" / "suggestions")
+        .withQueryParam("startingWords", "project proj")
+    )
+    client.expect[List[String]](req).map(_.map(Name.apply))
+
+  private lazy val getDescription =
+    val req = post(
+      (api / "Text" / "Review")
+        .withQueryParam("product", "renku")
+        .withQueryParam("quantity", "1")
+    )
+    client.expect[List[String]](req).map(_.headOption.map(projects.Description.apply))
 
   private lazy val api = uri"https://randommer.io/api"
 
   private def get(uri: Uri) =
     GET(uri)
+      .putHeaders(Accept(application.json))
+      .putHeaders(Header.Raw(ci"X-Api-Key", apiKey))
+
+  private def post(uri: Uri) =
+    POST(uri)
       .putHeaders(Accept(application.json))
       .putHeaders(Header.Raw(ci"X-Api-Key", apiKey))
 

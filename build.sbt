@@ -389,7 +389,8 @@ lazy val perfTests = project
   .dependsOn(
     commons % "compile->compile;test->test",
     httpClient % "compile->compile;test->test",
-    renkuRedisClient % "compile->compile;test->test"
+    renkuRedisClient % "compile->compile;test->test",
+    searchSolrClient % "compile->compile;test->test"
   )
 
 lazy val commonSettings = Seq(

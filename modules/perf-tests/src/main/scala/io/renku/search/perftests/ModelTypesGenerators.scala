@@ -18,12 +18,31 @@
 
 package io.renku.search.perftests
 
-import io.renku.search.model.Id
+import cats.Monad
+import cats.effect.std.{Random, UUIDGen}
+import cats.syntax.all.*
+import io.renku.events.v1.{ProjectMemberRole, Visibility}
+import io.renku.search.model.{Id, projects}
 
-import java.util.UUID
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.time.temporal.ChronoUnit.DAYS
 
-private object ModelTypesGenerators extends ModelTypesGenerators
+private trait ModelTypesGenerators[F[_]: Monad: Random: UUIDGen]:
 
-private trait ModelTypesGenerators:
-
-  def generateId: Id = Id(UUID.randomUUID().toString.replace("-", ""))
+  def generateId: F[Id] =
+    UUIDGen.randomString[F].map(_.replace("-", "").toUpperCase).map(Id(_))
+  def generateCreationDate: F[projects.CreationDate] =
+    Random[F]
+      .betweenLong(
+        Instant.now().minus(5 * 365, DAYS).toEpochMilli,
+        Instant.now().toEpochMilli
+      )
+      .map(Instant.ofEpochMilli)
+      .map(projects.CreationDate.apply)
+  def generateVisibility: F[projects.Visibility] =
+    Random[F].shuffleList(projects.Visibility.values.toList).map(_.head)
+  def generateV1Visibility: F[Visibility] =
+    Random[F].shuffleList(Visibility.values().toList).map(_.head)
+  def generateV1MemberRole: F[ProjectMemberRole] =
+    Random[F].shuffleList(ProjectMemberRole.values().toList).map(_.head)

@@ -18,25 +18,10 @@
 
 package io.renku.search.perftests
 
-import cats.MonadThrow
-import fs2.Stream
-import io.renku.events.v1.UserAdded
+import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectCreated, UserAdded}
 
-private trait UserAddedGenerator[F[_]]:
-  def generateUserAdded: Stream[F, UserAdded]
-
-private object UserAddedGenerator:
-  def apply[F[_]: MonadThrow](
-      randomDataFetcher: RandomDataFetcher[F]
-  ): UserAddedGenerator[F] =
-    new UserAddedGeneratorImpl[F](randomDataFetcher)
-
-private class UserAddedGeneratorImpl[F[_]: MonadThrow](
-    randomDataFetcher: RandomDataFetcher[F]
-) extends UserAddedGenerator[F]
-    with ModelTypesGenerators:
-
-  override def generateUserAdded: Stream[F, UserAdded] =
-    randomDataFetcher.findNames.map { case (first, last) =>
-      UserAdded(generateId.value, Some(first.value), Some(last.value), None)
-    }
+final private case class NewProjectEvents(
+    projectCreated: ProjectCreated,
+    users: List[UserAdded],
+    authAdded: List[ProjectAuthorizationAdded]
+)

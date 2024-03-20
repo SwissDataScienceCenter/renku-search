@@ -18,14 +18,18 @@
 
 package io.renku.search.perftests
 
+import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{Async, Resource}
 import fs2.Stream
 import fs2.io.net.Network
-import io.renku.search.model.users
+import io.renku.search.solr.documents.{Project, User}
 
-private trait RandomDataFetcher[F[_]]:
-  def findNames: Stream[F, (users.FirstName, users.LastName)]
+private trait DocumentsCreator[F[_]]:
+  def findUser: Stream[F, User]
+  def findProject: Stream[F, (Project, List[User])]
 
-private object RandomDataFetcher:
-  def make[F[_]: Async: Network](apiKey: String): Resource[F, RandomDataFetcher[F]] =
+private object DocumentsCreator:
+  def make[F[_]: Async: Network: Random: UUIDGen](
+      apiKey: String
+  ): Resource[F, DocumentsCreator[F]] =
     RandommerIoClient.make[F](apiKey)

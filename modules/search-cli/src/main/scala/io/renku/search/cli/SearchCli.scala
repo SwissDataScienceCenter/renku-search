@@ -16,38 +16,23 @@
  * limitations under the License.
  */
 
-package io.renku.search.perftests
+package io.renku.search.cli
 
-import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{ExitCode, IO}
+import cats.syntax.all.*
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
-import fs2.Stream
+import io.renku.search.cli.perftests.PerfTestsRunner
 
-object EventsGenerator
+object SearchCli
     extends CommandIOApp(
-      name = "perf-tests",
-      header = "A set of tools to generate data and provision search services",
+      name = "search-cli",
+      header = "A set of tools to work with the search services",
       version = "0.0.1"
     ):
 
-  private given UUIDGen[IO] = UUIDGen.fromSync[IO]
-
   override def main: Opts[IO[ExitCode]] =
     CliConfig.configOpts.map { config =>
-      for
-        given Random[IO] <- Random.scalaUtilRandom[IO]
-        _ <- DocumentsCreator
-          .make[IO](config.randommerIoApiKey)
-          .map(df => EventsGeneratorImpl[IO](ProjectCreatedGenerator[IO](df)))
-          .use(_.generate(config.itemsToGenerate).compile.toList.map(_.map(println)))
+      for _ <- config.perfTestConfig.fold(().pure[IO])(PerfTestsRunner.run)
       yield ExitCode.Success
     }
-
-private class EventsGeneratorImpl[F[_]](
-    projectCreatedGenerator: ProjectCreatedGenerator[F]
-):
-
-  def generate(count: Int): Stream[F, NewProjectEvents] =
-    projectCreatedGenerator.generateNewProjectEvents
-      .take(count)

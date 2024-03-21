@@ -16,20 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.search.perftests
+package io.renku.search.cli.perftests
 
+import cats.MonadThrow
 import cats.effect.std.{Random, UUIDGen}
-import cats.effect.{Async, Resource}
 import fs2.Stream
-import fs2.io.net.Network
-import io.renku.search.solr.documents.{Project, User}
 
-private trait DocumentsCreator[F[_]]:
-  def findUser: Stream[F, User]
-  def findProject: Stream[F, (Project, List[User])]
+private trait EventsGenerator[F[_]]:
+  def generate(count: Int): Stream[F, NewProjectEvents]
 
-private object DocumentsCreator:
-  def make[F[_]: Async: Network: Random: UUIDGen](
-      apiKey: String
-  ): Resource[F, DocumentsCreator[F]] =
-    RandommerIoClient.make[F](apiKey)
+private object EventsGenerator:
+  def apply[F[_]: MonadThrow: Random: UUIDGen](
+      docsCreator: DocumentsCreator[F]
+  ): EventsGenerator[F] =
+    new EventsGeneratorImpl[F](ProjectEventsGenerator[F](docsCreator))
+
+private class EventsGeneratorImpl[F[_]](
+    projectCreatedGenerator: ProjectEventsGenerator[F]
+) extends EventsGenerator[F]:
+
+  override def generate(count: Int): Stream[F, NewProjectEvents] =
+    projectCreatedGenerator.newProjectEvents
+      .take(count)

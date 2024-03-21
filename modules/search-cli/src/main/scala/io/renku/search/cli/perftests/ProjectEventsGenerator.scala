@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.perftests
+package io.renku.search.cli.perftests
 
 import cats.MonadThrow
 import cats.effect.std.{Random, UUIDGen}
@@ -27,22 +27,22 @@ import io.renku.events.v1.ProjectMemberRole.OWNER
 import io.renku.search.model.{Id, Name}
 import io.renku.search.solr.documents.{Project, User}
 
-private trait ProjectCreatedGenerator[F[_]]:
-  def generateNewProjectEvents: Stream[F, NewProjectEvents]
+private trait ProjectEventsGenerator[F[_]]:
+  def newProjectEvents: Stream[F, NewProjectEvents]
 
-private object ProjectCreatedGenerator:
+private object ProjectEventsGenerator:
   def apply[F[_]: MonadThrow: Random: UUIDGen](
-      randomDataFetcher: DocumentsCreator[F]
-  ): ProjectCreatedGenerator[F] =
-    new ProjectCreatedGeneratorImpl[F](randomDataFetcher)
+      docsCreator: DocumentsCreator[F]
+  ): ProjectEventsGenerator[F] =
+    new ProjectEventsGeneratorImpl[F](docsCreator)
 
-private class ProjectCreatedGeneratorImpl[F[_]: MonadThrow: Random: UUIDGen](
-    documentsCreator: DocumentsCreator[F]
-) extends ProjectCreatedGenerator[F]
+private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: Random: UUIDGen](
+    docsCreator: DocumentsCreator[F]
+) extends ProjectEventsGenerator[F]
     with ModelTypesGenerators[F]:
 
-  override def generateNewProjectEvents: Stream[F, NewProjectEvents] =
-    documentsCreator.findProject
+  override def newProjectEvents: Stream[F, NewProjectEvents] =
+    docsCreator.findProject
       .evalMap(toNewProjectEvents)
 
   private def toNewProjectEvents(t: (Project, List[User])): F[NewProjectEvents] =

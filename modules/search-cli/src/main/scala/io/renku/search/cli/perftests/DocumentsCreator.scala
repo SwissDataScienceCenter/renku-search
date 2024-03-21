@@ -16,12 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.search.perftests
+package io.renku.search.cli.perftests
 
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectCreated, UserAdded}
+import cats.effect.std.{Random, UUIDGen}
+import cats.effect.{Async, Resource}
+import fs2.Stream
+import fs2.io.net.Network
+import io.renku.search.solr.documents.{Project, User}
 
-final private case class NewProjectEvents(
-    projectCreated: ProjectCreated,
-    users: List[UserAdded],
-    authAdded: List[ProjectAuthorizationAdded]
-)
+private trait DocumentsCreator[F[_]]:
+  def findUser: Stream[F, User]
+  def findProject: Stream[F, (Project, List[User])]
+
+private object DocumentsCreator:
+  def make[F[_]: Async: Network: Random: UUIDGen](
+      apiKey: String
+  ): Resource[F, DocumentsCreator[F]] =
+    RandommerIoDocsCreator.make[F](apiKey)

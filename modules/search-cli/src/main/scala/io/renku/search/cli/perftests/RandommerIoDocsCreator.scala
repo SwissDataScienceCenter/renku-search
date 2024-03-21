@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.perftests
+package io.renku.search.cli.perftests
 
 import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{Async, Resource}
@@ -37,19 +37,17 @@ import org.http4s.implicits.*
 import org.http4s.{Header, MediaType, Method, Uri}
 import org.typelevel.ci.*
 
-/**
- * For the API go here: https://randommer.io/api/swagger-docs/index.html
- */
-object RandommerIoClient:
+/** For the API go here: https://randommer.io/api/swagger-docs/index.html */
+object RandommerIoDocsCreator:
   def make[F[_]: Async: Network: Random: UUIDGen](
       apiKey: String
   ): Resource[F, DocumentsCreator[F]] =
     EmberClientBuilder
       .default[F]
       .build
-      .map(new RandommerIoClient[F](_, apiKey))
+      .map(new RandommerIoDocsCreator[F](_, apiKey))
 
-private class RandommerIoClient[F[_]: Async: Random: UUIDGen](
+private class RandommerIoDocsCreator[F[_]: Async: Random: UUIDGen](
     client: Client[F],
     apiKey: String,
     chunkSize: Int = 20

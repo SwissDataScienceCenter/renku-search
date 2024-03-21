@@ -65,7 +65,7 @@ lazy val root = project
     searchSolrClient,
     searchProvision,
     searchApi,
-    perfTests
+    searchCli
   )
 
 lazy val commons = project
@@ -374,15 +374,15 @@ lazy val searchApi = project
   )
   .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
 
-lazy val perfTests = project
-  .in(file("modules/perf-tests"))
+lazy val searchCli = project
+  .in(file("modules/search-cli"))
   .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
-  .withId("perf-tests")
+  .withId("search-cli")
   .settings(commonSettings)
   .settings(
-    name := "perf-tests",
-    description := "A set of tools for performance testing",
+    name := "search-cli",
+    description := "A set of CLI tools",
     libraryDependencies ++=
       Dependencies.decline ++
         Dependencies.http4sClient

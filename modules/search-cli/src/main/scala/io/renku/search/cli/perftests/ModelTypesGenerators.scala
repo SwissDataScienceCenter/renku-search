@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.perftests
+package io.renku.search.cli.perftests
 
 import cats.Monad
 import cats.effect.std.{Random, UUIDGen}

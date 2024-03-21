@@ -39,7 +39,7 @@ final case class SolrQuery(
       List(
         query.parens,
         SolrToken.publicOnly,
-        SolrToken.kindIs(DocumentKind.Entity)
+        SolrToken.kindIs(DocumentKind.FullEntity)
       ).foldAnd,
       sort
     )
@@ -49,13 +49,13 @@ final case class SolrQuery(
       List(
         query.parens,
         SolrToken.forUser(id),
-        SolrToken.kindIs(DocumentKind.Entity)
+        SolrToken.kindIs(DocumentKind.FullEntity)
       ).foldAnd,
       sort
     )
 
   def asAdmin: SolrQuery =
-    SolrQuery(List(query, SolrToken.kindIs(DocumentKind.Entity)).foldAnd, sort)
+    SolrQuery(List(query, SolrToken.kindIs(DocumentKind.FullEntity)).foldAnd, sort)
 
 object SolrQuery:
   val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)

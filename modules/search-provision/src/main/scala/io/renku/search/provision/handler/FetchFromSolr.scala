@@ -33,7 +33,6 @@ import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.query.SolrToken
-import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryData
 import io.renku.solr.client.QueryString
 
@@ -78,8 +77,8 @@ object FetchFromSolr:
           List(
             SolrToken.entityTypeIs(EntityType.Project),
             List(
-              SolrToken.fieldIs(Fields.owners, SolrToken.fromId(userId)),
-              SolrToken.fieldIs(Fields.members, SolrToken.fromId(userId))
+              SolrToken.ownerIs(userId),
+              SolrToken.memberIs(userId)
             ).foldOr
           ).foldAnd.value
         )

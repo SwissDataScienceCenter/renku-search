@@ -35,6 +35,6 @@ object SearchApiConfig:
   val config: ConfigValue[Effect, SearchApiConfig] =
     (
       ConfigValues.solrConfig,
-      ConfigValues.httpServerConfig(port"8080"),
+      ConfigValues.httpServerConfig("SEARCH", port"8080"),
       ConfigValues.logLevel
     ).mapN(SearchApiConfig.apply)

@@ -33,6 +33,7 @@ import io.renku.search.query.Query
 import io.renku.search.query.QueryGenerators
 import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
@@ -74,24 +75,27 @@ class LuceneQueryInterpreterSpec
   test("amend query with auth data"):
     assertEquals(
       query("help", SearchRole.user(model.Id("13"))).query,
-      "(content_all:help) AND (visibility:public OR owners:13 OR members:13)"
+      "((content_all:help) AND (visibility:public OR owners:13 OR members:13) AND _kind:fullentity)"
     )
     assertEquals(
       query("help", SearchRole.Anonymous).query,
-      "(content_all:help) AND visibility:public"
+      "((content_all:help) AND visibility:public AND _kind:fullentity)"
     )
-    assertEquals(query("help", SearchRole.Admin).query, "content_all:help")
+    assertEquals(
+      query("help", SearchRole.Admin).query,
+      "(content_all:help AND _kind:fullentity)"
+    )
 
   test("amend empty query with auth data"):
     assertEquals(
       query("", SearchRole.user(model.Id("13"))).query,
-      "(_type:*) AND (visibility:public OR owners:13 OR members:13)"
+      "((visibility:public OR owners:13 OR members:13) AND _kind:fullentity)"
     )
     assertEquals(
       query("", SearchRole.Anonymous).query,
-      "(_type:*) AND visibility:public"
+      "(visibility:public AND _kind:fullentity)"
     )
-    assertEquals(query("", SearchRole.Admin).query, "_type:*")
+    assertEquals(query("", SearchRole.Admin).query, "(_kind:fullentity)")
 
   test("valid content_all query"):
     withSolr.use { client =>
@@ -112,7 +116,8 @@ class LuceneQueryInterpreterSpec
     val doc = Map(
       Fields.id.name -> "one",
       Fields.name.name -> "John",
-      Fields.entityType.name -> EntityType.User.name
+      Fields.entityType.name -> EntityType.User.name,
+      Fields.kind.name -> DocumentKind.FullEntity.name
     )
     PropF.forAllF(QueryGenerators.sortTerm) { order =>
       val q = Query(Query.Segment.Sort(order))

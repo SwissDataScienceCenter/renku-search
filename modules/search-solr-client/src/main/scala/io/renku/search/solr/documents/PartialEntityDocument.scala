@@ -61,6 +61,6 @@ object PartialEntityDocument:
   object Project:
     given Encoder[Project] =
       EncoderSupport.deriveWith(
-        DocumentKind.Partial.additionalField,
+        DocumentKind.PartialEntity.additionalField,
         EncoderSupport.AdditionalFields.productPrefix(SolrField.entityType.name)
       )

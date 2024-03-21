@@ -41,6 +41,8 @@ object SolrToken:
   def fromVisibility(v: Visibility): SolrToken = v.name
   private def fromEntityType(et: EntityType): SolrToken = et.name
 
+  def idIs(id: Id): SolrToken = fieldIs(SolrField.id, fromId(id))
+
   def entityTypeIs(et: EntityType): SolrToken =
     fieldIs(SolrField.entityType, fromEntityType(et))
 
@@ -73,17 +75,17 @@ object SolrToken:
     fieldIs(SolrField.creationDate, s"[* TO ${fromInstant(date)}]")
 
   lazy val allEntityTypes: SolrToken =
-    List(fieldIs(SolrField.entityType, "*"), kindIs(DocumentKind.Entity)).foldAnd
+    List(fieldIs(SolrField.entityType, "*"), kindIs(DocumentKind.FullEntity)).foldAnd
 
   val publicOnly: SolrToken =
     fieldIs(SolrField.visibility, fromVisibility(Visibility.Public))
 
-  def ownerIs(id: Id): SolrToken = SolrField.owners.name === fromId(id)
-  def memberIs(id: Id): SolrToken = SolrField.members.name === fromId(id)
+  def ownerIs(id: Id): SolrToken = fieldIs(SolrField.owners, fromId(id))
+  def memberIs(id: Id): SolrToken = fieldIs(SolrField.members, fromId(id))
 
   def roleIs(id: Id, role: MemberRole): SolrToken = role match
-    case MemberRole.Owner  => fieldIs(SolrField.owners, fromId(id))
-    case MemberRole.Member => fieldIs(SolrField.members, fromId(id))
+    case MemberRole.Owner  => ownerIs(id)
+    case MemberRole.Member => memberIs(id)
 
   def roleIn(id: Id, roles: NonEmptyList[MemberRole]): SolrToken =
     roles.toList.distinct.map(roleIs(id, _)).foldOr

@@ -23,7 +23,6 @@ import cats.syntax.all.*
 import io.renku.search.model.EntityType
 import io.renku.search.model.Id
 import io.renku.search.solr.query.SolrToken
-import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.{QueryData, QueryString}
 
 final case class CompoundId(
@@ -33,7 +32,7 @@ final case class CompoundId(
 ):
   private[solr] def toQuery: SolrToken =
     List(
-      SolrToken.fieldIs(Fields.id, SolrToken.fromId(id)),
+      SolrToken.idIs(id),
       SolrToken.kindIs(kind),
       entityType.map(SolrToken.entityTypeIs).getOrElse(SolrToken.empty)
     ).foldAnd
@@ -43,10 +42,10 @@ final case class CompoundId(
 
 object CompoundId:
   def partial(id: Id, entityType: Option[EntityType] = None): CompoundId =
-    CompoundId(id, DocumentKind.Partial, entityType)
+    CompoundId(id, DocumentKind.PartialEntity, entityType)
 
   def entity(id: Id, entityType: Option[EntityType] = None): CompoundId =
-    CompoundId(id, DocumentKind.Entity, entityType)
+    CompoundId(id, DocumentKind.FullEntity, entityType)
 
   def projectEntity(id: Id): CompoundId = entity(id, EntityType.Project.some)
   def userEntity(id: Id): CompoundId = entity(id, EntityType.User.some)

@@ -69,7 +69,7 @@ final case class Project(
 object Project:
   given Encoder[Project] =
     EncoderSupport.deriveWith(
-      DocumentKind.Entity.additionalField,
+      DocumentKind.FullEntity.additionalField,
       EncoderSupport.AdditionalFields.productPrefix(Fields.entityType.name)
     )
 
@@ -84,7 +84,7 @@ final case class User(
 object User:
   given Encoder[User] =
     EncoderSupport.deriveWith(
-      DocumentKind.Entity.additionalField,
+      DocumentKind.FullEntity.additionalField,
       EncoderSupport.AdditionalFields.productPrefix(Fields.entityType.name),
       EncoderSupport.AdditionalFields.const[User, String](
         Fields.visibility.name -> Visibility.Public.name

@@ -44,7 +44,8 @@
   };
 
   solr-recreate-cores = writeShellScriptBin "solr-recreate-cores" ''
-    script=$([ "$(which cnt-solr-recreate-core)" != "" ] && echo "cnt-solr-recreate-core" || echo "vm-solr-recreate-core")
+    set +e
+    script=$([ "$(which cnt-solr-recreate-core 2> /dev/null)" != "" ] && echo "cnt-solr-recreate-core" || echo "vm-solr-recreate-core")
     for c in $@; do
         $script $c
     done

@@ -76,6 +76,8 @@
             RS_REDIS_PORT = "6379";
             RS_CONTAINER = "rsdev";
             RS_LOG_LEVEL = "3";
+            RS_SEARCH_HTTP_SERVER_PORT = "8080";
+            RS_PROVISION_HTTP_SERVER_PORT = "8082";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";
@@ -96,6 +98,8 @@
             RS_REDIS_PORT = "16379";
             VM_SSH_PORT = "10022";
             RS_LOG_LEVEL = "3";
+            RS_SEARCH_HTTP_SERVER_PORT = "8080";
+            RS_PROVISION_HTTP_SERVER_PORT = "8082";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";

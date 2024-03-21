@@ -24,8 +24,8 @@ import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.EncoderSupport
 
 enum DocumentKind:
-  case Entity
-  case Partial
+  case FullEntity
+  case PartialEntity
 
   val name: String = productPrefix.toLowerCase
 

@@ -22,5 +22,5 @@ private object QueueDelivery:
       override val encoder: AvroEncoder[O] = AvroEncoder[O]
 
   given Show[QueueDelivery] = Show.show { delivery =>
-    s"""Event for '${delivery.queue}' queue: '${delivery.payload}'"""
+    s"""'${delivery.queue}' queue: '${delivery.payload}'"""
   }

@@ -384,7 +384,8 @@ lazy val perfTests = project
     name := "perf-tests",
     description := "A set of tools for performance testing",
     libraryDependencies ++=
-      Dependencies.http4sClient
+      Dependencies.decline ++
+        Dependencies.http4sClient
   )
   .dependsOn(
     commons % "compile->compile;test->test",

@@ -13,6 +13,7 @@ object Dependencies {
     val catsParse = "1.0.0"
     val catsScalaCheck = "0.3.2"
     val ciris = "3.5.0"
+    val decline = "2.4.1"
     val ducktape = "0.1.11"
     val fs2 = "3.10.0"
     val http4s = "0.23.26"
@@ -81,6 +82,11 @@ object Dependencies {
 
   val catsEffectMunit = Seq(
     "org.typelevel" %% "munit-cats-effect-3" % V.catsEffectMunit
+  )
+
+  val decline = Seq(
+    "com.monovore" %% "decline" % V.decline,
+    "com.monovore" %% "decline-effect" % V.decline
   )
 
   val ducktape = Seq(

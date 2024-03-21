@@ -19,25 +19,30 @@
 package io.renku.search.perftests
 
 import cats.effect.std.{Random, UUIDGen}
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{ExitCode, IO}
+import com.monovore.decline.Opts
+import com.monovore.decline.effect.CommandIOApp
 import fs2.Stream
 
-object EventsGenerator extends IOApp:
+object EventsGenerator
+    extends CommandIOApp(
+      name = "perf-tests",
+      header = "A set of tools to generate data and provision search services",
+      version = "0.0.1"
+    ):
 
   private given UUIDGen[IO] = UUIDGen.fromSync[IO]
 
-  def run(args: List[String]): IO[ExitCode] =
-    for
-      given Random[IO] <- Random.scalaUtilRandom[IO]
-      config <- Config.parse[IO](args)
-      _ <- DocumentsCreator
-        .make[IO](config.randommerIoApiKey)
-        .map(df => EventsGeneratorImpl[IO](ProjectCreatedGenerator[IO](df)))
-        .use(_.generate(config.itemsToGenerate).compile.toList.map(_.map(println)))
-    yield ExitCode.Success
-
-  private def apiKeyFrom(args: List[String]) =
-    args.headOption.getOrElse(sys.error("No API key given"))
+  override def main: Opts[IO[ExitCode]] =
+    CliConfig.configOpts.map { config =>
+      for
+        given Random[IO] <- Random.scalaUtilRandom[IO]
+        _ <- DocumentsCreator
+          .make[IO](config.randommerIoApiKey)
+          .map(df => EventsGeneratorImpl[IO](ProjectCreatedGenerator[IO](df)))
+          .use(_.generate(config.itemsToGenerate).compile.toList.map(_.map(println)))
+      yield ExitCode.Success
+    }
 
 private class EventsGeneratorImpl[F[_]](
     projectCreatedGenerator: ProjectCreatedGenerator[F]

@@ -18,7 +18,6 @@
 
 package io.renku.search.cli.perftests
 
-import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -37,7 +36,7 @@ import org.http4s.headers.Accept
 import org.http4s.{Header, MediaType, Method, Uri}
 
 private object GitLabDocsCreator:
-  def make[F[_]: Async: Network: Random: UUIDGen](
+  def make[F[_]: Async: Network: ModelTypesGenerators](
       gitLabUri: Uri
   ): Resource[F, DocumentsCreator[F]] =
     EmberClientBuilder
@@ -45,12 +44,11 @@ private object GitLabDocsCreator:
       .build
       .map(new GitLabDocsCreator[F](_, gitLabUri))
 
-private class GitLabDocsCreator[F[_]: Async: Random: UUIDGen](
+private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     client: Client[F],
     gitLabUri: Uri
 ) extends DocumentsCreator[F]
-    with HttpClientDsl[F]
-    with ModelTypesGenerators[F]:
+    with HttpClientDsl[F]:
 
   override def findUser: Stream[F, User] =
     Stream.empty

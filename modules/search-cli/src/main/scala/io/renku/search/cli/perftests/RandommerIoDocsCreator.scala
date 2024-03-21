@@ -18,7 +18,6 @@
 
 package io.renku.search.cli.perftests
 
-import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -39,7 +38,7 @@ import org.typelevel.ci.*
 
 /** For the API go here: https://randommer.io/api/swagger-docs/index.html */
 object RandommerIoDocsCreator:
-  def make[F[_]: Async: Network: Random: UUIDGen](
+  def make[F[_]: Async: Network: ModelTypesGenerators](
       apiKey: String
   ): Resource[F, DocumentsCreator[F]] =
     EmberClientBuilder
@@ -47,13 +46,14 @@ object RandommerIoDocsCreator:
       .build
       .map(new RandommerIoDocsCreator[F](_, apiKey))
 
-private class RandommerIoDocsCreator[F[_]: Async: Random: UUIDGen](
+private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
     client: Client[F],
     apiKey: String,
     chunkSize: Int = 20
 ) extends DocumentsCreator[F]
-    with HttpClientDsl[F]
-    with ModelTypesGenerators[F]:
+    with HttpClientDsl[F]:
+
+  private val gens = ModelTypesGenerators[F]
 
   override def findUser: Stream[F, User] =
     Stream.evals(getUserNames).evalMap(toUser) ++ findUser
@@ -68,7 +68,9 @@ private class RandommerIoDocsCreator[F[_]: Async: Random: UUIDGen](
 
   private lazy val toUser: ((users.FirstName, users.LastName)) => F[User] = {
     case (first, last) =>
-      generateId.map(id => User(id, first.some, last.some, Name(s"$first $last").some))
+      gens.generateId.map(id =>
+        User(id, first.some, last.some, Name(s"$first $last").some)
+      )
   }
 
   override def findProject: Stream[F, (Project, List[User])] =
@@ -79,19 +81,23 @@ private class RandommerIoDocsCreator[F[_]: Async: Random: UUIDGen](
 
   private lazy val toProject: ((Name, List[User])) => F[(Project, List[User])] = {
     case (name, all @ user :: users) =>
-      (generateId, generateVisibility, getDescription, generateCreationDate).mapN {
-        case (id, visibility, desc, creationDate) =>
-          val slug = createSlug(name, user)
-          Project(
-            id,
-            name,
-            slug,
-            Seq(createRepo(slug)),
-            visibility,
-            desc,
-            createdBy = user.id,
-            creationDate
-          ) -> all
+      (
+        gens.generateId,
+        gens.generateVisibility,
+        getDescription,
+        gens.generateCreationDate
+      ).mapN { case (id, visibility, desc, creationDate) =>
+        val slug = createSlug(name, user)
+        Project(
+          id,
+          name,
+          slug,
+          Seq(createRepo(slug)),
+          visibility,
+          desc,
+          createdBy = user.id,
+          creationDate
+        ) -> all
       }
     case (name, Nil) =>
       new Exception("No users generated").raiseError[F, (Project, List[User])]

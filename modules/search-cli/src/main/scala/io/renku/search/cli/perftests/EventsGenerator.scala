@@ -19,14 +19,13 @@
 package io.renku.search.cli.perftests
 
 import cats.MonadThrow
-import cats.effect.std.{Random, UUIDGen}
 import fs2.Stream
 
 private trait EventsGenerator[F[_]]:
   def generate(count: Int): Stream[F, NewProjectEvents]
 
 private object EventsGenerator:
-  def apply[F[_]: MonadThrow: Random: UUIDGen](
+  def apply[F[_]: MonadThrow: ModelTypesGenerators](
       docsCreator: DocumentsCreator[F]
   ): EventsGenerator[F] =
     new EventsGeneratorImpl[F](ProjectEventsGenerator[F](docsCreator))

@@ -18,7 +18,6 @@
 
 package io.renku.search.cli.perftests
 
-import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{Async, Resource}
 import fs2.Stream
 import fs2.io.net.Network
@@ -29,7 +28,7 @@ private trait DocumentsCreator[F[_]]:
   def findProject: Stream[F, (Project, List[User])]
 
 private object DocumentsCreator:
-  def make[F[_]: Async: Network: Random: UUIDGen](
+  def make[F[_]: Async: Network: ModelTypesGenerators](
       apiKey: String
   ): Resource[F, DocumentsCreator[F]] =
     RandommerIoDocsCreator.make[F](apiKey)

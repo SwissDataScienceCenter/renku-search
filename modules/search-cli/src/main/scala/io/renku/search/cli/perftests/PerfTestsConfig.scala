@@ -20,11 +20,13 @@ package io.renku.search.cli.perftests
 
 import cats.syntax.all.*
 import com.monovore.decline.Opts
+import io.renku.redis.client.*
 import org.http4s.Uri
 
 final case class PerfTestsConfig(
     itemsToGenerate: Int,
-    providers: List[Provider]
+    providers: List[Provider],
+    dryRun: DryRun
 )
 
 object PerfTestsConfig:
@@ -36,7 +38,51 @@ object PerfTestsConfig:
       .validate("`items-to-generate` must be greater than 0")(_ > 0)
 
   val configOpts: Opts[PerfTestsConfig] =
-    (itemsToGenerate, Provider.configOpts).mapN(PerfTestsConfig.apply)
+    (itemsToGenerate, Provider.configOpts, DryRun.configOpts)
+      .mapN(PerfTestsConfig.apply)
+
+sealed private trait DryRun:
+  val widen: DryRun = this
+
+private object DryRun:
+  case object Yes extends DryRun
+  final case class No(redisConfig: RedisConfig) extends DryRun
+
+  private val dryRun =
+    Opts
+      .flag("dry-run", "To run without enqueueing to Redis")
+      .map(_ => Yes)
+
+  val configOpts: Opts[DryRun] =
+    dryRun.orElse(RedisConfigOpts.configOpts.map(No.apply))
+
+private object RedisConfigOpts:
+
+  private val host: Opts[RedisHost] =
+    Opts.option[String]("redis-host", "Redis host").map(RedisHost.apply)
+  private val port: Opts[RedisPort] =
+    Opts.option[Int]("redis-port", "Redis port").map(RedisPort.apply)
+  private val sentinel: Opts[Boolean] =
+    Opts.flag("sentinel", "if Redis in Sentinel setup").orFalse
+  private val db: Opts[RedisDB] =
+    Opts
+      .option[Int]("redis-db", "Redis DB")
+      .withDefault(3)
+      .map(RedisDB.apply)
+  private val password: Opts[Option[RedisPassword]] =
+    Opts
+      .option[String]("redis-password", "Redis password")
+      .map(RedisPassword.apply)
+      .orNone
+  private val masterSet: Opts[Option[RedisMasterSet]] =
+    Opts
+      .option[String]("redis-masterset", "Redis masterset")
+      .map(RedisMasterSet.apply)
+      .orNone
+
+  val configOpts: Opts[RedisConfig] =
+    (host, port, sentinel, db.map(Option(_)), password, masterSet)
+      .mapN(RedisConfig.apply)
 
 sealed private trait Provider
 private object Provider:

@@ -19,7 +19,6 @@
 package io.renku.search.cli.perftests
 
 import cats.MonadThrow
-import cats.effect.std.{Random, UUIDGen}
 import cats.syntax.all.*
 import fs2.Stream
 import io.renku.events.v1.*
@@ -31,15 +30,16 @@ private trait ProjectEventsGenerator[F[_]]:
   def newProjectEvents: Stream[F, NewProjectEvents]
 
 private object ProjectEventsGenerator:
-  def apply[F[_]: MonadThrow: Random: UUIDGen](
+  def apply[F[_]: MonadThrow: ModelTypesGenerators](
       docsCreator: DocumentsCreator[F]
   ): ProjectEventsGenerator[F] =
     new ProjectEventsGeneratorImpl[F](docsCreator)
 
-private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: Random: UUIDGen](
+private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: ModelTypesGenerators](
     docsCreator: DocumentsCreator[F]
-) extends ProjectEventsGenerator[F]
-    with ModelTypesGenerators[F]:
+) extends ProjectEventsGenerator[F]:
+
+  private val gens = ModelTypesGenerators[F]
 
   override def newProjectEvents: Stream[F, NewProjectEvents] =
     docsCreator.findProject
@@ -52,7 +52,7 @@ private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: Random: UUIDGen](
   private lazy val toProjectCreated: ((Project, List[User])) => F[ProjectCreated] = {
     case (project, users) =>
       users.headOption
-        .fold(generateId)(_.id.pure[F])
+        .fold(gens.generateId)(_.id.pure[F])
         .map(creator =>
           ProjectCreated(
             project.id.value,
@@ -87,7 +87,7 @@ private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: Random: UUIDGen](
       val memberAuth = ProjectAuthorizationAdded(project.id.value, owner.id.value, OWNER)
       users
         .map { u =>
-          generateV1MemberRole
+          gens.generateV1MemberRole
             .map(ProjectAuthorizationAdded(project.id.value, u.id.value, _))
         }
         .sequence

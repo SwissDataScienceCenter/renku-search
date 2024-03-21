@@ -18,8 +18,6 @@
 
 package io.renku.search.solr.client
 
-import scala.reflect.ClassTag
-
 import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
@@ -29,7 +27,7 @@ import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.Id
 import io.renku.search.query.Query
 import io.renku.search.solr.SearchRole
-import io.renku.search.solr.documents.EntityDocument
+import io.renku.search.solr.documents.*
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client._
@@ -81,15 +79,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
       .takeWhile(_.responseBody.docs.nonEmpty)
       .flatMap(r => Stream.emits(r.responseBody.docs))
 
-  override def findById[D <: EntityDocument](
-      id: Id
-  )(using ct: ClassTag[D]): F[Option[D]] =
+  override def findById[D: Decoder](id: CompoundId): F[Option[D]] =
     solrClient
-      .findById[EntityDocument](id.value)
-      .map(_.responseBody.docs.headOption) >>= {
-      case Some(e: D) => Some(e).pure[F]
-      case Some(e) =>
-        new Exception(s"Entity '$id' is of type ${e.getClass} not ${ct.runtimeClass}")
-          .raiseError[F, Option[D]]
-      case None => Option.empty[D].pure[F]
-    }
+      .query(id.toQueryData)
+      .map(_.responseBody.docs.headOption)

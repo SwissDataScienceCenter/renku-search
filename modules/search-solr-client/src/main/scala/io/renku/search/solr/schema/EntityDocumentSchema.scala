@@ -27,6 +27,7 @@ object EntityDocumentSchema:
     val creationDate: FieldName = FieldName("creationDate")
     val description: FieldName = FieldName("description")
     val entityType: FieldName = FieldName("_type")
+    val kind: FieldName = FieldName("_kind")
     val firstName: FieldName = FieldName("firstName")
     val id: FieldName = FieldName("id")
     val lastName: FieldName = FieldName("lastName")
@@ -59,6 +60,7 @@ object EntityDocumentSchema:
     SchemaCommand.Add(FieldTypes.text),
     SchemaCommand.Add(FieldTypes.dateTime),
     SchemaCommand.Add(Field(Fields.entityType, FieldTypes.string)),
+    SchemaCommand.Add(Field(Fields.kind, FieldTypes.string)),
     SchemaCommand.Add(Field(Fields.name, FieldTypes.string)),
     SchemaCommand.Add(Field(Fields.slug, FieldTypes.string)),
     SchemaCommand.Add(Field(Fields.repositories, FieldTypes.string).makeMultiValued),

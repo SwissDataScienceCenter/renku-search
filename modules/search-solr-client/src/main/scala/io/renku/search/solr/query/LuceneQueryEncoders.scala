@@ -18,16 +18,16 @@
 
 package io.renku.search.solr.query
 
+import cats.Applicative
+import cats.Monad
 import cats.syntax.all.*
-import io.renku.search.query.Query.Segment
+
+import io.renku.search.query.Comparison
 import io.renku.search.query.FieldTerm
 import io.renku.search.query.Query
-import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
-
-import cats.Monad
-import cats.Applicative
-import io.renku.search.query.Comparison
+import io.renku.search.query.Query.Segment
 import io.renku.search.solr.SearchRole
+import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 
 trait LuceneQueryEncoders:
 
@@ -43,9 +43,7 @@ trait LuceneQueryEncoders:
 
   given typeIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.TypeIs] =
     SolrTokenEncoder.basic { case FieldTerm.TypeIs(values) =>
-      SolrQuery(
-        SolrToken.orFieldIs(SolrField.entityType, values.map(SolrToken.fromEntityType))
-      )
+      SolrQuery(SolrToken.entityTypeIsAny(values))
     }
 
   given slugIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.SlugIs] =
@@ -154,15 +152,11 @@ trait LuceneQueryEncoders:
   given segmentAnd[F[_]: Monad, A](using
       se: SolrTokenEncoder[F, A]
   ): SolrTokenEncoder[F, List[A]] =
-    SolrTokenEncoder.create[F, List[A]] { (ctx, nel) =>
-      nel.traverse(se.encode(ctx, _)).map(_.toSeq.combineAll)
+    SolrTokenEncoder.create[F, List[A]] { (ctx, list) =>
+      list.traverse(se.encode(ctx, _)).map(_.combineAll)
     }
 
   given query[F[_]: Monad](using
       se: SolrTokenEncoder[F, List[Segment]]
   ): SolrTokenEncoder[F, Query] =
     se.contramap[Query](_.segments)
-      .modify(q =>
-        if (q.query.isEmpty) q.withQuery(SolrToken.allTypes)
-        else q
-      )

@@ -43,7 +43,7 @@ _either_ `public` _or_ `private`.
 The following fields are available:
 
 ```scala mdoc:passthrough
-import io.renku.search.model.EntityType
+import io.renku.search.model.*
 import io.renku.search.query.*
 println(Field.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", ""))
 ```
@@ -67,6 +67,31 @@ Example:
 ```scala mdoc:passthrough
 println(s" `${Field.Type.name}:${EntityType.Project.name}`")
 ```
+
+### Roles
+
+The field `role` allows to search for projects the current user has
+the given role. Other entities are excluded from the results.
+
+```scala mdoc:passthrough
+println(
+  projects.MemberRole.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
+)
+```
+
+### Visibility
+
+The `visibility` field can be used to restrict to entities with a
+certain visibility. Users have a default visibility of `public`.
+Possbile values are:
+
+```scala mdoc:passthrough
+println(
+  projects.Visibility.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
+)
+```
+
+
 
 ### Dates
 

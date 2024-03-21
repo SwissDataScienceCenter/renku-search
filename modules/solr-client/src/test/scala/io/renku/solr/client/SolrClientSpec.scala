@@ -18,10 +18,16 @@
 
 package io.renku.solr.client
 
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
+import cats.data.NonEmptyList
 import cats.effect.IO
-import cats.syntax.all.*
+
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.bullet.borer.{Decoder, Encoder, Reader}
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.LoggingConfigure
 import io.renku.solr.client.SolrClientSpec.Room
 import io.renku.solr.client.facet.{Facet, Facets}
@@ -30,8 +36,6 @@ import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
 import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
-
-import java.util.UUID
 
 class SolrClientSpec
     extends CatsEffectSuite
@@ -96,20 +100,21 @@ class SolrClientSpec
       } yield ()
     }
 
-// test("delete by id"):
-//   withSolrClient().use { client =>
-//     for {
-//       _ <- client.delete(QueryString("*:*"))
-//       _ <- client.insert(Seq(SolrClientSpec.Person("p1", "John")))
-//       r <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
-//       p = r.responseBody.docs.head
-//       _ = assertEquals(p.id, "p1")
-//       _ <- client.deleteById("p1", "p2")
-//       r2 <- client.query[SolrClientSpec.Person](QueryData(QueryString("*:*")))
-//       _ <- IO.sleep(50.millis) // seems to be necessary on ci
-//       _ = assert(r2.responseBody.docs.isEmpty)
-//     } yield ()
-//   }
+  test("delete by id"):
+    withSolrClient().use { client =>
+      for {
+        id <- IO(Gen.uuid.generateOne).map(_.toString)
+        _ <- client.delete(QueryString("*:*"))
+        _ <- client.insert(Seq(SolrClientSpec.Person(id, "John")))
+        r <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
+        p = r.responseBody.docs.head
+        _ = assertEquals(p.id, id)
+        _ <- client.deleteIds(NonEmptyList.of(id))
+        _ <- IO.sleep(10.millis)
+        r2 <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
+        _ = assert(r2.responseBody.docs.isEmpty)
+      } yield ()
+    }
 
 object SolrClientSpec:
   case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)
@@ -125,7 +130,7 @@ object SolrClientSpec:
     } yield Room(id, name, descr, seats)
 
     given Decoder[Room] = MapBasedCodecs.deriveDecoder
-    given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]
+    given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]("_type")
 
   case class Person(id: String, @key("name_s") name: String)
   object Person:

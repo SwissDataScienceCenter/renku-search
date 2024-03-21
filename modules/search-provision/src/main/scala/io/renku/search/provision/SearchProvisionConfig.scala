@@ -49,6 +49,6 @@ object SearchProvisionConfig:
       ConfigValues.metricsUpdateInterval,
       ConfigValues.logLevel,
       QueuesConfig.config,
-      ConfigValues.httpServerConfig(defaultPort = port"8081"),
+      ConfigValues.httpServerConfig("PROVISION", defaultPort = port"8081"),
       ConfigValues.clientId(ClientId("search-provisioner"))
     ).mapN(SearchProvisionConfig.apply)

@@ -16,25 +16,9 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.solr.documents
 
-import io.bullet.borer._
-import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
-import io.renku.solr.client.JsonEncodingSpec.Room
-import munit.FunSuite
+import io.renku.search.model.Id
 
-class JsonEncodingSpec extends FunSuite {
-
-  test("test with discriminator"):
-    val r = Room("meeting room", 59)
-    val json = Json.encode(r).toUtf8String
-    val rr = Json.decode(json.getBytes).to[Room].value
-    assertEquals(json, """{"_type":"Room","name":"meeting room","seats":59}""")
-    assertEquals(rr, r)
-}
-
-object JsonEncodingSpec:
-  case class Room(name: String, seats: Int)
-  object Room:
-    given Decoder[Room] = deriveDecoder
-    given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]("_type")
+trait SolrDocument:
+  def id: Id

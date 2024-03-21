@@ -78,7 +78,7 @@ object ConfigValues extends ConfigDecoders:
     (url, core, maybeUser, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)
   }
 
-  def httpServerConfig(defaultPort: Port): ConfigValue[Effect, HttpServerConfig] =
-    val bindAddress = renv("HTTP_SERVER_BIND_ADDRESS").default("0.0.0.0").as[Ipv4Address]
-    val port = renv("HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
+  def httpServerConfig(prefix: String, defaultPort: Port): ConfigValue[Effect, HttpServerConfig] =
+    val bindAddress = renv(s"${prefix}_HTTP_SERVER_BIND_ADDRESS").default("0.0.0.0").as[Ipv4Address]
+    val port = renv(s"${prefix}_HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
     (bindAddress, port).mapN(HttpServerConfig.apply)

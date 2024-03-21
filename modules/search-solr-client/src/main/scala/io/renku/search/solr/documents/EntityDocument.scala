@@ -18,30 +18,26 @@
 
 package io.renku.search.solr.documents
 
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.*
-import io.bullet.borer.derivation.MapBasedCodecs.*
+import io.bullet.borer.derivation.MapBasedCodecs
 import io.renku.search.model.*
 import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
-import io.renku.solr.client.EncoderSupport.*
 import io.renku.search.model.projects.Visibility
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.EncoderSupport
 
-sealed trait EntityDocument:
+sealed trait EntityDocument extends SolrDocument:
   val score: Option[Double]
-  val id: Id
   def widen: EntityDocument = this
 
 object EntityDocument:
-
-  val allTypes: Set[String] = Set(Project.entityType, User.entityType)
-
   given AdtEncodingStrategy =
-    AdtEncodingStrategy.flat(typeMemberName = discriminatorField)
+    AdtEncodingStrategy.flat(typeMemberName = Fields.entityType.name)
 
-  given Encoder[EntityDocument] = deriveAllEncoders[EntityDocument]
-  given Decoder[EntityDocument] = deriveAllDecoders[EntityDocument]
+  given Encoder[EntityDocument] = EncoderSupport.derive[EntityDocument]
+  given Decoder[EntityDocument] = MapBasedCodecs.deriveAllDecoders[EntityDocument]
   given Codec[EntityDocument] = Codec.of[EntityDocument]
 
 final case class Project(
@@ -57,7 +53,6 @@ final case class Project(
     members: List[Id] = List.empty,
     score: Option[Double] = None
 ) extends EntityDocument:
-
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
       case Owner  => copy(owners = (userId :: owners).distinct, score = None)
@@ -72,7 +67,11 @@ final case class Project(
     )
 
 object Project:
-  val entityType: String = "Project"
+  given Encoder[Project] =
+    EncoderSupport.deriveWith(
+      DocumentKind.FullEntity.additionalField,
+      EncoderSupport.AdditionalFields.productPrefix(Fields.entityType.name)
+    )
 
 final case class User(
     id: Id,
@@ -83,10 +82,14 @@ final case class User(
 ) extends EntityDocument
 
 object User:
-  val entityType: String = "User"
-  // auto-add a visibility:public to users
   given Encoder[User] =
-    EncoderSupport.deriveWithAdditional(Fields.visibility.name, Visibility.Public)
+    EncoderSupport.deriveWith(
+      DocumentKind.FullEntity.additionalField,
+      EncoderSupport.AdditionalFields.productPrefix(Fields.entityType.name),
+      EncoderSupport.AdditionalFields.const[User, String](
+        Fields.visibility.name -> Visibility.Public.name
+      )
+    )
 
   def nameFrom(firstName: Option[String], lastName: Option[String]): Option[Name] =
     Option(List(firstName, lastName).flatten.mkString(" "))

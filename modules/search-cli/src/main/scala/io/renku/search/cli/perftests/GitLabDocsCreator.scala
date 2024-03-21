@@ -100,6 +100,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       .takeWhile(_.nonEmpty)
       .flatMap(Stream.emits)
       .filterNot(_.name contains "_bot_")
+      .filterNot(_.name contains "****")
       .map(toUser)
 
   private def getProjectUsers(id: Int, page: Int) =
@@ -115,8 +116,22 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       .into[User]
       .transform(
         Field.computed(_.id, s => Id(s"gl_user_${s.id}")),
-        Field.computed(_.firstName, s => firstAndLast.map(_._1)),
-        Field.computed(_.lastName, s => firstAndLast.map(_._2)),
+        Field.computed(
+          _.firstName,
+          s =>
+            firstAndLast.map(_._1).flatMap {
+              case v if v.value.trim.isBlank => None
+              case v                         => v.some
+            }
+        ),
+        Field.computed(
+          _.lastName,
+          s =>
+            firstAndLast.map(_._2).flatMap {
+              case v if v.value.trim.isBlank => None
+              case v                         => v.some
+            }
+        ),
         Field.default(_.score)
       )
 
@@ -127,7 +142,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       .putHeaders(Accept(application.json))
 
   private def toFirstAndLast(v: String): Option[(users.FirstName, users.LastName)] =
-    v.split(' ').toList match {
+    v.trim.split(' ').toList match {
       case f :: r => Some(users.FirstName(f) -> users.LastName(r.mkString(" ")))
       case _      => None
     }

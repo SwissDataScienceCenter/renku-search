@@ -83,17 +83,16 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
     case (name, all @ user :: users) =>
       (
         gens.generateId,
-        gens.generateVisibility,
         getDescription,
         gens.generateCreationDate
-      ).mapN { case (id, visibility, desc, creationDate) =>
+      ).mapN { case (id, desc, creationDate) =>
         val slug = createSlug(name, user)
         Project(
           id,
           name,
           slug,
           Seq(createRepo(slug)),
-          visibility,
+          projects.Visibility.Public,
           desc,
           createdBy = user.id,
           creationDate

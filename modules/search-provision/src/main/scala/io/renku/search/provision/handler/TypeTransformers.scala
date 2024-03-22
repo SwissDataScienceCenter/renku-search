@@ -18,9 +18,14 @@
 
 package io.renku.search.provision
 
-import io.github.arainko.ducktape.Transformer
+import io.github.arainko.ducktape.*
 import io.renku.events.v1
+import io.renku.events.v1.ProjectAuthorizationAdded
+import io.renku.events.v1.ProjectAuthorizationUpdated
+import io.renku.search.model.Id
 import io.renku.search.model.projects
+import io.renku.search.model.projects.MemberRole
+import io.renku.search.solr.documents.PartialEntityDocument
 
 object TypeTransformers extends TypeTransformers
 
@@ -31,3 +36,35 @@ trait TypeTransformers:
 
   given memberRoleTransformer: Transformer[v1.ProjectMemberRole, projects.MemberRole] =
     (from: v1.ProjectMemberRole) => projects.MemberRole.unsafeFromString(from.name())
+
+  given Transformer[ProjectAuthorizationAdded, PartialEntityDocument] =
+    (from: ProjectAuthorizationAdded) =>
+      from.role.to[MemberRole] match
+        case MemberRole.Owner =>
+          PartialEntityDocument.Project(
+            from.projectId.to[Id],
+            Set(from.userId.to[Id]),
+            Set.empty
+          )
+        case MemberRole.Member =>
+          PartialEntityDocument.Project(
+            from.projectId.to[Id],
+            Set.empty,
+            Set(from.userId.to[Id])
+          )
+
+  given Transformer[ProjectAuthorizationUpdated, PartialEntityDocument] =
+    (from: ProjectAuthorizationUpdated) =>
+      from.role.to[MemberRole] match
+        case MemberRole.Owner =>
+          PartialEntityDocument.Project(
+            from.projectId.to[Id],
+            Set(from.userId.to[Id]),
+            Set.empty
+          )
+        case MemberRole.Member =>
+          PartialEntityDocument.Project(
+            from.projectId.to[Id],
+            Set.empty,
+            Set(from.userId.to[Id])
+          )

@@ -78,6 +78,7 @@
             RS_LOG_LEVEL = "3";
             RS_SEARCH_HTTP_SERVER_PORT = "8080";
             RS_PROVISION_HTTP_SERVER_PORT = "8082";
+            RS_METRICS_UPDATE_INTERVAL = "0s";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";
@@ -100,6 +101,7 @@
             RS_LOG_LEVEL = "3";
             RS_SEARCH_HTTP_SERVER_PORT = "8080";
             RS_PROVISION_HTTP_SERVER_PORT = "8082";
+            RS_METRICS_UPDATE_INTERVAL = "0s";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";

@@ -36,7 +36,7 @@ trait SolrDocumentGenerators:
     Gen.uuid.map(uuid => Id(uuid.toString))
 
   val partialProjectGen: Gen[PartialEntityDocument.Project] =
-    val ids = Gen.choose(1, 5).flatMap(n => Gen.listOfN(n, idGen))
+    val ids = Gen.choose(1, 5).flatMap(n => Gen.listOfN(n, idGen)).map(_.toSet)
     (projectIdGen, ids, ids).mapN(PartialEntityDocument.Project.apply)
 
   val projectDocumentGen: Gen[Project] =

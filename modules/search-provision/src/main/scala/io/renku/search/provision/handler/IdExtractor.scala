@@ -18,8 +18,8 @@
 
 package io.renku.search.provision.handler
 
-import io.renku.search.model.Id
 import io.renku.events.v1.*
+import io.renku.search.model.Id
 
 trait IdExtractor[A]:
   def getId(a: A): Id
@@ -33,6 +33,7 @@ object IdExtractor:
   def createStr[A](f: A => String): IdExtractor[A] =
     (a: A) => Id(f(a))
 
+  given IdExtractor[ProjectCreated] = createStr(_.id)
   given IdExtractor[ProjectUpdated] = createStr(_.id)
   given IdExtractor[ProjectRemoved] = createStr(_.id)
   given IdExtractor[UserUpdated] = createStr(_.id)

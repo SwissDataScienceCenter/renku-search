@@ -20,6 +20,9 @@ package io.renku.search.solr.documents
 
 import cats.syntax.all.*
 
+import io.bullet.borer.Decoder
+import io.bullet.borer.NullOptions.given
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.EntityType
 import io.renku.search.model.Id
 import io.renku.search.solr.query.SolrToken
@@ -27,8 +30,8 @@ import io.renku.solr.client.{QueryData, QueryString}
 
 final case class CompoundId(
     id: Id,
-    kind: DocumentKind,
-    entityType: Option[EntityType] = None
+    @key("_kind") kind: DocumentKind,
+    @key("_type") entityType: Option[EntityType] = None
 ):
   private[solr] def toQuery: SolrToken =
     List(
@@ -41,6 +44,8 @@ final case class CompoundId(
     QueryData(QueryString(toQuery.value, 1, 0))
 
 object CompoundId:
+  given Decoder[CompoundId] = MapBasedCodecs.deriveDecoder
+
   def partial(id: Id, entityType: Option[EntityType] = None): CompoundId =
     CompoundId(id, DocumentKind.PartialEntity, entityType)
 

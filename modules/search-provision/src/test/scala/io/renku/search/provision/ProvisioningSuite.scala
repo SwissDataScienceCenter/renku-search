@@ -21,17 +21,19 @@ package io.renku.search.provision
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
+import io.renku.queue.client.QueueClient
 import io.renku.queue.client.QueueSpec
 import io.renku.redis.client.ClientId
 import io.renku.redis.client.QueueName
-import io.renku.search.provision.project.ProjectSyntax
-import io.renku.search.provision.handler.PipelineSteps
-import io.renku.search.solr.client.SearchSolrSpec
-import munit.CatsEffectSuite
-import io.renku.queue.client.QueueClient
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.provision.user.UserSyntax
 import io.renku.search.LoggingConfigure
+import io.renku.search.model.Id
+import io.renku.search.provision.handler.PipelineSteps
+import io.renku.search.provision.project.ProjectSyntax
+import io.renku.search.provision.user.UserSyntax
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.solr.documents.*
+import munit.CatsEffectSuite
 
 trait ProvisioningSuite
     extends CatsEffectSuite
@@ -69,3 +71,13 @@ trait ProvisioningSuite
       val handlers = MessageHandlers[IO](steps, queueConfig)
       (handlers, queueClient, solrClient)
     }
+
+  def loadPartialOrEntity(solrClient: SearchSolrClient[IO], id: Id) =
+    (
+      solrClient.findById[EntityDocument](
+        CompoundId.projectEntity(id)
+      ),
+      solrClient.findById[PartialEntityDocument](
+        CompoundId.projectPartial(id)
+      )
+    ).mapN((a, b) => a.toSet ++ b.toSet)

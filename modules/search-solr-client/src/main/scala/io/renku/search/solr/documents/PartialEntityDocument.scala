@@ -42,21 +42,33 @@ object PartialEntityDocument:
   // generates the same discriminator (it is not configurable)
   final case class Project(
       id: Id,
-      owners: List[Id] = List.empty,
-      members: List[Id] = List.empty
+      owners: Set[Id] = Set.empty,
+      members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
+    def remove(id: Id): Project = copy(owners = owners - id, members = members - id)
+    def add(id: Id, role: MemberRole): Project =
+      role match
+        case MemberRole.Owner  => copy(owners = owners + id)
+        case MemberRole.Member => copy(members = members + id)
+
     def applyTo(e: EntityDocument): EntityDocument =
       e match
-        case p: ProjectDocument => applyTo(p)
-        case _                  => e
+        case p: ProjectDocument if p.id == id =>
+          p.addMembers(MemberRole.Owner, owners.toList)
+            .addMembers(MemberRole.Member, members.toList)
+        case _ => e
 
-    def applyTo(p: Project): Project =
+    def combine(p: Project): Project =
       if (p.id == id)
         p.copy(
-          members = (p.members ++ members).distinct,
-          owners = (p.owners ++ owners).distinct
+          members = p.members ++ members,
+          owners = p.owners ++ owners
         )
       else p
+
+    def applyTo(e: PartialEntityDocument): PartialEntityDocument =
+      e match
+        case p: Project => combine(p)
 
   object Project:
     given Encoder[Project] =

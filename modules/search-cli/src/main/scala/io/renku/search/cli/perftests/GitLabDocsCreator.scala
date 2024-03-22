@@ -61,6 +61,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       .flatMap(Stream.emits)
       .evalMap(gp => findProjectUsers(gp.id).compile.toList.map(_.distinct).tupleLeft(gp))
       .evalMap(toProject)
+      .unNone
 
   private def getProjects(page: Int) =
     val req = get(
@@ -72,7 +73,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     client.expect[List[GitLabProject]](req)
 
   private lazy val toProject
-      : ((GitLabProject, List[User])) => F[(Project, List[User])] = {
+      : ((GitLabProject, List[User])) => F[Option[(Project, List[User])]] = {
     case (glProj, all @ user :: users) =>
       (glProj
         .into[Project]
@@ -87,9 +88,9 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
           Field.default(_.owners),
           Field.default(_.members),
           Field.default(_.score)
-        ) -> all).pure[F]
+        ) -> all).some.pure[F]
     case (name, Nil) =>
-      new Exception("No project users found in GL").raiseError[F, (Project, List[User])]
+      Option.empty.pure[F]
   }
 
   private def findProjectUsers(projectId: Int) =

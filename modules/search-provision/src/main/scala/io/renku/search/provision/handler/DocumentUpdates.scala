@@ -19,13 +19,14 @@
 package io.renku.search.provision.handler
 
 import cats.syntax.all.*
+
+import io.github.arainko.ducktape.*
+import io.renku.events.v1.*
+import io.renku.search.model.Id
 import io.renku.search.provision.TypeTransformers.given
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
-import io.github.arainko.ducktape.*
-import io.renku.events.v1.*
-import io.renku.search.model.Id
 
 object DocumentUpdates:
 
@@ -54,37 +55,3 @@ object DocumentUpdates:
         )
         .some
     case _ => None
-
-  def projectAuthAdded(
-      update: ProjectAuthorizationAdded,
-      orig: EntityDocument
-  ): Option[EntityDocument] =
-    orig match
-      case pd: ProjectDocument =>
-        pd.addMember(
-          Id(update.userId),
-          memberRoleTransformer.transform(update.role)
-        ).some
-      case _ => None
-
-  def projectAuthUpdated(
-      update: ProjectAuthorizationUpdated,
-      orig: EntityDocument
-  ): Option[EntityDocument] =
-    orig match
-      case pd: ProjectDocument =>
-        pd.addMember(
-          Id(update.userId),
-          memberRoleTransformer.transform(update.role)
-        ).some
-
-      case _ => None
-
-  def projectAuthRemoved(
-      update: ProjectAuthorizationRemoved,
-      orig: EntityDocument
-  ): Option[EntityDocument] =
-    orig match
-      case pd: ProjectDocument =>
-        pd.removeMember(Id(update.userId)).some
-      case _ => None

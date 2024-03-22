@@ -18,98 +18,101 @@
 
 package io.renku.search.provision.project
 
-import scala.concurrent.duration.*
-
 import cats.effect.{IO, Resource}
-import cats.syntax.all.*
-import fs2.Stream
-import fs2.concurrent.SignallingRef
 
 import io.renku.avro.codec.encoders.all.given
-import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.model.ModelGenerators
+import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.{Id, projects}
-import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.documents.{CompoundId, EntityDocument, Project}
+import io.renku.search.provision.project.AuthorizationAddedProvisioningSpec.testCases
+import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.client.SolrDocumentGenerators
+import io.renku.search.solr.documents.PartialEntityDocument
+import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
 import munit.CatsEffectSuite
 
 class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
 
-  (memberAdded :: ownerAdded :: noUpdate :: Nil)
-    .foreach { case TestCase(name, updateF) =>
-      test(s"can fetch events, decode them, and update docs in Solr in case of $name"):
+  testCases.foreach { tc =>
+    test(s"can fetch events, decode them, and update docs in Solr: $tc"):
 
-        withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-          for
-            solrDocs <- SignallingRef.of[IO, Set[Project]](Set.empty)
+      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
+        for {
+          _ <- tc.dbState.create(solrClient)
 
-            provisioningFiber <- handlers.projectAuthAdded.compile.drain.start
+          collector <- BackgroundCollector[SolrDocument](
+            loadPartialOrEntity(solrClient, tc.projectId)
+          )
+          _ <- collector.start
 
-            projectDoc = projectCreatedGen("member-add").generateOne.toSolrDocument
-            _ <- solrClient.insert(Seq(projectDoc.widen))
+          provisioningFiber <- handlers.projectAuthAdded.compile.drain.start
 
-            authAdded = updateF(projectDoc)
-            _ <- queueClient.enqueue(
-              queueConfig.projectAuthorizationAdded,
-              messageHeaderGen(ProjectAuthorizationAdded.SCHEMA$).generateOne,
-              authAdded
-            )
+          _ <- queueClient.enqueue(
+            queueConfig.projectAuthorizationAdded,
+            messageHeaderGen(ProjectAuthorizationAdded.SCHEMA$).generateOne,
+            tc.authAdded
+          )
+          _ <- collector.waitUntil(docs =>
+            scribe.info(s"Check for ${tc.expectedProject}")
+            docs.contains(tc.expectedProject)
+          )
 
-            docsCollectorFiber <-
-              Stream
-                .awakeEvery[IO](500 millis)
-                .evalTap(_ =>
-                  scribe.cats.io.info(s"Looking for project with id ${projectDoc.id}...")
-                )
-                .evalMap(_ =>
-                  solrClient.findById[EntityDocument](
-                    CompoundId.projectEntity(projectDoc.id)
-                  )
-                )
-                .evalMap(
-                  _.fold(().pure[IO])(e =>
-                    solrDocs.update(_ => Set(e.asInstanceOf[Project]))
-                  )
-                )
-                .compile
-                .drain
-                .start
-
-            _ <- solrDocs.waitUntil(
-              _ contains projectDoc.addMember(
-                Id(authAdded.userId),
-                projects.MemberRole.unsafeFromString(authAdded.role.name())
-              )
-            )
-
-            _ <- provisioningFiber.cancel
-            _ <- docsCollectorFiber.cancel
-          yield ()
-        }
-    }
-
-  private case class TestCase(name: String, f: Project => ProjectAuthorizationAdded)
-  private lazy val memberAdded = TestCase(
-    "member added",
-    pd => projectAuthorizationAddedGen(pd.id.value, ProjectMemberRole.MEMBER).generateOne
-  )
-
-  private lazy val ownerAdded = TestCase(
-    "owner added",
-    pd => projectAuthorizationAddedGen(pd.id.value, ProjectMemberRole.OWNER).generateOne
-  )
-
-  private lazy val noUpdate = TestCase(
-    "no update",
-    pd =>
-      ProjectAuthorizationAdded(
-        pd.id.value,
-        pd.owners.head.value,
-        ProjectMemberRole.OWNER
-      )
-  )
+          _ <- provisioningFiber.cancel
+        } yield ()
+      }
+  }
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
+
+object AuthorizationAddedProvisioningSpec:
+  enum DbState:
+    case Empty
+    case Project(project: ProjectDocument)
+    case PartialProject(project: PartialEntityDocument.Project)
+
+    def create(solrClient: SearchSolrClient[IO]) = this match
+      case DbState.Empty             => IO.unit
+      case DbState.Project(p)        => solrClient.insert(Seq(p))
+      case DbState.PartialProject(p) => solrClient.insert(Seq(p))
+
+  case class TestCase(name: String, dbState: DbState, user: Id, role: MemberRole):
+    val projectId = dbState match
+      case DbState.Empty             => ModelGenerators.idGen.generateOne
+      case DbState.Project(p)        => p.id
+      case DbState.PartialProject(p) => p.id
+
+    val authAdded: ProjectAuthorizationAdded =
+      ProjectAuthorizationAdded(
+        projectId.value,
+        user.value,
+        ProjectMemberRole.valueOf(role.name.toUpperCase())
+      )
+
+    val expectedProject: SolrDocument = dbState match
+      case DbState.Empty =>
+        PartialEntityDocument.Project(
+          projectId,
+          Set(user).filter(_ => role == MemberRole.Owner),
+          Set(user).filter(_ => role == MemberRole.Member)
+        )
+      case DbState.Project(p) =>
+        p.addMember(user, role)
+
+      case DbState.PartialProject(p) =>
+        p.add(user, role)
+
+    override def toString = s"$name: ${user.value.take(6)}… db=$dbState"
+
+  val testCases =
+    for {
+      role <- MemberRole.values.toList
+      proj = SolrDocumentGenerators.projectDocumentGen.generateOne
+      pproj = SolrDocumentGenerators.partialProjectGen.generateOne
+      dbState <- List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
+      userId = ModelGenerators.idGen.generateOne
+    } yield TestCase(s"add $role", dbState, userId, role)

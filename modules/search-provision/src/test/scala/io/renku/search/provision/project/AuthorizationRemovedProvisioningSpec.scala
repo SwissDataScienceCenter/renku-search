@@ -19,63 +19,90 @@
 package io.renku.search.provision
 package project
 
-import scala.concurrent.duration.*
-
 import cats.effect.IO
-import cats.syntax.all.*
-import fs2.Stream
-import fs2.concurrent.SignallingRef
 
 import io.renku.avro.codec.encoders.all.given
-import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.*
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.solr.documents.{CompoundId, EntityDocument}
+import io.renku.search.model.ModelGenerators
+import io.renku.search.provision.project.AuthorizationRemovedProvisioningSpec.testCases
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.client.SolrDocumentGenerators
+import io.renku.search.solr.documents.PartialEntityDocument
+import io.renku.search.solr.documents.{Project as ProjectDocument, *}
 import munit.CatsEffectSuite
 
 class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
+  testCases.foreach { tc =>
+    test(s"can fetch events, decode them, and update docs in Solr: $tc"):
 
-  test("can fetch events, decode them, and update docs in Solr"):
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      for
-        solrDocs <- SignallingRef.of[IO, Set[EntityDocument]](Set.empty)
+      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
+        for {
+          _ <- tc.dbState.create(solrClient)
 
-        provisioningFiber <- handlers.projectAuthRemoved.compile.drain.start
+          collector <- BackgroundCollector[SolrDocument](
+            loadPartialOrEntity(solrClient, tc.projectId)
+          )
+          _ <- collector.start
 
-        projectDoc = projectCreatedGen("member-remove").generateOne.toSolrDocument
-        _ <- solrClient.insert(Seq(projectDoc.widen))
+          provisioningFiber <- handlers.projectAuthRemoved.compile.drain.start
 
-        authRemoved = ProjectAuthorizationRemoved(
-          projectDoc.id.value,
-          projectDoc.createdBy.value
-        )
-        _ <- queueClient.enqueue(
-          queueConfig.projectAuthorizationRemoved,
-          messageHeaderGen(ProjectAuthorizationRemoved.SCHEMA$).generateOne,
-          authRemoved
-        )
+          _ <- queueClient.enqueue(
+            queueConfig.projectAuthorizationRemoved,
+            messageHeaderGen(ProjectAuthorizationRemoved.SCHEMA$).generateOne,
+            tc.authRemoved
+          )
+          _ <- collector.waitUntil(docs =>
+            scribe.info(s"Check for ${tc.expectedProject}")
+            tc.expectedProject.diff(docs).isEmpty
+          )
 
-        docsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ =>
-              solrClient.findById[EntityDocument](CompoundId.projectEntity(projectDoc.id))
-            )
-            .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
-            .compile
-            .drain
-            .start
-
-        _ <- solrDocs.waitUntil(
-          _ contains projectDoc.removeMember(projectDoc.createdBy)
-        )
-
-        _ <- provisioningFiber.cancel
-        _ <- docsCollectorFiber.cancel
-      yield ()
-    }
+          _ <- provisioningFiber.cancel
+        } yield ()
+      }
+  }
 
   override def munitFixtures: Seq[Fixture[_]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
+
+object AuthorizationRemovedProvisioningSpec:
+  enum DbState:
+    case Empty
+    case Project(project: ProjectDocument)
+    case PartialProject(project: PartialEntityDocument.Project)
+
+    def create(solrClient: SearchSolrClient[IO]) = this match
+      case DbState.Empty             => IO.unit
+      case DbState.Project(p)        => solrClient.insert(Seq(p))
+      case DbState.PartialProject(p) => solrClient.insert(Seq(p))
+
+  case class TestCase(dbState: DbState, user: Id):
+    val projectId = dbState match
+      case DbState.Empty             => ModelGenerators.idGen.generateOne
+      case DbState.Project(p)        => p.id
+      case DbState.PartialProject(p) => p.id
+
+    val authRemoved: ProjectAuthorizationRemoved =
+      ProjectAuthorizationRemoved(projectId.value, user.value)
+
+    val expectedProject: Set[SolrDocument] = dbState match
+      case DbState.Empty =>
+        Set.empty
+
+      case DbState.Project(p) =>
+        Set(p.removeMember(user))
+
+      case DbState.PartialProject(p) =>
+        Set(p.remove(user))
+
+    override def toString = s"AuthRemove(${user.value.take(6)}… db=$dbState)"
+
+  private val testCases =
+    val proj = SolrDocumentGenerators.projectDocumentGen.generateOne
+    val pproj = SolrDocumentGenerators.partialProjectGen.generateOne
+    val userId = ModelGenerators.idGen.generateOne
+    val dbState =
+      List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
+    dbState.map(TestCase(_, userId))

@@ -44,7 +44,7 @@ final class MessageHandlers[F[_]: Async](
   def getAll: Map[String, F[Unit]] = tasks
 
   val projectCreated: Stream[F, Unit] =
-    add(cfg.projectCreated, makeCreated[ProjectCreated](cfg.projectCreated))
+    add(cfg.projectCreated, makeUpsert[ProjectCreated](cfg.projectCreated))
 
   val projectUpdated =
     add(
@@ -58,27 +58,18 @@ final class MessageHandlers[F[_]: Async](
   val projectAuthAdded: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationAdded,
-      makeUpdated[ProjectAuthorizationAdded](
-        cfg.projectAuthorizationAdded,
-        DocumentUpdates.projectAuthAdded
-      )
+      makeUpsert[ProjectAuthorizationAdded](cfg.projectAuthorizationAdded)
     )
 
   val projectAuthUpdated: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationUpdated,
-      makeUpdated[ProjectAuthorizationUpdated](
-        cfg.projectAuthorizationUpdated,
-        DocumentUpdates.projectAuthUpdated
-      )
+      makeUpsert[ProjectAuthorizationUpdated](cfg.projectAuthorizationUpdated)
     )
 
   val projectAuthRemoved: Stream[F, Unit] = add(
     cfg.projectAuthorizationRemoved,
-    makeUpdated[ProjectAuthorizationRemoved](
-      cfg.projectAuthorizationRemoved,
-      DocumentUpdates.projectAuthRemoved
-    )
+    makeUpsert[ProjectAuthorizationRemoved](cfg.projectAuthorizationRemoved)
   )
 
   val userAdded: Stream[F, Unit] =
@@ -103,6 +94,22 @@ final class MessageHandlers[F[_]: Async](
         })
     )
 
+  private def makeUpsert[A](queue: QueueName)(using
+      QueueMessageDecoder[F, A],
+      DocumentMerger[A],
+      IdExtractor[A],
+      Show[A]
+  ): Stream[F, Unit] =
+    val ps = steps(queue)
+    ps.reader
+      .read[A]
+      .through(ps.fetchFromSolr.fetchEntityOrPartial)
+      .map { msg =>
+        val merger = DocumentMerger[A]
+        msg.merge(merger.create, merger.merge)
+      }
+      .through(ps.pushToSolr.push1)
+
   private def makeCreated[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],
       DocumentConverter[A],
@@ -113,6 +120,7 @@ final class MessageHandlers[F[_]: Async](
       .read[A]
       .chunks
       .through(ps.converter.convertChunk)
+      .map(_.map(_.map(e => e: EntityOrPartial)))
       .through(ps.pushToSolr.pushChunk)
 
   private def makeUpdated[A](
@@ -126,8 +134,9 @@ final class MessageHandlers[F[_]: Async](
     val ps = steps(queue)
     ps.reader
       .read[A]
-      .through(ps.fetchFromSolr.fetch1)
+      .through(ps.fetchFromSolr.fetchEntity)
       .map(_.update(docUpdate))
+      .map(_.map(e => e: EntityOrPartial))
       .through(ps.pushToSolr.push)
 
   private def makeRemovedSimple[A](queue: QueueName)(using

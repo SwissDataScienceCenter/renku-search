@@ -26,19 +26,22 @@ import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.renku.search.model.EntityType
 import io.renku.search.model.Id
-import io.renku.search.provision.handler.FetchFromSolr.MessageDocument
+import io.renku.search.provision.handler.FetchFromSolr.*
 import io.renku.search.provision.handler.MessageReader.Message
-import io.renku.search.query.Query
-import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.documents.CompoundId
 import io.renku.search.solr.documents.EntityDocument
+import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.QueryData
 import io.renku.solr.client.QueryString
 
 trait FetchFromSolr[F[_]]:
-  def fetch1[A](using IdExtractor[A]): Pipe[F, Message[A], MessageDocument[A]]
+  def fetchEntity[A](using IdExtractor[A]): Pipe[F, Message[A], MessageDocument[A]]
   def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId]
+  def fetchEntityOrPartial[A](using
+      IdExtractor[A]
+  ): Pipe[F, Message[A], MessageEntityOrPartial[A]]
 
 object FetchFromSolr:
   final case class ProjectId(id: Id)
@@ -63,14 +66,29 @@ object FetchFromSolr:
           .flatten
       )
 
+  final case class MessageEntityOrPartial[A: IdExtractor](
+      message: MessageReader.Message[A],
+      documents: Map[Id, EntityOrPartial]
+  ):
+    def merge(
+        ifEmpty: A => Option[EntityOrPartial],
+        ifMerge: (A, EntityOrPartial) => Option[EntityOrPartial]
+    ): Message[EntityOrPartial] =
+      Message(
+        message.raw,
+        message.decoded.flatMap { a =>
+          documents
+            .get(IdExtractor[A].getId(a))
+            .map(doc => ifMerge(a, doc))
+            .getOrElse(ifEmpty(a))
+        }
+      )
+
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F]
   ): FetchFromSolr[F] =
     new FetchFromSolr[F] {
       val logger = scribe.cats.effect[F]
-
-      private def idQuery(id: Id): Query =
-        Query(Query.Segment.idIs(id.value))
 
       def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId] =
         val query = QueryString(
@@ -84,14 +102,13 @@ object FetchFromSolr:
         )
         solrClient.queryAll[ProjectId](QueryData(query))
 
-      def fetch1[A](using IdExtractor[A]): Pipe[F, Message[A], MessageDocument[A]] =
+      def fetchEntity[A](using IdExtractor[A]): Pipe[F, Message[A], MessageDocument[A]] =
         _.evalMap { msg =>
           val ids = msg.decoded.map(IdExtractor[A].getId)
           val loaded = ids
             .traverse(id =>
               solrClient
-                .queryEntity(SearchRole.Admin, idQuery(id), 1, 0)
-                .map(_.responseBody.docs.headOption)
+                .findById[EntityDocument](CompoundId.entity(id))
                 .map(doc => id -> doc)
             )
             .flatTap { results =>
@@ -99,7 +116,7 @@ object FetchFromSolr:
               if (notFound.isEmpty) Sync[F].unit
               else
                 logger.warn(
-                  s"Document ids: '$notFound' for update doesn't exist in Solr; skipping"
+                  s"Document ids: '$notFound' doesn't exist in Solr; skipping"
                 )
             }
             .map(_.foldLeft(Map.empty[Id, EntityDocument]) {
@@ -108,5 +125,31 @@ object FetchFromSolr:
             })
 
           loaded.map(m => MessageDocument(msg, m))
+        }
+
+      def fetchEntityOrPartial[A](using
+          IdExtractor[A]
+      ): Pipe[F, Message[A], MessageEntityOrPartial[A]] =
+        _.evalMap { msg =>
+          val loaded =
+            msg.decoded
+              .map(IdExtractor[A].getId)
+              .traverse { id =>
+                val eid = CompoundId.entity(id)
+                val pid = CompoundId.partial(id)
+                solrClient.findById[EntityDocument](eid).flatMap {
+                  case Some(e) => (e: EntityOrPartial).some.pure[F]
+                  case None =>
+                    logger.debug(
+                      s"Did not find entity document for id $id, look for a partial"
+                    ) >>
+                      solrClient
+                        .findById[PartialEntityDocument](pid)
+                        .map(_.map(e => e: EntityOrPartial))
+                }
+              }
+              .map(_.flatten.map(e => e.id -> e).toMap)
+
+          loaded.map(docs => MessageEntityOrPartial(msg, docs))
         }
     }

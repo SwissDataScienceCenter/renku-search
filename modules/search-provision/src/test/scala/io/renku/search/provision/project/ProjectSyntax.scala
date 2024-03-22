@@ -18,19 +18,19 @@
 
 package io.renku.search.provision.project
 
-import io.renku.search.model.Id
-import io.renku.events.v1.ProjectCreated
-import io.renku.search.solr.documents.Project
-import io.renku.events.v1.ProjectUpdated
 import io.github.arainko.ducktape.*
+import io.renku.events.v1.ProjectCreated
+import io.renku.events.v1.ProjectUpdated
+import io.renku.search.model.Id
 import io.renku.search.provision.TypeTransformers.given
+import io.renku.search.solr.documents.Project
 
 trait ProjectSyntax:
   extension (created: ProjectCreated)
     def toSolrDocument: Project = created
       .into[Project]
       .transform(
-        Field.computed(_.owners, pc => List(Id(pc.createdBy))),
+        Field.default(_.owners),
         Field.default(_.members),
         Field.default(_.score)
       )

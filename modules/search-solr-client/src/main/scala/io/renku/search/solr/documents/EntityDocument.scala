@@ -59,6 +59,10 @@ final case class Project(
       case Member => copy(members = (userId :: members).distinct, score = None)
     }
 
+  def addMembers(role: MemberRole, ids: List[Id]): Project = role match
+    case Owner  => copy(owners = (owners ++ ids).distinct)
+    case Member => copy(members = (members ++ ids).distinct)
+
   def removeMember(userId: Id): Project =
     copy(
       owners = owners.filterNot(_ == userId),

@@ -26,6 +26,7 @@ import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.metrics.{MetricsCollectorsUpdater, RedisMetrics}
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
+import scala.concurrent.duration.Duration
 
 object Microservice extends IOApp:
 
@@ -58,12 +59,19 @@ object Microservice extends IOApp:
     "http server" -> io
 
   private def metricsUpdaterTask(services: Services[IO]) =
-    val io = MetricsCollectorsUpdater[IO](
-      services.config.clientId,
-      services.config.queuesConfig,
-      services.config.metricsUpdateInterval,
-      services.queueClient
-    ).run()
+    val updateInterval = services.config.metricsUpdateInterval
+    val io =
+      if (updateInterval <= Duration.Zero)
+        logger.info(
+          s"Metric update interval is ${updateInterval}, disable periodic metric task"
+        )
+      else
+        MetricsCollectorsUpdater[IO](
+          services.config.clientId,
+          services.config.queuesConfig,
+          updateInterval,
+          services.queueClient
+        ).run()
     "metrics updater" -> io
 
   private def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =

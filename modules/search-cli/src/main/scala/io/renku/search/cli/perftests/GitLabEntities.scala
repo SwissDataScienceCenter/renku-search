@@ -20,13 +20,12 @@ package io.renku.search.cli.perftests
 
 import cats.syntax.all.*
 import io.bullet.borer.Decoder
-import io.bullet.borer.Decoder.DecodingError
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
+import io.renku.search.borer.codecs.DateTimeDecoders
 import io.renku.search.model.projects
 
 import java.time.Instant
-import scala.util.Try
 
 final private case class GitLabProject(
     id: Int,
@@ -38,9 +37,7 @@ final private case class GitLabProject(
 ):
   val visibility: projects.Visibility = projects.Visibility.Public
 
-private object GitLabProject:
-  given Decoder[Instant] =
-    Decoder.forString.mapEither(i => Try(Instant.parse(i)).toEither)
+private object GitLabProject extends DateTimeDecoders:
   given Decoder[GitLabProject] = deriveDecoder
 
 final private case class GitLabProjectUser(id: Int, name: String)

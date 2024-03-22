@@ -61,7 +61,6 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       .flatMap(Stream.emits)
       .evalMap(gp => findProjectUsers(gp.id).compile.toList.map(_.distinct).tupleLeft(gp))
       .evalMap(toProject)
-      ++ findProject
 
   private def getProjects(page: Int) =
     val req = get(

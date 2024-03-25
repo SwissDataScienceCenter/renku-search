@@ -47,7 +47,8 @@ object Services:
         redis,
         cfg.queuesConfig,
         inChunkSize = 1,
-        cfg.clientId
+        cfg.clientId,
+        cfg.redisConfig.connectionRefreshInterval
       )
       handlers = MessageHandlers[F](steps, cfg.queuesConfig)
     } yield Services(cfg, solr, redis, handlers)

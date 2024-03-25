@@ -18,20 +18,16 @@
 
 package io.renku.search.provision.handler
 
-import cats.effect.Sync
-import cats.syntax.all.*
-import fs2.Stream
-
-import io.renku.queue.client.{QueueClient, QueueMessage}
-import io.renku.redis.client.{ClientId, QueueName}
-import io.renku.search.provision.QueueMessageDecoder
-import scala.concurrent.duration.FiniteDuration
-import fs2.Chunk
-import cats.effect.{Async, Resource}
 import cats.Show
-import io.renku.queue.client.RequestId
-import io.renku.redis.client.MessageId
+import cats.effect.{Async, Resource}
+import cats.syntax.all.*
+import fs2.{Chunk, Stream}
+import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
+import io.renku.redis.client.{ClientId, MessageId, QueueName}
+import io.renku.search.provision.QueueMessageDecoder
 import scribe.Scribe
+
+import scala.concurrent.duration.FiniteDuration
 
 trait MessageReader[F[_]]:
   def read[A](using
@@ -59,18 +55,21 @@ object MessageReader:
   /** MessageReader that dequeues messages attempt to decode it. If decoding fails, the
     * message is marked as processed and the next message is read.
     */
-  def apply[F[_]: Sync](
+  def apply[F[_]: Async](
       queueClient: Resource[F, QueueClient[F]],
       queue: QueueName,
       clientId: ClientId,
-      chunkSize: Int
+      chunkSize: Int,
+      connectionRefresh: FiniteDuration
   ): MessageReader[F] =
     new MessageReader[F]:
       val logger = scribe.cats.effect[F]
 
       def read[A](using QueueMessageDecoder[F, A], Show[A]): Stream[F, Message[A]] =
-        for {
-          client <- Stream.resource(queueClient)
+        val s = for {
+          client <- Stream
+            .resource[F, QueueClient[F]](queueClient)
+            .interruptAfter(connectionRefresh)
           last <- Stream.eval(client.findLastProcessed(clientId, queue))
           qmsg <- client.acquireEventsStream(queue, chunkSize, last)
           dec <- Stream
@@ -90,6 +89,7 @@ object MessageReader:
             }
           _ <- Stream.eval(logInfo(dec))
         } yield dec
+        s ++ read
 
       def markProcessed(id: MessageId): F[Unit] =
         queueClient.use(_.markProcessed(clientId, queue, id))

@@ -64,7 +64,8 @@ lazy val root = project
     searchQuery,
     searchSolrClient,
     searchProvision,
-    searchApi
+    searchApi,
+    searchCli
   )
 
 lazy val commons = project
@@ -372,6 +373,26 @@ lazy val searchApi = project
     jwt % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
+
+lazy val searchCli = project
+  .in(file("modules/search-cli"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .withId("search-cli")
+  .settings(commonSettings)
+  .settings(
+    name := "search-cli",
+    description := "A set of CLI tools",
+    libraryDependencies ++=
+      Dependencies.decline ++
+        Dependencies.http4sClient
+  )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    httpClient % "compile->compile;test->test",
+    renkuRedisClient % "compile->compile;test->test",
+    searchSolrClient % "compile->compile;test->test"
+  )
 
 lazy val commonSettings = Seq(
   organization := "io.renku",

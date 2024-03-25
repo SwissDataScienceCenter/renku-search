@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision
+package io.renku.search.provision.handler
 
 import io.github.arainko.ducktape.*
 import io.renku.events.v1

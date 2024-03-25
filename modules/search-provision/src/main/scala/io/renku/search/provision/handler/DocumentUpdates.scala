@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.events.v1.*
 import io.renku.search.model.Id
-import io.renku.search.provision.TypeTransformers.given
+import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument

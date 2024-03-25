@@ -19,6 +19,7 @@
 package io.renku.search.solr.documents
 
 import io.renku.search.model.ModelGenerators.{idGen, projectMemberRoleGen}
+import io.renku.search.model.projects
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.solr.client.SolrDocumentGenerators.projectDocumentGen
 import munit.{FunSuite, ScalaCheckSuite}
@@ -36,6 +37,18 @@ class ProjectSpec extends ScalaCheckSuite:
           case Member =>
             assertEquals(updated.members, (userId :: project.members).distinct)
         }
+    }
+
+  test(
+    "addMember should add the given userId to the correct bucket and remove from the other buckets"
+  ):
+    Prop.forAll(projectDocumentGen, idGen) { case (project, userId) =>
+      val updated = project
+        .addMember(userId, projects.MemberRole.Member)
+        .addMember(userId, projects.MemberRole.Owner)
+
+      assertEquals(updated.owners, (userId :: project.owners).distinct)
+      assertEquals(updated.members, project.members.filterNot(_ == userId).distinct)
     }
 
   test("addMember should not add duplicates"):

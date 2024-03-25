@@ -22,7 +22,7 @@ import io.github.arainko.ducktape.*
 import io.renku.events.v1.ProjectCreated
 import io.renku.events.v1.ProjectUpdated
 import io.renku.search.model.Id
-import io.renku.search.provision.TypeTransformers.given
+import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.solr.documents.Project
 
 trait ProjectSyntax:

@@ -49,7 +49,7 @@ object RandommerIoDocsCreator:
 private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
     client: Client[F],
     apiKey: String,
-    chunkSize: Int = 20
+    chunkSize: Int = 50
 ) extends DocumentsCreator[F]
     with HttpClientDsl[F]:
 
@@ -74,58 +74,72 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
   }
 
   override def findProject: Stream[F, (Project, List[User])] =
-    Stream
-      .evals(getNames)
-      .zip(findUser.chunkN(2, allowFewer = false).map(_.toList))
-      .evalMap(toProject) ++ findProject
+    findName
+      .zip(findDescription)
+      .zip(findUser)
+      .evalMap { case ((name, desc), user) => toProject(name, desc, user) } ++ findProject
 
-  private lazy val toProject: ((Name, List[User])) => F[(Project, List[User])] = {
-    case (name, all @ user :: users) =>
-      (
-        gens.generateId,
-        getDescription,
-        gens.generateCreationDate
-      ).mapN { case (id, desc, creationDate) =>
-        val slug = createSlug(name, user)
-        Project(
-          id,
-          name,
-          slug,
-          Seq(createRepo(slug)),
-          projects.Visibility.Public,
-          desc,
-          createdBy = user.id,
-          creationDate
-        ) -> all
-      }
-    case (name, Nil) =>
-      new Exception("No users generated").raiseError[F, (Project, List[User])]
-  }
+  private def toProject(
+      name: Name,
+      desc: projects.Description,
+      user: User
+  ): F[(Project, List[User])] =
+    (gens.generateId, gens.generateCreationDate).mapN { case (id, creationDate) =>
+      val slug = createSlug(name, user)
+      Project(
+        id,
+        name,
+        slug,
+        Seq(createRepo(slug)),
+        projects.Visibility.Public,
+        Some(desc),
+        createdBy = user.id,
+        creationDate
+      ) -> List(user)
+    }
 
   private def createSlug(name: Name, user: User) =
     projects.Slug {
       val nameConditioned = name.value.replace(" ", "_")
       val namespace = user.name.map(_.value.replace(" ", "_")).getOrElse(nameConditioned)
-      s"$namespace/$nameConditioned"
+      s"$namespace/$nameConditioned".toLowerCase
     }
 
   private def createRepo(slug: projects.Slug) =
     projects.Repository(s"https://github.com/$slug")
 
-  private lazy val getNames =
+  private lazy val findName: Stream[F, Name] =
+    Stream.evals(getNameSuggestions).map(Name.apply) ++ findName
+
+  private lazy val getNameSuggestions =
     val req = get(
       (api / "name" / "suggestions")
-        .withQueryParam("startingWords", "project proj")
+        .withQueryParam("startingWords", "renku proj project datascience lab")
     )
-    client.expect[List[String]](req).map(_.map(Name.apply))
+    client.expect[List[String]](req)
 
-  private lazy val getDescription =
+  private lazy val findDescription: Stream[F, projects.Description] =
+    Stream
+      .evals(getReviews)
+      .zip(Stream.evals(getBusinessNames))
+      .flatMap { case (l, r) => Stream(l, r) }
+      .map(projects.Description.apply) ++ findDescription
+
+  private lazy val getReviews: F[List[String]] =
     val req = post(
       (api / "Text" / "Review")
         .withQueryParam("product", "renku")
-        .withQueryParam("quantity", "1")
+        .withQueryParam("quantity", chunkSize)
     )
-    client.expect[List[String]](req).map(_.headOption.map(projects.Description.apply))
+    client.expect[List[String]](req)
+
+  private lazy val getBusinessNames: F[List[String]] =
+    val req = post(
+      (api / "name" / "BusinessName")
+        .withQueryParam("cultureCode", "en_US")
+        .withQueryParam("number", chunkSize)
+    )
+    client.expect[List[String]](req)
 
   private lazy val api = uri"https://randommer.io/api"
 

@@ -33,34 +33,38 @@ object MetricsCollectorsUpdater:
       clientId: ClientId,
       queuesConfig: QueuesConfig,
       updateInterval: FiniteDuration,
+      connectionRefresh: FiniteDuration,
       qcResource: Resource[F, QueueClient[F]]
   ): MetricsCollectorsUpdater[F] =
     new MetricsCollectorsUpdater[F](
       qcResource,
       queuesConfig,
       RedisMetrics.updaterFactories(clientId),
-      updateInterval
+      updateInterval,
+      connectionRefresh
     )
 
 class MetricsCollectorsUpdater[F[_]: Async](
     qcResource: Resource[F, QueueClient[F]],
     queuesConfig: QueuesConfig,
     collectors: List[QueueClient[F] => CollectorUpdater[F]],
-    updateInterval: FiniteDuration
+    updateInterval: FiniteDuration,
+    connectionRefresh: FiniteDuration
 ):
 
   private val allQueues = queuesConfig.all.toList
 
   def run(): F[Unit] =
+    createUpdateStream.compile.drain
+
+  private def createUpdateStream: Stream[F, Unit] =
     val queueClient: Stream[F, QueueClient[F]] =
-      Stream.resource(qcResource)
+      Stream.resource(qcResource).interruptAfter(connectionRefresh)
     val awake: Stream[F, Unit] =
       Stream.awakeEvery[F](updateInterval).void
     queueClient
       .flatTap(_ => awake)
-      .evalMap(runUpdate)
-      .compile
-      .drain
+      .evalMap(runUpdate) ++ createUpdateStream
 
   private def runUpdate(qc: QueueClient[F]) =
     allQueues.traverse_ { q =>

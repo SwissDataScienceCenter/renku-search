@@ -70,6 +70,7 @@ object Microservice extends IOApp:
           services.config.clientId,
           services.config.queuesConfig,
           updateInterval,
+          services.config.redisConfig.connectionRefreshInterval,
           services.queueClient
         ).run()
     "metrics updater" -> io

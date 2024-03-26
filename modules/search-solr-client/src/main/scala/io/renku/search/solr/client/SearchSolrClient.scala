@@ -22,7 +22,6 @@ import cats.data.NonEmptyList
 import cats.effect.{Async, Resource}
 import fs2.Stream
 import fs2.io.net.Network
-
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.model.Id
 import io.renku.search.query.Query

@@ -19,6 +19,7 @@
 package io.renku.search.provision
 
 import cats.effect.kernel.{Async, Resource}
+import fs2.Stream
 import fs2.io.net.Network
 import io.renku.queue.client.QueueClient
 import io.renku.search.provision.handler.PipelineSteps
@@ -27,7 +28,7 @@ import io.renku.search.solr.client.SearchSolrClient
 final case class Services[F[_]](
     config: SearchProvisionConfig,
     solrClient: SearchSolrClient[F],
-    queueClient: Resource[F, QueueClient[F]],
+    queueClient: Stream[F, QueueClient[F]],
     messageHandlers: MessageHandlers[F]
 )
 
@@ -38,17 +39,15 @@ object Services:
       cfg <- Resource.eval(SearchProvisionConfig.config.load[F])
       solr <- SearchSolrClient.make[F](cfg.solrConfig)
 
-      // The redis client must be initialized on each operation to
-      // be able to connect to the cluster
-      redis = QueueClient.make[F](cfg.redisConfig)
+      // The redis client is refreshed every now and then so it's provided as a stream
+      redis = QueueClient.stream[F](cfg.redisConfig)
 
       steps = PipelineSteps[F](
         solr,
         redis,
         cfg.queuesConfig,
         inChunkSize = 1,
-        cfg.clientId,
-        cfg.redisConfig.connectionRefreshInterval
+        cfg.clientId
       )
       handlers = MessageHandlers[F](steps, cfg.queuesConfig)
     } yield Services(cfg, solr, redis, handlers)

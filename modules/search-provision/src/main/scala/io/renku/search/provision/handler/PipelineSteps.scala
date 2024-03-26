@@ -18,13 +18,12 @@
 
 package io.renku.search.provision.handler
 
-import cats.effect.{Async, Resource}
+import cats.effect.Async
+import fs2.Stream
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.provision.QueuesConfig
 import io.renku.search.solr.client.SearchSolrClient
-
-import scala.concurrent.duration.*
 
 trait PipelineSteps[F[_]]:
   def reader: MessageReader[F]
@@ -38,17 +37,16 @@ trait PipelineSteps[F[_]]:
 object PipelineSteps:
   def apply[F[_]: Async](
       solrClient: SearchSolrClient[F],
-      queueClient: Resource[F, QueueClient[F]],
+      queueClient: Stream[F, QueueClient[F]],
       queueConfig: QueuesConfig,
       inChunkSize: Int,
-      clientId: ClientId,
-      connectionRefresh: FiniteDuration
+      clientId: ClientId
   )(
       queue: QueueName
   ): PipelineSteps[F] =
     new PipelineSteps[F] {
       val reader: MessageReader[F] =
-        MessageReader[F](queueClient, queue, clientId, inChunkSize, connectionRefresh)
+        MessageReader[F](queueClient, queue, clientId, inChunkSize)
       val converter: ConvertDocument[F] =
         ConvertDocument[F]
       val pushToSolr: PushToSolr[F] =

@@ -26,6 +26,7 @@ import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.metrics.{MetricsCollectorsUpdater, RedisMetrics}
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
+
 import scala.concurrent.duration.Duration
 
 object Microservice extends IOApp:
@@ -70,7 +71,6 @@ object Microservice extends IOApp:
           services.config.clientId,
           services.config.queuesConfig,
           updateInterval,
-          services.config.redisConfig.connectionRefreshInterval,
           services.queueClient
         ).run()
     "metrics updater" -> io

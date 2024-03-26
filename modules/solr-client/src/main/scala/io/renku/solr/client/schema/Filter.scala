@@ -23,9 +23,10 @@ package io.renku.solr.client.schema
 final case class Filter(name: String)
 
 object Filter:
+  val asciiFolding: Filter = Filter("asciiFolding")
   val lowercase: Filter = Filter("lowercase")
   val stop: Filter = Filter("stop")
-  val englishPorter: Filter = Filter("englishPorter")
+  val englishMinimalStem: Filter = Filter("englishMinimalStem")
   val classic: Filter = Filter("classic")
   val daitchMokotoffSoundex: Filter = Filter("daitchMokotoffSoundex")
   val doubleMetaphone: Filter = Filter("doubleMetaphone")

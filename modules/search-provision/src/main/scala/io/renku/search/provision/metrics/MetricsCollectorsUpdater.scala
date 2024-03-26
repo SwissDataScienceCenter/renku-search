@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.metrics
 
-import cats.effect.{Async, Resource}
+import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
 import io.renku.queue.client.QueueClient
@@ -33,17 +33,17 @@ object MetricsCollectorsUpdater:
       clientId: ClientId,
       queuesConfig: QueuesConfig,
       updateInterval: FiniteDuration,
-      qcResource: Resource[F, QueueClient[F]]
+      queueClient: Stream[F, QueueClient[F]]
   ): MetricsCollectorsUpdater[F] =
     new MetricsCollectorsUpdater[F](
-      qcResource,
+      queueClient,
       queuesConfig,
       RedisMetrics.updaterFactories(clientId),
       updateInterval
     )
 
 class MetricsCollectorsUpdater[F[_]: Async](
-    qcResource: Resource[F, QueueClient[F]],
+    queueClient: Stream[F, QueueClient[F]],
     queuesConfig: QueuesConfig,
     collectors: List[QueueClient[F] => CollectorUpdater[F]],
     updateInterval: FiniteDuration
@@ -52,15 +52,14 @@ class MetricsCollectorsUpdater[F[_]: Async](
   private val allQueues = queuesConfig.all.toList
 
   def run(): F[Unit] =
-    val queueClient: Stream[F, QueueClient[F]] =
-      Stream.resource(qcResource)
+    createUpdateStream.compile.drain
+
+  private def createUpdateStream: Stream[F, Unit] =
     val awake: Stream[F, Unit] =
       Stream.awakeEvery[F](updateInterval).void
     queueClient
       .flatTap(_ => awake)
       .evalMap(runUpdate)
-      .compile
-      .drain
 
   private def runUpdate(qc: QueueClient[F]) =
     allQueues.traverse_ { q =>

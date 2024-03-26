@@ -50,5 +50,15 @@ trait QueueClient[F[_]]:
   def getSize(queueName: QueueName, from: MessageId): F[Long]
 
 object QueueClient:
+
+  // Be aware that it was observed that the client can lose the connection to Redis.
+  // Because of that consider using the QueueClient.stream
+  // that auto-refreshes (recreates) the connection every connectionRefreshInterval.
   def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
     RedisQueueClient.make[F](redisConfig).map(new QueueClientImpl[F](_))
+
+  def stream[F[_]: Async](redisConfig: RedisConfig): Stream[F, QueueClient[F]] =
+    val s = Stream
+      .resource[F, QueueClient[F]](make(redisConfig))
+      .interruptAfter(redisConfig.connectionRefreshInterval)
+    s ++ stream(redisConfig)

@@ -20,18 +20,15 @@ package io.renku.search.provision
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-
-import io.renku.queue.client.QueueClient
-import io.renku.queue.client.QueueSpec
-import io.renku.redis.client.ClientId
-import io.renku.redis.client.QueueName
+import fs2.Stream
+import io.renku.queue.client.{QueueClient, QueueSpec}
+import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.LoggingConfigure
 import io.renku.search.model.Id
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.project.ProjectSyntax
 import io.renku.search.provision.user.UserSyntax
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSpec}
 import io.renku.search.solr.documents.*
 import munit.CatsEffectSuite
 
@@ -63,9 +60,9 @@ trait ProvisioningSuite
       val steps =
         PipelineSteps[IO](
           solrClient,
-          Resource.pure(queueClient),
+          Stream[IO, QueueClient[IO]](queueClient),
           queueConfig,
-          1,
+          inChunkSize = 1,
           clientId
         )
       val handlers = MessageHandlers[IO](steps, queueConfig)

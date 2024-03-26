@@ -26,7 +26,7 @@ import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.{SolrConfig, SolrUser}
 import org.http4s.Uri
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 
 object ConfigValues extends ConfigDecoders:
 
@@ -45,8 +45,11 @@ object ConfigValues extends ConfigDecoders:
     val maybeDB = renv("REDIS_DB").as[RedisDB].option
     val maybePass = renv("REDIS_PASSWORD").as[RedisPassword].option
     val maybeMasterSet = renv("REDIS_MASTER_SET").as[RedisMasterSet].option
+    val connectionRefresh =
+      renv("REDIS_CONNECTION_REFRESH_INTERVAL").as[FiniteDuration].default(30 minutes)
 
-    (host, port, sentinel, maybeDB, maybePass, maybeMasterSet).mapN(RedisConfig.apply)
+    (host, port, sentinel, maybeDB, maybePass, maybeMasterSet, connectionRefresh)
+      .mapN(RedisConfig.apply)
   }
 
   def eventQueue(eventType: String): ConfigValue[Effect, QueueName] =
@@ -78,7 +81,12 @@ object ConfigValues extends ConfigDecoders:
     (url, core, maybeUser, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)
   }
 
-  def httpServerConfig(prefix: String, defaultPort: Port): ConfigValue[Effect, HttpServerConfig] =
-    val bindAddress = renv(s"${prefix}_HTTP_SERVER_BIND_ADDRESS").default("0.0.0.0").as[Ipv4Address]
-    val port = renv(s"${prefix}_HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
+  def httpServerConfig(
+      prefix: String,
+      defaultPort: Port
+  ): ConfigValue[Effect, HttpServerConfig] =
+    val bindAddress =
+      renv(s"${prefix}_HTTP_SERVER_BIND_ADDRESS").default("0.0.0.0").as[Ipv4Address]
+    val port =
+      renv(s"${prefix}_HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
     (bindAddress, port).mapN(HttpServerConfig.apply)

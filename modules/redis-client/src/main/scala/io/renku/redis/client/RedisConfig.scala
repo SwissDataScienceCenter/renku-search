@@ -21,13 +21,16 @@ package io.renku.redis.client
 import dev.profunktor.redis4cats.connection.RedisURI
 import io.lettuce.core.RedisURI as JRedisURI
 
+import scala.concurrent.duration.FiniteDuration
+
 final case class RedisConfig(
     host: RedisHost,
     port: RedisPort,
     sentinel: Boolean = false,
     maybeDB: Option[RedisDB] = None,
     maybePassword: Option[RedisPassword] = None,
-    maybeMasterSet: Option[RedisMasterSet] = None
+    maybeMasterSet: Option[RedisMasterSet] = None,
+    connectionRefreshInterval: FiniteDuration
 ):
   lazy val asRedisUri: RedisURI =
     val builder = JRedisURI.Builder.redis(host.value, port.value)

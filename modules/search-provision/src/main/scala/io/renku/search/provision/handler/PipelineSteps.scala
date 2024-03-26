@@ -18,12 +18,12 @@
 
 package io.renku.search.provision.handler
 
-import cats.effect.{Resource, Sync}
-import io.renku.search.solr.client.SearchSolrClient
+import cats.effect.Async
+import fs2.Stream
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.ClientId
-import io.renku.redis.client.QueueName
+import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.provision.QueuesConfig
+import io.renku.search.solr.client.SearchSolrClient
 
 trait PipelineSteps[F[_]]:
   def reader: MessageReader[F]
@@ -35,9 +35,9 @@ trait PipelineSteps[F[_]]:
   def userUtils: UserUtils[F]
 
 object PipelineSteps:
-  def apply[F[_]: Sync](
+  def apply[F[_]: Async](
       solrClient: SearchSolrClient[F],
-      queueClient: Resource[F, QueueClient[F]],
+      queueClient: Stream[F, QueueClient[F]],
       queueConfig: QueuesConfig,
       inChunkSize: Int,
       clientId: ClientId

@@ -29,6 +29,8 @@ import io.lettuce.core.RedisConnectionException
 import io.renku.redis.client.*
 import io.renku.servers.RedisServer
 
+import scala.concurrent.duration.*
+
 trait RedisSpec:
   self: munit.Suite =>
 
@@ -60,7 +62,8 @@ trait RedisSpec:
     override lazy val redisConfig: RedisConfig =
       RedisConfig(
         RedisHost(server.host),
-        RedisPort(server.port)
+        RedisPort(server.port),
+        connectionRefreshInterval = 10 minutes
       )
 
     override def beforeAll(): Unit =

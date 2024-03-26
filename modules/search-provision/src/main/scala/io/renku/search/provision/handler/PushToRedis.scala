@@ -19,16 +19,15 @@
 package io.renku.search.provision.handler
 
 import cats.Show
-import cats.effect.{Resource, Sync}
+import cats.effect.Sync
 import cats.syntax.all.*
-import fs2.Pipe
-
+import fs2.{Pipe, Stream}
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.ProjectAuthorizationRemoved
 import io.renku.queue.client.*
-import io.renku.redis.client.ClientId
-import io.renku.redis.client.MessageId
+import io.renku.redis.client.{ClientId, MessageId}
 import io.renku.search.provision.QueuesConfig
+import scribe.Scribe
 
 trait PushToRedis[F[_]]:
   def pushAuthorizationRemoved(
@@ -40,31 +39,32 @@ trait PushToRedis[F[_]]:
 object PushToRedis:
 
   def apply[F[_]: Sync](
-      queueClient: Resource[F, QueueClient[F]],
+      queueClient: Stream[F, QueueClient[F]],
       clientId: ClientId,
       queueConfig: QueuesConfig
   ): PushToRedis[F] =
     new PushToRedis[F] {
-      val logger = scribe.cats.effect[F]
+      val logger: Scribe[F] = scribe.cats.effect[F]
+
       def pushAuthorizationRemoved(
           requestId: RequestId
       )(using
           Show[ProjectAuthorizationRemoved]
       ): Pipe[F, ProjectAuthorizationRemoved, MessageId] =
-        _.evalMap(payload =>
-          createHeader(requestId).flatMap { header =>
-            logger.debug(show"Pushing $payload to redis") >>
-              queueClient.use(
-                _.enqueue(
-                  queueConfig.projectAuthorizationRemoved,
-                  header,
-                  payload
-                )
-              )
-          }
+        _.evalMap(payload => createHeader(requestId).tupleRight(payload))
+          .evalTap { case (_, payload) => logger.debug(show"Pushing $payload to redis") }
+          .flatMap(enqueue)
+
+      private def enqueue(header: MessageHeader, payload: ProjectAuthorizationRemoved) =
+        queueClient.evalMap(
+          _.enqueue(
+            queueConfig.projectAuthorizationRemoved,
+            header,
+            payload
+          )
         )
 
-      def createHeader(requestId: RequestId): F[MessageHeader] =
+      private def createHeader(requestId: RequestId): F[MessageHeader] =
         MessageHeader[F](
           MessageSource(clientId.value),
           ProjectAuthorizationRemoved.SCHEMA$,

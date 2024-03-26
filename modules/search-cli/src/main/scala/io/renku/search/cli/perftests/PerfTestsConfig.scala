@@ -23,6 +23,8 @@ import com.monovore.decline.Opts
 import io.renku.redis.client.*
 import org.http4s.Uri
 
+import scala.concurrent.duration.*
+
 final case class PerfTestsConfig(
     itemsToGenerate: Int,
     providers: List[Provider],
@@ -79,9 +81,13 @@ private object RedisConfigOpts:
       .option[String]("redis-masterset", "Redis masterset")
       .map(RedisMasterSet.apply)
       .orNone
+  private val refreshInterval: Opts[FiniteDuration] =
+    Opts
+      .option[FiniteDuration]("redis-connection-refresh", "Redis connection refresh")
+      .withDefault(1 hour)
 
   val configOpts: Opts[RedisConfig] =
-    (host, port, sentinel, db.map(Option(_)), password, masterSet)
+    (host, port, sentinel, db.map(Option(_)), password, masterSet, refreshInterval)
       .mapN(RedisConfig.apply)
 
 sealed private trait Provider

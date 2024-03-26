@@ -18,20 +18,16 @@
 
 package io.renku.search.provision.handler
 
-import cats.effect.Sync
-import cats.syntax.all.*
-import fs2.Stream
-
-import io.renku.queue.client.{QueueClient, QueueMessage}
-import io.renku.redis.client.{ClientId, QueueName}
-import io.renku.search.provision.QueueMessageDecoder
-import scala.concurrent.duration.FiniteDuration
-import fs2.Chunk
-import cats.effect.{Async, Resource}
 import cats.Show
-import io.renku.queue.client.RequestId
-import io.renku.redis.client.MessageId
+import cats.effect.Async
+import cats.syntax.all.*
+import fs2.{Chunk, Stream}
+import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
+import io.renku.redis.client.{ClientId, MessageId, QueueName}
+import io.renku.search.provision.QueueMessageDecoder
 import scribe.Scribe
+
+import scala.concurrent.duration.FiniteDuration
 
 trait MessageReader[F[_]]:
   def read[A](using
@@ -51,7 +47,7 @@ trait MessageReader[F[_]]:
 
 object MessageReader:
   final case class Message[A](raw: QueueMessage, decoded: Seq[A]):
-    val id = raw.id
+    val id: MessageId = raw.id
     val requestId: RequestId = RequestId(raw.header.requestId)
     def map[B](f: A => B): Message[B] = Message(raw, decoded.map(f))
     def stream[F[_]]: Stream[F, A] = Stream.emits(decoded).covary[F]
@@ -59,18 +55,21 @@ object MessageReader:
   /** MessageReader that dequeues messages attempt to decode it. If decoding fails, the
     * message is marked as processed and the next message is read.
     */
-  def apply[F[_]: Sync](
-      queueClient: Resource[F, QueueClient[F]],
+  def apply[F[_]: Async](
+      queueClient: Stream[F, QueueClient[F]],
       queue: QueueName,
       clientId: ClientId,
       chunkSize: Int
   ): MessageReader[F] =
     new MessageReader[F]:
-      val logger = scribe.cats.effect[F]
+      val logger: Scribe[F] = scribe.cats.effect[F]
 
-      def read[A](using QueueMessageDecoder[F, A], Show[A]): Stream[F, Message[A]] =
+      override def read[A](using
+          QueueMessageDecoder[F, A],
+          Show[A]
+      ): Stream[F, Message[A]] =
         for {
-          client <- Stream.resource(queueClient)
+          client <- queueClient
           last <- Stream.eval(client.findLastProcessed(clientId, queue))
           qmsg <- client.acquireEventsStream(queue, chunkSize, last)
           dec <- Stream
@@ -91,17 +90,17 @@ object MessageReader:
           _ <- Stream.eval(logInfo(dec))
         } yield dec
 
-      def markProcessed(id: MessageId): F[Unit] =
-        queueClient.use(_.markProcessed(clientId, queue, id))
+      override def markProcessed(id: MessageId): F[Unit] =
+        queueClient.evalMap(_.markProcessed(clientId, queue, id)).take(1).compile.drain
 
-      def markProcessedError(err: Throwable, id: MessageId)(using
+      override def markProcessedError(err: Throwable, id: MessageId)(using
           logger: Scribe[F]
       ): F[Unit] =
         markProcessed(id) >>
-          logger.error(s"Processing messageId: ${id} for '${queue}' failed", err)
+          logger.error(s"Processing messageId: $id for '$queue' failed", err)
 
       private def logInfo[A: Show](m: Message[A]): F[Unit] =
         lazy val values = m.decoded.mkString_(", ")
         logger.info(
-          s"""Received message queue: ${queue.name}, id: ${m.id}, source: ${m.raw.header.source}, type: ${m.raw.header.`type`} for: ${values}"""
+          s"""Received message queue: ${queue.name}, id: ${m.id}, source: ${m.raw.header.source}, type: ${m.raw.header.`type`} for: $values"""
         )

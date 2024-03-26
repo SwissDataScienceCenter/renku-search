@@ -33,7 +33,6 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
-import munit.CatsEffectSuite
 
 class UserUpdatedProvisioningSpec extends ProvisioningSuite:
   (firstNameUpdate :: lastNameUpdate :: emailUpdate :: noUpdate :: Nil).foreach {

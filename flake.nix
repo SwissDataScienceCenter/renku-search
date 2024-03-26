@@ -41,6 +41,7 @@
           jq
           coreutils
           scala-cli
+          kubectl
           devshellToolsPkgs.sbt17
           devshellToolsPkgs.openapi-docs
         ]

@@ -31,9 +31,8 @@ import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.documents.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.QueryData
-import munit.CatsEffectSuite
 
-class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSpec:
+class SearchSolrClientSpec extends SearchSolrSuite:
 
   test("be able to insert and fetch a Project document"):
     withSearchSolrClient().use { client =>

@@ -48,8 +48,8 @@ object PartialEntityDocument:
     def remove(id: Id): Project = copy(owners = owners - id, members = members - id)
     def add(id: Id, role: MemberRole): Project =
       role match
-        case MemberRole.Owner  => copy(owners = owners + id)
-        case MemberRole.Member => copy(members = members + id)
+        case MemberRole.Owner  => copy(owners = owners + id, members = members - id)
+        case MemberRole.Member => copy(members = members + id, owners = owners - id)
 
     def applyTo(e: EntityDocument): EntityDocument =
       e match
@@ -61,8 +61,8 @@ object PartialEntityDocument:
     def combine(p: Project): Project =
       if (p.id == id)
         p.copy(
-          members = p.members ++ members,
-          owners = p.owners ++ owners
+          members = p.members ++ (members -- p.owners),
+          owners = p.owners ++ (owners -- p.members)
         )
       else p
 

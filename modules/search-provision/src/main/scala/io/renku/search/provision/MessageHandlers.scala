@@ -46,7 +46,7 @@ final class MessageHandlers[F[_]: Async](
   val projectCreated: Stream[F, Unit] =
     add(cfg.projectCreated, makeUpsert[ProjectCreated](cfg.projectCreated))
 
-  val projectUpdated =
+  val projectUpdated: Stream[F, Unit] =
     add(
       cfg.projectUpdated,
       makeUpdated[ProjectUpdated](cfg.projectUpdated, DocumentUpdates.project)
@@ -75,10 +75,10 @@ final class MessageHandlers[F[_]: Async](
   val userAdded: Stream[F, Unit] =
     add(cfg.userAdded, makeCreated[UserAdded](cfg.userAdded))
 
-  val userUpdated =
+  val userUpdated: Stream[F, Unit] =
     add(cfg.userUpdated, makeUpdated[UserUpdated](cfg.userUpdated, DocumentUpdates.user))
 
-  val userRemoved =
+  val userRemoved: Stream[F, Unit] =
     val ps = steps(cfg.userRemoved)
     add(
       cfg.userRemoved,

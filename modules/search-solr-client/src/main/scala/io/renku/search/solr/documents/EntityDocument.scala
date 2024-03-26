@@ -18,15 +18,15 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.NullOptions.given
 import io.bullet.borer.*
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.renku.search.model.*
-import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
-import io.renku.search.model.projects.Visibility
+import io.renku.search.model.projects.{MemberRole, Visibility}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.EncoderSupport
+import io.renku.solr.client.EncoderSupport.*
 
 sealed trait EntityDocument extends SolrDocument:
   val score: Option[Double]
@@ -55,8 +55,18 @@ final case class Project(
 ) extends EntityDocument:
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
-      case Owner  => copy(owners = (userId :: owners).distinct, score = None)
-      case Member => copy(members = (userId :: members).distinct, score = None)
+      case Owner =>
+        copy(
+          owners = (userId :: owners).distinct,
+          members = members.filterNot(_ == userId).distinct,
+          score = None
+        )
+      case Member =>
+        copy(
+          owners = owners.filterNot(_ == userId).distinct,
+          members = (userId :: members).distinct,
+          score = None
+        )
     }
 
   def addMembers(role: MemberRole, ids: List[Id]): Project = role match

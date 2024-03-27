@@ -29,8 +29,13 @@ trait SolrTruncate {
   def truncateAll(
       client: SolrClient[IO]
   )(fields: Seq[FieldName], types: Seq[TypeName]): IO[Unit] =
+    truncateQuery(client)("*:*", fields, types)
+
+  def truncateQuery(
+      client: SolrClient[IO]
+  )(query: String, fields: Seq[FieldName], types: Seq[TypeName]): IO[Unit] =
     for {
-      _ <- client.delete(QueryString("*:*"))
+      _ <- client.delete(QueryString(query))
       _ <- fields
         .map(SchemaCommand.DeleteField.apply)
         .traverse_(modifyIgnoreError(client))

@@ -62,7 +62,8 @@ object SolrToken:
       case Comparison.LowerThan   => "<"
 
   def contentAll(text: String): SolrToken =
-    s"${SolrField.contentAll.name}:${StringEscape.queryChars(text)}"
+    val terms: Seq[SolrToken] = text.split("\\s+").map(_.trim).toSeq
+    s"${SolrField.contentAll.name}:${terms.fuzzy}"
 
   def orFieldIs(field: FieldName, values: NonEmptyList[SolrToken]): SolrToken =
     values.map(fieldIs(field, _)).toList.foldOr
@@ -129,3 +130,7 @@ object SolrToken:
       if (self.sizeIs <= 1) all else s"($all)"
     def foldOr: SolrToken = foldM(using orMonoid)
     def foldAnd: SolrToken = foldM(using andMonoid)
+    def fuzzy: SolrToken =
+      if (self.isEmpty) SolrToken.empty
+      else if (self.tail.isEmpty) s"${StringEscape.queryChars(self.head)}~"
+      else self.map(StringEscape.queryChars).map(e => s"$e~").mkString("(", " ", ")")

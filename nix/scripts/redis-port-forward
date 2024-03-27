@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -e
+
+port=${1:-26379}
+if [ -z "$RENKU_ENV" ]; then
+    echo "Please set RENKU_ENV environment variable to the deployment"
+    echo "environment you want to run against"
+    exit 1
+fi
+
+get_pod_name() {
+    local pat="$1"
+    kubectl -n $RENKU_ENV get pods -o json|jq -r '.items[]|.metadata.name'|grep "$pat"
+}
+
+get_redis_pod() {
+    pod_name=$(get_pod_name redis-node-0)
+    echo $pod_name
+}
+
+get_redis_secret() {
+    local pod_name="$1"
+
+    local redis_secret=$(kubectl -n $RENKU_ENV get secrets -o json | jq -r '.items[]|select(.metadata.name == "redis-secret")|.data."redis-password"|@base64d')
+
+    echo "*** redis-secret ***"
+    echo "secret: $redis_secret"
+    echo "url: localhost:$port"
+    echo "example: redis-cli -e --json -h localhost -p $port -n 3 -a $redis_secret …"
+}
+
+pod="$(get_redis_pod)"
+get_redis_secret "$pod"
+kubectl -n $RENKU_ENV port-forward $pod $port:6379

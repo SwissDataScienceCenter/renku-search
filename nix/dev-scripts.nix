@@ -38,6 +38,11 @@
     inherit system;
   };
 
+  redis-port-forward = devshell-tools.lib.installScript {
+    script = ./scripts/redis-port-forward;
+    inherit system;
+  };
+
   k8s-reprovision = devshell-tools.lib.installScript {
     script = ./scripts/k8s-reprovision;
     inherit system;

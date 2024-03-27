@@ -70,6 +70,7 @@
             RS_SOLR_HOST = "rsdev-cnt";
             RS_SOLR_URL = "http://rsdev-cnt:8983/solr";
             RS_SOLR_CORE = "rsdev-test";
+            RS_SOLR_DEFAULT_COMMIT_WITHIN = "1 seconds";
             RS_REDIS_HOST = "rsdev-cnt";
             RS_REDIS_PORT = "6379";
             RS_CONTAINER = "rsdev";
@@ -93,6 +94,7 @@
             RS_SOLR_PORT = "18983";
             RS_SOLR_URL = "http://localhost:18983/solr";
             RS_SOLR_CORE = "rsdev-test";
+            RS_SOLR_DEFAULT_COMMIT_WITHIN = "1 seconds";
             RS_REDIS_HOST = "localhost";
             RS_REDIS_PORT = "16379";
             VM_SSH_PORT = "10022";

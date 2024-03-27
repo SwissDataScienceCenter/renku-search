@@ -22,10 +22,9 @@ import cats.effect.IO
 import io.renku.solr.client.SolrClient
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.schema.SchemaCommand.Add
-import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
-import munit.CatsEffectSuite
+import io.renku.solr.client.util.SolrClientBaseSuite
 
-class SolrMigratorSpec extends CatsEffectSuite with SolrSpec with SolrTruncate:
+class SolrMigratorSpec extends SolrClientBaseSuite:
   private val logger = scribe.cats.io
   override protected lazy val coreName: String = server.testCoreName3
   private val migrations = Seq(

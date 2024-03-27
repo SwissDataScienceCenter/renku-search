@@ -43,6 +43,11 @@
     inherit system;
   };
 
+  solr-port-forward = devshell-tools.lib.installScript {
+    script = ./scripts/solr-port-forward;
+    inherit system;
+  };
+
   solr-recreate-cores = writeShellScriptBin "solr-recreate-cores" ''
     set +e
     script=$([ "$(which cnt-solr-recreate-core 2> /dev/null)" != "" ] && echo "cnt-solr-recreate-core" || echo "vm-solr-recreate-core")

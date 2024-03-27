@@ -16,17 +16,13 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client.util
 
-// see https://solr.apache.org/guide/solr/latest/indexing-guide/filters.html
+import munit.CatsEffectSuite
+import io.renku.search.LoggingConfigure
 
-final case class Filter(name: String)
-
-object Filter:
-  val asciiFolding: Filter = Filter("asciiFolding")
-  val lowercase: Filter = Filter("lowercase")
-  val stop: Filter = Filter("stop")
-  val englishMinimalStem: Filter = Filter("englishMinimalStem")
-  val classic: Filter = Filter("classic")
-  val daitchMokotoffSoundex: Filter = Filter("daitchMokotoffSoundex")
-  val doubleMetaphone: Filter = Filter("doubleMetaphone")
+abstract class SolrClientBaseSuite
+    extends CatsEffectSuite
+    with LoggingConfigure
+    with SolrServerSuite
+    with SolrTruncate

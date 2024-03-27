@@ -21,22 +21,19 @@ package io.renku.search.provision
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
+
 import io.renku.queue.client.{QueueClient, QueueSpec}
 import io.renku.redis.client.{ClientId, QueueName}
-import io.renku.search.LoggingConfigure
 import io.renku.search.model.Id
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.project.ProjectSyntax
 import io.renku.search.provision.user.UserSyntax
-import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSpec}
+import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
 import io.renku.search.solr.documents.*
-import munit.CatsEffectSuite
 
 trait ProvisioningSuite
-    extends CatsEffectSuite
-    with LoggingConfigure
+    extends SearchSolrSuite
     with QueueSpec
-    with SearchSolrSpec
     with ProjectSyntax
     with UserSyntax:
 

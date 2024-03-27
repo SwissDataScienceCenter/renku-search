@@ -26,28 +26,22 @@ import cats.effect.IO
 import cats.syntax.all.*
 
 import io.bullet.borer.{Decoder, Reader}
-import io.renku.search.LoggingConfigure
 import io.renku.search.model
 import io.renku.search.model.EntityType
 import io.renku.search.query.Query
 import io.renku.search.query.QueryGenerators
 import io.renku.search.solr.SearchRole
-import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 import io.renku.solr.client.{QueryData, QueryString}
-import munit.CatsEffectSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Test.Parameters
 import org.scalacheck.effect.PropF
 
-class LuceneQueryInterpreterSpec
-    extends CatsEffectSuite
-    with LoggingConfigure
-    with ScalaCheckEffectSuite
-    with SearchSolrSpec:
+class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSuite:
 
   override protected lazy val coreName: String = server.testCoreName2
 

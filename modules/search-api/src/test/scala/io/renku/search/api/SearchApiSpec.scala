@@ -27,15 +27,14 @@ import io.renku.search.api.data.*
 import io.renku.search.model.Id
 import io.renku.search.model.users.FirstName
 import io.renku.search.query.Query
-import io.renku.search.solr.client.SearchSolrSpec
+import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
-import munit.CatsEffectSuite
 import scribe.Scribe
 import org.scalacheck.Gen
 import io.renku.search.model.projects.Visibility
 
-class SearchApiSpec extends CatsEffectSuite with SearchSolrSpec:
+class SearchApiSpec extends SearchSolrSuite:
 
   private given Scribe[IO] = scribe.cats[IO]
 

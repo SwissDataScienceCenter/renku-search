@@ -25,7 +25,7 @@ import org.http4s.Uri
 
 import scala.concurrent.duration.Duration
 
-trait SolrSpec:
+trait SolrServerSuite:
   self: munit.Suite =>
 
   protected lazy val server: SolrServer = SolrServer

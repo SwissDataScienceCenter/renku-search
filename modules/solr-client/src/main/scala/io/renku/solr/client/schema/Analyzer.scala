@@ -23,7 +23,7 @@ package io.renku.solr.client.schema
 final case class Analyzer(
     tokenizer: Tokenizer,
     `type`: Analyzer.AnalyzerType = Analyzer.AnalyzerType.None,
-    filter: Seq[Filter] = Nil
+    filters: Seq[Filter] = Nil
 )
 
 object Analyzer:
@@ -36,4 +36,17 @@ object Analyzer:
   def index(tokenizer: Tokenizer, filters: Filter*): Analyzer =
     Analyzer(tokenizer, AnalyzerType.Index, filters)
 
-  val classic: Analyzer = Analyzer(Tokenizer.classic, filter = List(Filter.classic))
+  def query(tokenizer: Tokenizer, filters: Filter*): Analyzer =
+    Analyzer(tokenizer, AnalyzerType.Query, filters)
+
+  val classic: Analyzer = Analyzer(Tokenizer.classic, filters = List(Filter.classic))
+
+  val defaultSearch: Analyzer = Analyzer(
+    tokenizer = Tokenizer.uax29UrlEmail,
+    filters = Seq(
+      Filter.lowercase,
+      Filter.stop,
+      Filter.englishMinimalStem,
+      Filter.asciiFolding
+    )
+  )

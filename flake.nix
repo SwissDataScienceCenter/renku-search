@@ -41,27 +41,25 @@
           jq
           coreutils
           scala-cli
+          kubectl
           devshellToolsPkgs.sbt17
           devshellToolsPkgs.openapi-docs
         ]
         ++ (builtins.attrValues selfPkgs);
 
-      queueNames = [
-        "projectCreated"
-        "projectUpdated"
-        "projectRemoved"
-        "projectAuthAdded"
-        "projectAuthUpdated"
-        "projectAuthRemoved"
-        "userAdded"
-        "userUpdated"
-        "userRemoved"
-      ];
-      queueNameConfig = builtins.listToAttrs (builtins.map (qn: {
-          name = "RS_REDIS_QUEUE_${qn}";
-          value = qn;
-        })
-        queueNames);
+      queueNames = {
+        projectCreated = "project.created";
+        projectUpdated = "project.updated";
+        projectRemoved = "project.removed";
+        projectAuthAdded = "projectAuth.added";
+        projectAuthUpdated = "projectAuth.updated";
+        projectAuthRemoved = "projectAuth.removed";
+        userAdded = "user.added";
+        userUpdated = "user.updated";
+        userRemoved = "user.removed";
+      };
+
+      queueNameConfig = with nixpkgs.lib; mapAttrs' (key: qn: nameValuePair "RS_REDIS_QUEUE_${key}" qn) queueNames;
     in {
       formatter = pkgs.alejandra;
 

@@ -33,7 +33,6 @@ import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
-import munit.CatsEffectSuite
 
 class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 

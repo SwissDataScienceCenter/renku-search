@@ -40,8 +40,8 @@ recreate_solr_core() {
     local core_name=${SOLR_CORE_NAME:-renku-search}
     local pod_name=$(get_pod_name solr-0)
     local solr_pass=$(kubectl -n $RENKU_ENV get secrets -o json | jq -r '.items[]|select(.metadata.labels."app.kubernetes.io/component" == "solr")|.data."solr-password"|@base64d')
-    kubectl -n $RENKU_ENV exec $pod_name -- env SOLR_AUTH_TYPE="basic" SOLR_AUTHENTICATION_OPTS="-Dbasicauth=renku:$solr_pass" solr delete -c "$core_name"
-    kubectl -n $RENKU_ENV exec $pod_name -- env SOLR_AUTH_TYPE="basic" SOLR_AUTHENTICATION_OPTS="-Dbasicauth=renku:$solr_pass" solr create -c "$core_name"
+    kubectl -n $RENKU_ENV exec $pod_name -- env SOLR_AUTH_TYPE="basic" SOLR_AUTHENTICATION_OPTS="-Dbasicauth=admin:$solr_pass" solr delete -c "$core_name"
+    kubectl -n $RENKU_ENV exec $pod_name -- env SOLR_AUTH_TYPE="basic" SOLR_AUTHENTICATION_OPTS="-Dbasicauth=admin:$solr_pass" solr create -c "$core_name"
 }
 
 drop_last_message_id() {
@@ -55,13 +55,18 @@ drop_last_message_id() {
     local pfw_pid=$!
     sleep 1.5
     echo "Run portforward in $pfw_pid"
-    local msg_id=$(redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" GET project.created.search-provisioner | jq -r)
-    if [ "$msg_id" = "null" ] || [ -z "$msg_id" ]; then
-        echo "No messages processed"
-    else
-        echo "Last message id: $msg_id - Deleting it"
-        redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" DEL project.created.search-provisioner $msg_id
-    fi
+
+    # https://github.com/SwissDataScienceCenter/renku/blob/5ed8427433aef82adfbf8ffc0a53cf6549b6df55/helm-chart/renku/values.yaml#L84
+    local queues="project.created project.updated project.removed projectAuth.added projectAuth.updated projectAuth.removed user.added user.updated user.removed"
+    for qn in $queues; do
+        local msg_id=$(redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" GET "$qn.search-provisioner" | jq -r)
+        if [ "$msg_id" = "null" ] || [ -z "$msg_id" ]; then
+            echo "No messages processed for queue $qn"
+        else
+            echo "Last message id for $qn: $msg_id - Deleting it"
+            redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" DEL "$qn.search-provisioner" $msg_id
+        fi
+    done
     echo "Drop port-forward"
     kill $pfw_pid
 }

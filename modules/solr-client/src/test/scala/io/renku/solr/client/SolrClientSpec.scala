@@ -28,21 +28,15 @@ import cats.effect.IO
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.LoggingConfigure
 import io.renku.solr.client.SolrClientSpec.Room
 import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.*
-import io.renku.solr.client.util.{SolrSpec, SolrTruncate}
-import munit.{CatsEffectSuite, ScalaCheckEffectSuite}
+import io.renku.solr.client.util.SolrClientBaseSuite
+import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
 
-class SolrClientSpec
-    extends CatsEffectSuite
-    with LoggingConfigure
-    with ScalaCheckEffectSuite
-    with SolrSpec
-    with SolrTruncate:
+class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
 
   test("use schema for inserting and querying"):
     val cmds = Seq(

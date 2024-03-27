@@ -33,7 +33,6 @@ import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
-import munit.CatsEffectSuite
 
 class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
 

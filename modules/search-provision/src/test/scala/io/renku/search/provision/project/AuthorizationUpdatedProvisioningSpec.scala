@@ -34,7 +34,6 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.SolrDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
-import munit.CatsEffectSuite
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
   testCases.foreach { tc =>

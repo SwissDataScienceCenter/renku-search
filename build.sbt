@@ -383,6 +383,7 @@ lazy val searchCli = project
   .settings(
     name := "search-cli",
     description := "A set of CLI tools",
+    Compile / run / fork := true,
     libraryDependencies ++=
       Dependencies.decline ++
         Dependencies.http4sClient

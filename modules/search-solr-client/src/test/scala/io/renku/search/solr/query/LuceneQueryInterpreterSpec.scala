@@ -69,15 +69,15 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
   test("amend query with auth data"):
     assertEquals(
       query("help", SearchRole.user(model.Id("13"))).query,
-      "((content_all:help) AND (visibility:public OR owners:13 OR members:13) AND _kind:fullentity)"
+      "((content_all:help~) AND (visibility:public OR owners:13 OR members:13) AND _kind:fullentity)"
     )
     assertEquals(
       query("help", SearchRole.Anonymous).query,
-      "((content_all:help) AND visibility:public AND _kind:fullentity)"
+      "((content_all:help~) AND visibility:public AND _kind:fullentity)"
     )
     assertEquals(
       query("help", SearchRole.Admin).query,
-      "(content_all:help AND _kind:fullentity)"
+      "(content_all:help~ AND _kind:fullentity)"
     )
 
   test("amend empty query with auth data"):

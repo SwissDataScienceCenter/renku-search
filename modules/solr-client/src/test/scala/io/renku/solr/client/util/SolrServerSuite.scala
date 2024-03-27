@@ -23,8 +23,6 @@ import io.renku.servers.SolrServer
 import io.renku.solr.client.{SolrClient, SolrConfig}
 import org.http4s.Uri
 
-import scala.concurrent.duration.Duration
-
 trait SolrServerSuite:
   self: munit.Suite =>
 
@@ -34,7 +32,6 @@ trait SolrServerSuite:
     Uri.unsafeFromString(server.url) / "solr",
     coreName,
     maybeUser = None,
-    commitWithin = Some(Duration.Zero),
     logMessageBodies = true
   )
 

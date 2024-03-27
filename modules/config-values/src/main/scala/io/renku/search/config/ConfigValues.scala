@@ -71,14 +71,9 @@ object ConfigValues extends ConfigDecoders:
       (renv("SOLR_USER").default("admin"), renv("SOLR_PASS"))
         .mapN(SolrUser.apply)
         .option
-    val defaultCommit =
-      renv("SOLR_DEFAULT_COMMIT_WITHIN")
-        .default("0 seconds")
-        .as[FiniteDuration]
-        .option
     val logMessageBodies =
       renv("SOLR_LOG_MESSAGE_BODIES").default("false").as[Boolean]
-    (url, core, maybeUser, defaultCommit, logMessageBodies).mapN(SolrConfig.apply)
+    (url, core, maybeUser, logMessageBodies).mapN(SolrConfig.apply)
   }
 
   def httpServerConfig(

@@ -28,8 +28,6 @@ import io.renku.solr.client.schema.{SchemaCommand, SchemaJsonCodec}
 import org.http4s.client.Client
 import org.http4s.{BasicCredentials, Method, Uri}
 
-import scala.concurrent.duration.Duration
-
 private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]
     with HttpClientDsl[F]
@@ -78,15 +76,11 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
       .expectOr[InsertResponse](req)(ResponseLogging.Error(logger, req))
       .flatTap(r => logger.trace(s"Solr inserted response: $r"))
 
-  private def makeUpdateUrl = {
-    val base = (solrUrl / "update")
+  private def makeUpdateUrl =
+    (solrUrl / "update")
       .withQueryParam("overwrite", "true")
       .withQueryParam("wt", "json")
-    config.commitWithin match
-      case Some(d) if d == Duration.Zero => base.withQueryParam("commit", "true")
-      case Some(d) => base.withQueryParam("commitWithin", d.toMillis)
-      case None    => base
-  }
+      .withQueryParam("commit", "true")
 
   override def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]] =
     val req = Method

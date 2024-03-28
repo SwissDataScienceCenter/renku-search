@@ -34,6 +34,9 @@ final case class CollectorRegistryBuilder[F[_]: Sync](
   def add(c: Collector): CollectorRegistryBuilder[F] =
     copy(collectors = collectors + c)
 
+  def addAll(c: Iterable[Collector]): CollectorRegistryBuilder[F] =
+    copy(collectors = collectors ++ c)
+
   def makeRegistry: Resource[F, CollectorRegistry] =
     val registry = new CollectorRegistry()
     (registerJVM(registry) >> registerCollectors(registry))

@@ -27,7 +27,7 @@ private[client] object DeleteIdRequest:
   given Encoder[DeleteIdRequest] =
     new Encoder[DeleteIdRequest]:
       override def write(w: Writer, value: DeleteIdRequest) =
-        w.writeMap(Map("delete" -> value.ids.toList))(
+        w.writeMap(Map("delete" -> value.ids.toList))(using
           Encoder[String],
           Encoder[List[String]]
         )

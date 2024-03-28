@@ -33,7 +33,7 @@ object SortableField:
   given Decoder[SortableField] = Decoder.forString.mapEither(fromString)
   given Order[SortableField] = Order.by(_.name)
 
-  private[this] val allNames: String = SortableField.values.map(_.name).mkString(", ")
+  private val allNames: String = SortableField.values.map(_.name).mkString(", ")
 
   def fromString(str: String): Either[String, SortableField] =
     SortableField.values

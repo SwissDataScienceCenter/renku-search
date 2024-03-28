@@ -53,7 +53,7 @@ final case class AuthTestData(
     copy(projects = projects.updated(key, p))
 
   def queryAll =
-    Query(Query.Segment.idIs(all.head.id.value, all.tail.map(_.id.value): _*))
+    Query(Query.Segment.idIs(all.head.id.value, all.tail.map(_.id.value)*))
 
   def user1EntityIds =
     users.map(_.id) ++ List(

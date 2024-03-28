@@ -23,7 +23,7 @@ import io.renku.redis.client.QueueName
 
 private class UnprocessedCountGauge extends QueueGauge:
 
-  private[this] val underlying =
+  private val underlying =
     Gauge
       .build()
       .name("redis_stream_unprocessed")

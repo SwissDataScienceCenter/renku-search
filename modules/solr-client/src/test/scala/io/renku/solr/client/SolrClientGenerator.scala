@@ -68,5 +68,5 @@ object SolrClientGenerator:
   val facets: Gen[Facets] =
     Gen.choose(0, 5).flatMap(n => Gen.listOfN(n, facet)).map { n =>
       if (n.isEmpty) Facets.empty
-      else Facets(n: _*)
+      else Facets(n*)
     }

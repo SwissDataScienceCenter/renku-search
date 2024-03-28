@@ -42,9 +42,9 @@ object SchemaMigrator:
     SolrClient[F](solrConfig).map(apply[F])
 
   private class Impl[F[_]: Sync](client: SolrClient[F]) extends SchemaMigrator[F] {
-    private[this] val logger = scribe.cats.effect[F]
-    private[this] val versionDocId = "VERSION_ID_EB779C6B-1D96-47CB-B304-BECF15E4A607"
-    private[this] val versionTypeName: TypeName = TypeName("plong")
+    private val logger = scribe.cats.effect[F]
+    private val versionDocId = "VERSION_ID_EB779C6B-1D96-47CB-B304-BECF15E4A607"
+    private val versionTypeName: TypeName = TypeName("plong")
 
     override def currentVersion: F[Option[Long]] =
       client

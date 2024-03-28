@@ -64,7 +64,7 @@ object RecordDecoders:
             )
       }
 
-    inline def summonAll[T <: Tuple]: List[AvroDecoder[_]] =
+    inline def summonAll[T <: Tuple]: List[AvroDecoder[?]] =
       inline erasedValue[T] match
         case _: EmptyTuple => Nil
         case _: (t *: ts)  => summonInline[AvroDecoder[t]] :: summonAll[ts]

@@ -145,5 +145,5 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
     _.to[ProjectUpdated]
   )
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

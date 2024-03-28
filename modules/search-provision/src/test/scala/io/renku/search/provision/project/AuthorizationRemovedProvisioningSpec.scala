@@ -63,7 +63,7 @@ class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
       }
   }
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
 
 object AuthorizationRemovedProvisioningSpec:

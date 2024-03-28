@@ -41,7 +41,7 @@ object AvroReader:
   def apply(schema: Schema): AvroReader = new Impl(schema)
 
   private class Impl(schema: Schema) extends AvroReader:
-    private[this] val reader = new GenericDatumReader[Any](schema)
+    private val reader = new GenericDatumReader[Any](schema)
 
     extension (self: DatumReader[Any])
       def readOpt[A: AvroDecoder](decoder: Decoder): Option[A] =

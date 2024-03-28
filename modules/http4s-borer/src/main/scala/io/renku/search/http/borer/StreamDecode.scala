@@ -50,7 +50,7 @@ object StreamDecode {
           Pull.pure(None)
       })
 
-  private[this] val curlyClose = Chunk('}'.toByte)
+  private val curlyClose = Chunk('}'.toByte)
   private def decodeCont[A](
       decode: Input[Array[Byte]] => DecodingSetup.Sealed[A]
   )(input: Chunk[Byte]): Either[Throwable, (Vector[A], Chunk[Byte])] = {

@@ -36,7 +36,7 @@ object Field:
   given Encoder[Field] = Encoder.forString.contramap(_.name)
   given Decoder[Field] = Decoder.forString.mapEither(fromString)
 
-  private[this] val allNames: String = Field.values.map(_.name).mkString(", ")
+  private val allNames: String = Field.values.map(_.name).mkString(", ")
 
   def fromString(str: String): Either[String, Field] =
     Field.values

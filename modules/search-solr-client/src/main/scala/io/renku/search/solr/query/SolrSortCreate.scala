@@ -37,7 +37,7 @@ private object SolrSortCreate:
       case Order.Direction.Desc => SolrSort.Direction.Desc
 
   def apply(ts: Order.OrderedBy*): SolrSort =
-    SolrSort(ts.map(e => (fromField(e.field), fromDirection(e.direction))): _*)
+    SolrSort(ts.map(e => (fromField(e.field), fromDirection(e.direction)))*)
 
   def apply(ts: NonEmptyList[Order.OrderedBy]): SolrSort =
-    apply(ts.toList: _*)
+    apply(ts.toList*)

@@ -37,8 +37,8 @@ import io.renku.solr.client.schema.FieldName
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
 
-  private[this] val logger = scribe.cats.effect[F]
-  private[this] val interpreter = LuceneQueryInterpreter.forSync[F]
+  private val logger = scribe.cats.effect[F]
+  private val interpreter = LuceneQueryInterpreter.forSync[F]
 
   private val typeTerms = Facet.Terms(
     EntityDocumentSchema.Fields.entityType,

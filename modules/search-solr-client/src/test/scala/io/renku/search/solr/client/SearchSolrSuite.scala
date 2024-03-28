@@ -42,5 +42,5 @@ abstract class SearchSolrSuite extends SolrClientBaseSuite:
     override def afterAll(): Unit =
       server.stop()
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withSearchSolrClient)

@@ -28,5 +28,5 @@ private[client] object DeleteRequest:
     val e: Encoder[DeleteRequest] = deriveEncoder[DeleteRequest]
     new Encoder[DeleteRequest]:
       override def write(w: Writer, value: DeleteRequest) =
-        w.writeMap(Map("delete" -> value))(Encoder[String], e)
+        w.writeMap(Map("delete" -> value))(using Encoder[String], e)
   }

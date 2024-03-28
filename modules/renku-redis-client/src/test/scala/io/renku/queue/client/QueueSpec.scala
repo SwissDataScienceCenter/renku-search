@@ -30,5 +30,5 @@ trait QueueSpec extends RedisSpec:
   val withQueueClient: QueueFixture = () =>
     withRedisClient.asRedisQueueClient().map(new QueueClientImpl[IO](_))
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient)

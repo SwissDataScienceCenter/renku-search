@@ -25,7 +25,7 @@ import io.renku.search.solr.documents.DocumentKind
 
 private class DocumentKindGauge(val entityType: EntityType) extends Collector:
 
-  private[this] val underlying =
+  private val underlying =
     Gauge
       .build()
       .name(s"solr_${entityType.name.toLowerCase}_by_kind")

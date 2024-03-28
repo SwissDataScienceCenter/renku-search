@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 import io.renku.search.metrics.CollectorRegistryBuilder
-import io.renku.search.provision.metrics.{MetricsCollectorsUpdater, RedisMetrics}
+import io.renku.search.provision.metrics.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 
@@ -41,6 +41,7 @@ object Microservice extends IOApp:
         registryBuilder = CollectorRegistryBuilder[IO].withJVMMetrics
           .add(RedisMetrics.queueSizeGauge)
           .add(RedisMetrics.unprocessedGauge)
+          .addAll(SolrMetrics.allCollectors)
         metrics = metricsUpdaterTask(services)
         httpServer = httpServerTask(registryBuilder, services.config)
         tasks = services.messageHandlers.getAll + metrics + httpServer
@@ -64,14 +65,15 @@ object Microservice extends IOApp:
     val io =
       if (updateInterval <= Duration.Zero)
         logger.info(
-          s"Metric update interval is ${updateInterval}, disable periodic metric task"
+          s"Metric update interval is $updateInterval, disable periodic metric task"
         )
       else
         MetricsCollectorsUpdater[IO](
           services.config.clientId,
           services.config.queuesConfig,
           updateInterval,
-          services.queueClient
+          services.queueClient,
+          services.solrClient
         ).run()
     "metrics updater" -> io
 

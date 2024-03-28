@@ -18,38 +18,35 @@
 
 package io.renku.search.provision.metrics
 
-import cats.NonEmptyParallel
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
-import io.renku.queue.client.QueueClient
-import io.renku.redis.client.ClientId
-import io.renku.search.provision.QueuesConfig
+import io.renku.search.provision.metrics.SolrMetrics.*
 import io.renku.search.solr.client.SearchSolrClient
 
 import scala.concurrent.duration.FiniteDuration
 
-object MetricsCollectorsUpdater:
-  def apply[F[_]: Async: NonEmptyParallel](
-      clientId: ClientId,
-      queuesConfig: QueuesConfig,
+private object SolrMetricsCollectorsUpdater:
+
+  def apply[F[_]: Async](
       updateInterval: FiniteDuration,
-      queueClient: Stream[F, QueueClient[F]],
-      solrClient: SearchSolrClient[F]
-  ): MetricsCollectorsUpdater[F] =
-    new MetricsCollectorsUpdater[F](
-      RedisMetricsCollectorsUpdater[F](
-        clientId,
-        queuesConfig,
-        updateInterval,
-        queueClient
-      ),
-      SolrMetricsCollectorsUpdater[F](updateInterval, solrClient)
+      sc: SearchSolrClient[F]
+  ): SolrMetricsCollectorsUpdater[F] =
+    new SolrMetricsCollectorsUpdater[F](
+      updateInterval,
+      allCollectors.map(DocumentKindGaugeUpdater(sc, _)).toList
     )
 
-class MetricsCollectorsUpdater[F[_]: Async: NonEmptyParallel](
-    rcu: RedisMetricsCollectorsUpdater[F],
-    scu: SolrMetricsCollectorsUpdater[F]
+private class SolrMetricsCollectorsUpdater[F[_]: Async](
+    updateInterval: FiniteDuration,
+    updaters: List[DocumentKindGaugeUpdater[F]]
 ):
+
   def run(): F[Unit] =
-    (rcu.run(), scu.run()).parTupled.void
+    Stream
+      .awakeEvery[F](updateInterval)
+      .evalMap(_ => updateCollectors)
+      .compile
+      .drain
+
+  private def updateCollectors = updaters.traverse_(_.update())

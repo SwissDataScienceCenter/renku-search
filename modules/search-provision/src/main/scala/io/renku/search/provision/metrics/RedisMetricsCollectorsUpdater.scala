@@ -18,38 +18,52 @@
 
 package io.renku.search.provision.metrics
 
-import cats.NonEmptyParallel
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.ClientId
 import io.renku.search.provision.QueuesConfig
-import io.renku.search.solr.client.SearchSolrClient
 
 import scala.concurrent.duration.FiniteDuration
 
-object MetricsCollectorsUpdater:
-  def apply[F[_]: Async: NonEmptyParallel](
+private object RedisMetricsCollectorsUpdater:
+
+  def apply[F[_]: Async](
       clientId: ClientId,
       queuesConfig: QueuesConfig,
       updateInterval: FiniteDuration,
-      queueClient: Stream[F, QueueClient[F]],
-      solrClient: SearchSolrClient[F]
-  ): MetricsCollectorsUpdater[F] =
-    new MetricsCollectorsUpdater[F](
-      RedisMetricsCollectorsUpdater[F](
-        clientId,
-        queuesConfig,
-        updateInterval,
-        queueClient
-      ),
-      SolrMetricsCollectorsUpdater[F](updateInterval, solrClient)
+      queueClient: Stream[F, QueueClient[F]]
+  ): RedisMetricsCollectorsUpdater[F] =
+    new RedisMetricsCollectorsUpdater[F](
+      queueClient,
+      queuesConfig,
+      RedisMetrics.updaterFactories(clientId),
+      updateInterval
     )
 
-class MetricsCollectorsUpdater[F[_]: Async: NonEmptyParallel](
-    rcu: RedisMetricsCollectorsUpdater[F],
-    scu: SolrMetricsCollectorsUpdater[F]
+private class RedisMetricsCollectorsUpdater[F[_]: Async](
+    queueClient: Stream[F, QueueClient[F]],
+    queuesConfig: QueuesConfig,
+    collectors: List[QueueClient[F] => CollectorUpdater[F]],
+    updateInterval: FiniteDuration
 ):
+
+  private val allQueues = queuesConfig.all.toList
+
   def run(): F[Unit] =
-    (rcu.run(), scu.run()).parTupled.void
+    createUpdateStream.compile.drain
+
+  private def createUpdateStream: Stream[F, Unit] =
+    val awake: Stream[F, Unit] =
+      Stream.awakeEvery[F](updateInterval).void
+    queueClient
+      .flatTap(_ => awake)
+      .evalMap(runUpdate)
+
+  private def runUpdate(qc: QueueClient[F]) =
+    allQueues.traverse_ { q =>
+      collectors
+        .map(_.apply(qc))
+        .traverse_(_.update(q))
+    }

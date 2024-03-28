@@ -67,7 +67,7 @@ trait SchemaJsonCodec {
       override def write(w: Writer, value: Seq[SchemaCommand]) =
         w.writeMapOpen(value.size)
         value.foreach { v =>
-          w.writeMapMember(v.commandName, v)(
+          w.writeMapMember(v.commandName, v)(using
             Encoder[String],
             commandPayloadEncoder
           )

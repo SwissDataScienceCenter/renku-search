@@ -47,5 +47,5 @@ trait SolrServerSuite:
       override def afterAll(): Unit =
         server.stop()
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withSolrClient)

@@ -25,8 +25,8 @@ trait AvroIO extends AvroWriter with AvroReader
 object AvroIO:
   def apply(schema: Schema): AvroIO =
     new AvroIO:
-      private[this] val reader = AvroReader(schema)
-      private[this] val writer = AvroWriter(schema)
+      private val reader = AvroReader(schema)
+      private val writer = AvroWriter(schema)
 
       override def write[A: AvroEncoder](values: Seq[A]): ByteVector =
         writer.write(values)

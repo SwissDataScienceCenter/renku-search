@@ -113,5 +113,5 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
     ua => UserUpdated(ua.id, ua.firstName, ua.lastName, ua.email)
   )
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

@@ -52,7 +52,7 @@ object RecordEncoders {
         AvroRecord(schema, fields)
       }
 
-    inline def summonAll[T <: Tuple]: List[AvroEncoder[_]] =
+    inline def summonAll[T <: Tuple]: List[AvroEncoder[?]] =
       inline erasedValue[T] match
         case _: EmptyTuple => Nil
         case _: (t *: ts)  => summonInline[AvroEncoder[t]] :: summonAll[ts]

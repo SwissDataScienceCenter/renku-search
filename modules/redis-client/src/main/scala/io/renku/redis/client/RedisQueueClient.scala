@@ -103,7 +103,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
       (rm.body.get(MessageBodyKeys.headers), rm.body.get(MessageBodyKeys.payload))
         .mapN(RedisMessage(MessageId(rm.id.value), _, _))
 
-    lazy val logInfo: ((XReadMessage[_, _], Option[RedisMessage])) => F[Unit] = {
+    lazy val logInfo: ((XReadMessage[?, ?], Option[RedisMessage])) => F[Unit] = {
       case (m, None) =>
         Log[F].info(
           s"Message '${m.id}' skipped as it has no '${MessageBodyKeys.headers}' or '${MessageBodyKeys.payload}'"

@@ -97,13 +97,13 @@ object Query:
       Segment.Field(Created(Comparison.GreaterThan, NonEmptyList(date, dates.toList)))
 
     def creationDateIs(date: PartialDateTime, dates: PartialDateTime*): Segment =
-      creationDateIs(DateTimeRef(date), dates.map(DateTimeRef.apply): _*)
+      creationDateIs(DateTimeRef(date), dates.map(DateTimeRef.apply)*)
 
     def creationDateGt(date: PartialDateTime, dates: PartialDateTime*): Segment =
-      creationDateGt(DateTimeRef(date), dates.map(DateTimeRef.apply): _*)
+      creationDateGt(DateTimeRef(date), dates.map(DateTimeRef.apply)*)
 
     def creationDateLt(date: PartialDateTime, dates: PartialDateTime*): Segment =
-      creationDateLt(DateTimeRef(date), dates.map(DateTimeRef.apply): _*)
+      creationDateLt(DateTimeRef(date), dates.map(DateTimeRef.apply)*)
 
   val empty: Query = Query(Nil)
 

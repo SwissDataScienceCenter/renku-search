@@ -34,8 +34,8 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
     with SchemaJsonCodec
     with BorerEntityJsonCodec
     with SolrEntityCodec:
-  private[this] val logger = scribe.cats.effect[F]
-  private[this] val solrUrl: Uri = config.baseUrl / config.core
+  private val logger = scribe.cats.effect[F]
+  private val solrUrl: Uri = config.baseUrl / config.core
 
   def modifySchema(cmds: Seq[SchemaCommand], onErrorLog: ResponseLogging): F[Unit] =
     val req = Method
@@ -84,7 +84,7 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
 
   override def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]] =
     val req = Method
-      .GET(makeGetByIdUrl(NonEmptyList.of(id, other: _*)))
+      .GET(makeGetByIdUrl(NonEmptyList.of(id, other*)))
       .withBasicAuth(credentials)
     underlying.fetchAs[GetByIdResponse[A]](req)
 

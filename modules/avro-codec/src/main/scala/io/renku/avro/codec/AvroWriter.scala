@@ -41,7 +41,7 @@ object AvroWriter:
     new Impl(schema, codecFactory)
 
   private class Impl(schema: Schema, cf: CodecFactory) extends AvroWriter:
-    private[this] val writer = new GenericDatumWriter[Any](schema)
+    private val writer = new GenericDatumWriter[Any](schema)
 
     def write[A: AvroEncoder](values: Seq[A]): ByteVector =
       write0(out => EncoderFactory.get().binaryEncoder(out, null), values)

@@ -27,7 +27,7 @@ final class ByteVectorInput(val bytes: ByteVector)
     extends InputStream
     with SeekableInput {
 
-  private[this] var position: Long = 0
+  private var position: Long = 0
 
   override def seek(p: Long): Unit =
     position = p

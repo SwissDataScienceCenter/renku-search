@@ -99,8 +99,8 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       .evalMap(getProjectUsers(projectId, _))
       .takeWhile(_.nonEmpty)
       .flatMap(Stream.emits)
-      .filterNot(_.name contains "_bot_")
-      .filterNot(_.name contains "****")
+      .filterNot(_.name `contains` "_bot_")
+      .filterNot(_.name `contains` "****")
       .map(toUser)
 
   private def getProjectUsers(id: Int, page: Int) =

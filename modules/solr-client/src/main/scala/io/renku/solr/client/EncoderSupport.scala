@@ -82,7 +82,7 @@ object EncoderSupport {
   inline def deriveWithAdditional[A <: Product, V: Encoder](field: (String, V)*)(using
       Mirror.Of[A]
   ): Encoder[A] =
-    val adds = AdditionalFields.const[A, V](field: _*)
+    val adds = AdditionalFields.const[A, V](field*)
     Macros.createEncoder[String, V, A](adds)
 
   private object Macros {
@@ -111,7 +111,7 @@ object EncoderSupport {
           w.writeMapOpen(names.size + additionalProps.size)
           additionalProps.foreach { case (k, v) => w.writeMapMember(k, v) }
           names.zip(values).zip(encoders).foreach { case ((k, v), e) =>
-            w.writeMapMember(k, v)(Encoder[String], e.asInstanceOf[Encoder[Any]])
+            w.writeMapMember(k, v)(using Encoder[String], e.asInstanceOf[Encoder[Any]])
           }
           w.writeMapClose()
 
@@ -125,7 +125,7 @@ object EncoderSupport {
           encoders(ord).asInstanceOf[Encoder[Any]].write(w, value)
       }
 
-    inline def summonEncoder[A <: Tuple]: List[Encoder[_]] =
+    inline def summonEncoder[A <: Tuple]: List[Encoder[?]] =
       inline erasedValue[A] match
         case _: EmptyTuple => Nil
         case _: (t *: ts)  => summonInline[Encoder[t]] :: summonEncoder[ts]

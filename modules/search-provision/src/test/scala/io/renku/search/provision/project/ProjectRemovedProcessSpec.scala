@@ -83,5 +83,5 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
 
   private lazy val queryProjects = Query(typeIs(EntityType.Project))
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

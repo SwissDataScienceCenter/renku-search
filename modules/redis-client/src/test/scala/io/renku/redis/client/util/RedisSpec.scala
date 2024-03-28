@@ -76,5 +76,5 @@ trait RedisSpec:
       : RedisClient => Resource[IO, RedisCommands[IO, String, String]] =
     Redis[IO].fromClient(_, RedisCodec.Utf8)
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient)

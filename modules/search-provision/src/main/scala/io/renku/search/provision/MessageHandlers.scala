@@ -36,8 +36,8 @@ final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
     cfg: QueuesConfig
 ) extends ShowInstances:
-  private[this] var tasks: Map[String, F[Unit]] = Map.empty
-  private[this] def add(queue: QueueName, task: Stream[F, Unit]): Stream[F, Unit] =
+  private var tasks: Map[String, F[Unit]] = Map.empty
+  private def add(queue: QueueName, task: Stream[F, Unit]): Stream[F, Unit] =
     tasks = tasks.updated(queue.name, task.compile.drain)
     task
 

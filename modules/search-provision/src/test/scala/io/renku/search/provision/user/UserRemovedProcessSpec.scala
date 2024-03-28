@@ -107,5 +107,5 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
       yield ()
     }
 
-  override def munitFixtures: Seq[Fixture[_]] =
+  override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)

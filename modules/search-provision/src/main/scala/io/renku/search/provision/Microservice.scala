@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 import io.renku.search.metrics.CollectorRegistryBuilder
-import io.renku.search.provision.metrics.{MetricsCollectorsUpdater, RedisMetrics, SolrMetrics}
+import io.renku.search.provision.metrics.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
 

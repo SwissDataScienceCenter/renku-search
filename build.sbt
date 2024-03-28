@@ -19,7 +19,7 @@ import com.github.sbt.git.SbtGit.GitKeys._
 
 organization := "io.renku"
 name := "renku-search"
-ThisBuild / scalaVersion := "3.3.3"
+ThisBuild / scalaVersion := "3.4.1"
 
 // This project contains nothing to package, like pure POM maven project
 packagedArtifacts := Map.empty

@@ -21,7 +21,8 @@ object SearchQueryDocsPlugin extends AutoPlugin {
       docDirectory := (Compile / Keys.baseDirectory).value / "docs",
       outputDirectory := (Compile / Keys.resourceManaged).value / "query-manual",
       Keys.libraryDependencies ++= Seq(
-        "org.scalameta" %% "mdoc" % "2.5.2" % Docs
+        "org.scalameta" %% "mdoc" % Dependencies.V.sbtMdoc % Docs,
+        "org.scala-lang" %% "scala3-compiler" % Dependencies.V.scala % Docs
       ),
       makeManualFile := Def.taskDyn {
         val cp = (Compile / Keys.dependencyClasspath).value

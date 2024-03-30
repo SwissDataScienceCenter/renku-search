@@ -20,7 +20,7 @@ package io.renku.search.metrics
 
 import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
-import io.prometheus.client.{CollectorRegistry, Collector as JCollector}
+import io.prometheus.client.{Collector as JCollector, CollectorRegistry}
 import org.http4s.metrics.prometheus.PrometheusExportService
 
 final case class CollectorRegistryBuilder[F[_]: Sync](

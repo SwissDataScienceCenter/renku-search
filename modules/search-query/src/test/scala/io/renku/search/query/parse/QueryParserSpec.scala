@@ -107,10 +107,18 @@ class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
     )
   }
 
-  test("invalid field terms converted as text".ignore) {
+  test("invalid field terms converted as text") {
     assertEquals(
       Query.parse("id:"),
       Right(Query(Segment.Text("id:")))
+    )
+    assertEquals(
+      Query.parse("sluggy"),
+      Right(Query(Segment.Text("sluggy")))
+    )
+    assertEquals(
+      Query.parse("sorting"),
+      Right(Query(Segment.Text("sorting")))
     )
     assertEquals(
       Query.parse("projectId1"),

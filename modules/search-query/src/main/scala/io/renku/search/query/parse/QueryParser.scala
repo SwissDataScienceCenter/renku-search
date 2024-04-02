@@ -141,10 +141,11 @@ private[query] object QueryParser {
   val freeText: P[String] =
     P.charsWhile(c => !c.isWhitespace)
 
+  val definedField: P[Query.Segment] =
+    fieldTerm.map(Query.Segment.Field.apply) | sortTerm.map(Query.Segment.Sort.apply)
+
   val segment: P[Query.Segment] =
-    fieldTerm.map(Query.Segment.Field.apply) |
-      sortTerm.map(Query.Segment.Sort.apply) |
-      freeText.map(Query.Segment.Text.apply)
+    definedField.backtrack | freeText.map(Query.Segment.Text.apply)
 
   val query: P[Query] =
     segment.repSep(min = 1, sp).map(s => Query(s.toList))

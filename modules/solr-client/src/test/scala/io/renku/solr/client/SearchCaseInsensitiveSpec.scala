@@ -39,7 +39,7 @@ class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
   private def truncate(client: SolrClient[IO]): IO[Unit] =
     truncateQuery(client)(
       SearchCaseInsensitiveSpec.idQuery,
-      Seq(FieldName("my_name"), FieldName("currentSchemaVersion")),
+      Seq(FieldName("my_name")),
       Seq(TypeName("my_text_field"))
     )
 

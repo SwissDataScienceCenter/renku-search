@@ -30,7 +30,7 @@ import io.renku.solr.client.util.SolrClientBaseSuite
 
 class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
   private val logger = scribe.cats.io
-  override protected lazy val coreName: String = server.testCoreName3
+  override protected lazy val coreName: String = server.testCoreName2
   private val migrations = Seq(
     SchemaCommand.Add(FieldType.text(TypeName("my_text_field"), Analyzer.defaultSearch)),
     SchemaCommand.Add(Field(FieldName("my_name"), TypeName("my_text_field")))
@@ -39,7 +39,7 @@ class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
   private def truncate(client: SolrClient[IO]): IO[Unit] =
     truncateQuery(client)(
       SearchCaseInsensitiveSpec.idQuery,
-      Seq(FieldName("my_name"), FieldName("currentSchemaVersion")),
+      Seq(FieldName("my_name")),
       Seq(TypeName("my_text_field"))
     )
 

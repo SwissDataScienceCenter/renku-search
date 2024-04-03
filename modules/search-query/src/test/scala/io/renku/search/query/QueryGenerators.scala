@@ -93,22 +93,16 @@ object QueryGenerators:
       dir <- sortDirection
     } yield Order.OrderedBy(field, dir)
 
-  private val fieldNames = Field.values.toSet.map(_.name.toLowerCase())
-
   private val alphaNumChars = ('a' to 'z') ++ ('A' to 'Z') ++ ('0' to '9')
   private val simpleWord: Gen[String] = {
     val len = Gen.choose(2, 12)
-    len
-      .flatMap(n => Gen.stringOfN(n, Gen.oneOf(alphaNumChars)))
-      .suchThat(w => !fieldNames.contains(w.toLowerCase()))
+    len.flatMap(n => Gen.stringOfN(n, Gen.oneOf(alphaNumChars)))
   }
 
   private val word: Gen[String] = {
     val chars = alphaNumChars ++ "/{}*?()-:@…_[]^!<>=&#|~`+%\"'".toSeq
     val len = Gen.choose(2, 12)
-    len
-      .flatMap(n => Gen.stringOfN(n, Gen.oneOf(chars)))
-      .suchThat(w => !fieldNames.contains(w.toLowerCase()))
+    len.flatMap(n => Gen.stringOfN(n, Gen.oneOf(chars)))
   }
 
   private val phrase: Gen[String] = {

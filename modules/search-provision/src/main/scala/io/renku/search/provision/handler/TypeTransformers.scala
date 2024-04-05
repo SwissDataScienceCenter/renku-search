@@ -22,8 +22,7 @@ import io.github.arainko.ducktape.*
 import io.renku.events.v1
 import io.renku.events.v1.ProjectAuthorizationAdded
 import io.renku.events.v1.ProjectAuthorizationUpdated
-import io.renku.search.model.Id
-import io.renku.search.model.projects
+import io.renku.search.model.{Id, Version, projects}
 import io.renku.search.model.projects.MemberRole
 import io.renku.search.solr.documents.PartialEntityDocument
 
@@ -43,12 +42,14 @@ trait TypeTransformers:
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            Version.ensureUpdate,
             Set(from.userId.to[Id]),
             Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            Version.ensureUpdate,
             Set.empty,
             Set(from.userId.to[Id])
           )
@@ -59,12 +60,14 @@ trait TypeTransformers:
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            Version.ensureUpdate,
             Set(from.userId.to[Id]),
             Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            Version.ensureUpdate,
             Set.empty,
             Set(from.userId.to[Id])
           )

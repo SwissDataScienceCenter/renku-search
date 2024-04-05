@@ -18,7 +18,8 @@
 
 package io.renku.search.solr.documents
 
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, Version}
 
 trait SolrDocument:
   def id: Id
+  def version: Version

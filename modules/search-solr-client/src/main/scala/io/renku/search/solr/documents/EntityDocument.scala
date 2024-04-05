@@ -20,7 +20,7 @@ package io.renku.search.solr.documents
 
 import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.*
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.model.projects.{MemberRole, Visibility}
@@ -42,6 +42,7 @@ object EntityDocument:
 
 final case class Project(
     id: Id,
+    @key("_version_") version: Version,
     name: Name,
     slug: projects.Slug,
     repositories: Seq[projects.Repository] = Seq.empty,
@@ -89,6 +90,7 @@ object Project:
 
 final case class User(
     id: Id,
+    @key("_version_") version: Version,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
@@ -118,6 +120,7 @@ object User:
   ): User =
     User(
       id,
+      Version.ensureInsert,
       firstName,
       lastName,
       nameFrom(firstName.map(_.value), lastName.map(_.value)),

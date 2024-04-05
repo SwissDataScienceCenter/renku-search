@@ -20,11 +20,10 @@ package io.renku.search.api
 
 import cats.effect.IO
 import cats.syntax.all.*
-
 import io.github.arainko.ducktape.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.api.data.*
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, Version}
 import io.renku.search.model.users.FirstName
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSuite
@@ -72,7 +71,8 @@ class SearchApiSpec extends SearchSolrSuite:
         "exclusive description",
         Gen.const(Visibility.Public)
       ).generateOne
-      val user = SolrUser(project.createdBy, FirstName("exclusive").some)
+      val user =
+        SolrUser(project.createdBy, Version.ensureInsert, FirstName("exclusive").some)
       val searchApi = new SearchApiImpl[IO](client)
       for {
         _ <- client.insert(project :: user :: Nil)

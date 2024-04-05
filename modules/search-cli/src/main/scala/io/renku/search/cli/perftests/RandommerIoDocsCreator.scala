@@ -25,7 +25,7 @@ import fs2.io.net.Network
 import io.bullet.borer.Decoder
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.{Name, projects, users}
+import io.renku.search.model.{Name, Version, projects, users}
 import io.renku.search.solr.documents.{Project, User}
 import org.http4s.MediaType.application
 import org.http4s.Method.{GET, POST}
@@ -69,7 +69,7 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
   private lazy val toUser: ((users.FirstName, users.LastName)) => F[User] = {
     case (first, last) =>
       gens.generateId.map(id =>
-        User(id, first.some, last.some, Name(s"$first $last").some)
+        User(id, Version.ensureInsert, first.some, last.some, Name(s"$first $last").some)
       )
   }
 
@@ -88,6 +88,7 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
       val slug = createSlug(name, user)
       Project(
         id,
+        Version.ensureInsert,
         name,
         slug,
         Seq(createRepo(slug)),

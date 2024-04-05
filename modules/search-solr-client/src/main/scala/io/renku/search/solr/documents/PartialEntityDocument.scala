@@ -19,8 +19,8 @@
 package io.renku.search.solr.documents
 
 import io.bullet.borer.*
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.renku.search.model.Id
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
+import io.renku.search.model.{Id, Version}
 import io.renku.search.model.projects.*
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
@@ -42,6 +42,7 @@ object PartialEntityDocument:
   // generates the same discriminator (it is not configurable)
   final case class Project(
       id: Id,
+      @key("_version_") version: Version,
       owners: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
@@ -61,6 +62,7 @@ object PartialEntityDocument:
     def combine(p: Project): Project =
       if (p.id == id)
         p.copy(
+          version = version,
           members = p.members ++ (members -- p.owners),
           owners = p.owners ++ (owners -- p.members)
         )

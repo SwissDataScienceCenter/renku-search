@@ -20,7 +20,7 @@ package io.renku.search.provision.handler
 
 import io.github.arainko.ducktape.*
 import io.renku.events.v1.*
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, Version}
 import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
@@ -41,6 +41,7 @@ object DocumentConverter:
   given DocumentConverter[ProjectCreated] =
     fromTransformer(
       _.into[ProjectDocument].transform(
+        Field.const(_.version, Version.ensureInsert),
         Field.default(_.owners),
         Field.default(_.members),
         Field.default(_.score)
@@ -50,6 +51,7 @@ object DocumentConverter:
   given DocumentConverter[UserAdded] =
     fromTransformer(
       _.into[UserDocument].transform(
+        Field.const(_.version, Version.ensureInsert),
         Field.default(_.score),
         Field.computed(_.name, u => UserDocument.nameFrom(u.firstName, u.lastName))
       )

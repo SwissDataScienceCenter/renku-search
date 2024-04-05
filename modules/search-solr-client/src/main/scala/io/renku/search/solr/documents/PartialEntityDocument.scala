@@ -24,10 +24,11 @@ import io.renku.search.model.Id
 import io.renku.search.model.projects.*
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
-import io.renku.solr.client.EncoderSupport
+import io.renku.solr.client.{DocVersion, EncoderSupport}
 
 sealed trait PartialEntityDocument extends SolrDocument:
   def applyTo(e: EntityDocument): EntityDocument
+  def version: Option[DocVersion]
 
 object PartialEntityDocument:
   given AdtEncodingStrategy =
@@ -42,6 +43,7 @@ object PartialEntityDocument:
   // generates the same discriminator (it is not configurable)
   final case class Project(
       id: Id,
+      version: Option[DocVersion] = None,
       owners: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:

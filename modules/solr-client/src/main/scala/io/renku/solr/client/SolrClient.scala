@@ -42,6 +42,8 @@ trait SolrClient[F[_]]:
 
   def insert[A: Encoder](docs: Seq[A]): F[InsertResponse]
 
+//  def updateOptimistic[A: Encoder](docs: Seq[(A, DocVersion)]): F[Either[Unit, InsertResponse]]
+
   def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]]
 
 object SolrClient:

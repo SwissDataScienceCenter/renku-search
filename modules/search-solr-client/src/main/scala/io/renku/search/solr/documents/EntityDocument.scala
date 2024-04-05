@@ -25,11 +25,12 @@ import io.renku.search.model.*
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.model.projects.{MemberRole, Visibility}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
-import io.renku.solr.client.EncoderSupport
+import io.renku.solr.client.{DocVersion, EncoderSupport}
 import io.renku.solr.client.EncoderSupport.*
 
 sealed trait EntityDocument extends SolrDocument:
   val score: Option[Double]
+  val version: Option[DocVersion]
   def widen: EntityDocument = this
 
 object EntityDocument:
@@ -51,7 +52,8 @@ final case class Project(
     creationDate: projects.CreationDate,
     owners: List[Id] = List.empty,
     members: List[Id] = List.empty,
-    score: Option[Double] = None
+    score: Option[Double] = None,
+    version: Option[DocVersion] = None
 ) extends EntityDocument:
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
@@ -92,7 +94,8 @@ final case class User(
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
-    score: Option[Double] = None
+    score: Option[Double] = None,
+    version: Option[DocVersion] = None
 ) extends EntityDocument
 
 object User:

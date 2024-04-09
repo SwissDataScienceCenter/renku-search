@@ -117,7 +117,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
       val q = Query(Query.Segment.Sort(order))
       withSolr.use { client =>
         for {
-          _ <- client.insert(Seq(doc))
+          _ <- client.upsert(Seq(doc))
           r <- client.query[Map[String, String]](
             query(q).withFields(Fields.id, Fields.name, Fields.entityType).withLimit(2)
           )
@@ -133,7 +133,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
     withSearchSolrClient().use { solr =>
       for {
         data <- AuthTestData.generate
-        _ <- solr.insert(data.all)
+        _ <- solr.upsert(data.all)
         query = data.queryAll
 
         publicEntities <- solr.queryEntity(SearchRole.Anonymous, query, 50, 0)

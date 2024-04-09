@@ -40,9 +40,7 @@ trait SolrClient[F[_]]:
   def delete(q: QueryString): F[Unit]
   def deleteIds(ids: NonEmptyList[String]): F[Unit]
 
-  def insert[A: Encoder](docs: Seq[A]): F[InsertResponse]
-
-//  def updateOptimistic[A: Encoder](docs: Seq[(A, DocVersion)]): F[Either[Unit, InsertResponse]]
+  def upsert[A: Encoder](docs: Seq[A]): F[InsertResponse]
 
   def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]]
 

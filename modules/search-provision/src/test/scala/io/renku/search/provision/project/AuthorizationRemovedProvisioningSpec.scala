@@ -74,8 +74,8 @@ object AuthorizationRemovedProvisioningSpec:
 
     def create(solrClient: SearchSolrClient[IO]) = this match
       case DbState.Empty             => IO.unit
-      case DbState.Project(p)        => solrClient.insert(Seq(p))
-      case DbState.PartialProject(p) => solrClient.insert(Seq(p))
+      case DbState.Project(p)        => solrClient.upsert(Seq(p))
+      case DbState.PartialProject(p) => solrClient.upsert(Seq(p))
 
   case class TestCase(dbState: DbState, user: Id):
     val projectId = dbState match

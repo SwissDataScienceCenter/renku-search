@@ -49,7 +49,7 @@ object PushToSolr:
             case Some(lastMessage) =>
               logger.debug(s"Push ${docSeq} to solr") >>
                 solrClient
-                  .insert(docSeq)
+                  .upsert(docSeq)
                   .flatMap(_ => reader.markProcessed(lastMessage.id))
                   .onError(reader.markProcessedError(_, lastMessage.id)(using logger))
             case None =>

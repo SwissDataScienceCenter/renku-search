@@ -47,7 +47,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
             provisioningFiber <- handlers.projectUpdated.compile.drain.start
 
             created = projectCreatedGen(prefix = "update").generateOne
-            _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
+            _ <- solrClient.upsert(Seq(created.toSolrDocument.widen))
 
             updated = updateF(created)
             _ <- queueClient.enqueue(

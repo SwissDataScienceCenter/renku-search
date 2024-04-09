@@ -58,7 +58,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
         notAffectedProject = projectCreatedGen(
           "not-affected"
         ).generateOne.toSolrDocument
-        _ <- solrClient.insert(user :: notAffectedProject :: affectedProjects)
+        _ <- solrClient.upsert(user :: notAffectedProject :: affectedProjects)
 
         docsCollectorFiber <-
           Stream

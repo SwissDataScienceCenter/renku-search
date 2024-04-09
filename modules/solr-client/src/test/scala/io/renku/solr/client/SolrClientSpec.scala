@@ -55,7 +55,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
           List("roomText", "roomInt").map(TypeName.apply)
         )
         _ <- client.modifySchema(cmds)
-        _ <- client.insert[Room](Seq(room))
+        _ <- client.upsert[Room](Seq(room))
         qr <- client.query[Room](QueryData(QueryString("_type:Room")))
         _ = qr.responseBody.docs contains room
         ir <- client.findById[Room](room.id)
@@ -83,7 +83,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
     withSolrClient().use { client =>
       for {
         _ <- client.delete(QueryString("*:*"))
-        _ <- client.insert(rooms)
+        _ <- client.upsert(rooms)
         r <- client.query[Room](QueryData(QueryString("*:*")).withFacet(facets))
         _ = assert(r.facetResponse.nonEmpty)
         _ = assertEquals(r.facetResponse.get.count, 15)
@@ -99,7 +99,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
       for {
         id <- IO(Gen.uuid.generateOne).map(_.toString)
         _ <- client.delete(QueryString("*:*"))
-        _ <- client.insert(Seq(SolrClientSpec.Person(id, "John")))
+        _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
         r <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
         p = r.responseBody.docs.head
         _ = assertEquals(p.id, id)

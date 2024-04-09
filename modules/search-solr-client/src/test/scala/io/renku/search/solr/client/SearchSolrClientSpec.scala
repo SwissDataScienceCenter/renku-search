@@ -41,7 +41,7 @@ class SearchSolrClientSpec extends SearchSolrSuite:
       val project =
         projectDocumentGen("solr-project", "solr project description").generateOne
       for {
-        _ <- client.insert(Seq(project.widen))
+        _ <- client.upsert(Seq(project.widen))
         qr <- client.queryEntity(
           SearchRole.Admin,
           Query.parse("solr").toOption.get,
@@ -69,7 +69,7 @@ class SearchSolrClientSpec extends SearchSolrSuite:
       val firstName = users.FirstName("Johnny")
       val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
       for {
-        _ <- client.insert(Seq(user.widen))
+        _ <- client.upsert(Seq(user.widen))
         qr <- client.queryEntity(
           SearchRole.Admin,
           Query.parse(firstName.value).toOption.get,
@@ -99,7 +99,7 @@ class SearchSolrClientSpec extends SearchSolrSuite:
       case class UserId(id: String)
       given Decoder[UserId] = deriveDecoder[UserId]
       for {
-        _ <- client.insert(Seq(user.widen))
+        _ <- client.upsert(Seq(user.widen))
         gr <- client.query[UserId](
           QueryData(
             s"firstName:$firstName",

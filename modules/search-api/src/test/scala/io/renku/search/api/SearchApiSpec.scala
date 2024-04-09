@@ -53,7 +53,7 @@ class SearchApiSpec extends SearchSolrSuite:
       ).generateOne
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- client.insert((project1 :: project2 :: Nil).map(_.widen))
+        _ <- client.upsert((project1 :: project2 :: Nil).map(_.widen))
         results <- searchApi
           .query(AuthContext.anonymous)(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
@@ -77,7 +77,7 @@ class SearchApiSpec extends SearchSolrSuite:
         SolrUser(project.createdBy, DocVersion.NotExists, FirstName("exclusive").some)
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- client.insert(project :: user :: Nil)
+        _ <- client.upsert(project :: user :: Nil)
         results <- searchApi
           .query(AuthContext.anonymous)(mkQuery("exclusive"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))

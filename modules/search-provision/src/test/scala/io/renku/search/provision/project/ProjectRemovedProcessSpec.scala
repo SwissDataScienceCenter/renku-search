@@ -46,7 +46,7 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
         provisioningFiber <- handlers.projectRemoved.compile.drain.start
 
         created = projectCreatedGen(prefix = "remove").generateOne
-        _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
+        _ <- solrClient.upsert(Seq(created.toSolrDocument.widen))
 
         docsCollectorFiber <-
           Stream

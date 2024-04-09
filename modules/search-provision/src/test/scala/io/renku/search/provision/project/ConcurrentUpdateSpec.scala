@@ -18,11 +18,17 @@
 
 package io.renku.search.provision.project
 
+import scala.concurrent.duration.*
+
+import cats.effect.std.CountDownLatch
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
 import io.renku.avro.codec.encoders.all.given
+import io.renku.events.EventsGenerators
+import io.renku.events.v1.ProjectCreated
 import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
+import io.renku.queue.client.DataContentType
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.ModelGenerators
@@ -33,11 +39,6 @@ import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
-import cats.effect.std.CountDownLatch
-import io.renku.events.v1.ProjectCreated
-import io.renku.queue.client.DataContentType
-import io.renku.events.EventsGenerators
-import scala.concurrent.duration.*
 
 class ConcurrentUpdateSpec extends ProvisioningSuite:
 
@@ -52,7 +53,7 @@ class ConcurrentUpdateSpec extends ProvisioningSuite:
             loadPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
-          msgFiber <- handlers.singleStream.compile.drain.start
+          msgFiber <- List(handlers.projectCreated, handlers.projectAuthAdded).traverse(_.compile.drain.start)
 
           latch <- CountDownLatch[IO](1)
 
@@ -79,7 +80,7 @@ class ConcurrentUpdateSpec extends ProvisioningSuite:
             timeout = 30.seconds
           )
 
-          _ <- msgFiber.cancel
+          _ <- msgFiber.traverse_(_.cancel)
         } yield ()
       }
   }

@@ -45,7 +45,7 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
             provisioningFiber <- handler.userUpdated.compile.drain.start
 
             userAdded = userAddedGen(prefix = "user-update").generateOne
-            _ <- solrClient.insert(Seq(userAdded.toSolrDocument.widen))
+            _ <- solrClient.upsert(Seq(userAdded.toSolrDocument.widen))
 
             userUpdated = updateF(userAdded)
             _ <- queueClient.enqueue(

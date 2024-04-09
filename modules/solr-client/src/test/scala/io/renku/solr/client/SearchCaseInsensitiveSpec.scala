@@ -48,7 +48,7 @@ class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
       for {
         _ <- truncate(client)
         _ <- client.modifySchema(migrations)
-        _ <- client.insert(TestData.sample)
+        _ <- client.upsert(TestData.sample)
 
         // find pogacar without this Č character
         r1 <- client.query[TestData](QueryString("my_name:pogacar"))

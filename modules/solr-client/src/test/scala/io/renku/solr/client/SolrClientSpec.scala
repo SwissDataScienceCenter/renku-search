@@ -25,7 +25,7 @@ import scala.concurrent.duration.*
 import cats.data.NonEmptyList
 import cats.effect.IO
 
-import io.bullet.borer.derivation.{MapBasedCodecs, key}
+import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.solr.client.SolrClientSpec.Room
@@ -35,8 +35,24 @@ import io.renku.solr.client.util.SolrClientBaseSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
+import io.renku.solr.client.SolrClientSpec.Course
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
+  override def defaultVerbosity: Int = 2
+  test("optimistic locking: fail if exists"):
+    withSolrClient().use { client =>
+      val c0 = Course("c1", "fp in scala", DocVersion.NotExists)
+      for {
+        _ <- client.deleteIds(NonEmptyList.of(c0.id))
+        r0 <- client.upsert(Seq(c0))
+        _ <- IO.println(r0)
+        rs <- client.findById[Course](c0.id)
+        _ <- IO.println(s"course: $rs")
+        r1 <- client.upsert(Seq(c0))
+
+        _ <- IO.println(r1)
+      } yield ()
+    }
 
   test("use schema for inserting and querying"):
     val cmds = Seq(
@@ -56,7 +72,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
         )
         _ <- client.modifySchema(cmds)
         _ <- client.upsert[Room](Seq(room))
-        qr <- client.query[Room](QueryData(QueryString("_type:Room")))
+        qr <- client.query[Room](QueryData(QueryString("_type_s:Room")))
         _ = qr.responseBody.docs contains room
         ir <- client.findById[Room](room.id)
         _ = ir.responseBody.docs contains room
@@ -82,9 +98,9 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
       Facets(Facet.Terms(FieldName("by_name"), FieldName("roomName"), limit = Some(6)))
     withSolrClient().use { client =>
       for {
-        _ <- client.delete(QueryString("*:*"))
+        _ <- client.delete(QueryString("_type_s:Room"))
         _ <- client.upsert(rooms)
-        r <- client.query[Room](QueryData(QueryString("*:*")).withFacet(facets))
+        r <- client.query[Room](QueryData(QueryString("_type_s:Room")).withFacet(facets))
         _ = assert(r.facetResponse.nonEmpty)
         _ = assertEquals(r.facetResponse.get.count, 15)
         _ = assertEquals(
@@ -98,7 +114,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
     withSolrClient().use { client =>
       for {
         id <- IO(Gen.uuid.generateOne).map(_.toString)
-        _ <- client.delete(QueryString("*:*"))
+        _ <- client.delete(QueryString("_type_s:Person"))
         _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
         r <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
         p = r.responseBody.docs.head
@@ -124,9 +140,18 @@ object SolrClientSpec:
     } yield Room(id, name, descr, seats)
 
     given Decoder[Room] = MapBasedCodecs.deriveDecoder
-    given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]("_type")
+    given Encoder[Room] = EncoderSupport.deriveWithDiscriminator[Room]("_type_s")
 
-  case class Person(id: String, @key("name_s") name: String)
+  case class Person(id: String, name_s: String)
   object Person:
     given Decoder[Person] = MapBasedCodecs.deriveDecoder
-    given Encoder[Person] = MapBasedCodecs.deriveEncoder
+    given Encoder[Person] = EncoderSupport.deriveWithDiscriminator[Person]("_type_s")
+
+  case class Course(
+      id: String,
+      name_s: String,
+      `_version_`: DocVersion = DocVersion.NotExists
+  )
+  object Course:
+    given Decoder[Course] = MapBasedCodecs.deriveDecoder
+    given Encoder[Course] = EncoderSupport.deriveWithDiscriminator[Course]("_type_s")

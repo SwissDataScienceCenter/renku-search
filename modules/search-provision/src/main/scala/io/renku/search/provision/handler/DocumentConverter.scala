@@ -25,6 +25,7 @@ import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
+import io.renku.solr.client.DocVersion
 
 trait DocumentConverter[A]:
   def convert(a: A): EntityDocument
@@ -41,6 +42,7 @@ object DocumentConverter:
   given DocumentConverter[ProjectCreated] =
     fromTransformer(
       _.into[ProjectDocument].transform(
+        Field.const(_.version, DocVersion.Off),
         Field.default(_.owners),
         Field.default(_.members),
         Field.default(_.score)
@@ -50,6 +52,7 @@ object DocumentConverter:
   given DocumentConverter[UserAdded] =
     fromTransformer(
       _.into[UserDocument].transform(
+        Field.const(_.version, DocVersion.Off),
         Field.default(_.score),
         Field.computed(_.name, u => UserDocument.nameFrom(u.firstName, u.lastName))
       )

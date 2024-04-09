@@ -25,7 +25,7 @@ import fs2.io.net.Network
 import io.bullet.borer.Decoder
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.{Name, projects, users}
+import io.renku.search.model.{Name, Version, projects, users}
 import io.renku.search.solr.documents.{Project, User}
 import org.http4s.MediaType.application
 import org.http4s.Method.{GET, POST}
@@ -35,6 +35,7 @@ import org.http4s.headers.Accept
 import org.http4s.implicits.*
 import org.http4s.{Header, MediaType, Method, Uri}
 import org.typelevel.ci.*
+import io.renku.solr.client.DocVersion
 
 /** For the API go here: https://randommer.io/api/swagger-docs/index.html */
 object RandommerIoDocsCreator:
@@ -69,7 +70,7 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
   private lazy val toUser: ((users.FirstName, users.LastName)) => F[User] = {
     case (first, last) =>
       gens.generateId.map(id =>
-        User(id, first.some, last.some, Name(s"$first $last").some)
+        User(id, DocVersion.NotExists, first.some, last.some, Name(s"$first $last").some)
       )
   }
 
@@ -88,6 +89,7 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
       val slug = createSlug(name, user)
       Project(
         id,
+        DocVersion.NotExists,
         name,
         slug,
         Seq(createRepo(slug)),

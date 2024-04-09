@@ -22,10 +22,10 @@ import io.github.arainko.ducktape.*
 import io.renku.events.v1
 import io.renku.events.v1.ProjectAuthorizationAdded
 import io.renku.events.v1.ProjectAuthorizationUpdated
-import io.renku.search.model.Id
-import io.renku.search.model.projects
+import io.renku.search.model.{Id, projects}
 import io.renku.search.model.projects.MemberRole
 import io.renku.search.solr.documents.PartialEntityDocument
+import io.renku.solr.client.DocVersion
 
 object TypeTransformers extends TypeTransformers
 
@@ -43,12 +43,14 @@ trait TypeTransformers:
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            DocVersion.Exists, //TODO this is wrong
             Set(from.userId.to[Id]),
             Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            DocVersion.Exists, //TODO this is wrong
             Set.empty,
             Set(from.userId.to[Id])
           )
@@ -59,12 +61,14 @@ trait TypeTransformers:
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            DocVersion.Exists, //TODO this is wrong
             Set(from.userId.to[Id]),
             Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
             from.projectId.to[Id],
+            DocVersion.Exists, //TODO this is wrong
             Set.empty,
             Set(from.userId.to[Id])
           )

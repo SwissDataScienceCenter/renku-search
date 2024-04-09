@@ -18,11 +18,24 @@
 
 package io.renku.search.solr.documents
 
+import io.renku.search.model.Version
+import munit.Assertions.assert
+
 object EntityOps extends EntityOps
 trait EntityOps:
 
   extension (entity: EntityDocument)
+
     def noneScore: EntityDocument = entity match {
       case e: Project => e.copy(score = None)
       case e: User    => e.copy(score = None)
+    }
+
+    def assertVersionNot(v: Version): EntityDocument =
+      assert(entity.version != v)
+      entity
+
+    def setVersion(v: Version): EntityDocument = entity match {
+      case e: Project => e.copy(version = v)
+      case e: User    => e.copy(version = v)
     }

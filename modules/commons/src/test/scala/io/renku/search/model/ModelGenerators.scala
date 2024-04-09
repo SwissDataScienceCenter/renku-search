@@ -28,6 +28,7 @@ import org.scalacheck.cats.implicits.*
 
 object ModelGenerators:
   val idGen: Gen[Id] = Gen.uuid.map(uuid => Id(uuid.toString))
+  val versionGen: Gen[Version] = Gen.chooseNum(2L, Long.MaxValue - 1).map(Version.apply)
   val nameGen: Gen[Name] =
     alphaStringGen(max = 10).map(Name.apply)
   val projectDescGen: Gen[projects.Description] =

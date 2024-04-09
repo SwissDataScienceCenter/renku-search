@@ -16,25 +16,19 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.user
+package io.renku.search.model
 
-import io.github.arainko.ducktape.*
-import io.renku.events.v1.UserAdded
-import io.renku.events.v1.UserUpdated
-import io.renku.search.model.Version
-import io.renku.search.solr.documents.User
+import io.bullet.borer.Codec
+import io.github.arainko.ducktape.Transformer
 
-trait UserSyntax:
-  extension (added: UserAdded)
-    def toSolrDocument: User = added
-      .into[User]
-      .transform(
-        Field.const(_.version, Version.ensureInsert),
-        Field.default(_.score),
-        Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName))
-      )
-    def update(updated: UserUpdated): UserAdded =
-      added.copy(
-        firstName = updated.firstName,
-        lastName = updated.lastName
-      )
+opaque type Version = Long
+object Version:
+
+  val ensureInsert: Version = -1
+  val ensureUpdate: Version = Long.MaxValue
+  val noCheck: Version = 0
+
+  def apply(v: Long): Version = v
+  extension (self: Version) def value: Long = self
+  given Transformer[Long, Version] = apply
+  given Codec[Version] = Codec.of[Long]

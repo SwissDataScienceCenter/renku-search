@@ -20,7 +20,7 @@ package io.renku.search.solr.documents
 
 import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.*
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.model.projects.{MemberRole, Visibility}
@@ -30,7 +30,6 @@ import io.renku.solr.client.EncoderSupport.*
 
 sealed trait EntityDocument extends SolrDocument:
   val score: Option[Double]
-  val version: Option[DocVersion]
   def widen: EntityDocument = this
 
 object EntityDocument:
@@ -43,6 +42,7 @@ object EntityDocument:
 
 final case class Project(
     id: Id,
+    @key("_version_") version: DocVersion = DocVersion.Off,
     name: Name,
     slug: projects.Slug,
     repositories: Seq[projects.Repository] = Seq.empty,
@@ -52,8 +52,7 @@ final case class Project(
     creationDate: projects.CreationDate,
     owners: List[Id] = List.empty,
     members: List[Id] = List.empty,
-    score: Option[Double] = None,
-    version: Option[DocVersion] = None
+    score: Option[Double] = None
 ) extends EntityDocument:
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
@@ -91,11 +90,11 @@ object Project:
 
 final case class User(
     id: Id,
+    @key("_version_") version: DocVersion = DocVersion.Off,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
-    score: Option[Double] = None,
-    version: Option[DocVersion] = None
+    score: Option[Double] = None
 ) extends EntityDocument
 
 object User:
@@ -121,6 +120,7 @@ object User:
   ): User =
     User(
       id,
+      DocVersion.NotExists,
       firstName,
       lastName,
       nameFrom(firstName.map(_.value), lastName.map(_.value)),

@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.users
+import io.renku.search.model.{Version, users}
 import io.renku.search.query.Query
 import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SolrDocumentGenerators.*
@@ -46,9 +46,19 @@ class SearchSolrClientSpec extends SearchSolrSuite:
           10,
           0
         )
-        _ = assert(qr.responseBody.docs.map(_.noneScore) contains project)
+        _ = assert(
+          qr.responseBody.docs.map(
+            _.noneScore
+              .assertVersionNot(Version.ensureInsert)
+              .setVersion(Version.ensureInsert)
+          ) contains project
+        )
         gr <- client.findById[EntityDocument](CompoundId.projectEntity(project.id))
-        _ = assert(gr contains project)
+        _ = assert(
+          gr.map(
+            _.assertVersionNot(Version.ensureInsert).setVersion(Version.ensureInsert)
+          ) contains project
+        )
       } yield ()
     }
 
@@ -64,9 +74,19 @@ class SearchSolrClientSpec extends SearchSolrSuite:
           10,
           0
         )
-        _ = assert(qr.responseBody.docs.map(_.noneScore) contains user)
+        _ = assert(
+          qr.responseBody.docs.map(
+            _.noneScore
+              .assertVersionNot(Version.ensureInsert)
+              .setVersion(Version.ensureInsert)
+          ) contains user
+        )
         gr <- client.findById[EntityDocument](CompoundId.userEntity(user.id))
-        _ = assert(gr contains user)
+        _ = assert(
+          gr.map(
+            _.assertVersionNot(Version.ensureInsert).setVersion(Version.ensureInsert)
+          ) contains user
+        )
       } yield ()
     }
 

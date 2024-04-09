@@ -18,7 +18,7 @@
 
 package io.renku.search.solr.documents
 
-import io.renku.search.model.Version
+import io.renku.solr.client.DocVersion
 import munit.Assertions.assert
 
 object EntityOps extends EntityOps
@@ -31,11 +31,11 @@ trait EntityOps:
       case e: User    => e.copy(score = None)
     }
 
-    def assertVersionNot(v: Version): EntityDocument =
+    def assertVersionNot(v: DocVersion): EntityDocument =
       assert(entity.version != v)
       entity
 
-    def setVersion(v: Version): EntityDocument = entity match {
+    def setVersion(v: DocVersion): EntityDocument = entity match {
       case e: Project => e.copy(version = v)
       case e: User    => e.copy(version = v)
     }

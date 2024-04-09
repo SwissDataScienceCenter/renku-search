@@ -21,7 +21,6 @@ package io.renku.search.provision.user
 import io.github.arainko.ducktape.*
 import io.renku.events.v1.UserAdded
 import io.renku.events.v1.UserUpdated
-import io.renku.search.model.Version
 import io.renku.search.solr.documents.User
 
 trait UserSyntax:
@@ -29,7 +28,7 @@ trait UserSyntax:
     def toSolrDocument: User = added
       .into[User]
       .transform(
-        Field.const(_.version, Version.ensureInsert),
+        Field.default(_.version),
         Field.default(_.score),
         Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName))
       )

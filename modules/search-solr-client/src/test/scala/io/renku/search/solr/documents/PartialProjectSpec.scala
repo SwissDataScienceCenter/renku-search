@@ -19,11 +19,13 @@
 package io.renku.search.solr.documents
 
 import io.renku.search.GeneratorSyntax
-import io.renku.search.model.ModelGenerators.{idGen, projectMemberRoleGen, versionGen}
-import io.renku.search.model.{Version, projects}
+import io.renku.search.model.ModelGenerators.{idGen, projectMemberRoleGen}
+import io.renku.search.model.projects
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.solr.client.SolrDocumentGenerators.partialProjectGen
 import io.renku.search.solr.documents.PartialEntityDocument.Project
+import io.renku.solr.client.DocVersion
+import io.renku.solr.client.SolrClientGenerator.versionGen
 import munit.{FunSuite, ScalaCheckSuite}
 import org.scalacheck.Prop
 
@@ -89,7 +91,7 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
       case (projectId, version, userId, role) =>
         val existing = Project(projectId, version, Set(userId), Set(userId))
 
-        val update = Project(projectId, Version.ensureUpdate).add(userId, role)
+        val update = Project(projectId, DocVersion.Exists).add(userId, role)
 
         val updated = existing.applyTo(update).asInstanceOf[Project]
 

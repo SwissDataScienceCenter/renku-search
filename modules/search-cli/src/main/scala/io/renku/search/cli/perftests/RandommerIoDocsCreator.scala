@@ -25,7 +25,7 @@ import fs2.io.net.Network
 import io.bullet.borer.Decoder
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.{Name, Version, projects, users}
+import io.renku.search.model.{Name, projects, users}
 import io.renku.search.solr.documents.{Project, User}
 import org.http4s.MediaType.application
 import org.http4s.Method.{GET, POST}

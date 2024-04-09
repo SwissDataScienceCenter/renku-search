@@ -19,11 +19,13 @@
 package io.renku.search.solr.client
 
 import cats.syntax.all.*
+
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.*
 import io.renku.search.model.ModelGenerators.*
+import io.renku.search.model.*
 import io.renku.search.model.projects.Visibility
 import io.renku.search.solr.documents.*
+import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
 import org.scalacheck.Gen.const
 import org.scalacheck.cats.implicits.*
@@ -37,7 +39,7 @@ trait SolrDocumentGenerators:
 
   val partialProjectGen: Gen[PartialEntityDocument.Project] =
     val ids = Gen.choose(1, 5).flatMap(n => Gen.listOfN(n, idGen)).map(_.toSet)
-    (projectIdGen, const(Version.noCheck), ids, ids)
+    (projectIdGen, const(DocVersion.Off), ids, ids)
       .mapN(PartialEntityDocument.Project.apply)
 
   val projectDocumentGen: Gen[Project] =
@@ -56,7 +58,7 @@ trait SolrDocumentGenerators:
       .mapN((projectId, creatorId, visibility, creationDate) =>
         Project(
           projectId,
-          Version.ensureInsert,
+          DocVersion.NotExists,
           Name(name),
           projects.Slug(name),
           Seq(projects.Repository(s"http://github.com/$name")),

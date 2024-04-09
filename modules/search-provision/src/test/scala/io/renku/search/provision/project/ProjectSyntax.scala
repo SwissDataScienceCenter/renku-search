@@ -21,16 +21,18 @@ package io.renku.search.provision.project
 import io.github.arainko.ducktape.*
 import io.renku.events.v1.ProjectCreated
 import io.renku.events.v1.ProjectUpdated
-import io.renku.search.model.{Id, Version}
+import io.renku.search.model.Id
 import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.solr.documents.Project
+import io.renku.solr.client.DocVersion
 
 trait ProjectSyntax:
   extension (created: ProjectCreated)
     def toSolrDocument: Project = created
       .into[Project]
       .transform(
-        Field.const(_.version, Version.ensureInsert),
+        Field.default(_.version),
+        Field.const(_.version, DocVersion.NotExists),
         Field.default(_.owners),
         Field.default(_.members),
         Field.default(_.score)

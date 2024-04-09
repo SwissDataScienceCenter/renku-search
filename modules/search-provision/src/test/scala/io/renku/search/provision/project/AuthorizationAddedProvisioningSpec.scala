@@ -19,11 +19,12 @@
 package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
+
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{Id, ModelGenerators, Version, projects}
+import io.renku.search.model._
 import io.renku.search.model.projects.MemberRole
 import io.renku.search.provision.project.AuthorizationAddedProvisioningSpec.testCases
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
@@ -31,6 +32,7 @@ import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
+import io.renku.solr.client.DocVersion
 
 class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
 
@@ -94,7 +96,7 @@ object AuthorizationAddedProvisioningSpec:
       case DbState.Empty =>
         PartialEntityDocument.Project(
           projectId,
-          Version.ensureInsert,
+          DocVersion.NotExists,
           Set(user).filter(_ => role == MemberRole.Owner),
           Set(user).filter(_ => role == MemberRole.Member)
         )

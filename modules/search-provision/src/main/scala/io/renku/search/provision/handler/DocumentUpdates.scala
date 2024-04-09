@@ -36,6 +36,7 @@ object DocumentUpdates:
         update
           .into[ProjectDocument]
           .transform(
+            Field.default(_.version),
             Field.const(_.createdBy, orig.createdBy),
             Field.const(_.creationDate, orig.creationDate),
             Field.const(_.owners, orig.owners),
@@ -43,13 +44,14 @@ object DocumentUpdates:
             Field.default(_.score)
           )
           .some
-      case _ => None // todo really throw here?
+      case _ => None
 
   def user(update: UserUpdated, orig: EntityDocument): Option[EntityDocument] = orig match
     case _: UserDocument =>
       update
         .into[UserDocument]
         .transform(
+          Field.default(_.version),
           Field.default(_.score),
           Field.computed(_.name, u => UserDocument.nameFrom(u.firstName, u.lastName))
         )

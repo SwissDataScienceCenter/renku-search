@@ -19,8 +19,8 @@
 package io.renku.search.solr.documents
 
 import io.bullet.borer.*
-import io.bullet.borer.derivation.{MapBasedCodecs, key}
-import io.renku.search.model.Id
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.renku.search.model.{Id, Name}
 import io.renku.search.model.projects.*
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
@@ -28,6 +28,7 @@ import io.renku.solr.client.{DocVersion, EncoderSupport}
 
 sealed trait PartialEntityDocument extends SolrDocument:
   def applyTo(e: EntityDocument): EntityDocument
+  def setVersion(v: DocVersion): PartialEntityDocument
 
 object PartialEntityDocument:
   given AdtEncodingStrategy =
@@ -39,13 +40,19 @@ object PartialEntityDocument:
   given Codec[PartialEntityDocument] = Codec.of[PartialEntityDocument]
 
   // we must name it the same as the "full" entity documents so that borer
-  // generates the same discriminator (it is not configurable)
+  // *generates and decodes* the same discriminator (it is not configurable)
   final case class Project(
       id: Id,
-      @key("_version_") version: DocVersion = DocVersion.Off,
+      `_version_`: DocVersion = DocVersion.Off,
+      name: Option[Name] = None,
+      slug: Option[Slug] = None,
+      repositories: Seq[Repository] = Seq.empty,
+      visibility: Option[Visibility] = None,
+      description: Option[Description] = None,
       owners: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
+    def setVersion(v: DocVersion): Project = copy(`_version_` = v)
     def remove(id: Id): Project = copy(owners = owners - id, members = members - id)
     def add(id: Id, role: MemberRole): Project =
       role match
@@ -57,12 +64,20 @@ object PartialEntityDocument:
         case p: ProjectDocument if p.id == id =>
           p.addMembers(MemberRole.Owner, owners.toList)
             .addMembers(MemberRole.Member, members.toList)
+            .copy(
+              name = name.getOrElse(p.name),
+              slug = slug.getOrElse(p.slug),
+              repositories = if (repositories.isEmpty) p.repositories else repositories,
+              visibility = visibility.getOrElse(p.visibility),
+              description = description.orElse(p.description)
+            )
+            .setVersion(_version_)
         case _ => e
 
-    def combine(p: Project): Project =
+    private def combine(p: Project): Project =
       if (p.id == id)
         p.copy(
-          version = version,
+          `_version_` = `_version_`,
           members = p.members ++ (members -- p.owners),
           owners = p.owners ++ (owners -- p.members)
         )

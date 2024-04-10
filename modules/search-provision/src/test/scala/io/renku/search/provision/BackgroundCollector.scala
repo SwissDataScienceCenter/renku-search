@@ -57,7 +57,7 @@ final class BackgroundCollector[D](
         .awakeEvery[IO](every)
         .evalTap(time => state.update(_.updateAt(time)))
         .evalMap { time =>
-          task.flatMap(d => logger.info(s"Periodic result: $d") >> state.update(_.add(d)))
+          task.flatMap(d => logger.trace(s"Periodic result: $d") >> state.update(_.add(d)))
         }
         .compile
         .drain

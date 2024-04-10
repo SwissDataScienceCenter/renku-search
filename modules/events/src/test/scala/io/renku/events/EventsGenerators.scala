@@ -52,6 +52,23 @@ object EventsGenerators:
       Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )
 
+  def projectUpdatedGen(prefix: String): Gen[ProjectUpdated] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      name <- stringGen(max = 5).map(v => s"$prefix-$v")
+      repositoriesCount <- Gen.choose(1, 3)
+      repositories <- Gen.listOfN(repositoriesCount, stringGen(10))
+      visibility <- projectVisibilityGen
+      maybeDesc <- Gen.option(stringGen(20))
+    yield ProjectUpdated(
+      id,
+      name,
+      name,
+      repositories,
+      visibility,
+      maybeDesc
+    )
+
   def projectAuthorizationAddedGen(
       projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
       roleGen: Gen[ProjectMemberRole] = projectMemberRoleGen

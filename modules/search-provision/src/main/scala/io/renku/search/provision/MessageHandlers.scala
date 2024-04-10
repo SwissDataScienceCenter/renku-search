@@ -27,6 +27,8 @@ import io.renku.redis.client.QueueName
 import io.renku.search.provision.handler.*
 import io.renku.search.solr.documents.EntityDocument
 
+import io.renku.solr.client.UpsertResponse
+
 /** The entry point for defining all message handlers.
   *
   * They are defined as vals to have them automatically added to a collection, to be
@@ -36,6 +38,7 @@ final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
     cfg: QueuesConfig
 ) extends ShowInstances:
+  private val logger = scribe.cats.effect[F]
   private var tasks: Map[String, F[Unit]] = Map.empty
   private def add(queue: QueueName, task: Stream[F, Unit]): Stream[F, Unit] =
     tasks = tasks.updated(queue.name, task.compile.drain)
@@ -44,12 +47,12 @@ final class MessageHandlers[F[_]: Async](
   def getAll: Map[String, F[Unit]] = tasks
 
   val projectCreated: Stream[F, Unit] =
-    add(cfg.projectCreated, makeUpsert[ProjectCreated](cfg.projectCreated))
+    add(cfg.projectCreated, makeUpsert[ProjectCreated](cfg.projectCreated).drain)
 
   val projectUpdated: Stream[F, Unit] =
     add(
       cfg.projectUpdated,
-      makeUpdated[ProjectUpdated](cfg.projectUpdated, DocumentUpdates.project)
+      makeUpsert[ProjectUpdated](cfg.projectUpdated).drain
     )
 
   val projectRemoved: Stream[F, Unit] =
@@ -58,25 +61,25 @@ final class MessageHandlers[F[_]: Async](
   val projectAuthAdded: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationAdded,
-      makeUpsert[ProjectAuthorizationAdded](cfg.projectAuthorizationAdded)
+      makeUpsert[ProjectAuthorizationAdded](cfg.projectAuthorizationAdded).drain
     )
 
   val projectAuthUpdated: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationUpdated,
-      makeUpsert[ProjectAuthorizationUpdated](cfg.projectAuthorizationUpdated)
+      makeUpsert[ProjectAuthorizationUpdated](cfg.projectAuthorizationUpdated).drain
     )
 
   val projectAuthRemoved: Stream[F, Unit] = add(
     cfg.projectAuthorizationRemoved,
-    makeUpsert[ProjectAuthorizationRemoved](cfg.projectAuthorizationRemoved)
+    makeUpsert[ProjectAuthorizationRemoved](cfg.projectAuthorizationRemoved).drain
   )
 
   val userAdded: Stream[F, Unit] =
-    add(cfg.userAdded, makeCreated[UserAdded](cfg.userAdded))
+    add(cfg.userAdded, makeUpsert[UserAdded](cfg.userAdded).drain)
 
   val userUpdated: Stream[F, Unit] =
-    add(cfg.userUpdated, makeUpdated[UserUpdated](cfg.userUpdated, DocumentUpdates.user))
+    add(cfg.userUpdated, makeUpsert[UserUpdated](cfg.userUpdated).drain)
 
   val userRemoved: Stream[F, Unit] =
     val ps = steps(cfg.userRemoved)
@@ -94,50 +97,58 @@ final class MessageHandlers[F[_]: Async](
         })
     )
 
-  private def makeUpsert[A](queue: QueueName)(using
+  private[provision] def makeUpsert[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],
       DocumentMerger[A],
       IdExtractor[A],
       Show[A]
-  ): Stream[F, Unit] =
+  ): Stream[F, UpsertResponse] =
     val ps = steps(queue)
+    def processMsg(
+        msg: MessageReader.Message[A],
+        max: Ref[F, Int]
+    ): Stream[F, UpsertResponse] =
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchEntityOrPartial)
+        .map { m =>
+          val merger = DocumentMerger[A]
+          m.merge(merger.create, merger.merge)
+        }
+        .through(ps.pushToSolr.push(onConflict = processMsg(msg, max), maxTries = max))
     ps.reader
       .read[A]
-      .through(ps.fetchFromSolr.fetchEntityOrPartial)
-      .map { msg =>
-        val merger = DocumentMerger[A]
-        msg.merge(merger.create, merger.merge)
-      }
-      .through(ps.pushToSolr.push1)
+      .flatMap(msg =>
+        Stream
+          .eval(Ref[F].of(15))
+          .flatMap(max => processMsg(msg, max))
+      )
 
-  private def makeCreated[A](queue: QueueName)(using
-      QueueMessageDecoder[F, A],
-      DocumentConverter[A],
-      Show[A]
-  ): Stream[F, Unit] =
-    val ps = steps(queue)
-    ps.reader
-      .read[A]
-      .chunks
-      .through(ps.converter.convertChunk)
-      .map(_.map(_.map(e => e: EntityOrPartial)))
-      .through(ps.pushToSolr.pushChunk)
-
-  private def makeUpdated[A](
+  private[provision] def makeUpdated[A](
       queue: QueueName,
       docUpdate: (A, EntityDocument) => Option[EntityDocument]
   )(using
       QueueMessageDecoder[F, A],
       Show[A],
       IdExtractor[A]
-  ): Stream[F, Unit] =
+  ): Stream[F, UpsertResponse] =
     val ps = steps(queue)
+    def processMsg(
+        msg: MessageReader.Message[A],
+        max: Ref[F, Int]
+    ): Stream[F, UpsertResponse] =
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchEntity)
+        .map(_.update(docUpdate).map(e => e: EntityOrPartial))
+        .through(ps.pushToSolr.push(onConflict = processMsg(msg, max), maxTries = max))
     ps.reader
       .read[A]
-      .through(ps.fetchFromSolr.fetchEntity)
-      .map(_.update(docUpdate))
-      .map(_.map(e => e: EntityOrPartial))
-      .through(ps.pushToSolr.push)
+      .flatMap(msg =>
+        Stream
+          .eval(Ref[F].of(15))
+          .flatMap(max => processMsg(msg, max))
+      )
 
   private def makeRemovedSimple[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],

@@ -28,7 +28,7 @@ trait UserSyntax:
     def toSolrDocument: User = added
       .into[User]
       .transform(
-        Field.default(_.version),
+        Field.default(_.`_version_`),
         Field.default(_.score),
         Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName))
       )

@@ -32,10 +32,10 @@ trait EntityOps:
     }
 
     def assertVersionNot(v: DocVersion): EntityDocument =
-      assert(entity.version != v)
+      assert(entity.`_version_` != v)
       entity
 
     def setVersion(v: DocVersion): EntityDocument = entity match {
-      case e: Project => e.copy(version = v)
-      case e: User    => e.copy(version = v)
+      case e: Project => e.copy(`_version_` = v)
+      case e: User    => e.copy(`_version_` = v)
     }

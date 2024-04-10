@@ -29,4 +29,5 @@ final case class ResponseHeader(
 )
 
 object ResponseHeader:
+  val empty: ResponseHeader = ResponseHeader(0, 0, Map.empty)
   given Decoder[ResponseHeader] = deriveDecoder

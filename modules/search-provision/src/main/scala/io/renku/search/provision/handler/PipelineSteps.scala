@@ -27,7 +27,6 @@ import io.renku.search.solr.client.SearchSolrClient
 
 trait PipelineSteps[F[_]]:
   def reader: MessageReader[F]
-  def converter: ConvertDocument[F]
   def pushToSolr: PushToSolr[F]
   def fetchFromSolr: FetchFromSolr[F]
   def deleteFromSolr: DeleteFromSolr[F]
@@ -47,8 +46,6 @@ object PipelineSteps:
     new PipelineSteps[F] {
       val reader: MessageReader[F] =
         MessageReader[F](queueClient, queue, clientId, inChunkSize)
-      val converter: ConvertDocument[F] =
-        ConvertDocument[F]
       val pushToSolr: PushToSolr[F] =
         PushToSolr[F](solrClient, reader)
       val fetchFromSolr: FetchFromSolr[F] =

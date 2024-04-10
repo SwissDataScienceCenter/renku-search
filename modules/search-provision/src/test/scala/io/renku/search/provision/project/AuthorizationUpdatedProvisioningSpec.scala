@@ -96,10 +96,10 @@ object AuthorizationUpdatedProvisioningSpec:
       case DbState.Empty =>
         Set(
           PartialEntityDocument.Project(
-            projectId,
-            DocVersion.NotExists,
-            Set(user).filter(_ => role == MemberRole.Owner),
-            Set(user).filter(_ => role == MemberRole.Member)
+            id = projectId,
+            _version_ = DocVersion.NotExists,
+            owners = Set(user).filter(_ => role == MemberRole.Owner),
+            members = Set(user).filter(_ => role == MemberRole.Member)
           )
         )
 

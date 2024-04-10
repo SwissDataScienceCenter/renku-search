@@ -42,17 +42,17 @@ trait TypeTransformers:
       from.role.to[MemberRole] match
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
-            from.projectId.to[Id],
-            DocVersion.Exists, //TODO this is wrong
-            Set(from.userId.to[Id]),
-            Set.empty
+            id = from.projectId.to[Id],
+            _version_ = DocVersion.Exists, //TODO this is wrong
+            owners = Set(from.userId.to[Id]),
+            members = Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
-            from.projectId.to[Id],
-            DocVersion.Exists, //TODO this is wrong
-            Set.empty,
-            Set(from.userId.to[Id])
+            id = from.projectId.to[Id],
+            _version_ = DocVersion.Exists, //TODO this is wrong
+            owners = Set.empty,
+            members = Set(from.userId.to[Id])
           )
 
   given Transformer[ProjectAuthorizationUpdated, PartialEntityDocument] =
@@ -60,15 +60,15 @@ trait TypeTransformers:
       from.role.to[MemberRole] match
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
-            from.projectId.to[Id],
-            DocVersion.Exists, //TODO this is wrong
-            Set(from.userId.to[Id]),
-            Set.empty
+            id = from.projectId.to[Id],
+            _version_ = DocVersion.Exists, //TODO this is wrong
+            owners = Set(from.userId.to[Id]),
+            members = Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
-            from.projectId.to[Id],
-            DocVersion.Exists, //TODO this is wrong
-            Set.empty,
-            Set(from.userId.to[Id])
+            id = from.projectId.to[Id],
+            _version_ = DocVersion.Exists, //TODO this is wrong
+            owners = Set.empty,
+            members = Set(from.userId.to[Id])
           )

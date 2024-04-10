@@ -31,8 +31,7 @@ trait ProjectSyntax:
     def toSolrDocument: Project = created
       .into[Project]
       .transform(
-        Field.default(_.version),
-        Field.const(_.version, DocVersion.NotExists),
+        Field.const(_.`_version_`, DocVersion.Off),
         Field.default(_.owners),
         Field.default(_.members),
         Field.default(_.score)

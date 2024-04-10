@@ -45,11 +45,14 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     EntityDocumentSchema.Fields.entityType
   )
 
-  override def upsert[D: Encoder](documents: Seq[D]): F[Unit] =
-    solrClient.upsert(documents).void
+  override def upsert[D: Encoder](documents: Seq[D]): F[UpsertResponse] =
+    solrClient.upsert(documents)
+
+  override def upsertSuccess[D: Encoder](documents: Seq[D]): F[Unit] =
+    solrClient.upsertSuccess(documents)
 
   override def deleteIds(ids: NonEmptyList[Id]): F[Unit] =
-    solrClient.deleteIds(ids.map(_.value)).void
+    solrClient.deleteIds(ids.map(_.value))
 
   override def queryEntity(
       role: SearchRole,

@@ -51,7 +51,12 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   ):
     Prop.forAll(idGen, versionGen, idGen, projectMemberRoleGen) {
       case (projectId, version, userId, role) =>
-        val existing = Project(projectId, version, Set(userId), Set(userId))
+        val existing = Project(
+          id = projectId,
+          _version_ = version,
+          owners = Set(userId),
+          members = Set(userId)
+        )
 
         val updated = existing.add(userId, role)
 
@@ -68,17 +73,17 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   test("applyTo should add members and owners from the caller object"):
     Prop.forAll(partialProjectGen, idGen, projectMemberRoleGen) {
       case (existing, userId, role) =>
-        val update = Project(existing.id, existing.version).add(userId, role)
+        val update = Project(existing.id, existing.`_version_`).add(userId, role)
 
         val updated = existing.applyTo(update).asInstanceOf[Project]
 
         role match {
           case Owner =>
-            assertEquals(updated.version, existing.version)
+            assertEquals(updated.`_version_`, existing.`_version_`)
             assertEquals(updated.owners, existing.owners + userId)
             assertEquals(updated.members, existing.members)
           case Member =>
-            assertEquals(updated.version, existing.version)
+            assertEquals(updated.`_version_`, existing.`_version_`)
             assertEquals(updated.members, existing.members + userId)
             assertEquals(updated.owners, existing.owners)
         }
@@ -89,7 +94,12 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   ):
     Prop.forAll(idGen, versionGen, idGen, projectMemberRoleGen) {
       case (projectId, version, userId, role) =>
-        val existing = Project(projectId, version, Set(userId), Set(userId))
+        val existing = Project(
+          id = projectId,
+          _version_ = version,
+          owners = Set(userId),
+          members = Set(userId)
+        )
 
         val update = Project(projectId, DocVersion.Exists).add(userId, role)
 
@@ -97,11 +107,11 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
 
         role match {
           case Owner =>
-            assertEquals(updated.version, existing.version)
+            assertEquals(updated.`_version_`, existing.`_version_`)
             assertEquals(updated.owners, existing.owners)
             assertEquals(updated.members, existing.members - userId)
           case Member =>
-            assertEquals(updated.version, existing.version)
+            assertEquals(updated.`_version_`, existing.`_version_`)
             assertEquals(updated.members, existing.members)
             assertEquals(updated.owners, existing.owners - userId)
         }

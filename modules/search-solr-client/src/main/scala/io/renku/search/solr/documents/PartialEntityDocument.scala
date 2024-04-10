@@ -19,6 +19,7 @@
 package io.renku.search.solr.documents
 
 import io.bullet.borer.*
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.renku.search.model.{Id, Name}
 import io.renku.search.model.projects.*

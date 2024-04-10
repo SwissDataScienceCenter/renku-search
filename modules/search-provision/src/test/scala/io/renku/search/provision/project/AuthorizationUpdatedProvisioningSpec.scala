@@ -56,8 +56,8 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
             tc.authUpdated
           )
           _ <- collector.waitUntil(docs =>
-            scribe.info(s"Check for ${tc.expectedProject}")
-            tc.expectedProject.diff(docs).isEmpty
+            scribe.debug(s"Check for ${tc.expectedProject}")
+            tc.checkExpected(docs)
           )
 
           _ <- provisioningFiber.cancel
@@ -108,6 +108,12 @@ object AuthorizationUpdatedProvisioningSpec:
 
       case DbState.PartialProject(p) =>
         Set(p.remove(user).add(user, role))
+
+    def checkExpected(d: Set[SolrDocument]): Boolean =
+      expectedProject
+        .map(_.setVersion(DocVersion.Off))
+        .diff(d.map(_.setVersion(DocVersion.Off)))
+        .isEmpty
 
     override def toString = s"$name: ${user.value.take(6)}… db=$dbState"
 

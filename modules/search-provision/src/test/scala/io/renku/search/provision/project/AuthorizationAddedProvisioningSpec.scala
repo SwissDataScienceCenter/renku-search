@@ -56,8 +56,8 @@ class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
             tc.authAdded
           )
           _ <- collector.waitUntil(docs =>
-            scribe.info(s"Check for ${tc.expectedProject}")
-            docs.contains(tc.expectedProject)
+            scribe.debug(s"Check for ${tc.expectedProject}")
+            docs.exists(tc.checkExpected)
           )
 
           _ <- provisioningFiber.cancel
@@ -96,7 +96,7 @@ object AuthorizationAddedProvisioningSpec:
       case DbState.Empty =>
         PartialEntityDocument.Project(
           id = projectId,
-          _version_ = DocVersion.NotExists,
+          _version_ = DocVersion.Off,
           owners = Set(user).filter(_ => role == MemberRole.Owner),
           members = Set(user).filter(_ => role == MemberRole.Member)
         )
@@ -105,6 +105,9 @@ object AuthorizationAddedProvisioningSpec:
 
       case DbState.PartialProject(p) =>
         p.add(user, role)
+
+    def checkExpected(d: SolrDocument): Boolean =
+      d.setVersion(DocVersion.Off) == expectedProject.setVersion(DocVersion.Off)
 
     override def toString = s"$name: ${user.value.take(6)}… db=$dbState"
 

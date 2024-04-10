@@ -25,7 +25,6 @@ import fs2.Stream
 import io.renku.events.v1.*
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.handler.*
-import io.renku.search.solr.documents.EntityDocument
 
 import io.renku.solr.client.UpsertResponse
 
@@ -115,32 +114,6 @@ final class MessageHandlers[F[_]: Async](
           val merger = DocumentMerger[A]
           m.merge(merger.create, merger.merge)
         }
-        .through(ps.pushToSolr.push(onConflict = processMsg(msg, max), maxTries = max))
-    ps.reader
-      .read[A]
-      .flatMap(msg =>
-        Stream
-          .eval(Ref[F].of(15))
-          .flatMap(max => processMsg(msg, max))
-      )
-
-  private[provision] def makeUpdated[A](
-      queue: QueueName,
-      docUpdate: (A, EntityDocument) => Option[EntityDocument]
-  )(using
-      QueueMessageDecoder[F, A],
-      Show[A],
-      IdExtractor[A]
-  ): Stream[F, UpsertResponse] =
-    val ps = steps(queue)
-    def processMsg(
-        msg: MessageReader.Message[A],
-        max: Ref[F, Int]
-    ): Stream[F, UpsertResponse] =
-      Stream
-        .emit(msg)
-        .through(ps.fetchFromSolr.fetchEntity)
-        .map(_.update(docUpdate).map(e => e: EntityOrPartial))
         .through(ps.pushToSolr.push(onConflict = processMsg(msg, max), maxTries = max))
     ps.reader
       .read[A]

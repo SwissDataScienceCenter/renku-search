@@ -23,5 +23,5 @@ import io.renku.solr.client.DocVersion
 
 trait SolrDocument:
   def id: Id
-  def `_version_`: DocVersion
+  def `_version_` : DocVersion
   def setVersion(v: DocVersion): SolrDocument

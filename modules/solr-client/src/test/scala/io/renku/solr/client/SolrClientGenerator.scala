@@ -28,7 +28,8 @@ object SolrClientGenerator:
   private val fieldNameString: Gen[String] =
     Gen.choose(4, 12).flatMap(n => Gen.listOfN(n, Gen.alphaLowerChar)).map(_.mkString)
 
-  val versionGen: Gen[DocVersion] = Gen.chooseNum(2L, Long.MaxValue - 1).map(DocVersion.Exact.apply)
+  val versionGen: Gen[DocVersion] =
+    Gen.chooseNum(2L, Long.MaxValue - 1).map(DocVersion.Exact.apply)
 
   val fieldNameTypeStr: Gen[FieldName] =
     fieldNameString.map(n => s"${n}_s").map(FieldName.apply)

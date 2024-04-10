@@ -43,14 +43,14 @@ trait TypeTransformers:
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
             id = from.projectId.to[Id],
-            _version_ = DocVersion.Exists, //TODO this is wrong
+            _version_ = DocVersion.Exists, // TODO this is wrong
             owners = Set(from.userId.to[Id]),
             members = Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
             id = from.projectId.to[Id],
-            _version_ = DocVersion.Exists, //TODO this is wrong
+            _version_ = DocVersion.Exists, // TODO this is wrong
             owners = Set.empty,
             members = Set(from.userId.to[Id])
           )
@@ -61,14 +61,14 @@ trait TypeTransformers:
         case MemberRole.Owner =>
           PartialEntityDocument.Project(
             id = from.projectId.to[Id],
-            _version_ = DocVersion.Exists, //TODO this is wrong
+            _version_ = DocVersion.Exists, // TODO this is wrong
             owners = Set(from.userId.to[Id]),
             members = Set.empty
           )
         case MemberRole.Member =>
           PartialEntityDocument.Project(
             id = from.projectId.to[Id],
-            _version_ = DocVersion.Exists, //TODO this is wrong
+            _version_ = DocVersion.Exists, // TODO this is wrong
             owners = Set.empty,
             members = Set(from.userId.to[Id])
           )

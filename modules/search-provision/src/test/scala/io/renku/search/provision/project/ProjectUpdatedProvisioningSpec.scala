@@ -102,7 +102,7 @@ object ProjectUpdatedProvisioningSpec:
               n.visibility == projectUpdated.visibility.to[Visibility] &&
               n.owners == p.owners &&
               n.members == p.members
-            case _                  => false
+            case _ => false
 
         case DbState.PartialProject(p) =>
           d match
@@ -112,7 +112,7 @@ object ProjectUpdatedProvisioningSpec:
               n.slug.map(_.value) == projectUpdated.slug.some &&
               n.visibility == projectUpdated.visibility.to[Visibility].some
 
-            case _                                => false
+            case _ => false
 
   val testCases =
     val proj = SolrDocumentGenerators.projectDocumentGen.generateOne

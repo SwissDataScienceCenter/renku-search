@@ -23,5 +23,5 @@ enum UpsertResponse:
   case VersionConflict
 
   lazy val isSuccess: Boolean = this match
-    case Success(_) => true
+    case Success(_)      => true
     case VersionConflict => false

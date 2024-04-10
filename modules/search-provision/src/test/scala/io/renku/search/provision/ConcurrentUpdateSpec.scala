@@ -103,8 +103,11 @@ class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
           messageHeaderGen(UserAdded.SCHEMA$, DataContentType.Binary).generateOne,
           UserAdded(id = "u1", Some("john"), None, None)
         )
-        results <- handlers.makeUpsert[UserAdded](queueConfig.userAdded)
-          .take(2).compile.toList
+        results <- handlers
+          .makeUpsert[UserAdded](queueConfig.userAdded)
+          .take(2)
+          .compile
+          .toList
 
         _ = assertEquals(results, List.fill(2)(UpsertResponse.VersionConflict))
       yield ()

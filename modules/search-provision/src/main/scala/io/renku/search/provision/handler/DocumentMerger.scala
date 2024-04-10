@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.events.v1.*
 import io.renku.search.model.{Id, Name}
-import io.renku.search.model.projects.{Slug, Visibility, Description}
+import io.renku.search.model.projects.{Description, Slug, Visibility}
 import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument

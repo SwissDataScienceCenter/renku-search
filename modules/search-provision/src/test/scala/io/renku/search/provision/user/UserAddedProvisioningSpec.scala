@@ -18,11 +18,7 @@
 
 package io.renku.search.provision.user
 
-import scala.concurrent.duration.*
-
 import cats.effect.{IO, Resource}
-import fs2.Stream
-import fs2.concurrent.SignallingRef
 
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.userAddedGen
@@ -32,38 +28,37 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
+import io.renku.search.provision.BackgroundCollector
+import io.renku.solr.client.DocVersion
 
 class UserAddedProvisioningSpec extends ProvisioningSuite:
 
   test("can fetch events, decode them, and send them to Solr"):
+    val userAdded = userAddedGen(prefix = "user-added").generateOne
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
+        collector <- BackgroundCollector[EntityDocument](
+          solrClient
+            .findById[EntityDocument](
+              CompoundId.userEntity(Id(userAdded.id))
+            )
+            .map(_.toSet)
+        )
+        _ <- collector.start
 
         provisioningFiber <- handlers.userAdded.compile.drain.start
 
-        userAdded = userAddedGen(prefix = "user-added").generateOne
         _ <- queueClient.enqueue(
           queueConfig.userAdded,
           messageHeaderGen(UserAdded.SCHEMA$).generateOne,
           userAdded
         )
 
-        docsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ =>
-              solrClient.findById[EntityDocument](CompoundId.userEntity(Id(userAdded.id)))
-            )
-            .evalMap(e => solrDoc.update(_ => e))
-            .compile
-            .drain
-            .start
-
-        _ <- solrDoc.waitUntil(_ contains userAdded.toSolrDocument)
+        _ <- collector.waitUntil(docs =>
+          docs.map(_.setVersion(DocVersion.Off)).contains(userAdded.toSolrDocument)
+        )
 
         _ <- provisioningFiber.cancel
-        _ <- docsCollectorFiber.cancel
       yield ()
     }
 

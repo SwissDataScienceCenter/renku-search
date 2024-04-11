@@ -22,8 +22,8 @@ import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.*
 
+import cats.data.OptionT
 import cats.effect.Async
-import cats.effect.kernel.Ref
 import cats.effect.std.Random
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
@@ -39,8 +39,7 @@ trait PushToSolr[F[_]]:
   def pushChunk: Pipe[F, Chunk[MessageReader.Message[EntityOrPartial]], UpsertResponse]
   def push1: Pipe[F, MessageReader.Message[EntityOrPartial], UpsertResponse]
   def push(
-      onConflict: => Stream[F, UpsertResponse],
-      maxTries: Ref[F, Int],
+      onConflict: => OptionT[F, Stream[F, UpsertResponse]],
       maxWait: FiniteDuration = 100.millis
   ): Pipe[F, MessageReader.Message[EntityOrPartial], UpsertResponse]
 
@@ -71,8 +70,7 @@ object PushToSolr:
         _.map(Chunk.apply(_)).through(pushChunk)
 
       def push(
-          onConflict: => Stream[F, UpsertResponse],
-          max: Ref[F, Int],
+          onConflict: => OptionT[F, Stream[F, UpsertResponse]],
           maxWait: FiniteDuration
       ): Pipe[F, MessageReader.Message[EntityOrPartial], UpsertResponse] =
         _.flatMap { msg =>
@@ -80,8 +78,8 @@ object PushToSolr:
             case r @ UpsertResponse.Success(_) =>
               Stream.eval(reader.markProcessed(msg.id)).as(r)
             case r @ UpsertResponse.VersionConflict =>
-              Stream.eval(max.updateAndGet(_ - 1)).flatMap { counter =>
-                if (counter <= 0)
+              Stream.eval(onConflict.value).flatMap {
+                case None =>
                   Stream
                     .eval(
                       logger
@@ -89,16 +87,16 @@ object PushToSolr:
                     )
                     .evalMap(_ => reader.markProcessed(msg.id))
                     .as(r)
-                else
+                case Some(run) =>
                   Stream
                     .eval(Random.scalaUtilRandom[F])
-                    .evalMap(_.betweenLong(10, maxWait.toMillis))
+                    .evalMap(_.betweenLong(5, math.max(maxWait.toMillis, 10)))
                     .map(FiniteDuration(_, TimeUnit.MILLISECONDS))
                     .evalTap(n =>
                       logger.debug(s"Version conflict updating solr, retry in $n")
                     )
                     .flatMap(Stream.sleep)
-                    .evalMap(_ => onConflict.compile.lastOrError)
+                    .evalMap(_ => run.compile.lastOrError)
               }
           }
         }

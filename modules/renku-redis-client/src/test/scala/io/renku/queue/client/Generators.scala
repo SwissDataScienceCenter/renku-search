@@ -18,9 +18,14 @@
 
 package io.renku.queue.client
 
+import java.time.Instant
+
+import io.renku.avro.codec.AvroEncoder
+import io.renku.avro.codec.AvroWriter
+import io.renku.redis.client.RedisClientGenerators
 import org.apache.avro.Schema
 import org.scalacheck.Gen
-import java.time.Instant
+import scodec.bits.ByteVector
 
 object Generators:
 
@@ -54,3 +59,14 @@ object Generators:
       creationTime,
       requestId
     )
+
+  def queueMessageGen[A: AvroEncoder](schema: Schema, payload: A): Gen[QueueMessage] =
+    for
+      id <- RedisClientGenerators.messageIdGen
+      header <- messageHeaderGen(schema)
+      encodedPayload = header.dataContentType match {
+        case DataContentType.Binary => AvroWriter(schema).write(Seq(payload))
+        case DataContentType.Json   => AvroWriter(schema).writeJson(Seq(payload))
+      }
+      h = header.toSchemaHeader(payload)
+    yield QueueMessage(id, h, encodedPayload)

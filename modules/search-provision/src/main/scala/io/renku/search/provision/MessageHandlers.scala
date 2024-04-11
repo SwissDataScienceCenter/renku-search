@@ -19,13 +19,13 @@
 package io.renku.search.provision
 
 import cats.Show
+import cats.data.OptionT
 import cats.effect.*
 import fs2.Stream
 
 import io.renku.events.v1.*
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.handler.*
-
 import io.renku.solr.client.UpsertResponse
 
 /** The entry point for defining all message handlers.
@@ -35,13 +35,19 @@ import io.renku.solr.client.UpsertResponse
   */
 final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
-    cfg: QueuesConfig
+    cfg: QueuesConfig,
+    maxConflictRetries: Int = 20
 ) extends ShowInstances:
+  assert(maxConflictRetries >= 0, "maxConflictRetries must be >= 0")
+
   private val logger = scribe.cats.effect[F]
   private var tasks: Map[String, F[Unit]] = Map.empty
   private def add(queue: QueueName, task: Stream[F, Unit]): Stream[F, Unit] =
     tasks = tasks.updated(queue.name, task.compile.drain)
     task
+
+  private[provision] def withMaxConflictRetries(n: Int): MessageHandlers[F] =
+    new MessageHandlers[F](steps, cfg, n)
 
   def getAll: Map[String, F[Unit]] = tasks
 
@@ -105,8 +111,9 @@ final class MessageHandlers[F[_]: Async](
     val ps = steps(queue)
     def processMsg(
         msg: MessageReader.Message[A],
-        max: Ref[F, Int]
+        retries: Int
     ): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
       Stream
         .emit(msg)
         .through(ps.fetchFromSolr.fetchEntityOrPartial)
@@ -114,14 +121,11 @@ final class MessageHandlers[F[_]: Async](
           val merger = DocumentMerger[A]
           m.merge(merger.create, merger.merge)
         }
-        .through(ps.pushToSolr.push(onConflict = processMsg(msg, max), maxTries = max))
+        .through(ps.pushToSolr.push(onConflict = retry))
+
     ps.reader
       .read[A]
-      .flatMap(msg =>
-        Stream
-          .eval(Ref[F].of(15))
-          .flatMap(max => processMsg(msg, max))
-      )
+      .flatMap(processMsg(_, maxConflictRetries))
 
   private def makeRemovedSimple[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],

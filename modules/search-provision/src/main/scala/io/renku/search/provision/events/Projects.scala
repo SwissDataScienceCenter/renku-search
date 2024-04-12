@@ -31,7 +31,7 @@ trait Projects:
   def fromProjectCreated(pc: ProjectCreated, version: DocVersion): ProjectDocument =
     ProjectDocument(
       id = pc.id.toId,
-      `_version_` = version,
+      version = version,
       name = pc.name.toName,
       slug = pc.slug.toSlug,
       repositories = pc.repositories.map(_.toRepository),
@@ -44,7 +44,7 @@ trait Projects:
   def fromProjectUpdated(pu: ProjectUpdated, orig: ProjectDocument): ProjectDocument =
     orig.copy(
       id = pu.id.toId,
-      `_version_` = orig._version_,
+      version = orig.version,
       name = pu.name.toName,
       slug = pu.slug.toSlug,
       repositories = pu.repositories.map(_.toRepository),

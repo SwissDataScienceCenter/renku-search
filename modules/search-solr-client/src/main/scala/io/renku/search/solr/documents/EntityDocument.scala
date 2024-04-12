@@ -18,15 +18,15 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.*
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.*
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.model.projects.{MemberRole, Visibility}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
-import io.renku.solr.client.{DocVersion, EncoderSupport}
 import io.renku.solr.client.EncoderSupport.*
+import io.renku.solr.client.{DocVersion, EncoderSupport}
 
 sealed trait EntityDocument extends SolrDocument:
   val score: Option[Double]
@@ -43,7 +43,7 @@ object EntityDocument:
 
 final case class Project(
     id: Id,
-    `_version_`: DocVersion = DocVersion.Off,
+    @key("_version_") version: DocVersion = DocVersion.Off,
     name: Name,
     slug: projects.Slug,
     repositories: Seq[projects.Repository] = Seq.empty,
@@ -55,7 +55,7 @@ final case class Project(
     members: List[Id] = List.empty,
     score: Option[Double] = None
 ) extends EntityDocument:
-  def setVersion(v: DocVersion): Project = copy(`_version_` = v)
+  def setVersion(v: DocVersion): Project = copy(version = v)
   def addMember(userId: Id, role: MemberRole): Project =
     role match {
       case Owner =>
@@ -92,13 +92,13 @@ object Project:
 
 final case class User(
     id: Id,
-    `_version_`: DocVersion = DocVersion.Off,
+    @key("_version_") version: DocVersion = DocVersion.Off,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
     score: Option[Double] = None
 ) extends EntityDocument:
-  def setVersion(v: DocVersion): User = copy(`_version_` = v)
+  def setVersion(v: DocVersion): User = copy(version = v)
 
 object User:
   given Encoder[User] =

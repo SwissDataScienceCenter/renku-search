@@ -53,7 +53,7 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
       case (projectId, version, userId, role) =>
         val existing = Project(
           id = projectId,
-          _version_ = version,
+          version = version,
           owners = Set(userId),
           members = Set(userId)
         )
@@ -73,17 +73,17 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   test("applyTo should add members and owners from the caller object"):
     Prop.forAll(partialProjectGen, idGen, projectMemberRoleGen) {
       case (existing, userId, role) =>
-        val update = Project(existing.id, existing.`_version_`).add(userId, role)
+        val update = Project(existing.id, existing.version).add(userId, role)
 
         val updated = existing.applyTo(update).asInstanceOf[Project]
 
         role match {
           case Owner =>
-            assertEquals(updated.`_version_`, existing.`_version_`)
+            assertEquals(updated.version, existing.version)
             assertEquals(updated.owners, existing.owners + userId)
             assertEquals(updated.members, existing.members)
           case Member =>
-            assertEquals(updated.`_version_`, existing.`_version_`)
+            assertEquals(updated.version, existing.version)
             assertEquals(updated.members, existing.members + userId)
             assertEquals(updated.owners, existing.owners)
         }
@@ -96,7 +96,7 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
       case (projectId, version, userId, role) =>
         val existing = Project(
           id = projectId,
-          _version_ = version,
+          version = version,
           owners = Set(userId),
           members = Set(userId)
         )
@@ -107,11 +107,11 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
 
         role match {
           case Owner =>
-            assertEquals(updated.`_version_`, existing.`_version_`)
+            assertEquals(updated.version, existing.version)
             assertEquals(updated.owners, existing.owners)
             assertEquals(updated.members, existing.members - userId)
           case Member =>
-            assertEquals(updated.`_version_`, existing.`_version_`)
+            assertEquals(updated.version, existing.version)
             assertEquals(updated.members, existing.members)
             assertEquals(updated.owners, existing.owners - userId)
         }

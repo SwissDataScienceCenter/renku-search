@@ -18,11 +18,11 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.renku.search.model.{Id, Name}
+import io.bullet.borer.*
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.projects.*
+import io.renku.search.model.{Id, Name}
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.{DocVersion, EncoderSupport}
@@ -44,7 +44,7 @@ object PartialEntityDocument:
   // *generates and decodes* the same discriminator (it is not configurable)
   final case class Project(
       id: Id,
-      `_version_`: DocVersion = DocVersion.Off,
+      @key("_version_") version: DocVersion = DocVersion.Off,
       name: Option[Name] = None,
       slug: Option[Slug] = None,
       repositories: Seq[Repository] = Seq.empty,
@@ -53,7 +53,7 @@ object PartialEntityDocument:
       owners: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
-    def setVersion(v: DocVersion): Project = copy(`_version_` = v)
+    def setVersion(v: DocVersion): Project = copy(version = v)
     def remove(id: Id): Project = copy(owners = owners - id, members = members - id)
     def add(id: Id, role: MemberRole): Project =
       role match
@@ -72,13 +72,13 @@ object PartialEntityDocument:
               visibility = visibility.getOrElse(p.visibility),
               description = description.orElse(p.description)
             )
-            .setVersion(_version_)
+            .setVersion(version)
         case _ => e
 
     private def combine(p: Project): Project =
       if (p.id == id)
         p.copy(
-          `_version_` = `_version_`,
+          version = version,
           members = p.members ++ (members -- p.owners),
           owners = p.owners ++ (owners -- p.members)
         )

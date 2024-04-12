@@ -97,7 +97,7 @@ object AuthorizationUpdatedProvisioningSpec:
         Set(
           PartialEntityDocument.Project(
             id = projectId,
-            _version_ = DocVersion.NotExists,
+            version = DocVersion.NotExists,
             owners = Set(user).filter(_ => role == MemberRole.Owner),
             members = Set(user).filter(_ => role == MemberRole.Member)
           )

@@ -41,7 +41,7 @@ trait SolrDocumentGenerators:
     val ids = Gen.choose(1, 5).flatMap(n => Gen.listOfN(n, idGen)).map(_.toSet)
     (projectIdGen, const(DocVersion.Off), ids, ids)
       .mapN((id, v, own, mem) =>
-        PartialEntityDocument.Project(id = id, _version_ = v, owners = own, members = mem)
+        PartialEntityDocument.Project(id = id, version = v, owners = own, members = mem)
       )
 
   val projectDocumentGen: Gen[Project] =

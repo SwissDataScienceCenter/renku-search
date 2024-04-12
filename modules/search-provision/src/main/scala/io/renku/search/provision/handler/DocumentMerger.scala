@@ -51,9 +51,9 @@ object DocumentMerger:
     )((paa, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
-          p.applyTo(paa.toModel(p._version_)).some
+          p.applyTo(paa.toModel(p.version)).some
         case p: EntityDocument =>
-          paa.toModel(p._version_).applyTo(p).some
+          paa.toModel(p.version).applyTo(p).some
     )
 
   given DocumentMerger[ProjectAuthorizationUpdated] =
@@ -62,9 +62,9 @@ object DocumentMerger:
     )((pau, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
-          p.remove(pau.userId.toId).applyTo(pau.toModel(p._version_)).some
+          p.remove(pau.userId.toId).applyTo(pau.toModel(p.version)).some
         case p: ProjectDocument =>
-          pau.toModel(p._version_).applyTo(p.removeMember(pau.userId.toId)).some
+          pau.toModel(p.version).applyTo(p.removeMember(pau.userId.toId)).some
         case _ => None
     )
 
@@ -91,7 +91,7 @@ object DocumentMerger:
           // already exists, but we overwrite
           Some(
             convert(pc)
-              .setVersion(p._version_)
+              .setVersion(p.version)
               .copy(owners = p.owners, members = p.members)
           )
         case _: UserDocument =>
@@ -114,7 +114,7 @@ object DocumentMerger:
 
     instance[UserAdded](convert(_).some)((ua, existing) =>
       existing match
-        case u: EntityDocument        => Some(convert(ua).setVersion(u._version_))
+        case u: EntityDocument        => Some(convert(ua).setVersion(u.version))
         case _: PartialEntityDocument => None
     )
 

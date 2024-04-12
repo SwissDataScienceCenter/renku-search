@@ -29,7 +29,7 @@ trait Users:
   def fromUserAdded(ua: UserAdded, version: DocVersion): UserDocument =
     UserDocument(
       id = ua.id.toId,
-      `_version_` = version,
+      version = version,
       firstName = ua.firstName.map(_.toFirstName),
       lastName = ua.lastName.map(_.toLastName),
       name = UserDocument.nameFrom(ua.firstName, ua.lastName)

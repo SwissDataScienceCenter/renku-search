@@ -40,7 +40,7 @@ trait ProjectAuthorization:
     val (owners, members) = resolveRole(paa.role, paa.userId)
     PartialEntityDocument.Project(
       id = paa.projectId.toId,
-      _version_ = version,
+      version = version,
       owners = owners,
       members = members
     )
@@ -52,7 +52,7 @@ trait ProjectAuthorization:
     val (owners, members) = resolveRole(paa.role, paa.userId)
     PartialEntityDocument.Project(
       id = paa.projectId.toId,
-      _version_ = version,
+      version = version,
       owners = owners,
       members = members
     )

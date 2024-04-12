@@ -96,7 +96,7 @@ object AuthorizationAddedProvisioningSpec:
       case DbState.Empty =>
         PartialEntityDocument.Project(
           id = projectId,
-          _version_ = DocVersion.Off,
+          version = DocVersion.Off,
           owners = Set(user).filter(_ => role == MemberRole.Owner),
           members = Set(user).filter(_ => role == MemberRole.Member)
         )

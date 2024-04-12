@@ -148,7 +148,7 @@ object ProjectCreatedProvisioningSpec:
           .create(projectCreated)
           .get
           .asInstanceOf[ProjectDocument]
-        np.copy(_version_ = p._version_, owners = p.owners, members = p.members)
+        np.copy(version = p.version, owners = p.owners, members = p.members)
 
       case DbState.PartialProject(p) =>
         p.applyTo(

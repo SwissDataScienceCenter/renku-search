@@ -79,7 +79,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       (glProj
         .into[Project]
         .transform(
-          Field.default(_.`_version_`),
+          Field.default(_.version),
           Field.computed(_.id, s => Id(s"gl_proj_${s.id}")),
           Field.computed(_.slug, s => projects.Slug(s.path_with_namespace)),
           Field
@@ -117,7 +117,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     glUser
       .into[User]
       .transform(
-        Field.default(_.`_version_`),
+        Field.default(_.version),
         Field.computed(_.id, s => Id(s"gl_user_${s.id}")),
         Field.computed(
           _.firstName,

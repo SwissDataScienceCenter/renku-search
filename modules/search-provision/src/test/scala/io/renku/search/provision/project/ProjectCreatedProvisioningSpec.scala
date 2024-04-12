@@ -28,6 +28,7 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
@@ -83,7 +84,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         )
         _ <- collector.start
         _ <- collector.waitUntil(
-          _.map(_.setVersion(DocVersion.Off)) contains toSolrDocument(created)
+          _.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
         )
 
         _ <- provisioningFiber.cancel
@@ -108,7 +109,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         )
         _ <- collector.start
         _ <- collector.waitUntil(
-          _.map(_.setVersion(DocVersion.Off)) contains toSolrDocument(created)
+          _.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
         )
 
         _ <- provisioningFiber.cancel

@@ -29,6 +29,7 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.model.users.FirstName
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.handler.ShowInstances
 import io.renku.search.solr.documents.{CompoundId, EntityDocument, User as UserDocument}
@@ -88,7 +89,10 @@ class UserAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
           CompoundId.userEntity(Id(userAdded.id))
         )
         _ = assert(doc.isDefined)
-        _ = assertEquals(doc.get.setVersion(DocVersion.Off), userAdded.toSolrDocument)
+        _ = assertEquals(
+          doc.get.setVersion(DocVersion.Off),
+          userAdded.toModel(DocVersion.Off)
+        )
       yield ()
     }
 

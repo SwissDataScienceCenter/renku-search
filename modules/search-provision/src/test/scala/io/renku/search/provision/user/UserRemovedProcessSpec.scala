@@ -30,10 +30,12 @@ import io.renku.events.v1.*
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.ModelGenerators.projectMemberRoleGen
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.QueueMessageDecoder
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
+import io.renku.solr.client.DocVersion
 
 class UserRemovedProcessSpec extends ProvisioningSuite:
   test(
@@ -53,11 +55,13 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
 
         user = userDocumentGen.generateOne
         affectedProjects = projectCreatedGen("affected")
-          .map(_.toSolrDocument.addMember(user.id, projectMemberRoleGen.generateOne))
+          .map(
+            _.toModel(DocVersion.Off).addMember(user.id, projectMemberRoleGen.generateOne)
+          )
           .generateList(min = 20, max = 25)
         notAffectedProject = projectCreatedGen(
           "not-affected"
-        ).generateOne.toSolrDocument
+        ).generateOne.toModel(DocVersion.Off)
         _ <- solrClient.upsert(user :: notAffectedProject :: affectedProjects)
 
         docsCollectorFiber <-

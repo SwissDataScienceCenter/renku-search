@@ -16,22 +16,8 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.project
+package io.renku.search.provision.events
 
-import io.github.arainko.ducktape.*
-import io.renku.events.v1.ProjectCreated
-import io.renku.search.model.Id
-import io.renku.search.provision.handler.TypeTransformers.given
-import io.renku.search.solr.documents.Project
-import io.renku.solr.client.DocVersion
+trait Conversion extends ProjectAuthorization with Projects with Users
 
-trait ProjectSyntax:
-  extension (created: ProjectCreated)
-    def toSolrDocument: Project = created
-      .into[Project]
-      .transform(
-        Field.const(_.`_version_`, DocVersion.Off),
-        Field.default(_.owners),
-        Field.default(_.members),
-        Field.default(_.score)
-      )
+object Conversion extends Conversion

@@ -16,24 +16,30 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.user
+package io.renku.search.provision.events
 
-import io.github.arainko.ducktape.*
 import io.renku.events.v1.UserAdded
+import io.renku.solr.client.DocVersion
+import io.renku.search.events.syntax.*
+import io.renku.search.solr.documents.User as UserDocument
 import io.renku.events.v1.UserUpdated
-import io.renku.search.solr.documents.User
 
-trait UserSyntax:
-  extension (added: UserAdded)
-    def toSolrDocument: User = added
-      .into[User]
-      .transform(
-        Field.default(_.`_version_`),
-        Field.default(_.score),
-        Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName))
-      )
-    def update(updated: UserUpdated): UserAdded =
-      added.copy(
-        firstName = updated.firstName,
-        lastName = updated.lastName
-      )
+trait Users:
+
+  def fromUserAdded(ua: UserAdded, version: DocVersion): UserDocument =
+    UserDocument(
+      id = ua.id.toId,
+      `_version_` = version,
+      firstName = ua.firstName.map(_.toFirstName),
+      lastName = ua.lastName.map(_.toLastName),
+      name = UserDocument.nameFrom(ua.firstName, ua.lastName)
+    )
+
+  def fromUserUpdated(ua: UserUpdated, orig: UserDocument): UserDocument =
+    orig.copy(
+      id = ua.id.toId,
+      firstName = ua.firstName.map(_.toFirstName),
+      lastName = ua.lastName.map(_.toLastName),
+      name = UserDocument.nameFrom(ua.firstName, ua.lastName),
+      score = None
+    )

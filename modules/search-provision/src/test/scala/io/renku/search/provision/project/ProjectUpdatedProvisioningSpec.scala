@@ -21,15 +21,14 @@ package io.renku.search.provision.project
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
-import io.github.arainko.ducktape.*
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.ProjectUpdated
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
-import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.provision.ProvisioningSuite
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.client.SearchSolrClient
@@ -37,7 +36,6 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.provision.BackgroundCollector
 import io.renku.search.solr.documents.SolrDocument
 import io.renku.events.EventsGenerators
-import io.renku.search.model.projects.Visibility
 
 class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
@@ -99,7 +97,7 @@ object ProjectUpdatedProvisioningSpec:
               n.id == p.id &&
               n.name.value == projectUpdated.name &&
               n.slug.value == projectUpdated.slug &&
-              n.visibility == projectUpdated.visibility.to[Visibility] &&
+              n.visibility == projectUpdated.visibility.toModel &&
               n.owners == p.owners &&
               n.members == p.members
             case _ => false
@@ -110,7 +108,7 @@ object ProjectUpdatedProvisioningSpec:
               n.id == p.id &&
               n.name.map(_.value) == projectUpdated.name.some &&
               n.slug.map(_.value) == projectUpdated.slug.some &&
-              n.visibility == projectUpdated.visibility.to[Visibility].some
+              n.visibility == projectUpdated.visibility.toModel.some
 
             case _ => false
 

@@ -27,6 +27,7 @@ import io.renku.events.v1.{UserAdded, UserUpdated}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import io.renku.solr.client.DocVersion
@@ -50,7 +51,8 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
 
             provisioningFiber <- handler.userUpdated.compile.drain.start
 
-            _ <- solrClient.upsert(Seq(userAdded.toSolrDocument.widen))
+            orig = userAdded.toModel(DocVersion.Off)
+            _ <- solrClient.upsert(Seq(orig.widen))
 
             userUpdated = updateF(userAdded)
             _ <- queueClient.enqueue(
@@ -60,9 +62,9 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
             )
 
             _ <- collector.waitUntil(docs =>
-              docs.map(_.setVersion(DocVersion.Off)) contains userAdded
-                .update(userUpdated)
-                .toSolrDocument
+              docs.map(_.setVersion(DocVersion.Off)) contains userUpdated
+                .toModel(orig)
+                .setVersion(DocVersion.Off)
             )
 
             _ <- provisioningFiber.cancel

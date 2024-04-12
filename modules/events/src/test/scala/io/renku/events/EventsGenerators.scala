@@ -48,6 +48,7 @@ object EventsGenerators:
       repositories,
       visibility,
       maybeDesc,
+      Seq.empty,
       creator,
       Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )

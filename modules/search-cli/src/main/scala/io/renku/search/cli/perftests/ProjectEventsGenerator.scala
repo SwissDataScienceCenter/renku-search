@@ -61,6 +61,7 @@ private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: ModelTypesGenerators]
             project.repositories.map(_.value),
             Visibility.valueOf(project.visibility.name.toUpperCase),
             project.description.map(_.value),
+            Seq.empty,
             creator.value,
             project.creationDate.value
           )

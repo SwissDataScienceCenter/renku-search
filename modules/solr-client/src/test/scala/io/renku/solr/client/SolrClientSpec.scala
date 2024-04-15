@@ -18,39 +18,50 @@
 
 package io.renku.solr.client
 
-import java.util.UUID
-
-import scala.concurrent.duration.*
-
 import cats.data.NonEmptyList
 import cats.effect.IO
-
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.solr.client.SolrClientSpec.Room
+import io.renku.solr.client.SolrClientSpec.{Course, Room}
 import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.SolrClientBaseSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
-import io.renku.solr.client.SolrClientSpec.Course
+
+import java.util.UUID
+import scala.concurrent.duration.*
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
   override def defaultVerbosity: Int = 2
+
   test("optimistic locking: fail if exists"):
     withSolrClient().use { client =>
       val c0 = Course("c1", "fp in scala", DocVersion.NotExists)
       for {
         _ <- client.deleteIds(NonEmptyList.of(c0.id))
         r0 <- client.upsert(Seq(c0))
-        _ <- IO.println(r0)
-        rs <- client.findById[Course](c0.id)
-        _ <- IO.println(s"course: $rs")
-        r1 <- client.upsert(Seq(c0))
+        _ = assert(r0.isSuccess, clue = "Expected successful insert")
 
-        _ <- IO.println(r1)
+        rs <- client.findById[Course](c0.id)
+        fetched = rs.responseBody.docs.head
+        _ = assert(
+          fetched.`_version_`.asLong > 0,
+          clue = "stored entity version must be > 0"
+        )
+        _ = assert(
+          fetched.copy(`_version_` = c0.`_version_`) == c0,
+          clue = "stored entity not as expected"
+        )
+
+        r1 <- client.upsert(Seq(c0))
+        _ = assertEquals(
+          r1,
+          UpsertResponse.VersionConflict,
+          clue = "Expected VersionConflict"
+        )
       } yield ()
     }
 

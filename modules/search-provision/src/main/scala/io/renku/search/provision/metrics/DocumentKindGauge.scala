@@ -23,7 +23,16 @@ import io.renku.search.metrics.Collector
 import io.renku.search.model.EntityType
 import io.renku.search.solr.documents.DocumentKind
 
-private class DocumentKindGauge(val entityType: EntityType) extends Collector:
+private trait DocumentKindGauge extends Collector:
+  val entityType: EntityType
+  def set(l: DocumentKind, v: Double): Unit
+
+private object DocumentKindGauge:
+  def apply(entityType: EntityType): DocumentKindGauge =
+    new DocumentKindGaugeImpl(entityType)
+
+private class DocumentKindGaugeImpl(override val entityType: EntityType)
+    extends DocumentKindGauge:
 
   private val underlying =
     Gauge
@@ -35,5 +44,5 @@ private class DocumentKindGauge(val entityType: EntityType) extends Collector:
 
   override val asJCollector: Gauge = underlying
 
-  def set(l: DocumentKind, v: Double): Unit =
+  override def set(l: DocumentKind, v: Double): Unit =
     underlying.labels(l.name).set(v)

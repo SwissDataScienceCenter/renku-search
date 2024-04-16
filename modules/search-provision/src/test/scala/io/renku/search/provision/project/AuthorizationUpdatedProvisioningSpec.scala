@@ -25,15 +25,15 @@ import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.ModelGenerators
 import io.renku.search.model.projects.MemberRole
-import io.renku.search.model.{Id, projects}
+import io.renku.search.model.{Id, ModelGenerators, projects}
 import io.renku.search.provision.project.AuthorizationUpdatedProvisioningSpec.testCases
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.SolrDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.solr.client.DocVersion
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
@@ -56,8 +56,8 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
             tc.authUpdated
           )
           _ <- collector.waitUntil(docs =>
-            scribe.info(s"Check for ${tc.expectedProject}")
-            tc.expectedProject.diff(docs).isEmpty
+            scribe.debug(s"Check for ${tc.expectedProject}")
+            tc.checkExpected(docs)
           )
 
           _ <- provisioningFiber.cancel
@@ -76,8 +76,8 @@ object AuthorizationUpdatedProvisioningSpec:
 
     def create(solrClient: SearchSolrClient[IO]) = this match
       case DbState.Empty             => IO.unit
-      case DbState.Project(p)        => solrClient.insert(Seq(p))
-      case DbState.PartialProject(p) => solrClient.insert(Seq(p))
+      case DbState.Project(p)        => solrClient.upsert(Seq(p))
+      case DbState.PartialProject(p) => solrClient.upsert(Seq(p))
 
   case class TestCase(name: String, dbState: DbState, user: Id, role: MemberRole):
     val projectId = dbState match
@@ -96,9 +96,10 @@ object AuthorizationUpdatedProvisioningSpec:
       case DbState.Empty =>
         Set(
           PartialEntityDocument.Project(
-            projectId,
-            Set(user).filter(_ => role == MemberRole.Owner),
-            Set(user).filter(_ => role == MemberRole.Member)
+            id = projectId,
+            version = DocVersion.NotExists,
+            owners = Set(user).filter(_ => role == MemberRole.Owner),
+            members = Set(user).filter(_ => role == MemberRole.Member)
           )
         )
 
@@ -107,6 +108,12 @@ object AuthorizationUpdatedProvisioningSpec:
 
       case DbState.PartialProject(p) =>
         Set(p.remove(user).add(user, role))
+
+    def checkExpected(d: Set[SolrDocument]): Boolean =
+      expectedProject
+        .map(_.setVersion(DocVersion.Off))
+        .diff(d.map(_.setVersion(DocVersion.Off)))
+        .isEmpty
 
     override def toString = s"$name: ${user.value.take(6)}… db=$dbState"
 

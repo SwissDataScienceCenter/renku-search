@@ -24,6 +24,8 @@ import io.renku.search.model.projects
 import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.solr.client.SolrDocumentGenerators.partialProjectGen
 import io.renku.search.solr.documents.PartialEntityDocument.Project
+import io.renku.solr.client.DocVersion
+import io.renku.solr.client.SolrClientGenerator.versionGen
 import munit.{FunSuite, ScalaCheckSuite}
 import org.scalacheck.Prop
 
@@ -47,33 +49,41 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   test(
     "add should add the userId to the relevant bucket and remove from the other bucket if existed"
   ):
-    Prop.forAll(idGen, idGen, projectMemberRoleGen) { case (projectId, userId, role) =>
-      val existing = Project(projectId, Set(userId), Set(userId))
+    Prop.forAll(idGen, versionGen, idGen, projectMemberRoleGen) {
+      case (projectId, version, userId, role) =>
+        val existing = Project(
+          id = projectId,
+          version = version,
+          owners = Set(userId),
+          members = Set(userId)
+        )
 
-      val updated = existing.add(userId, role)
+        val updated = existing.add(userId, role)
 
-      role match {
-        case Owner =>
-          assertEquals(updated.owners, existing.owners)
-          assertEquals(updated.members, existing.members - userId)
-        case Member =>
-          assertEquals(updated.members, existing.members)
-          assertEquals(updated.owners, existing.owners - userId)
-      }
+        role match {
+          case Owner =>
+            assertEquals(updated.owners, existing.owners)
+            assertEquals(updated.members, existing.members - userId)
+          case Member =>
+            assertEquals(updated.members, existing.members)
+            assertEquals(updated.owners, existing.owners - userId)
+        }
     }
 
   test("applyTo should add members and owners from the caller object"):
     Prop.forAll(partialProjectGen, idGen, projectMemberRoleGen) {
       case (existing, userId, role) =>
-        val update = Project(existing.id).add(userId, role)
+        val update = Project(existing.id, existing.version).add(userId, role)
 
         val updated = existing.applyTo(update).asInstanceOf[Project]
 
         role match {
           case Owner =>
+            assertEquals(updated.version, existing.version)
             assertEquals(updated.owners, existing.owners + userId)
             assertEquals(updated.members, existing.members)
           case Member =>
+            assertEquals(updated.version, existing.version)
             assertEquals(updated.members, existing.members + userId)
             assertEquals(updated.owners, existing.owners)
         }
@@ -82,21 +92,29 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   test(
     "applyTo should add members and owners from the caller object except those that have been moved between buckets"
   ):
-    Prop.forAll(idGen, idGen, projectMemberRoleGen) { case (projectId, userId, role) =>
-      val existing = Project(projectId, Set(userId), Set(userId))
+    Prop.forAll(idGen, versionGen, idGen, projectMemberRoleGen) {
+      case (projectId, version, userId, role) =>
+        val existing = Project(
+          id = projectId,
+          version = version,
+          owners = Set(userId),
+          members = Set(userId)
+        )
 
-      val update = Project(projectId).add(userId, role)
+        val update = Project(projectId, DocVersion.Exists).add(userId, role)
 
-      val updated = existing.applyTo(update).asInstanceOf[Project]
+        val updated = existing.applyTo(update).asInstanceOf[Project]
 
-      role match {
-        case Owner =>
-          assertEquals(updated.owners, existing.owners)
-          assertEquals(updated.members, existing.members - userId)
-        case Member =>
-          assertEquals(updated.members, existing.members)
-          assertEquals(updated.owners, existing.owners - userId)
-      }
+        role match {
+          case Owner =>
+            assertEquals(updated.version, existing.version)
+            assertEquals(updated.owners, existing.owners)
+            assertEquals(updated.members, existing.members - userId)
+          case Member =>
+            assertEquals(updated.version, existing.version)
+            assertEquals(updated.members, existing.members)
+            assertEquals(updated.owners, existing.owners - userId)
+        }
     }
 
   test("removeMember should remove the given userId from the correct bucket in the doc"):

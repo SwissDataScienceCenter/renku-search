@@ -26,16 +26,10 @@ import io.renku.queue.client.{QueueClient, QueueSpec}
 import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.model.Id
 import io.renku.search.provision.handler.PipelineSteps
-import io.renku.search.provision.project.ProjectSyntax
-import io.renku.search.provision.user.UserSyntax
 import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
 import io.renku.search.solr.documents.*
 
-trait ProvisioningSuite
-    extends SearchSolrSuite
-    with QueueSpec
-    with ProjectSyntax
-    with UserSyntax:
+trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
 
   val queueConfig: QueuesConfig = QueuesConfig(
     projectCreated = QueueName("projectCreated"),

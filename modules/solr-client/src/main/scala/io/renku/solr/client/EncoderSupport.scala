@@ -91,7 +91,7 @@ object EncoderSupport {
         additionalFields: AdditionalFields[T, V]
     )(using m: Mirror.Of[T]): Encoder[T] =
       val encoders = summonEncoder[m.MirroredElemTypes]
-      val names = summonLabels[m.MirroredElemLabels]
+      val names = LabelsMacro.findLabels[T].toList
       inline m match
         case s: Mirror.SumOf[T] =>
           createSumEncoder[K, V, T](s, encoders)
@@ -129,10 +129,5 @@ object EncoderSupport {
       inline erasedValue[A] match
         case _: EmptyTuple => Nil
         case _: (t *: ts)  => summonInline[Encoder[t]] :: summonEncoder[ts]
-
-    inline def summonLabels[A <: Tuple]: List[String] =
-      inline erasedValue[A] match
-        case _: EmptyTuple => Nil
-        case _: (t *: ts)  => constValue[t].toString :: summonLabels[ts]
   }
 }

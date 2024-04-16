@@ -18,132 +18,105 @@
 
 package io.renku.search.provision.project
 
-import scala.concurrent.duration.*
-
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-import fs2.Stream
-import fs2.concurrent.SignallingRef
 
-import io.github.arainko.ducktape.*
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.{ProjectCreated, ProjectUpdated}
+import io.renku.events.v1.ProjectUpdated
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.documents.{CompoundId, EntityDocument}
+import io.renku.search.provision.events.syntax.*
+import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.search.solr.documents.PartialEntityDocument
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.client.SolrDocumentGenerators
+import io.renku.search.provision.BackgroundCollector
+import io.renku.search.solr.documents.SolrDocument
+import io.renku.events.EventsGenerators
 
 class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
-  (nameUpdate :: slugUpdate :: repositoriesUpdate :: visibilityUpdate :: descUpdate :: noUpdate :: Nil)
-    .foreach { case TestCase(name, updateF) =>
-      test(s"can fetch events, decode them, and update in Solr in case of $name"):
-        withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-          for
-            solrDocs <- SignallingRef.of[IO, Set[EntityDocument]](Set.empty)
+  ProjectUpdatedProvisioningSpec.testCases.foreach { tc =>
+    test(s"can fetch events, decode them, and update in Solr: $tc"):
+      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
+        for
+          _ <- tc.dbState.create(solrClient)
 
-            provisioningFiber <- handlers.projectUpdated.compile.drain.start
+          collector <- BackgroundCollector[SolrDocument](
+            loadPartialOrEntity(solrClient, tc.projectId)
+          )
+          _ <- collector.start
 
-            created = projectCreatedGen(prefix = "update").generateOne
-            _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
+          provisioningFiber <- handlers.projectUpdated.compile.drain.start
 
-            updated = updateF(created)
-            _ <- queueClient.enqueue(
-              queueConfig.projectUpdated,
-              messageHeaderGen(ProjectUpdated.SCHEMA$).generateOne,
-              updated
-            )
+          _ <- queueClient.enqueue(
+            queueConfig.projectUpdated,
+            messageHeaderGen(ProjectUpdated.SCHEMA$).generateOne,
+            tc.projectUpdated
+          )
 
-            docsCollectorFiber <-
-              Stream
-                .awakeEvery[IO](500 millis)
-                .evalMap(_ =>
-                  solrClient.findById[EntityDocument](
-                    CompoundId.projectEntity(Id(created.id))
-                  )
-                )
-                .evalMap(_.fold(().pure[IO])(e => solrDocs.update(_ => Set(e))))
-                .compile
-                .drain
-                .start
+          _ <- collector.waitUntil(docs => docs.exists(tc.checkExpected))
 
-            _ <- solrDocs.waitUntil(
-              _ contains created.update(updated).toSolrDocument
-            )
-
-            _ <- provisioningFiber.cancel
-            _ <- docsCollectorFiber.cancel
-          yield ()
-        }
-    }
-
-  private case class TestCase(name: String, f: ProjectCreated => ProjectUpdated)
-  private lazy val nameUpdate = TestCase(
-    "name update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        stringGen(max = 5).generateOne,
-        pc.slug,
-        pc.repositories,
-        pc.visibility,
-        pc.description
-      )
-  )
-  private lazy val slugUpdate = TestCase(
-    "slug update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        stringGen(max = 5).generateOne,
-        pc.repositories,
-        pc.visibility,
-        pc.description
-      )
-  )
-  private lazy val repositoriesUpdate = TestCase(
-    "repositories update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        pc.slug,
-        stringGen(max = 5).generateList,
-        pc.visibility,
-        pc.description
-      )
-  )
-  private lazy val visibilityUpdate = TestCase(
-    "repositories update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        pc.slug,
-        pc.repositories,
-        projectVisibilityGen.generateOne,
-        pc.description
-      )
-  )
-  private lazy val descUpdate = TestCase(
-    "repositories update",
-    pc =>
-      ProjectUpdated(
-        pc.id,
-        pc.name,
-        pc.slug,
-        pc.repositories,
-        pc.visibility,
-        stringGen(max = 5).generateSome
-      )
-  )
-  private lazy val noUpdate = TestCase(
-    "no update",
-    _.to[ProjectUpdated]
-  )
+          _ <- provisioningFiber.cancel
+        yield ()
+      }
+  }
 
   override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
+
+object ProjectUpdatedProvisioningSpec:
+  enum DbState:
+    case Empty
+    case Project(project: ProjectDocument)
+    case PartialProject(project: PartialEntityDocument.Project)
+
+    def projectId: Option[Id] = this match
+      case Empty             => None
+      case Project(p)        => p.id.some
+      case PartialProject(p) => p.id.some
+
+    def create(solrClient: SearchSolrClient[IO]) = this match
+      case DbState.Empty             => IO.unit
+      case DbState.Project(p)        => solrClient.upsertSuccess(Seq(p))
+      case DbState.PartialProject(p) => solrClient.upsertSuccess(Seq(p))
+
+  case class TestCase(dbState: DbState, projectUpdated: ProjectUpdated):
+    def projectId: Id =
+      Id(projectUpdated.id)
+
+    def checkExpected(d: SolrDocument): Boolean =
+      dbState match
+        case DbState.Empty => false
+        case DbState.Project(p) =>
+          d match
+            case n: ProjectDocument =>
+              n.id == p.id &&
+              n.name.value == projectUpdated.name &&
+              n.slug.value == projectUpdated.slug &&
+              n.visibility == projectUpdated.visibility.toModel &&
+              n.owners == p.owners &&
+              n.members == p.members
+            case _ => false
+
+        case DbState.PartialProject(p) =>
+          d match
+            case n: PartialEntityDocument.Project =>
+              n.id == p.id &&
+              n.name.map(_.value) == projectUpdated.name.some &&
+              n.slug.map(_.value) == projectUpdated.slug.some &&
+              n.visibility == projectUpdated.visibility.toModel.some
+
+            case _ => false
+
+  val testCases =
+    val proj = SolrDocumentGenerators.projectDocumentGen.generateOne
+    val pproj = SolrDocumentGenerators.partialProjectGen.generateOne
+    val upd = EventsGenerators.projectUpdatedGen("proj-update").generateOne
+    for
+      dbState <- List(DbState.Project(proj), DbState.PartialProject(pproj))
+      event = upd.copy(id = dbState.projectId.map(_.value).getOrElse(upd.id))
+    yield TestCase(dbState, event)

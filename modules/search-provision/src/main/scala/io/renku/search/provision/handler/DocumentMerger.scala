@@ -23,10 +23,12 @@ import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.events.v1.*
 import io.renku.search.model.Id
-import io.renku.search.provision.handler.TypeTransformers.given
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.search.solr.documents.User as UserDocument
+import io.renku.search.provision.events.syntax.*
+import io.renku.solr.client.DocVersion
 
 trait DocumentMerger[A]:
   def create(value: A): Option[EntityOrPartial]
@@ -35,7 +37,7 @@ trait DocumentMerger[A]:
 object DocumentMerger:
   def apply[A](using dm: DocumentMerger[A]): DocumentMerger[A] = dm
 
-  def create[A](
+  def instance[A](
       onCreate: A => Option[EntityOrPartial]
   )(onMerge: (A, EntityOrPartial) => Option[EntityOrPartial]): DocumentMerger[A] =
     new DocumentMerger[A] {
@@ -44,27 +46,30 @@ object DocumentMerger:
     }
 
   given DocumentMerger[ProjectAuthorizationAdded] =
-    create[ProjectAuthorizationAdded](_.to[PartialEntityDocument].some)((paa, existing) =>
+    instance[ProjectAuthorizationAdded](
+      _.toModel(DocVersion.NotExists).some
+    )((paa, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
-          p.applyTo(paa.to[PartialEntityDocument]).some
+          p.applyTo(paa.toModel(p.version)).some
         case p: EntityDocument =>
-          paa.to[PartialEntityDocument].applyTo(p).some
+          paa.toModel(p.version).applyTo(p).some
     )
 
   given DocumentMerger[ProjectAuthorizationUpdated] =
-    create[ProjectAuthorizationUpdated](_.to[PartialEntityDocument].some)(
-      (pau, existing) =>
-        existing match
-          case p: PartialEntityDocument.Project =>
-            p.remove(pau.userId.to[Id]).applyTo(pau.to[PartialEntityDocument]).some
-          case p: ProjectDocument =>
-            pau.to[PartialEntityDocument].applyTo(p.removeMember(pau.userId.to[Id])).some
-          case _ => None
+    instance[ProjectAuthorizationUpdated](
+      _.toModel(DocVersion.NotExists).some
+    )((pau, existing) =>
+      existing match
+        case p: PartialEntityDocument.Project =>
+          p.remove(pau.userId.toId).applyTo(pau.toModel(p.version)).some
+        case p: ProjectDocument =>
+          pau.toModel(p.version).applyTo(p.removeMember(pau.userId.toId)).some
+        case _ => None
     )
 
   given DocumentMerger[ProjectAuthorizationRemoved] =
-    create[ProjectAuthorizationRemoved](_ => None)((par, existing) =>
+    instance[ProjectAuthorizationRemoved](_ => None)((par, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
           p.remove(par.userId.to[Id]).some
@@ -74,12 +79,49 @@ object DocumentMerger:
         case _ => None
     )
 
-  given (using conv: DocumentConverter[ProjectCreated]): DocumentMerger[ProjectCreated] =
-    create[ProjectCreated](conv.convert(_).some)((pc, existing) =>
+  given DocumentMerger[ProjectCreated] =
+    def convert(pc: ProjectCreated): ProjectDocument =
+      pc.toModel(DocVersion.NotExists)
+
+    instance[ProjectCreated](convert(_).some)((pc, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
-          p.applyTo(conv.convert(pc)).some
-        case p: EntityDocument =>
-          // already exists
+          p.applyTo(convert(pc)).some
+        case p: ProjectDocument =>
+          // already exists, but we overwrite
+          Some(
+            convert(pc)
+              .setVersion(p.version)
+              .copy(owners = p.owners, members = p.members)
+          )
+        case _: UserDocument =>
           None
+    )
+
+  given DocumentMerger[ProjectUpdated] =
+    instance[ProjectUpdated](_ => None)((pu, existing) =>
+      existing match
+        case p: PartialEntityDocument.Project =>
+          pu.toModel(p).some
+        case orig: ProjectDocument =>
+          pu.toModel(orig).some
+        case _ => None
+    )
+
+  given DocumentMerger[UserAdded] =
+    def convert(ua: UserAdded): UserDocument =
+      ua.toModel(DocVersion.NotExists)
+
+    instance[UserAdded](convert(_).some)((ua, existing) =>
+      existing match
+        case u: EntityDocument        => Some(convert(ua).setVersion(u.version))
+        case _: PartialEntityDocument => None
+    )
+
+  given DocumentMerger[UserUpdated] =
+    instance[UserUpdated](_ => None)((uu, existing) =>
+      existing match
+        case orig: UserDocument =>
+          uu.toModel(orig).some
+        case _ => None
     )

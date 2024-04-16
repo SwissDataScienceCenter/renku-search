@@ -16,21 +16,8 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.documents
+package io.renku.search.provision.events
 
-import io.renku.solr.client.DocVersion
-import munit.Assertions.assert
+trait Conversion extends ProjectAuthorization with Projects with Users
 
-object EntityOps extends EntityOps
-trait EntityOps:
-
-  extension (entity: EntityDocument)
-
-    def noneScore: EntityDocument = entity match {
-      case e: Project => e.copy(score = None)
-      case e: User    => e.copy(score = None)
-    }
-
-    def assertVersionNot(v: DocVersion): EntityDocument =
-      assert(entity.version != v)
-      entity
+object Conversion extends Conversion

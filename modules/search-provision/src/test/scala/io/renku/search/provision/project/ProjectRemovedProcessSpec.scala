@@ -30,11 +30,13 @@ import io.renku.events.v1.ProjectRemoved
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{EntityType, Id}
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
+import io.renku.solr.client.DocVersion
 
 class ProjectRemovedProcessSpec extends ProvisioningSuite:
 
@@ -46,7 +48,7 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
         provisioningFiber <- handlers.projectRemoved.compile.drain.start
 
         created = projectCreatedGen(prefix = "remove").generateOne
-        _ <- solrClient.insert(Seq(created.toSolrDocument.widen))
+        _ <- solrClient.upsert(Seq(created.toModel(DocVersion.Off).widen))
 
         docsCollectorFiber <-
           Stream

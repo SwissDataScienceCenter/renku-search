@@ -31,7 +31,8 @@ import io.renku.solr.client.*
 
 trait SearchSolrClient[F[_]]:
   def findById[D: Decoder](id: CompoundId): F[Option[D]]
-  def insert[D: Encoder](documents: Seq[D]): F[Unit]
+  def upsert[D: Encoder](documents: Seq[D]): F[UpsertResponse]
+  def upsertSuccess[D: Encoder](documents: Seq[D]): F[Unit]
   def deleteIds(ids: NonEmptyList[Id]): F[Unit]
   def query[D: Decoder](query: QueryData): F[QueryResponse[D]]
   def queryEntity(

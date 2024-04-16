@@ -18,15 +18,18 @@
 
 package io.renku.solr.client
 
-import org.scalacheck.Gen
+import io.renku.search.model.CommonGenerators
 import io.renku.solr.client.facet.*
 import io.renku.solr.client.schema.FieldName
-import io.renku.search.model.CommonGenerators
+import org.scalacheck.Gen
 
 object SolrClientGenerator:
 
   private val fieldNameString: Gen[String] =
     Gen.choose(4, 12).flatMap(n => Gen.listOfN(n, Gen.alphaLowerChar)).map(_.mkString)
+
+  val versionGen: Gen[DocVersion] =
+    Gen.chooseNum(2L, Long.MaxValue - 1).map(DocVersion.Exact.apply)
 
   val fieldNameTypeStr: Gen[FieldName] =
     fieldNameString.map(n => s"${n}_s").map(FieldName.apply)

@@ -25,14 +25,15 @@ import io.github.arainko.ducktape.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.api.data.*
 import io.renku.search.model.Id
+import io.renku.search.model.projects.Visibility
 import io.renku.search.model.users.FirstName
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
-import scribe.Scribe
+import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
-import io.renku.search.model.projects.Visibility
+import scribe.Scribe
 
 class SearchApiSpec extends SearchSolrSuite:
 
@@ -52,7 +53,7 @@ class SearchApiSpec extends SearchSolrSuite:
       ).generateOne
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- client.insert((project1 :: project2 :: Nil).map(_.widen))
+        _ <- client.upsert((project1 :: project2 :: Nil).map(_.widen))
         results <- searchApi
           .query(AuthContext.anonymous)(mkQuery("matching"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
@@ -72,10 +73,11 @@ class SearchApiSpec extends SearchSolrSuite:
         "exclusive description",
         Gen.const(Visibility.Public)
       ).generateOne
-      val user = SolrUser(project.createdBy, FirstName("exclusive").some)
+      val user =
+        SolrUser(project.createdBy, DocVersion.NotExists, FirstName("exclusive").some)
       val searchApi = new SearchApiImpl[IO](client)
       for {
-        _ <- client.insert(project :: user :: Nil)
+        _ <- client.upsert(project :: user :: Nil)
         results <- searchApi
           .query(AuthContext.anonymous)(mkQuery("exclusive"))
           .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))

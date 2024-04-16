@@ -27,6 +27,7 @@ import io.renku.search.http.{HttpClientDsl, ResponseLogging}
 import io.renku.solr.client.schema.{SchemaCommand, SchemaJsonCodec}
 import org.http4s.client.Client
 import org.http4s.{BasicCredentials, Method, Uri}
+import org.http4s.Status
 
 private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]
@@ -68,13 +69,32 @@ private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client
       .flatTap(r => logger.trace(s"Solr delete response: $r"))
       .void
 
-  def insert[A: Encoder](docs: Seq[A]): F[InsertResponse] =
+  def upsert[A: Encoder](docs: Seq[A]): F[UpsertResponse] =
     val req = Method
       .POST(docs, makeUpdateUrl)
       .withBasicAuth(credentials)
-    underlying
-      .expectOr[InsertResponse](req)(ResponseLogging.Error(logger, req))
-      .flatTap(r => logger.trace(s"Solr inserted response: $r"))
+    underlying.run(req).evalTap(r => logger.trace(s"Solr inserted response: $r")).use {
+      resp =>
+        resp.status match
+          case Status.Ok =>
+            resp.as[InsertResponse].map(r => UpsertResponse.Success(r.responseHeader))
+          case Status.Conflict =>
+            UpsertResponse.VersionConflict.pure[F]
+          case _ =>
+            ResponseLogging
+              .Error(logger, req)
+              .apply(resp)
+              .flatMap(ex => Async[F].raiseError(ex))
+    }
+
+  def upsertSuccess[A: Encoder](docs: Seq[A]): F[Unit] =
+    upsert[A](docs).flatMap {
+      case UpsertResponse.Success(_) => ().pure[F]
+      case UpsertResponse.VersionConflict =>
+        Async[F].raiseError(
+          new Exception(s"Inserting $docs failed due to version conflict")
+        )
+    }
 
   private def makeUpdateUrl =
     (solrUrl / "update")

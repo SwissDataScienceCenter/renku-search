@@ -28,11 +28,13 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
-import io.renku.search.provision.handler.DocumentConverter
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
+import io.renku.search.provision.handler.DocumentMerger
+import io.renku.solr.client.DocVersion
 
 class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 
@@ -56,7 +58,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
           )
           _ <- collector.waitUntil(docs =>
             scribe.info(s"Check for ${tc.expectedProject}")
-            docs.contains(tc.expectedProject)
+            docs.exists(tc.checkExpected)
           )
 
           _ <- provisioningFiber.cancel
@@ -81,7 +83,9 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
             .map(_.toSet)
         )
         _ <- collector.start
-        _ <- collector.waitUntil(_ contains toSolrDocument(created))
+        _ <- collector.waitUntil(
+          _.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
+        )
 
         _ <- provisioningFiber.cancel
       yield ()
@@ -104,7 +108,9 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
             .map(_.toSet)
         )
         _ <- collector.start
-        _ <- collector.waitUntil(_ contains toSolrDocument(created))
+        _ <- collector.waitUntil(
+          _.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
+        )
 
         _ <- provisioningFiber.cancel
       yield ()
@@ -121,8 +127,8 @@ object ProjectCreatedProvisioningSpec:
 
     def create(solrClient: SearchSolrClient[IO]) = this match
       case DbState.Empty             => IO.unit
-      case DbState.Project(p)        => solrClient.insert(Seq(p))
-      case DbState.PartialProject(p) => solrClient.insert(Seq(p))
+      case DbState.Project(p)        => solrClient.upsertSuccess(Seq(p))
+      case DbState.PartialProject(p) => solrClient.upsertSuccess(Seq(p))
 
   case class TestCase(dbState: DbState):
     val projectId = dbState match
@@ -135,15 +141,31 @@ object ProjectCreatedProvisioningSpec:
 
     val expectedProject: SolrDocument = dbState match
       case DbState.Empty =>
-        DocumentConverter[ProjectCreated].convert(projectCreated)
+        DocumentMerger[ProjectCreated].create(projectCreated).get
 
       case DbState.Project(p) =>
-        p
+        val np = DocumentMerger[ProjectCreated]
+          .create(projectCreated)
+          .get
+          .asInstanceOf[ProjectDocument]
+        np.copy(version = p.version, owners = p.owners, members = p.members)
 
       case DbState.PartialProject(p) =>
-        p.applyTo(DocumentConverter[ProjectCreated].convert(projectCreated))
+        p.applyTo(
+          DocumentMerger[ProjectCreated]
+            .create(projectCreated)
+            .get
+            .asInstanceOf[EntityDocument]
+        )
 
-    override def toString = s"ProjectCretaed: ${projectId.value.take(6)}… db=$dbState"
+    def checkExpected(doc: SolrDocument): Boolean =
+      doc match
+        case p: ProjectDocument =>
+          val expect = expectedProject.setVersion(DocVersion.Off)
+          p.setVersion(DocVersion.Off) == expect
+        case _ => false
+
+    override def toString = s"ProjectCreated: ${projectId.value.take(6)}… db=$dbState"
 
   val testCases =
     val proj = SolrDocumentGenerators.projectDocumentGen.generateOne

@@ -16,23 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.user
+package io.renku.solr.client
 
-import io.github.arainko.ducktape.*
-import io.renku.events.v1.UserAdded
-import io.renku.events.v1.UserUpdated
-import io.renku.search.solr.documents.User
+enum UpsertResponse:
+  case Success(header: ResponseHeader)
+  case VersionConflict
 
-trait UserSyntax:
-  extension (added: UserAdded)
-    def toSolrDocument: User = added
-      .into[User]
-      .transform(
-        Field.default(_.score),
-        Field.computed(_.name, u => User.nameFrom(u.firstName, u.lastName))
-      )
-    def update(updated: UserUpdated): UserAdded =
-      added.copy(
-        firstName = updated.firstName,
-        lastName = updated.lastName
-      )
+  lazy val isSuccess: Boolean = this match
+    case Success(_)      => true
+    case VersionConflict => false

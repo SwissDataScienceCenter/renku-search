@@ -80,5 +80,5 @@ object SchemaMigrator:
 
     private def upsertVersion(n: Long) =
       logger.info(s"Set schema migration version to $n") >>
-        client.insert(Seq(version(n)))
+        client.upsert(Seq(version(n)))
   }

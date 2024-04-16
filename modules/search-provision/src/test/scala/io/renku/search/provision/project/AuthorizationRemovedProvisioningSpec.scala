@@ -32,6 +32,7 @@ import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
+import io.renku.solr.client.DocVersion
 
 class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
@@ -54,8 +55,8 @@ class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
             tc.authRemoved
           )
           _ <- collector.waitUntil(docs =>
-            scribe.info(s"Check for ${tc.expectedProject}")
-            tc.expectedProject.diff(docs).isEmpty
+            scribe.debug(s"Check for ${tc.expectedProject}")
+            tc.checkExpected(docs)
           )
 
           _ <- provisioningFiber.cancel
@@ -74,8 +75,8 @@ object AuthorizationRemovedProvisioningSpec:
 
     def create(solrClient: SearchSolrClient[IO]) = this match
       case DbState.Empty             => IO.unit
-      case DbState.Project(p)        => solrClient.insert(Seq(p))
-      case DbState.PartialProject(p) => solrClient.insert(Seq(p))
+      case DbState.Project(p)        => solrClient.upsert(Seq(p))
+      case DbState.PartialProject(p) => solrClient.upsert(Seq(p))
 
   case class TestCase(dbState: DbState, user: Id):
     val projectId = dbState match
@@ -95,6 +96,12 @@ object AuthorizationRemovedProvisioningSpec:
 
       case DbState.PartialProject(p) =>
         Set(p.remove(user))
+
+    def checkExpected(d: Set[SolrDocument]): Boolean =
+      expectedProject
+        .map(_.setVersion(DocVersion.Off))
+        .diff(d.map(_.setVersion(DocVersion.Off)))
+        .isEmpty
 
     override def toString = s"AuthRemove(${user.value.take(6)}… db=$dbState)"
 

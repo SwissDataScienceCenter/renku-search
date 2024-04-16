@@ -20,6 +20,7 @@ package io.renku.search.solr.client
 
 import cats.effect.IO
 import cats.syntax.all.*
+
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.search.GeneratorSyntax.*
@@ -30,6 +31,7 @@ import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.documents.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
+import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData
 
 class SearchSolrClientSpec extends SearchSolrSuite:
@@ -39,16 +41,26 @@ class SearchSolrClientSpec extends SearchSolrSuite:
       val project =
         projectDocumentGen("solr-project", "solr project description").generateOne
       for {
-        _ <- client.insert(Seq(project.widen))
+        _ <- client.upsert(Seq(project.widen))
         qr <- client.queryEntity(
           SearchRole.Admin,
           Query.parse("solr").toOption.get,
           10,
           0
         )
-        _ = assert(qr.responseBody.docs.map(_.noneScore) contains project)
+        _ = assert(
+          qr.responseBody.docs.map(
+            _.noneScore
+              .assertVersionNot(DocVersion.NotExists)
+              .setVersion(DocVersion.NotExists)
+          ) contains project
+        )
         gr <- client.findById[EntityDocument](CompoundId.projectEntity(project.id))
-        _ = assert(gr contains project)
+        _ = assert(
+          gr.map(
+            _.assertVersionNot(DocVersion.NotExists).setVersion(DocVersion.NotExists)
+          ) contains project
+        )
       } yield ()
     }
 
@@ -57,16 +69,26 @@ class SearchSolrClientSpec extends SearchSolrSuite:
       val firstName = users.FirstName("Johnny")
       val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
       for {
-        _ <- client.insert(Seq(user.widen))
+        _ <- client.upsert(Seq(user.widen))
         qr <- client.queryEntity(
           SearchRole.Admin,
           Query.parse(firstName.value).toOption.get,
           10,
           0
         )
-        _ = assert(qr.responseBody.docs.map(_.noneScore) contains user)
+        _ = assert(
+          qr.responseBody.docs.map(
+            _.noneScore
+              .assertVersionNot(DocVersion.NotExists)
+              .setVersion(DocVersion.NotExists)
+          ) contains user
+        )
         gr <- client.findById[EntityDocument](CompoundId.userEntity(user.id))
-        _ = assert(gr contains user)
+        _ = assert(
+          gr.map(
+            _.assertVersionNot(DocVersion.NotExists).setVersion(DocVersion.NotExists)
+          ) contains user
+        )
       } yield ()
     }
 
@@ -77,7 +99,7 @@ class SearchSolrClientSpec extends SearchSolrSuite:
       case class UserId(id: String)
       given Decoder[UserId] = deriveDecoder[UserId]
       for {
-        _ <- client.insert(Seq(user.widen))
+        _ <- client.upsert(Seq(user.widen))
         gr <- client.query[UserId](
           QueryData(
             s"firstName:$firstName",

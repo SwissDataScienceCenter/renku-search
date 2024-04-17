@@ -16,33 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.search.query
+package io.renku.search.model
 
-import io.bullet.borer.{Decoder, Encoder}
+import cats.{Eq, Order}
+import io.bullet.borer.Encoder
+import io.bullet.borer.Decoder
 
-enum Field:
-  case Id
-  case Name
-  case Slug
-  case Visibility
-  case Created
-  case CreatedBy
-  case Type
-  case Role
-  case Keyword
+opaque type Keyword = String
 
-  val name: String = Strings.lowerFirst(productPrefix)
+object Keyword:
+  def apply(kw: String): Keyword = kw
 
-object Field:
-  given Encoder[Field] = Encoder.forString.contramap(_.name)
-  given Decoder[Field] = Decoder.forString.mapEither(fromString)
+  given Eq[Keyword] = Eq.instance((a, b) => a.equalsIgnoreCase(b))
+  given Order[Keyword] = Order.fromLessThan((a, b) => a.toLowerCase() < b.toLowerCase())
+  given Encoder[Keyword] = Encoder.forString
+  given Decoder[Keyword] = Decoder.forString
 
-  private val allNames: String = Field.values.map(_.name).mkString(", ")
-
-  def fromString(str: String): Either[String, Field] =
-    Field.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid field: $str. Allowed are: $allNames")
-
-  def unsafeFromString(str: String): Field =
-    fromString(str).fold(sys.error, identity)
+  extension (self: Keyword) def value: String = self

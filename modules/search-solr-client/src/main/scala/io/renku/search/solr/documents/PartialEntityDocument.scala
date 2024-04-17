@@ -22,7 +22,7 @@ import io.bullet.borer.NullOptions.given
 import io.bullet.borer.*
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.projects.*
-import io.renku.search.model.{Id, Name}
+import io.renku.search.model.{Id, Keyword, Name}
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.{DocVersion, EncoderSupport}
@@ -50,6 +50,7 @@ object PartialEntityDocument:
       repositories: Seq[Repository] = Seq.empty,
       visibility: Option[Visibility] = None,
       description: Option[Description] = None,
+      keywords: List[Keyword] = Nil,
       owners: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
@@ -70,7 +71,8 @@ object PartialEntityDocument:
               slug = slug.getOrElse(p.slug),
               repositories = if (repositories.isEmpty) p.repositories else repositories,
               visibility = visibility.getOrElse(p.visibility),
-              description = description.orElse(p.description)
+              description = description.orElse(p.description),
+              keywords = Option.when(keywords.nonEmpty)(keywords).getOrElse(p.keywords)
             )
             .setVersion(version)
         case _ => e

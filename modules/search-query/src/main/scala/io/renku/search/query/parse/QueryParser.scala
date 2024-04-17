@@ -20,7 +20,7 @@ package io.renku.search.query.parse
 
 import cats.data.NonEmptyList
 import cats.parse.{Parser as P, Parser0 as P0}
-import io.renku.search.model.EntityType
+import io.renku.search.model.{EntityType, Keyword}
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.*
 import io.renku.search.model.projects.MemberRole
@@ -109,6 +109,7 @@ private[query] object QueryParser {
         case Field.Id        => FieldTerm.IdIs(v)
         case Field.Slug      => FieldTerm.SlugIs(v)
         case Field.CreatedBy => FieldTerm.CreatedByIs(v)
+        case Field.Keyword   => FieldTerm.KeywordIs(v.map(Keyword.apply))
         // other fields are excluded from the field list above
         case f => sys.error(s"$f not allowed")
     }

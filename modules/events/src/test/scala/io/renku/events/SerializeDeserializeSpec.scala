@@ -38,7 +38,7 @@ class SerializeDeserializeSpec extends FunSuite {
       Seq.empty,
       Visibility.PUBLIC,
       Some("a description for it"),
-      Seq.empty,
+      Seq("data", "science"),
       "created-by-me",
       Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )

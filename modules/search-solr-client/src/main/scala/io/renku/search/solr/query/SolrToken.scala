@@ -25,7 +25,7 @@ import cats.data.NonEmptyList
 import cats.syntax.all.*
 
 import io.renku.search.model.projects.{MemberRole, Visibility}
-import io.renku.search.model.{EntityType, Id}
+import io.renku.search.model.{EntityType, Id, Keyword}
 import io.renku.search.query.Comparison
 import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
@@ -40,6 +40,9 @@ object SolrToken:
   def fromId(id: Id): SolrToken = fromString(id.value)
   def fromVisibility(v: Visibility): SolrToken = v.name
   private def fromEntityType(et: EntityType): SolrToken = et.name
+
+  def fromKeyword(kw: Keyword): SolrToken =
+    StringEscape.queryChars(kw.value)
 
   def idIs(id: Id): SolrToken = fieldIs(SolrField.id, fromId(id))
 

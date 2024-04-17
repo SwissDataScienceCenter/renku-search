@@ -73,6 +73,13 @@ trait LuceneQueryEncoders:
       }.pure[F]
     }
 
+  given keywordIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.KeywordIs] =
+    SolrTokenEncoder.basic { case FieldTerm.KeywordIs(values) =>
+      SolrQuery(
+        SolrToken.orFieldIs(SolrField.keywords, values.map(SolrToken.fromKeyword))
+      )
+    }
+
   given created[F[_]: Monad]: SolrTokenEncoder[F, FieldTerm.Created] =
     val createdIs = SolrToken.fieldIs(SolrField.creationDate, _)
     SolrTokenEncoder.create[F, FieldTerm.Created] {

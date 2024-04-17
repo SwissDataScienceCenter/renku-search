@@ -19,7 +19,7 @@
 package io.renku.search.events
 
 import io.renku.events.v1.{Visibility as EventVisibility, *}
-import io.renku.search.model.{Id, Name}
+import io.renku.search.model.{Id, Keyword, Name}
 import io.renku.search.model.projects.*
 import java.time.Instant
 import io.renku.search.model.users.FirstName
@@ -42,6 +42,7 @@ trait syntax:
     def toDescription: Description = Description(self)
     def toFirstName: FirstName = FirstName(self)
     def toLastName: LastName = LastName(self)
+    def toKeyword: Keyword = Keyword(self)
 
   extension (self: Instant) def toCreationDate: CreationDate = CreationDate(self)
 

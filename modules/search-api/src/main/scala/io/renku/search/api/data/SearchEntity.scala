@@ -41,6 +41,7 @@ final case class Project(
     description: Option[projects.Description] = None,
     createdBy: UserId,
     creationDate: projects.CreationDate,
+    keywords: List[Keyword] = Nil,
     score: Option[Double] = None
 ) extends SearchEntity
 
@@ -53,6 +54,7 @@ object Project:
     Schema.derivedEnumeration[projects.Visibility].defaultStringBased
   private given Schema[projects.Description] = Schema.string[projects.Description]
   private given Schema[projects.CreationDate] = Schema(SDateTime())
+  private given Schema[Keyword] = Schema.string[Keyword]
   given Schema[Project] = Schema
     .derived[Project]
     .jsonExample(
@@ -65,6 +67,7 @@ object Project:
         Some(projects.Description("Renku project")),
         UserId(Id("1CAF4C73F50D4514A041C9EDDB025A36")),
         projects.CreationDate(Instant.now),
+        List(Keyword("data"), Keyword("science")),
         Some(1.0)
       ): SearchEntity
     )

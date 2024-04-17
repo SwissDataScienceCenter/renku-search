@@ -26,7 +26,7 @@ import io.bullet.borer.Decoder
 import io.github.arainko.ducktape.*
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.{Id, Name, projects, users}
+import io.renku.search.model.{Id, Keyword, Name, projects, users}
 import io.renku.search.solr.documents.{Project, User}
 import org.http4s.MediaType.application
 import org.http4s.Method.GET
@@ -79,7 +79,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       (glProj
         .into[Project]
         .transform(
-          Field.default(_.keywords),
+          Field.computed(_.keywords, _.tagsAndTopics.map(Keyword.apply)),
           Field.default(_.version),
           Field.computed(_.id, s => Id(s"gl_proj_${s.id}")),
           Field.computed(_.slug, s => projects.Slug(s.path_with_namespace)),

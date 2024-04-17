@@ -25,7 +25,7 @@ import fs2.io.net.Network
 import io.bullet.borer.Decoder
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.{Name, projects, users}
+import io.renku.search.model.{Keyword, Name, projects, users}
 import io.renku.search.solr.documents.{Project, User}
 import org.http4s.MediaType.application
 import org.http4s.Method.{GET, POST}
@@ -77,26 +77,31 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
   override def findProject: Stream[F, (Project, List[User])] =
     findName
       .zip(findDescription)
+      .zip(findKeywords(8))
       .zip(findUser)
-      .evalMap { case ((name, desc), user) => toProject(name, desc, user) } ++ findProject
+      .evalMap { case (((name, desc), kws), user) =>
+        toProject(name, desc, kws, user)
+      } ++ findProject
 
   private def toProject(
       name: Name,
       desc: projects.Description,
+      keywords: List[Keyword],
       user: User
   ): F[(Project, List[User])] =
     (gens.generateId, gens.generateCreationDate).mapN { case (id, creationDate) =>
       val slug = createSlug(name, user)
       Project(
-        id,
-        DocVersion.NotExists,
-        name,
-        slug,
-        Seq(createRepo(slug)),
-        projects.Visibility.Public,
-        Some(desc),
+        id = id,
+        version = DocVersion.NotExists,
+        name = name,
+        slug = slug,
+        repositories = Seq(createRepo(slug)),
+        visibility = projects.Visibility.Public,
+        description = Some(desc),
+        keywords = keywords,
         createdBy = user.id,
-        creationDate
+        creationDate = creationDate
       ) -> List(user)
     }
 
@@ -144,6 +149,13 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
     client.expect[List[String]](req)
 
   private lazy val api = uri"https://randommer.io/api"
+
+  private def getBrandNames(max: Int): F[List[String]] =
+    val req = post((api / "name" / "BrandName").withQueryParam("startingWords", "sc"))
+    client.expect[List[String]](req).map(_.take(max))
+
+  private def findKeywords(max: Int): Stream[F, List[Keyword]] =
+    Stream.eval(getBrandNames(max)).map(_.map(Keyword.apply)) ++ findKeywords(max)
 
   private def get(uri: Uri) =
     GET(uri)

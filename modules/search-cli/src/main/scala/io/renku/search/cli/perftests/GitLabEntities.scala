@@ -21,6 +21,7 @@ package io.renku.search.cli.perftests
 import cats.syntax.all.*
 import io.bullet.borer.Decoder
 import io.bullet.borer.NullOptions.given
+import io.bullet.borer.derivation.key
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.search.borer.codecs.DateTimeDecoders
 import io.renku.search.model.projects
@@ -33,9 +34,14 @@ final private case class GitLabProject(
     name: String,
     path_with_namespace: String,
     http_url_to_repo: String,
-    created_at: Instant
+    created_at: Instant,
+    @key("tag_list") tagList: List[String],
+    topics: List[String]
 ):
   val visibility: projects.Visibility = projects.Visibility.Public
+
+  lazy val tagsAndTopics: List[String] =
+    (tagList ::: topics).distinct
 
 private object GitLabProject extends DateTimeDecoders:
   given Decoder[GitLabProject] = deriveDecoder

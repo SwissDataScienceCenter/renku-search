@@ -54,9 +54,17 @@ private class DocumentKindGaugeUpdater[F[_]: MonadThrow](
           .flatten
           .map(b => toDocumentKind(b.value).tupleRight(b.count.toDouble))
           .sequence
+          .map(addMissingKinds)
           .map(_.foreach { case (k, c) => gauge.set(k, c) })
       }
 
   private def toDocumentKind(v: String): F[DocumentKind] =
     MonadThrow[F]
       .fromEither(DocumentKind.fromString(v).leftMap(new IllegalArgumentException(_)))
+
+  private def addMissingKinds(
+      in: List[(DocumentKind, Double)]
+  ): List[(DocumentKind, Double)] =
+    DocumentKind.values
+      .foldLeft(in.toMap)((out, k) => out.updatedWith(k)(_.orElse(0d.some)))
+      .toList

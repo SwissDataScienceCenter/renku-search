@@ -7,6 +7,7 @@ queue_name=$RS_REDIS_QUEUE_projectCreated
 
 id=$(head -c 16 < /dev/urandom | base64)
 vis="PUBLIC"
+kws="[]"
 while true; do
       case "$1" in
           --id)
@@ -17,6 +18,9 @@ while true; do
               ;;
           --vis|--visibility)
               shift; vis="$1"; shift
+              ;;
+          --keywords)
+              shift; kws="$1"; shift
               ;;
           *) break
              ;;
@@ -43,10 +47,11 @@ payload_tpl='{
   "repositories":[],
   "visibility":$vis,
   "description": {"string":"my project description"},
+  "keywords": [$kws],
   "createdBy":"dev",
   "creationDate":0
 }'
-payload=$(jq --null-input --arg id "$id" --arg name "$name" --arg slug "$name/$id" --arg vis "$vis" "$payload_tpl")
+payload=$(jq --null-input --arg id "$id" --arg name "$name" --arg slug "$name/$id" --arg vis "$vis" --arg kws "$kws" "$payload_tpl")
 
 echo redis-cli -h $redis_host -p $redis_port XADD $queue_name '*' headers "$header" payload "$payload"
 redis-cli -h $redis_host -p $redis_port XADD $queue_name '*' headers "$header" payload "$payload"

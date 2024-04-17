@@ -66,3 +66,18 @@ trait Projects:
       visibility = pu.visibility.toModel.some,
       description = pu.description.map(_.toDescription)
     )
+
+  def fromProjectUpdated(
+      pu: ProjectUpdated,
+      version: DocVersion
+  ): PartialEntityDocument.Project =
+    PartialEntityDocument.Project(
+      id = pu.id.toId,
+      version = version,
+      name = pu.name.toName.some,
+      slug = pu.slug.toSlug.some,
+      repositories = pu.repositories.map(_.toRepository),
+      visibility = pu.visibility.toModel.some,
+      description = pu.description.map(_.toDescription),
+      keywords = pu.keywords.map(_.toKeyword).toList
+    )

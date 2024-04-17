@@ -16,17 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.schema
+package io.renku.search.model
 
-import io.renku.solr.client.migration.SchemaMigration
+import cats.Eq
+import io.bullet.borer.Encoder
+import io.bullet.borer.Decoder
 
-object Migrations {
+opaque type Keyword = String
 
-  val all: Seq[SchemaMigration] = Seq(
-    SchemaMigration(version = 1L, EntityDocumentSchema.initialEntityDocumentAdd),
-    SchemaMigration(version = 2L, EntityDocumentSchema.copyContentField),
-    SchemaMigration(version = 3L, EntityDocumentSchema.userFields),
-    SchemaMigration(version = 4L, EntityDocumentSchema.projectMembersFields),
-    SchemaMigration(version = 5L, EntityDocumentSchema.keywordField)
-  )
-}
+object Keyword:
+
+  def apply(kw: String): Keyword = kw
+
+  given Eq[Keyword] = Eq.instance((a, b) => a.equalsIgnoreCase(b))
+  given Encoder[Keyword] = Encoder.forString
+  given Decoder[Keyword] = Decoder.forString
+
+  extension (self: Keyword) def value: String = self

@@ -37,6 +37,7 @@ trait Projects:
       repositories = pc.repositories.map(_.toRepository),
       visibility = pc.visibility.toModel,
       description = pc.description.map(_.toDescription),
+      keywords = pc.keywords.map(_.toKeyword).toList,
       createdBy = pc.createdBy.toId,
       creationDate = pc.creationDate.toCreationDate
     )
@@ -50,6 +51,7 @@ trait Projects:
       repositories = pu.repositories.map(_.toRepository),
       visibility = pu.visibility.toModel,
       description = pu.description.map(_.toDescription),
+      keywords = pu.keywords.map(_.toKeyword).toList,
       score = None
     )
 

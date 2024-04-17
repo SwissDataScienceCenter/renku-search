@@ -40,6 +40,14 @@ object ModelGenerators:
   val projectCreationDateGen: Gen[projects.CreationDate] =
     instantGen().map(projects.CreationDate.apply)
 
+  val keywordGen: Gen[Keyword] =
+    Gen
+      .oneOf("geo", "science", "fs24", "test", "music", "ml", "ai", "flights", "scala")
+      .map(Keyword.apply)
+
+  val keywordsGen: Gen[List[Keyword]] =
+    Gen.choose(0, 4).flatMap(n => Gen.listOfN(n, keywordGen))
+
   private def alphaStringGen(max: Int): Gen[String] =
     Gen
       .chooseNum(3, max)

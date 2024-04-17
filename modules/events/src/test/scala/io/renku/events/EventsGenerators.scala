@@ -24,6 +24,7 @@ import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import io.renku.search.model.ModelGenerators
 
 object EventsGenerators:
 
@@ -40,6 +41,7 @@ object EventsGenerators:
       repositories <- Gen.listOfN(repositoriesCount, stringGen(10))
       visibility <- projectVisibilityGen
       maybeDesc <- Gen.option(stringGen(20))
+      keywords <- ModelGenerators.keywordsGen
       creator <- Gen.uuid.map(_.toString)
     yield ProjectCreated(
       id,
@@ -48,7 +50,7 @@ object EventsGenerators:
       repositories,
       visibility,
       maybeDesc,
-      Seq.empty,
+      keywords.map(_.value),
       creator,
       Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )
@@ -61,13 +63,15 @@ object EventsGenerators:
       repositories <- Gen.listOfN(repositoriesCount, stringGen(10))
       visibility <- projectVisibilityGen
       maybeDesc <- Gen.option(stringGen(20))
+      keywords <- ModelGenerators.keywordsGen
     yield ProjectUpdated(
       id,
       name,
       name,
       repositories,
       visibility,
-      maybeDesc
+      maybeDesc,
+      keywords.map(_.value)
     )
 
   def projectAuthorizationAddedGen(

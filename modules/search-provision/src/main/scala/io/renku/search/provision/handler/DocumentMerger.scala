@@ -161,3 +161,13 @@ object DocumentMerger:
           uu.toModel(orig).some
         case _ => None
     )
+
+  given DocumentMerger[v2.GroupAdded] =
+    def convert(ga: v2.GroupAdded): GroupDocument =
+      ga.toModel(DocVersion.NotExists)
+
+    instance[v2.GroupAdded](convert(_).some)((ga, existing) =>
+      existing match
+        case u: EntityDocument        => Some(convert(ga).setVersion(u.version))
+        case _: PartialEntityDocument => None
+    )

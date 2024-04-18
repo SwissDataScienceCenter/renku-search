@@ -22,8 +22,8 @@ import cats.Show
 import cats.data.OptionT
 import cats.effect.*
 import fs2.Stream
-
 import io.renku.events.v1.*
+import io.renku.events.v2.GroupAdded
 import io.renku.redis.client.QueueName
 import io.renku.search.events.ProjectCreated
 import io.renku.search.provision.handler.*
@@ -102,6 +102,9 @@ final class MessageHandlers[F[_]: Async](
             .drain
         })
     )
+
+  val groupAdded: Stream[F, Unit] =
+    add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)
 
   private[provision] def makeUpsert[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],

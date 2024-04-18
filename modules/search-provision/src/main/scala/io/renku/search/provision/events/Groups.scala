@@ -16,26 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.search.model
+package io.renku.search.provision.events
 
-import io.bullet.borer.Encoder
-import io.bullet.borer.Decoder
+import io.renku.events.v2.GroupAdded
+import io.renku.search.events.syntax.*
+import io.renku.search.solr.documents.Group as GroupDocument
+import io.renku.solr.client.DocVersion
 
-enum EntityType:
-  case Project
-  case User
-  case Group
+trait Groups:
 
-  def name: String = productPrefix
-
-object EntityType:
-  def fromString(str: String): Either[String, EntityType] =
-    EntityType.values
-      .find(_.name.equalsIgnoreCase(str))
-      .toRight(s"Invalid entity type: $str")
-
-  def unsafeFromString(str: String): EntityType =
-    fromString(str).fold(sys.error, identity)
-
-  given Encoder[EntityType] = Encoder.forString.contramap(_.name)
-  given Decoder[EntityType] = Decoder.forString.mapEither(fromString)
+  def fromGroupAdded(ga: GroupAdded, version: DocVersion): GroupDocument =
+    GroupDocument(
+      id = ga.id.toId,
+      version = version,
+      name = ga.name.toGroupName,
+      namespace = ga.namespace.toNamespace,
+      description = ga.description.map(_.toGroupDescription)
+    )

@@ -50,6 +50,9 @@ trait ShowInstances:
   given Show[v1.UserRemoved] =
     Show.show[v1.UserRemoved](e => show"id '${e.id}'")
 
+  given Show[v2.GroupAdded] =
+    Show.show[v2.GroupAdded](g => show"name '${g.id}'")
+
   given Show[v1.ProjectAuthorizationAdded] =
     Show.show[v1.ProjectAuthorizationAdded](v =>
       s"projectId '${v.projectId}', userId '${v.userId}', role '${v.role}'"

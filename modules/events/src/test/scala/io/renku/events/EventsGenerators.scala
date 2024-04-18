@@ -145,6 +145,14 @@ object EventsGenerators:
       email
     )
 
+  def groupAddedGen(prefix: String): Gen[v2.GroupAdded] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      name <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
+      maybeDesc <- Gen.option(stringGen(20))
+      namespace <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
+    yield v2.GroupAdded(id, name, maybeDesc, namespace)
+
   def stringGen(max: Int): Gen[String] =
     Gen
       .chooseNum(3, max)

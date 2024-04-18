@@ -54,5 +54,6 @@ object CompoundId:
 
   def projectEntity(id: Id): CompoundId = entity(id, EntityType.Project.some)
   def userEntity(id: Id): CompoundId = entity(id, EntityType.User.some)
+  def groupEntity(id: Id): CompoundId = entity(id, EntityType.Group.some)
 
   def projectPartial(id: Id): CompoundId = partial(id, EntityType.Project.some)

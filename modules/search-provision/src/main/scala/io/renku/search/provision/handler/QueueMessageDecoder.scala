@@ -68,13 +68,15 @@ object QueueMessageDecoder:
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectRemoved] =
     from(v1.ProjectRemoved.SCHEMA$)
 
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserAdded] = from(
-    v1.UserAdded.SCHEMA$
-  )
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserAdded] =
+    from(v1.UserAdded.SCHEMA$)
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserUpdated] =
     from(v1.UserUpdated.SCHEMA$)
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserRemoved] =
     from(v1.UserRemoved.SCHEMA$)
+
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v2.GroupAdded] =
+    from(v2.GroupAdded.SCHEMA$)
 
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationAdded] =
     from(v1.ProjectAuthorizationAdded.SCHEMA$)

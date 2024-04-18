@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.handler
 
-import io.renku.events.v1
+import io.renku.events.{v1, v2}
 import io.renku.search.events.ProjectCreated
 import io.renku.search.model.Id
 
@@ -40,6 +40,7 @@ object IdExtractor:
   given IdExtractor[v1.UserAdded] = createStr(_.id)
   given IdExtractor[v1.UserUpdated] = createStr(_.id)
   given IdExtractor[v1.UserRemoved] = createStr(_.id)
+  given IdExtractor[v2.GroupAdded] = createStr(_.id)
   given IdExtractor[v1.ProjectAuthorizationAdded] = createStr(_.projectId)
   given IdExtractor[v1.ProjectAuthorizationUpdated] = createStr(_.projectId)
   given IdExtractor[v1.ProjectAuthorizationRemoved] = createStr(_.projectId)

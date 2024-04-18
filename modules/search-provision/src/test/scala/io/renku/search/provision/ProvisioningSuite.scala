@@ -40,7 +40,8 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
     projectAuthorizationRemoved = QueueName("projectAuthorizationRemoved"),
     userAdded = QueueName("userAdded"),
     userUpdated = QueueName("userUpdated"),
-    userRemoved = QueueName("userRemoved")
+    userRemoved = QueueName("userRemoved"),
+    groupAdded = QueueName("groupAdded")
   )
 
   def withMessageHandlers(

@@ -24,12 +24,17 @@ import io.renku.avro.codec.{AvroDecoder, AvroReader}
 import io.renku.avro.codec.all.given
 import io.renku.queue.client.{DataContentType, QueueMessage}
 import org.apache.avro.Schema
-import io.renku.events.v1.*
+import io.renku.events.{v1, v2}
 
 trait QueueMessageDecoder[F[_], A]:
   def decodeMessage(message: QueueMessage): F[Seq[A]]
 
 object QueueMessageDecoder:
+  def instance[F[_], A](f: QueueMessage => F[Seq[A]]): QueueMessageDecoder[F, A] =
+    new QueueMessageDecoder[F, A] {
+      def decodeMessage(message: QueueMessage): F[Seq[A]] = f(message)
+    }
+
   def from[F[_]: MonadThrow, A](schema: Schema)(using
       AvroDecoder[A]
   ): QueueMessageDecoder[F, A] = {
@@ -52,22 +57,27 @@ object QueueMessageDecoder:
 
   def apply[F[_], A](using d: QueueMessageDecoder[F, A]): QueueMessageDecoder[F, A] = d
 
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectCreated] =
-    from(ProjectCreated.SCHEMA$)
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectUpdated] =
-    from(ProjectUpdated.SCHEMA$)
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectRemoved] =
-    from(ProjectRemoved.SCHEMA$)
+  given v1ProjectCreated[F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectCreated] =
+    from(v1.ProjectCreated.SCHEMA$)
+  given v2ProjectCreated[F[_]: MonadThrow]: QueueMessageDecoder[F, v2.ProjectCreated] =
+    from(v2.ProjectCreated.SCHEMA$)
 
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, UserAdded] = from(UserAdded.SCHEMA$)
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, UserUpdated] =
-    from(UserUpdated.SCHEMA$)
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, UserRemoved] =
-    from(UserRemoved.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectUpdated] =
+    from(v1.ProjectUpdated.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectRemoved] =
+    from(v1.ProjectRemoved.SCHEMA$)
 
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectAuthorizationAdded] =
-    from(ProjectAuthorizationAdded.SCHEMA$)
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectAuthorizationUpdated] =
-    from(ProjectAuthorizationUpdated.SCHEMA$)
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectAuthorizationRemoved] =
-    from(ProjectAuthorizationRemoved.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserAdded] = from(
+    v1.UserAdded.SCHEMA$
+  )
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserUpdated] =
+    from(v1.UserUpdated.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserRemoved] =
+    from(v1.UserRemoved.SCHEMA$)
+
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationAdded] =
+    from(v1.ProjectAuthorizationAdded.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationUpdated] =
+    from(v1.ProjectAuthorizationUpdated.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationRemoved] =
+    from(v1.ProjectAuthorizationRemoved.SCHEMA$)

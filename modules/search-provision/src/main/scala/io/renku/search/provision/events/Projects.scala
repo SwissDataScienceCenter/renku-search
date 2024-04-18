@@ -19,16 +19,15 @@
 package io.renku.search.provision.events
 
 import cats.syntax.all.*
-import io.renku.events.v1.ProjectCreated
+import io.renku.events.{v1, v2}
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.solr.client.DocVersion
 import io.renku.search.events.syntax.*
-import io.renku.events.v1.ProjectUpdated
 import io.renku.search.solr.documents.PartialEntityDocument
 
 trait Projects:
 
-  def fromProjectCreated(pc: ProjectCreated, version: DocVersion): ProjectDocument =
+  def fromProjectCreated(pc: v1.ProjectCreated, version: DocVersion): ProjectDocument =
     ProjectDocument(
       id = pc.id.toId,
       version = version,
@@ -42,7 +41,21 @@ trait Projects:
       creationDate = pc.creationDate.toCreationDate
     )
 
-  def fromProjectUpdated(pu: ProjectUpdated, orig: ProjectDocument): ProjectDocument =
+  def fromProjectCreated(pc: v2.ProjectCreated, version: DocVersion): ProjectDocument =
+    ProjectDocument(
+      id = pc.id.toId,
+      version = version,
+      name = pc.name.toName,
+      slug = pc.slug.toSlug,
+      repositories = pc.repositories.map(_.toRepository),
+      visibility = pc.visibility.toModel,
+      description = pc.description.map(_.toDescription),
+      keywords = pc.keywords.map(_.toKeyword).toList,
+      createdBy = pc.createdBy.toId,
+      creationDate = pc.creationDate.toCreationDate
+    )
+
+  def fromProjectUpdated(pu: v1.ProjectUpdated, orig: ProjectDocument): ProjectDocument =
     orig.copy(
       id = pu.id.toId,
       version = orig.version,
@@ -56,7 +69,7 @@ trait Projects:
     )
 
   def fromProjectUpdated(
-      pu: ProjectUpdated,
+      pu: v1.ProjectUpdated,
       orig: PartialEntityDocument.Project
   ): PartialEntityDocument.Project =
     orig.copy(
@@ -68,7 +81,7 @@ trait Projects:
     )
 
   def fromProjectUpdated(
-      pu: ProjectUpdated,
+      pu: v1.ProjectUpdated,
       version: DocVersion
   ): PartialEntityDocument.Project =
     PartialEntityDocument.Project(

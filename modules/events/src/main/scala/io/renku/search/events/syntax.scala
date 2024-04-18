@@ -18,19 +18,27 @@
 
 package io.renku.search.events
 
-import io.renku.events.v1.{Visibility as EventVisibility, *}
+import io.renku.events.{v1, v2}
+import io.renku.search.model.*
 import io.renku.search.model.projects.*
 import io.renku.search.model.users.{FirstName, LastName}
-import io.renku.search.model.{Id, Keyword, MemberRole, Name}
 
 import java.time.Instant
 
 trait syntax:
-  extension (self: EventVisibility)
+  extension (self: v1.Visibility)
     def toModel: Visibility =
       Visibility.unsafeFromString(self.name())
 
-  extension (self: ProjectMemberRole)
+  extension (self: v2.Visibility)
+    def toModel: Visibility =
+      Visibility.unsafeFromString(self.name())
+
+  extension (self: v1.ProjectMemberRole)
+    def toModel: MemberRole =
+      MemberRole.unsafeFromString(self.name())
+
+  extension (self: v2.MemberRole)
     def toModel: MemberRole =
       MemberRole.unsafeFromString(self.name())
 

@@ -21,23 +21,27 @@ package io.renku.search.provision.events
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.solr.client.DocVersion
 import io.renku.search.solr.documents.{Project as ProjectDocument, User as UserDocument}
-import io.renku.events.v1.*
+import io.renku.events.{v1, v2}
 
 trait syntax extends io.renku.search.events.syntax:
 
-  extension (self: ProjectAuthorizationAdded)
+  extension (self: v1.ProjectAuthorizationAdded)
     def toModel(version: DocVersion): PartialEntityDocument =
       Conversion.fromProjectAuthorizationAdded(self, version)
 
-  extension (self: ProjectAuthorizationUpdated)
+  extension (self: v1.ProjectAuthorizationUpdated)
     def toModel(version: DocVersion): PartialEntityDocument =
       Conversion.fromProjectAuthorizationUpdated(self, version)
 
-  extension (self: ProjectCreated)
+  extension (self: v1.ProjectCreated)
     def toModel(version: DocVersion): ProjectDocument =
       Conversion.fromProjectCreated(self, version)
 
-  extension (self: ProjectUpdated)
+  extension (self: v2.ProjectCreated)
+    def toModel(version: DocVersion): ProjectDocument =
+      Conversion.fromProjectCreated(self, version)
+
+  extension (self: v1.ProjectUpdated)
     def toModel(orig: ProjectDocument): ProjectDocument =
       Conversion.fromProjectUpdated(self, orig)
     def toModel(orig: PartialEntityDocument.Project): PartialEntityDocument.Project =
@@ -45,11 +49,11 @@ trait syntax extends io.renku.search.events.syntax:
     def toModel(version: DocVersion): PartialEntityDocument.Project =
       Conversion.fromProjectUpdated(self, version)
 
-  extension (self: UserAdded)
+  extension (self: v1.UserAdded)
     def toModel(version: DocVersion): UserDocument =
       Conversion.fromUserAdded(self, version)
 
-  extension (self: UserUpdated)
+  extension (self: v1.UserUpdated)
     def toModel(orig: UserDocument): UserDocument =
       Conversion.fromUserUpdated(self, orig)
 

@@ -36,6 +36,7 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.provision.BackgroundCollector
 import io.renku.search.solr.documents.SolrDocument
 import io.renku.events.EventsGenerators
+import io.renku.solr.client.DocVersion
 
 class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
@@ -90,7 +91,12 @@ object ProjectUpdatedProvisioningSpec:
 
     def checkExpected(d: SolrDocument): Boolean =
       dbState match
-        case DbState.Empty => false
+        case DbState.Empty =>
+          d match
+            case n: ProjectDocument => false
+            case n: PartialEntityDocument.Project =>
+              n.setVersion(DocVersion.Off) == projectUpdated.toModel(DocVersion.Off)
+
         case DbState.Project(p) =>
           d match
             case n: ProjectDocument =>
@@ -117,6 +123,6 @@ object ProjectUpdatedProvisioningSpec:
     val pproj = SolrDocumentGenerators.partialProjectGen.generateOne
     val upd = EventsGenerators.projectUpdatedGen("proj-update").generateOne
     for
-      dbState <- List(DbState.Project(proj), DbState.PartialProject(pproj))
+      dbState <- List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
       event = upd.copy(id = dbState.projectId.map(_.value).getOrElse(upd.id))
     yield TestCase(dbState, event)

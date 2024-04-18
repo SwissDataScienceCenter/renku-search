@@ -42,6 +42,8 @@ trait syntax extends io.renku.search.events.syntax:
       Conversion.fromProjectUpdated(self, orig)
     def toModel(orig: PartialEntityDocument.Project): PartialEntityDocument.Project =
       Conversion.fromProjectUpdated(self, orig)
+    def toModel(version: DocVersion): PartialEntityDocument.Project =
+      Conversion.fromProjectUpdated(self, version)
 
   extension (self: UserAdded)
     def toModel(version: DocVersion): UserDocument =

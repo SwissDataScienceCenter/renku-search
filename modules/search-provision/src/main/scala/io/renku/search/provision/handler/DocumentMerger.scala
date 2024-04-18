@@ -99,7 +99,7 @@ object DocumentMerger:
     )
 
   given DocumentMerger[ProjectUpdated] =
-    instance[ProjectUpdated](_ => None)((pu, existing) =>
+    instance[ProjectUpdated](_.toModel(DocVersion.NotExists).some)((pu, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
           pu.toModel(p).some

@@ -40,7 +40,7 @@ object QueueMessageDecoder:
       AvroDecoder[A]
   ): QueueMessageDecoder[F, A] = {
     val avro = AvroReader(schema)
-    new QueueMessageDecoder:
+    new QueueMessageDecoder[F, A]:
       def decodeMessage(message: QueueMessage): F[Seq[A]] =
         findContentType.andThenF(decodePayload(message))(message)
 
@@ -77,6 +77,8 @@ object QueueMessageDecoder:
 
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v2.GroupAdded] =
     from(v2.GroupAdded.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v2.GroupRemoved] =
+    from(v2.GroupRemoved.SCHEMA$)
 
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationAdded] =
     from(v1.ProjectAuthorizationAdded.SCHEMA$)

@@ -41,7 +41,8 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
     userAdded = QueueName("userAdded"),
     userUpdated = QueueName("userUpdated"),
     userRemoved = QueueName("userRemoved"),
-    groupAdded = QueueName("groupAdded")
+    groupAdded = QueueName("groupAdded"),
+    groupRemoved = QueueName("groupRemoved")
   )
 
   def withMessageHandlers(
@@ -61,7 +62,7 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
       (handlers, queueClient, solrClient)
     }
 
-  def loadPartialOrEntity(solrClient: SearchSolrClient[IO], id: Id) =
+  def loadPartialOrEntity(solrClient: SearchSolrClient[IO], id: Id): IO[Set[SolrDocument]] =
     (
       solrClient.findById[EntityDocument](
         CompoundId.projectEntity(id)

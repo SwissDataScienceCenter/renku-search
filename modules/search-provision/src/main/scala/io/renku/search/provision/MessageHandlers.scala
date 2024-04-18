@@ -23,7 +23,7 @@ import cats.data.OptionT
 import cats.effect.*
 import fs2.Stream
 import io.renku.events.v1.*
-import io.renku.events.v2.GroupAdded
+import io.renku.events.v2.{GroupAdded, GroupRemoved}
 import io.renku.redis.client.QueueName
 import io.renku.search.events.ProjectCreated
 import io.renku.search.provision.handler.*
@@ -105,6 +105,12 @@ final class MessageHandlers[F[_]: Async](
 
   val groupAdded: Stream[F, Unit] =
     add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)
+
+  val groupRemoved: Stream[F, Unit] =
+    add(
+      cfg.groupRemoved,
+      makeRemovedSimple[GroupRemoved](cfg.groupRemoved).drain
+    )
 
   private[provision] def makeUpsert[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],

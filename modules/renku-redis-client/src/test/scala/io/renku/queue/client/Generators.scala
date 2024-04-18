@@ -18,14 +18,13 @@
 
 package io.renku.queue.client
 
-import java.time.Instant
-
-import io.renku.avro.codec.AvroEncoder
-import io.renku.avro.codec.AvroWriter
+import io.renku.avro.codec.{AvroEncoder, AvroWriter}
 import io.renku.redis.client.RedisClientGenerators
 import org.apache.avro.Schema
 import org.scalacheck.Gen
 import scodec.bits.ByteVector
+
+import java.time.Instant
 
 object Generators:
 
@@ -34,8 +33,8 @@ object Generators:
   val creationTimeGen: Gen[CreationTime] =
     Gen
       .choose(
-        Instant.parse("2020-01-01T01:00:00Z").toEpochMilli(),
-        Instant.now().toEpochMilli()
+        Instant.parse("2020-01-01T01:00:00Z").toEpochMilli,
+        Instant.now().toEpochMilli
       )
       .map(millis => CreationTime(Instant.ofEpochMilli(millis)))
 
@@ -47,7 +46,14 @@ object Generators:
 
   def messageHeaderGen(
       schema: Schema,
-      ctGen: Gen[DataContentType] = Gen.oneOf(DataContentType.values.toList)
+      schemaVersion: SchemaVersion
+  ): Gen[MessageHeader] =
+    messageHeaderGen(schema, schemaVersionGen = Gen.const(schemaVersion))
+
+  def messageHeaderGen(
+      schema: Schema,
+      ctGen: Gen[DataContentType] = Gen.oneOf(DataContentType.values.toList),
+      schemaVersionGen: Gen[SchemaVersion] = schemaVersionGen
   ): Gen[MessageHeader] =
     for
       contentType <- ctGen

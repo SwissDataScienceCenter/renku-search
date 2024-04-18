@@ -23,8 +23,8 @@ import cats.effect.{IO, Resource}
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.groupAddedGen
 import io.renku.events.v2.GroupAdded
-import io.renku.queue.client.DataContentType
 import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.queue.client.SchemaVersion
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{Id, groups}
 import io.renku.search.provision.ProvisioningSuite
@@ -43,12 +43,12 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
         _ <- solrClient.deleteIds(NonEmptyList.of(id))
         add1 <- queueClient.enqueue(
           queueConfig.groupAdded,
-          messageHeaderGen(GroupAdded.SCHEMA$, DataContentType.Binary).generateOne,
+          messageHeaderGen(GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
           GroupAdded(id.value, "SDSC", None, "sdsc-namespace")
         )
         add2 <- queueClient.enqueue(
           queueConfig.groupAdded,
-          messageHeaderGen(GroupAdded.SCHEMA$, DataContentType.Binary).generateOne,
+          messageHeaderGen(GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
           GroupAdded(id.value, "Renku", None, "sdsc-namespace")
         )
         results <- handlers
@@ -71,7 +71,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
       for
         _ <- queueClient.enqueue(
           queueConfig.groupAdded,
-          messageHeaderGen(GroupAdded.SCHEMA$).generateOne,
+          messageHeaderGen(GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
           groupAdded
         )
 

@@ -22,8 +22,9 @@ import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.projects.*
-import io.renku.search.model.{Id, Keyword, MemberRole, Name}
+import io.renku.search.model.{Id, Keyword, MemberRole, Name, Namespace, groups}
 import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.search.solr.documents.Group as GroupDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.{DocVersion, EncoderSupport}
 
@@ -89,9 +90,49 @@ object PartialEntityDocument:
     def applyTo(e: PartialEntityDocument): PartialEntityDocument =
       e match
         case p: Project => combine(p)
+        case _          => e
 
   object Project:
     given Encoder[Project] =
+      EncoderSupport.deriveWith(
+        DocumentKind.PartialEntity.additionalField,
+        EncoderSupport.AdditionalFields.productPrefix(SolrField.entityType.name)
+      )
+
+  final case class Group(
+      id: Id,
+      @key("_version_") version: DocVersion = DocVersion.Off,
+      name: Option[groups.Name],
+      namespace: Option[Namespace],
+      description: Option[groups.Description] = None
+  ) extends PartialEntityDocument:
+
+    def setVersion(v: DocVersion): Group = copy(version = v)
+
+    def applyTo(e: EntityDocument): EntityDocument =
+      e match
+        case g: GroupDocument if g.id == id =>
+          g.copy(
+            name = name.getOrElse(g.name),
+            namespace = namespace.getOrElse(g.namespace),
+            description = description.orElse(g.description)
+          ).setVersion(version)
+        case _ => e
+
+    private def combine(p: Group): Group =
+      if (p.id == id)
+        p.copy(
+          version = version
+        )
+      else p
+
+    def applyTo(e: PartialEntityDocument): PartialEntityDocument =
+      e match
+        case p: Group => combine(p)
+        case _        => e
+
+  object Group:
+    given Encoder[Group] =
       EncoderSupport.deriveWith(
         DocumentKind.PartialEntity.additionalField,
         EncoderSupport.AdditionalFields.productPrefix(SolrField.entityType.name)

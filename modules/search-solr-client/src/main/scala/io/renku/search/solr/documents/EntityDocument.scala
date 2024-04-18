@@ -130,3 +130,32 @@ object User:
       nameFrom(firstName.map(_.value), lastName.map(_.value)),
       score
     )
+    
+final case class Group(
+    id: Id,
+    @key("_version_") version: DocVersion = DocVersion.Off,
+    name: groups.Name,
+    namespace: Namespace,
+    description: Option[groups.Description] = None,
+    score: Option[Double] = None
+) extends EntityDocument:
+  def setVersion(v: DocVersion): Group = copy(version = v)
+
+object Group:
+  given Encoder[Group] =
+    EncoderSupport.deriveWith(
+      DocumentKind.FullEntity.additionalField,
+      EncoderSupport.AdditionalFields.productPrefix(Fields.entityType.name),
+      EncoderSupport.AdditionalFields.const[Group, String](
+        Fields.visibility.name -> Visibility.Public.name
+      )
+    )
+
+  def of(
+      id: Id,
+      name: groups.Name,
+      namespace: Namespace,
+      description: Option[groups.Description] = None,
+      score: Option[Double] = None
+  ): Group =
+    Group(id, DocVersion.NotExists, name, namespace, description, score)

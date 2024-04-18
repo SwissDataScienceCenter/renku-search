@@ -93,6 +93,7 @@ class SearchApiSpec extends SearchSolrSuite:
   private def scoreToNone(e: SearchEntity): SearchEntity = e match
     case e: Project => e.copy(score = None)
     case e: User    => e.copy(score = None)
+    case e: Group   => e.copy(score = None)
 
   private def mkQuery(phrase: String): QueryInput =
     QueryInput.pageOne(Query.parse(s"Fields $phrase").fold(sys.error, identity))

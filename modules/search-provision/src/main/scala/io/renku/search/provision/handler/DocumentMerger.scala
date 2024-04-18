@@ -27,6 +27,7 @@ import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
+import io.renku.search.solr.documents.Group as GroupDocument
 import io.renku.search.provision.events.syntax.*
 import io.renku.solr.client.DocVersion
 
@@ -54,6 +55,8 @@ object DocumentMerger:
           p.applyTo(paa.toModel(p.version)).some
         case p: EntityDocument =>
           paa.toModel(p.version).applyTo(p).some
+        case _: PartialEntityDocument.Group =>
+          None
     )
 
   given DocumentMerger[v1.ProjectAuthorizationUpdated] =
@@ -94,7 +97,7 @@ object DocumentMerger:
               .setVersion(p.version)
               .copy(owners = p.owners, members = p.members)
           )
-        case _: UserDocument =>
+        case _: UserDocument | _: GroupDocument | _: PartialEntityDocument.Group =>
           None
     )
 

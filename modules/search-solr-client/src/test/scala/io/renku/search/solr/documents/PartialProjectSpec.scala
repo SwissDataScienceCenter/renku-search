@@ -19,9 +19,8 @@
 package io.renku.search.solr.documents
 
 import io.renku.search.GeneratorSyntax
+import io.renku.search.model.MemberRole.*
 import io.renku.search.model.ModelGenerators.{idGen, projectMemberRoleGen}
-import io.renku.search.model.projects
-import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.solr.client.SolrDocumentGenerators.partialProjectGen
 import io.renku.search.solr.documents.PartialEntityDocument.Project
 import io.renku.solr.client.DocVersion

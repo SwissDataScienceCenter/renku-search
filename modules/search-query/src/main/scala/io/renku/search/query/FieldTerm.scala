@@ -19,9 +19,8 @@
 package io.renku.search.query
 
 import cats.data.NonEmptyList
-import io.renku.search.model.{EntityType, Keyword}
 import io.renku.search.model.projects.Visibility
-import io.renku.search.model.projects.MemberRole
+import io.renku.search.model.{EntityType, Keyword, MemberRole}
 
 enum FieldTerm(val field: Field, val cmp: Comparison):
   case TypeIs(values: NonEmptyList[EntityType])

@@ -20,13 +20,11 @@ package io.renku.search.provision
 package project
 
 import cats.effect.{IO, Resource}
-
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.projects.MemberRole
-import io.renku.search.model.{Id, ModelGenerators, projects}
+import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.project.AuthorizationUpdatedProvisioningSpec.testCases
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators

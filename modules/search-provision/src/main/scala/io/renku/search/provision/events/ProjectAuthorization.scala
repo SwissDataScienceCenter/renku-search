@@ -18,13 +18,12 @@
 
 package io.renku.search.provision.events
 
-import io.renku.events.v1.ProjectAuthorizationAdded
-import io.renku.search.solr.documents.PartialEntityDocument
-import io.renku.search.model.projects.*
-import io.renku.solr.client.DocVersion
+import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectAuthorizationUpdated, ProjectMemberRole}
 import io.renku.search.events.syntax.*
-import io.renku.events.v1.ProjectMemberRole
-import io.renku.events.v1.ProjectAuthorizationUpdated
+import io.renku.search.model.MemberRole
+import io.renku.search.model.projects.*
+import io.renku.search.solr.documents.PartialEntityDocument
+import io.renku.solr.client.DocVersion
 
 trait ProjectAuthorization:
 

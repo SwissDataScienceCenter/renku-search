@@ -18,18 +18,17 @@
 
 package io.renku.search.solr.query
 
-import java.time.Instant
-
 import cats.Monoid
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-
-import io.renku.search.model.projects.{MemberRole, Visibility}
-import io.renku.search.model.{EntityType, Id, Keyword}
+import io.renku.search.model.projects.Visibility
+import io.renku.search.model.{EntityType, Id, Keyword, MemberRole}
 import io.renku.search.query.Comparison
 import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.schema.FieldName
+
+import java.time.Instant
 
 opaque type SolrToken = String
 

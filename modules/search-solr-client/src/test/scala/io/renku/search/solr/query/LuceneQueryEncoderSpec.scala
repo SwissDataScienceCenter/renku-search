@@ -24,7 +24,7 @@ import cats.Id
 import cats.data.NonEmptyList as Nel
 
 import io.renku.search.model
-import io.renku.search.model.projects.MemberRole
+import io.renku.search.model.MemberRole
 import io.renku.search.query.*
 import io.renku.search.query.{Comparison, FieldTerm}
 import io.renku.search.solr.SearchRole

@@ -19,11 +19,11 @@
 package io.renku.search.events
 
 import io.renku.events.v1.{Visibility as EventVisibility, *}
-import io.renku.search.model.{Id, Keyword, Name}
 import io.renku.search.model.projects.*
+import io.renku.search.model.users.{FirstName, LastName}
+import io.renku.search.model.{Id, Keyword, MemberRole, Name}
+
 import java.time.Instant
-import io.renku.search.model.users.FirstName
-import io.renku.search.model.users.LastName
 
 trait syntax:
   extension (self: EventVisibility)

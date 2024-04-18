@@ -20,10 +20,8 @@ package io.renku.search.solr.query
 
 import cats.effect.IO
 import cats.syntax.all.*
-
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Id
-import io.renku.search.model.projects.MemberRole
+import io.renku.search.model.{Id, MemberRole}
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SolrDocumentGenerators

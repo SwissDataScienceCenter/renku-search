@@ -18,9 +18,8 @@
 
 package io.renku.search.solr.documents
 
+import io.renku.search.model.MemberRole.*
 import io.renku.search.model.ModelGenerators.{idGen, projectMemberRoleGen}
-import io.renku.search.model.projects
-import io.renku.search.model.projects.MemberRole.{Member, Owner}
 import io.renku.search.solr.client.SolrDocumentGenerators.projectDocumentGen
 import munit.{FunSuite, ScalaCheckSuite}
 import org.scalacheck.Prop
@@ -44,8 +43,8 @@ class ProjectSpec extends ScalaCheckSuite:
   ):
     Prop.forAll(projectDocumentGen, idGen) { case (project, userId) =>
       val updated = project
-        .addMember(userId, projects.MemberRole.Member)
-        .addMember(userId, projects.MemberRole.Owner)
+        .addMember(userId, Member)
+        .addMember(userId, Owner)
 
       assertEquals(updated.owners, (userId :: project.owners).distinct)
       assertEquals(updated.members, project.members.filterNot(_ == userId).distinct)

@@ -18,12 +18,12 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.NullOptions.given
 import io.bullet.borer.*
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.*
-import io.renku.search.model.projects.MemberRole.{Member, Owner}
-import io.renku.search.model.projects.{MemberRole, Visibility}
+import io.renku.search.model.MemberRole.*
+import io.renku.search.model.projects.Visibility
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.EncoderSupport.*
 import io.renku.solr.client.{DocVersion, EncoderSupport}

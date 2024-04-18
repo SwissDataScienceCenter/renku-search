@@ -18,29 +18,23 @@
 
 package io.renku.search.provision.project
 
-import scala.concurrent.duration.*
-
 import cats.effect.std.CountDownLatch
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators
-import io.renku.events.v1.ProjectCreated
-import io.renku.events.v1.Visibility
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
+import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectCreated, ProjectMemberRole, Visibility}
 import io.renku.queue.client.DataContentType
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.ModelGenerators
-import io.renku.search.model.projects.MemberRole
-import io.renku.search.model.{Id, projects}
-import io.renku.search.provision.handler.DocumentMerger
-import io.renku.search.provision.handler.ShowInstances
+import io.renku.search.model.{Id, MemberRole, ModelGenerators}
+import io.renku.search.provision.handler.{DocumentMerger, ShowInstances}
 import io.renku.search.provision.project.ConcurrentUpdateSpec.testCases
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
+import io.renku.search.solr.documents.{SolrDocument, Project as ProjectDocument}
+
+import scala.concurrent.duration.*
 
 class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
   testCases.foreach { tc =>

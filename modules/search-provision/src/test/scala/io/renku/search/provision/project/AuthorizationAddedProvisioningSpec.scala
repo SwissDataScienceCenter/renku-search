@@ -25,7 +25,7 @@ import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model._
-import io.renku.search.model.projects.MemberRole
+import io.renku.search.model.MemberRole
 import io.renku.search.provision.project.AuthorizationAddedProvisioningSpec.testCases
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient

@@ -35,8 +35,8 @@ object ModelGenerators:
 
   val projectVisibilityGen: Gen[projects.Visibility] =
     Gen.oneOf(projects.Visibility.values.toList)
-  val projectMemberRoleGen: Gen[projects.MemberRole] =
-    Gen.oneOf(projects.MemberRole.values.toList)
+  val projectMemberRoleGen: Gen[MemberRole] =
+    Gen.oneOf(MemberRole.values.toList)
   val projectCreationDateGen: Gen[projects.CreationDate] =
     instantGen().map(projects.CreationDate.apply)
 

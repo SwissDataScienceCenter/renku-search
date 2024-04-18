@@ -18,18 +18,16 @@
 
 package io.renku.search.query
 
-import java.time._
-
+import cats.Order as CatsOrder
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import cats.Order as CatsOrder
-
-import io.renku.search.model.projects.MemberRole
 import io.renku.search.model.projects.Visibility
-import io.renku.search.model.{CommonGenerators, ModelGenerators}
+import io.renku.search.model.{CommonGenerators, MemberRole, ModelGenerators}
 import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
+
+import java.time.*
 
 object QueryGenerators:
   val utc: Gen[Option[ZoneId]] =

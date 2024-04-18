@@ -18,22 +18,29 @@
 
 package io.renku.events
 
-import io.renku.events.v1.*
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
+import io.renku.search.events.ProjectCreated
 import io.renku.search.model.ModelGenerators
 
 object EventsGenerators:
 
-  val projectVisibilityGen: Gen[Visibility] =
-    Gen.oneOf(Visibility.values().toList)
-  val projectMemberRoleGen: Gen[ProjectMemberRole] =
-    Gen.oneOf(ProjectMemberRole.values().toList)
+  val projectVisibilityGen: Gen[v1.Visibility] =
+    Gen.oneOf(v1.Visibility.values().toList)
 
-  def projectCreatedGen(prefix: String): Gen[ProjectCreated] =
+  val v2ProjectVisibilityGen: Gen[v2.Visibility] =
+    Gen.oneOf(v2.Visibility.values().toList)
+
+  val projectMemberRoleGen: Gen[v1.ProjectMemberRole] =
+    Gen.oneOf(v1.ProjectMemberRole.values().toList)
+
+  val v2ProjectMemberRoleGen: Gen[v2.MemberRole] =
+    Gen.oneOf(v2.MemberRole.values().toList)
+
+  def v1ProjectCreatedGen(prefix: String): Gen[v1.ProjectCreated] =
     for
       id <- Gen.uuid.map(_.toString)
       name <- stringGen(max = 5).map(v => s"$prefix-$v")
@@ -43,7 +50,7 @@ object EventsGenerators:
       maybeDesc <- Gen.option(stringGen(20))
       keywords <- ModelGenerators.keywordsGen
       creator <- Gen.uuid.map(_.toString)
-    yield ProjectCreated(
+    yield v1.ProjectCreated(
       id,
       name,
       name,
@@ -55,7 +62,38 @@ object EventsGenerators:
       Instant.now().truncatedTo(ChronoUnit.MILLIS)
     )
 
-  def projectUpdatedGen(prefix: String): Gen[ProjectUpdated] =
+  def v2ProjectCreatedGen(prefix: String): Gen[v2.ProjectCreated] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      name <- stringGen(max = 5).map(v => s"$prefix-$v")
+      ns <- ModelGenerators.namespaceGen
+      slug = s"${ns.value}/$name"
+      repositoriesCount <- Gen.choose(1, 3)
+      repositories <- Gen.listOfN(repositoriesCount, stringGen(10))
+      visibility <- v2ProjectVisibilityGen
+      maybeDesc <- Gen.option(stringGen(20))
+      keywords <- ModelGenerators.keywordsGen
+      creator <- Gen.uuid.map(_.toString)
+    yield v2.ProjectCreated(
+      id,
+      name,
+      ns.value,
+      slug,
+      repositories,
+      visibility,
+      maybeDesc,
+      keywords.map(_.value),
+      creator,
+      Instant.now().truncatedTo(ChronoUnit.MILLIS)
+    )
+
+  def projectCreatedGen(prefix: String): Gen[ProjectCreated] =
+    Gen.oneOf(
+      v1ProjectCreatedGen(prefix).map(ProjectCreated.V1.apply),
+      v2ProjectCreatedGen(prefix).map(ProjectCreated.V2.apply)
+    )
+
+  def projectUpdatedGen(prefix: String): Gen[v1.ProjectUpdated] =
     for
       id <- Gen.uuid.map(_.toString)
       name <- stringGen(max = 5).map(v => s"$prefix-$v")
@@ -64,7 +102,7 @@ object EventsGenerators:
       visibility <- projectVisibilityGen
       maybeDesc <- Gen.option(stringGen(20))
       keywords <- ModelGenerators.keywordsGen
-    yield ProjectUpdated(
+    yield v1.ProjectUpdated(
       id,
       name,
       name,
@@ -76,31 +114,31 @@ object EventsGenerators:
 
   def projectAuthorizationAddedGen(
       projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
-      roleGen: Gen[ProjectMemberRole] = projectMemberRoleGen
-  ): Gen[ProjectAuthorizationAdded] =
+      roleGen: Gen[v1.ProjectMemberRole] = projectMemberRoleGen
+  ): Gen[v1.ProjectAuthorizationAdded] =
     for
       projectId <- projectIdGen
       userId <- Gen.uuid.map(_.toString)
       role <- roleGen
-    yield ProjectAuthorizationAdded(projectId, userId, role)
+    yield v1.ProjectAuthorizationAdded(projectId, userId, role)
 
   def projectAuthorizationUpdatedGen(
       projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
-      roleGen: Gen[ProjectMemberRole] = projectMemberRoleGen
-  ): Gen[ProjectAuthorizationUpdated] =
+      roleGen: Gen[v1.ProjectMemberRole] = projectMemberRoleGen
+  ): Gen[v1.ProjectAuthorizationUpdated] =
     for
       projectId <- projectIdGen
       userId <- Gen.uuid.map(_.toString)
       role <- roleGen
-    yield ProjectAuthorizationUpdated(projectId, userId, role)
+    yield v1.ProjectAuthorizationUpdated(projectId, userId, role)
 
-  def userAddedGen(prefix: String): Gen[UserAdded] =
+  def userAddedGen(prefix: String): Gen[v1.UserAdded] =
     for
       id <- Gen.uuid.map(_.toString)
       firstName <- Gen.option(alphaStringGen(max = 5).map(v => s"$prefix-$v"))
       lastName <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
       email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
-    yield UserAdded(
+    yield v1.UserAdded(
       id,
       firstName,
       Some(lastName),

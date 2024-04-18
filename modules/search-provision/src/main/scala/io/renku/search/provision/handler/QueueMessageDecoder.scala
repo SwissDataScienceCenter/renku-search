@@ -25,6 +25,7 @@ import io.renku.avro.codec.all.given
 import io.renku.queue.client.{DataContentType, QueueMessage}
 import org.apache.avro.Schema
 import io.renku.events.{v1, v2}
+import io.renku.search.events.ProjectCreated
 
 trait QueueMessageDecoder[F[_], A]:
   def decodeMessage(message: QueueMessage): F[Seq[A]]
@@ -81,3 +82,14 @@ object QueueMessageDecoder:
     from(v1.ProjectAuthorizationUpdated.SCHEMA$)
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationRemoved] =
     from(v1.ProjectAuthorizationRemoved.SCHEMA$)
+
+  given [F[_]: MonadThrow](using
+      v1d: QueueMessageDecoder[F, v1.ProjectCreated],
+      v2d: QueueMessageDecoder[F, v2.ProjectCreated]
+  ): QueueMessageDecoder[F, ProjectCreated] =
+    QueueMessageDecoder.instance { qmsg =>
+      qmsg.header.schemaVersion.toLowerCase match
+        case "v1" => v1d.decodeMessage(qmsg).map(_.map(ProjectCreated.V1(_)))
+        case "v2" => v2d.decodeMessage(qmsg).map(_.map(ProjectCreated.V2(_)))
+        case _    => sys.error("peng")
+    }

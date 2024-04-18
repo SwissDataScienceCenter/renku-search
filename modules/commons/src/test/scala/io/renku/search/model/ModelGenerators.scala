@@ -33,6 +33,9 @@ object ModelGenerators:
   val projectDescGen: Gen[projects.Description] =
     alphaStringGen(max = 30).map(projects.Description.apply)
 
+  val namespaceGen: Gen[Namespace] =
+    alphaStringGen(max = 10).map(Namespace.apply)
+
   val projectVisibilityGen: Gen[projects.Visibility] =
     Gen.oneOf(projects.Visibility.values.toList)
   val projectMemberRoleGen: Gen[MemberRole] =

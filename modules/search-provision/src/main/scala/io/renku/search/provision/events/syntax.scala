@@ -18,6 +18,7 @@
 
 package io.renku.search.provision.events
 
+import io.renku.search.events.ProjectCreated
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.solr.client.DocVersion
 import io.renku.search.solr.documents.{Project as ProjectDocument, User as UserDocument}
@@ -40,6 +41,10 @@ trait syntax extends io.renku.search.events.syntax:
   extension (self: v2.ProjectCreated)
     def toModel(version: DocVersion): ProjectDocument =
       Conversion.fromProjectCreated(self, version)
+
+  extension (self: ProjectCreated)
+    def toModel(version: DocVersion): ProjectDocument =
+      self.fold(_.toModel(version), _.toModel(version))
 
   extension (self: v1.ProjectUpdated)
     def toModel(orig: ProjectDocument): ProjectDocument =

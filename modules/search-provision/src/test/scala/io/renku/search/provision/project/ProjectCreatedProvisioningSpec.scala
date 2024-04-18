@@ -22,7 +22,7 @@ import cats.effect.{IO, Resource}
 
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.projectCreatedGen
-import io.renku.events.v1.{ProjectCreated, Visibility}
+import io.renku.search.events.ProjectCreated
 import io.renku.queue.client.DataContentType
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
@@ -53,7 +53,10 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectCreated,
-            messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
+            messageHeaderGen(
+              tc.projectCreated.schema,
+              DataContentType.Binary
+            ).generateOne,
             tc.projectCreated
           )
           _ <- collector.waitUntil(docs =>
@@ -74,12 +77,12 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
+          messageHeaderGen(created.schema, DataContentType.Binary).generateOne,
           created
         )
         collector <- BackgroundCollector(
           solrClient
-            .findById[EntityDocument](CompoundId.projectEntity(Id(created.id)))
+            .findById[EntityDocument](CompoundId.projectEntity(created.id))
             .map(_.toSet)
         )
         _ <- collector.start
@@ -99,12 +102,12 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Json).generateOne,
+          messageHeaderGen(created.schema, DataContentType.Json).generateOne,
           created
         )
         collector <- BackgroundCollector(
           solrClient
-            .findById[EntityDocument](CompoundId.projectEntity(Id(created.id)))
+            .findById[EntityDocument](CompoundId.projectEntity(created.id))
             .map(_.toSet)
         )
         _ <- collector.start
@@ -137,7 +140,7 @@ object ProjectCreatedProvisioningSpec:
       case DbState.PartialProject(p) => p.id
 
     val projectCreated: ProjectCreated =
-      projectCreatedGen("test-").generateOne.copy(id = projectId.value)
+      projectCreatedGen("test-").generateOne.withId(projectId)
 
     val expectedProject: SolrDocument = dbState match
       case DbState.Empty =>

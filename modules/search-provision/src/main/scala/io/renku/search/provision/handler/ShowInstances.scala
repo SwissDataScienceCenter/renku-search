@@ -19,6 +19,7 @@
 package io.renku.search.provision.handler
 
 import io.renku.events.{v1, v2}
+import io.renku.search.events.ProjectCreated
 import cats.Show
 import cats.syntax.all.*
 
@@ -28,6 +29,9 @@ trait ShowInstances:
 
   given v2projectCreatedShow: Show[v2.ProjectCreated] =
     Show.show[v2.ProjectCreated](pc => show"slug '${pc.slug}'")
+
+  given Show[ProjectCreated] =
+    Show.show(_.fold(_.show, _.show))
 
   given Show[v1.ProjectUpdated] =
     Show.show[v1.ProjectUpdated](pc => show"slug '${pc.slug}'")

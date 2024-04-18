@@ -23,7 +23,8 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectCreated, ProjectMemberRole, Visibility}
+import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole, Visibility}
+import io.renku.search.events.ProjectCreated
 import io.renku.queue.client.DataContentType
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
@@ -32,7 +33,7 @@ import io.renku.search.provision.handler.{DocumentMerger, ShowInstances}
 import io.renku.search.provision.project.ConcurrentUpdateSpec.testCases
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.{SolrDocument, Project as ProjectDocument}
+import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
 
 import scala.concurrent.duration.*
 
@@ -62,7 +63,10 @@ class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
 
           sendCreate <- (latch.await >> queueClient.enqueue(
             queueConfig.projectCreated,
-            messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
+            messageHeaderGen(
+              tc.projectCreated.schema,
+              DataContentType.Binary
+            ).generateOne,
             tc.projectCreated
           )).start
 

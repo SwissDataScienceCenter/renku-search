@@ -22,6 +22,7 @@ import cats.syntax.all.*
 
 import io.github.arainko.ducktape.*
 import io.renku.events.{v1, v2}
+import io.renku.search.events.ProjectCreated
 import io.renku.search.model.Id
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
@@ -117,8 +118,20 @@ object DocumentMerger:
               .copy(owners = p.owners, members = p.members)
           )
 
-        case _: UserDocument =>
+        case _: UserDocument | _: GroupDocument | _: PartialEntityDocument.Group =>
           None
+    }
+
+  given (using
+      v1m: DocumentMerger[v1.ProjectCreated],
+      v2m: DocumentMerger[v2.ProjectCreated]
+  ): DocumentMerger[ProjectCreated] =
+    DocumentMerger.instance[ProjectCreated] {
+      case ProjectCreated.V1(event) => v1m.create(event)
+      case ProjectCreated.V2(event) => v2m.create(event)
+    } {
+      case (ProjectCreated.V1(event), existing) => v1m.merge(event, existing)
+      case (ProjectCreated.V2(event), existing) => v2m.merge(event, existing)
     }
 
   given DocumentMerger[v1.ProjectUpdated] =

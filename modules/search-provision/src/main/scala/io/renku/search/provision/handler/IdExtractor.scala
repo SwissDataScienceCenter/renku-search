@@ -18,7 +18,8 @@
 
 package io.renku.search.provision.handler
 
-import io.renku.events.v1.*
+import io.renku.events.v1
+import io.renku.search.events.ProjectCreated
 import io.renku.search.model.Id
 
 trait IdExtractor[A]:
@@ -33,12 +34,12 @@ object IdExtractor:
   def createStr[A](f: A => String): IdExtractor[A] =
     (a: A) => Id(f(a))
 
-  given IdExtractor[ProjectCreated] = createStr(_.id)
-  given IdExtractor[ProjectUpdated] = createStr(_.id)
-  given IdExtractor[ProjectRemoved] = createStr(_.id)
-  given IdExtractor[UserAdded] = createStr(_.id)
-  given IdExtractor[UserUpdated] = createStr(_.id)
-  given IdExtractor[UserRemoved] = createStr(_.id)
-  given IdExtractor[ProjectAuthorizationAdded] = createStr(_.projectId)
-  given IdExtractor[ProjectAuthorizationUpdated] = createStr(_.projectId)
-  given IdExtractor[ProjectAuthorizationRemoved] = createStr(_.projectId)
+  given IdExtractor[ProjectCreated] = createStr(_.fold(_.id, _.id))
+  given IdExtractor[v1.ProjectUpdated] = createStr(_.id)
+  given IdExtractor[v1.ProjectRemoved] = createStr(_.id)
+  given IdExtractor[v1.UserAdded] = createStr(_.id)
+  given IdExtractor[v1.UserUpdated] = createStr(_.id)
+  given IdExtractor[v1.UserRemoved] = createStr(_.id)
+  given IdExtractor[v1.ProjectAuthorizationAdded] = createStr(_.projectId)
+  given IdExtractor[v1.ProjectAuthorizationUpdated] = createStr(_.projectId)
+  given IdExtractor[v1.ProjectAuthorizationRemoved] = createStr(_.projectId)

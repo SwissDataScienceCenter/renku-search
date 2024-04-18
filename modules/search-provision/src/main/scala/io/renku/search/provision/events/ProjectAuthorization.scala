@@ -18,7 +18,11 @@
 
 package io.renku.search.provision.events
 
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectAuthorizationUpdated, ProjectMemberRole}
+import io.renku.events.v1.{
+  ProjectAuthorizationAdded,
+  ProjectAuthorizationUpdated,
+  ProjectMemberRole
+}
 import io.renku.search.events.syntax.*
 import io.renku.search.model.MemberRole
 import io.renku.search.model.projects.*

@@ -25,7 +25,7 @@ import fs2.Stream
 
 import io.renku.events.v1.*
 import io.renku.redis.client.QueueName
-import io.renku.search.provision.events.ProjectCreated
+import io.renku.search.events.ProjectCreated
 import io.renku.search.provision.handler.*
 import io.renku.solr.client.UpsertResponse
 

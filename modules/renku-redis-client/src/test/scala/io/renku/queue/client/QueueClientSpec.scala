@@ -23,7 +23,7 @@ import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroWriter
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators
-import io.renku.events.v1.ProjectCreated
+import io.renku.search.events.ProjectCreated
 import io.renku.queue.client.DataContentType.{Binary, Json}
 import io.renku.queue.client.Generators.*
 import io.renku.redis.client.{MessageId, RedisClientGenerators}
@@ -40,7 +40,7 @@ class QueueClientSpec extends CatsEffectSuite with QueueSpec:
         dequeued <- SignallingRef.of[IO, List[QueueMessage]](Nil)
 
         message1 = EventsGenerators.projectCreatedGen("test").generateOne
-        header1 = messageHeaderGen(ProjectCreated.SCHEMA$).generateOne
+        header1 = messageHeaderGen(message1.schema).generateOne
         message1Id <- queueClient.enqueue(queue, header1, message1)
 
         streamingProcFiber <- queueClient
@@ -61,7 +61,7 @@ class QueueClientSpec extends CatsEffectSuite with QueueSpec:
       payload: ProjectCreated
   ) =
     val encodedPayload = header.dataContentType match {
-      case Binary => AvroWriter(ProjectCreated.SCHEMA$).write(Seq(payload))
-      case Json   => AvroWriter(ProjectCreated.SCHEMA$).writeJson(Seq(payload))
+      case Binary => AvroWriter(payload.schema).write(Seq(payload))
+      case Json   => AvroWriter(payload.schema).writeJson(Seq(payload))
     }
     QueueMessage(id, header.toSchemaHeader(payload), encodedPayload)

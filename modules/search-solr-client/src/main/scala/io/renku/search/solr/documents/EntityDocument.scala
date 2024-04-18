@@ -130,7 +130,7 @@ object User:
       nameFrom(firstName.map(_.value), lastName.map(_.value)),
       score
     )
-    
+
 final case class Group(
     id: Id,
     @key("_version_") version: DocVersion = DocVersion.Off,

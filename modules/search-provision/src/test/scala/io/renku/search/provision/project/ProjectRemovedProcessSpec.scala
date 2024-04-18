@@ -55,7 +55,7 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
             .awakeEvery[IO](500 millis)
             .evalMap(_ =>
               solrClient.findById[EntityDocument](
-                CompoundId.projectEntity(Id(created.id))
+                CompoundId.projectEntity(created.id)
               )
             )
             .evalMap(e => solrDoc.update(_ => e))
@@ -67,7 +67,7 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
           _.nonEmpty
         )
 
-        removed = ProjectRemoved(created.id)
+        removed = ProjectRemoved(created.id.value)
         _ <- queueClient.enqueue(
           queueConfig.projectRemoved,
           messageHeaderGen(ProjectRemoved.SCHEMA$).generateOne,

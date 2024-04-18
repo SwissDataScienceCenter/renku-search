@@ -45,6 +45,7 @@ trait syntax:
   extension (self: String)
     def toId: Id = Id(self)
     def toName: Name = Name(self)
+    def toNamespace: Namespace = Namespace(self)
     def toSlug: Slug = Slug(self)
     def toRepository: Repository = Repository(self)
     def toDescription: Description = Description(self)

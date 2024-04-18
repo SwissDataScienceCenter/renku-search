@@ -39,6 +39,7 @@ object EntityDocumentSchema:
     val slug: FieldName = FieldName("slug")
     val visibility: FieldName = FieldName("visibility")
     val keywords: FieldName = FieldName("keywords")
+    val namespace: FieldName = FieldName("namespace")
 
     val root: FieldName = FieldName("_root_")
     val nestParent: FieldName = FieldName("_nest_parent_")
@@ -96,4 +97,9 @@ object EntityDocumentSchema:
   val keywordField: Seq[SchemaCommand] = Seq(
     SchemaCommand.Add(Field(Fields.keywords, FieldTypes.string).makeMultiValued),
     SchemaCommand.Add(CopyFieldRule(Fields.keywords, Fields.contentAll))
+  )
+
+  val namespaceField: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(Field(Fields.namespace, FieldTypes.string)),
+    SchemaCommand.Add(CopyFieldRule(Fields.namespace, Fields.contentAll))
   )

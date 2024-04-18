@@ -46,6 +46,7 @@ trait Projects:
       id = pc.id.toId,
       version = version,
       name = pc.name.toName,
+      namespace = pc.namespace.toNamespace.some,
       slug = pc.slug.toSlug,
       repositories = pc.repositories.map(_.toRepository),
       visibility = pc.visibility.toModel,

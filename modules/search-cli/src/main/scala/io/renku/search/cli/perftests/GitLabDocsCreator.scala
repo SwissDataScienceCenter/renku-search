@@ -79,6 +79,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       (glProj
         .into[Project]
         .transform(
+          Field.default(_.namespace),
           Field.computed(_.keywords, _.tagsAndTopics.map(Keyword.apply)),
           Field.default(_.version),
           Field.computed(_.id, s => Id(s"gl_proj_${s.id}")),

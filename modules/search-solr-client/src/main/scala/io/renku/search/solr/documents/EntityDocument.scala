@@ -54,6 +54,7 @@ final case class Project(
     owners: List[Id] = List.empty,
     members: List[Id] = List.empty,
     keywords: List[Keyword] = List.empty,
+    namespace: Option[Namespace] = None,
     score: Option[Double] = None
 ) extends EntityDocument:
   def setVersion(v: DocVersion): Project = copy(version = v)

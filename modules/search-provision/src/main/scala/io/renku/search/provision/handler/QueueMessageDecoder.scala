@@ -91,5 +91,8 @@ object QueueMessageDecoder:
       qmsg.header.schemaVersion.toLowerCase match
         case "v1" => v1d.decodeMessage(qmsg).map(_.map(ProjectCreated.V1(_)))
         case "v2" => v2d.decodeMessage(qmsg).map(_.map(ProjectCreated.V2(_)))
-        case _    => sys.error("peng")
+        case v =>
+          MonadThrow[F].raiseError(
+            new Exception(s"Cannot decode message with schema version: $v")
+          )
     }

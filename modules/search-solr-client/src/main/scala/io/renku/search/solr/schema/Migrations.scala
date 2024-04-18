@@ -27,6 +27,7 @@ object Migrations {
     SchemaMigration(version = 2L, EntityDocumentSchema.copyContentField),
     SchemaMigration(version = 3L, EntityDocumentSchema.userFields),
     SchemaMigration(version = 4L, EntityDocumentSchema.projectMembersFields),
-    SchemaMigration(version = 5L, EntityDocumentSchema.keywordField)
+    SchemaMigration(version = 5L, EntityDocumentSchema.keywordField),
+    SchemaMigration(version = 6L, EntityDocumentSchema.namespaceField)
   )
 }

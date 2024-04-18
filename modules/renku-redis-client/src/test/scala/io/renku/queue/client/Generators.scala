@@ -39,6 +39,9 @@ object Generators:
       )
       .map(millis => CreationTime(Instant.ofEpochMilli(millis)))
 
+  val schemaVersionGen: Gen[SchemaVersion] =
+    Gen.oneOf(SchemaVersion.V1, SchemaVersion.V2)
+
   def messageHeaderGen(schema: Schema, contentType: DataContentType): Gen[MessageHeader] =
     messageHeaderGen(schema, Gen.const(contentType))
 
@@ -48,7 +51,7 @@ object Generators:
   ): Gen[MessageHeader] =
     for
       contentType <- ctGen
-      schemaVersion <- Gen.choose(1, 100).map(v => SchemaVersion(s"v$v"))
+      schemaVersion <- schemaVersionGen
       requestId <- requestIdGen
       creationTime <- creationTimeGen
     yield MessageHeader(

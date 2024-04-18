@@ -74,6 +74,7 @@ object MessageSource:
 opaque type SchemaVersion = String
 object SchemaVersion:
   val V1: SchemaVersion = "V1"
+  val V2: SchemaVersion = "V2"
   def apply(v: String): SchemaVersion = v
   extension (self: SchemaVersion) def value: String = self
 

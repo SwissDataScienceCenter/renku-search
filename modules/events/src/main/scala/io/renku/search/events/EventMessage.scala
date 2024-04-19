@@ -18,22 +18,25 @@
 
 package io.renku.search.events
 
-import cats.data.NonEmptyList
-import io.renku.events.v2
-import io.renku.search.model.Id
-import io.renku.avro.codec.encoders.all.given
+import org.apache.avro.Schema
 import io.renku.avro.codec.AvroEncoder
-import cats.Show
+import scodec.bits.ByteVector
+import io.renku.avro.codec.AvroWriter
 
-final case class ProjectRemoved(id: Id) extends RenkuEventPayload:
-  val version: NonEmptyList[SchemaVersion] = SchemaVersion.all
+final case class EventMessage[P <: RenkuEventPayload](
+    /* id: MessageId? */
+    header: MessageHeader,
+    payloadSchema: Schema,
+    payload: P
+):
 
-object ProjectRemoved:
-  given Show[ProjectRemoved] = Show.fromToString
+  private val payloadWriter = AvroWriter(payloadSchema)
 
-  given AvroEncoder[ProjectRemoved] =
-    val v2e = AvroEncoder[v2.ProjectRemoved]
-    AvroEncoder { (_, v) =>
-      val event = v2.ProjectRemoved(v.id.value)
-      v2e.encode(v2.ProjectRemoved.SCHEMA$)(event)
-    }
+  def toAvro(v: SchemaVersion)(using AvroEncoder[P]): EventMessage.AvroPayload =
+    val h = header.toAvro(v, payload.getClass.getName)
+    val b = payloadWriter.write(Seq(payload))
+    EventMessage.AvroPayload(h, b)
+
+object EventMessage:
+
+  final case class AvroPayload(header: ByteVector, payload: ByteVector)

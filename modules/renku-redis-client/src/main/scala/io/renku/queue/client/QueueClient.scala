@@ -21,6 +21,7 @@ package io.renku.queue.client
 import cats.effect.{Async, Resource}
 import fs2.Stream
 import io.renku.avro.codec.AvroEncoder
+import io.renku.search.events.{EventMessage, RenkuEventPayload, SchemaVersion}
 import io.renku.redis.client.*
 
 trait QueueClient[F[_]]:
@@ -31,11 +32,23 @@ trait QueueClient[F[_]]:
       payload: P
   ): F[MessageId]
 
+  def enqueue[P <: RenkuEventPayload: AvroEncoder](
+      queueName: QueueName,
+      schemaVersion: SchemaVersion,
+      msg: EventMessage[P]
+  ): F[MessageId]
+
   def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, QueueMessage]
+
+  def acquireHeaderEventsStream(
+      queueName: QueueName,
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  ): Stream[F, QueueHeaderMessage]
 
   def markProcessed(
       clientId: ClientId,

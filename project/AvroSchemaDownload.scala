@@ -27,7 +27,7 @@ object AvroSchemaDownload extends AutoPlugin {
   override def projectSettings = AvroCodeGen.avroHuggerSettings ++ Seq(
     schemaEnableDownload := true,
     schemaRepository := "https://github.com/SwissDataScienceCenter/renku-schema",
-    schemaRef := Some("d13bfb4eb5c0d70b1c36b1a1b6324440558538ff"),
+    schemaRef := Some("d6ab61f375db16f399bcf7241544f9b01de2cb03"),
     schemaTargetDirectory := (Compile / target).value / "renku-avro-schemas",
     schemaClearDownload := {
       val target = schemaTargetDirectory.value
@@ -51,6 +51,7 @@ object AvroSchemaDownload extends AutoPlugin {
       // evaluated in correct "dependency order" (unfortunately, the plugin doesn't sort it out)
       // must be constant values, because settingKeys are evaluated at project load time
       Seq(
+        schemaTargetDirectory.value / "header",
         schemaTargetDirectory.value / "v1" / "common",
         schemaTargetDirectory.value / "v1" / "user",
         schemaTargetDirectory.value / "v1" / "project",

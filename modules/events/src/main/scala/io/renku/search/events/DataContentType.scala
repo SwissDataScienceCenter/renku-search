@@ -18,22 +18,13 @@
 
 package io.renku.search.events
 
-import cats.data.NonEmptyList
-import io.renku.events.v2
-import io.renku.search.model.Id
-import io.renku.avro.codec.encoders.all.given
-import io.renku.avro.codec.AvroEncoder
-import cats.Show
+enum DataContentType(val mimeType: String):
+  lazy val name: String = productPrefix
+  case Binary extends DataContentType("application/avro+binary")
+  case Json extends DataContentType("application/avro+json")
 
-final case class ProjectRemoved(id: Id) extends RenkuEventPayload:
-  val version: NonEmptyList[SchemaVersion] = SchemaVersion.all
-
-object ProjectRemoved:
-  given Show[ProjectRemoved] = Show.fromToString
-
-  given AvroEncoder[ProjectRemoved] =
-    val v2e = AvroEncoder[v2.ProjectRemoved]
-    AvroEncoder { (_, v) =>
-      val event = v2.ProjectRemoved(v.id.value)
-      v2e.encode(v2.ProjectRemoved.SCHEMA$)(event)
-    }
+object DataContentType:
+  def fromMimeType(mimeType: String): Either[String, DataContentType] =
+    DataContentType.values.toList
+      .find(_.mimeType == mimeType)
+      .toRight(s"'$mimeType' not a valid 'DataContentType' value")

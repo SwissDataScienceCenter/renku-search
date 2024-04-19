@@ -24,7 +24,7 @@ import org.apache.avro.Schema
 import io.renku.search.model.Id
 import cats.data.NonEmptyList
 
-sealed trait ProjectUpdated extends RenkuEvent:
+sealed trait ProjectUpdated extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A
   def withId(id: Id): ProjectUpdated
   def version: NonEmptyList[SchemaVersion] =

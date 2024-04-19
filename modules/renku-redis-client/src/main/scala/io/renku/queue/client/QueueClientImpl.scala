@@ -26,6 +26,12 @@ import io.renku.avro.codec.decoders.all.given
 import io.renku.avro.codec.encoders.all.given
 import io.renku.avro.codec.{AvroDecoder, AvroEncoder, AvroReader, AvroWriter}
 import io.renku.events.v1.Header
+import io.renku.search.events.{
+  EventMessage,
+  MessageHeader => MHeader,
+  RenkuEventPayload,
+  SchemaVersion
+}
 import io.renku.queue.client.DataContentType.*
 import io.renku.redis.client.*
 import scribe.Scribe
@@ -48,6 +54,14 @@ private class QueueClientImpl[F[_]: Async](redisQueueClient: RedisQueueClient[F]
     }
     redisQueueClient.enqueue(queueName, encHeader, encPayload)
 
+  def enqueue[P <: RenkuEventPayload: AvroEncoder](
+      queueName: QueueName,
+      schemaVersion: SchemaVersion,
+      msg: EventMessage[P]
+  ): F[MessageId] =
+    val data = msg.toAvro(schemaVersion)
+    redisQueueClient.enqueue(queueName, data.header, data.payload)
+
   override def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int,
@@ -68,6 +82,23 @@ private class QueueClientImpl[F[_]: Async](redisQueueClient: RedisQueueClient[F]
     redisQueueClient
       .acquireEventsStream(queueName, chunkSize, maybeOffset)
       .evalMap(rm => decodeHeader(rm).map(_.map(QueueMessage(rm.id, _, rm.payload))))
+      .collect { case Some(qm) => qm }
+
+  override def acquireHeaderEventsStream(
+      queueName: QueueName,
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  ): Stream[F, QueueHeaderMessage] =
+    def decodeHeader(rm: RedisMessage): F[Option[MHeader]] =
+      MHeader.fromByteVector(rm.header) match
+        case Right(h)  => Some(h).pure[F]
+        case Left(err) => Scribe[F].error(err).as(Option.empty[MHeader])
+
+    redisQueueClient
+      .acquireEventsStream(queueName, chunkSize, maybeOffset)
+      .evalMap(rm =>
+        decodeHeader(rm).map(_.map(QueueHeaderMessage(rm.id, _, rm.payload)))
+      )
       .collect { case Some(qm) => qm }
 
   override def markProcessed(

@@ -16,24 +16,19 @@
  * limitations under the License.
  */
 
-package io.renku.search.events
+package io.renku.search.model
 
-import cats.data.NonEmptyList
-import io.renku.events.v2
-import io.renku.search.model.Id
-import io.renku.avro.codec.encoders.all.given
-import io.renku.avro.codec.AvroEncoder
-import cats.Show
+import cats.Functor
+import cats.effect.Clock
+import cats.syntax.all.*
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
-final case class ProjectRemoved(id: Id) extends RenkuEventPayload:
-  val version: NonEmptyList[SchemaVersion] = SchemaVersion.all
+opaque type Timestamp = Instant
 
-object ProjectRemoved:
-  given Show[ProjectRemoved] = Show.fromToString
+object Timestamp:
+  def apply(v: Instant): Timestamp = v.truncatedTo(ChronoUnit.MILLIS)
+  def now[F[_]: Clock: Functor]: F[Timestamp] =
+    Clock[F].realTimeInstant.map(apply)
 
-  given AvroEncoder[ProjectRemoved] =
-    val v2e = AvroEncoder[v2.ProjectRemoved]
-    AvroEncoder { (_, v) =>
-      val event = v2.ProjectRemoved(v.id.value)
-      v2e.encode(v2.ProjectRemoved.SCHEMA$)(event)
-    }
+  extension (self: Timestamp) def toInstant: Instant = self

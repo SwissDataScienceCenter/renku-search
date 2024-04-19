@@ -25,7 +25,13 @@ import io.renku.avro.codec.all.given
 import io.renku.queue.client.{DataContentType, QueueMessage}
 import org.apache.avro.Schema
 import io.renku.events.{v1, v2}
-import io.renku.search.events.{ProjectCreated, ProjectUpdated, SchemaVersion}
+import io.renku.search.events.syntax.*
+import io.renku.search.events.{
+  ProjectCreated,
+  ProjectRemoved,
+  ProjectUpdated,
+  SchemaVersion
+}
 
 trait QueueMessageDecoder[F[_], A]:
   def decodeMessage(message: QueueMessage): F[Seq[A]]
@@ -58,19 +64,6 @@ object QueueMessageDecoder:
 
   def apply[F[_], A](using d: QueueMessageDecoder[F, A]): QueueMessageDecoder[F, A] = d
 
-  given v1ProjectCreated[F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectCreated] =
-    from(v1.ProjectCreated.SCHEMA$)
-  given v2ProjectCreated[F[_]: MonadThrow]: QueueMessageDecoder[F, v2.ProjectCreated] =
-    from(v2.ProjectCreated.SCHEMA$)
-
-  given v1ProjectUpdated[F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectUpdated] =
-    from(v1.ProjectUpdated.SCHEMA$)
-  given v2ProjectUpdated[F[_]: MonadThrow]: QueueMessageDecoder[F, v2.ProjectUpdated] =
-    from(v2.ProjectUpdated.SCHEMA$)
-
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectRemoved] =
-    from(v1.ProjectRemoved.SCHEMA$)
-
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserAdded] =
     from(v1.UserAdded.SCHEMA$)
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserUpdated] =
@@ -90,10 +83,9 @@ object QueueMessageDecoder:
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationRemoved] =
     from(v1.ProjectAuthorizationRemoved.SCHEMA$)
 
-  given [F[_]: MonadThrow](using
-      v1d: QueueMessageDecoder[F, v1.ProjectCreated],
-      v2d: QueueMessageDecoder[F, v2.ProjectCreated]
-  ): QueueMessageDecoder[F, ProjectCreated] =
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectCreated] =
+    val v1d = from[F, v1.ProjectCreated](v1.ProjectCreated.SCHEMA$)
+    val v2d = from[F, v2.ProjectCreated](v2.ProjectCreated.SCHEMA$)
     QueueMessageDecoder.instance { qmsg =>
       MonadThrow[F]
         .fromEither(
@@ -109,10 +101,9 @@ object QueueMessageDecoder:
         }
     }
 
-  given [F[_]: MonadThrow](using
-      v1d: QueueMessageDecoder[F, v1.ProjectUpdated],
-      v2d: QueueMessageDecoder[F, v2.ProjectUpdated]
-  ): QueueMessageDecoder[F, ProjectUpdated] =
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectUpdated] =
+    val v1d = from[F, v1.ProjectUpdated](v1.ProjectUpdated.SCHEMA$)
+    val v2d = from[F, v2.ProjectUpdated](v2.ProjectUpdated.SCHEMA$)
     QueueMessageDecoder.instance { qmsg =>
       MonadThrow[F]
         .fromEither(
@@ -125,5 +116,23 @@ object QueueMessageDecoder:
             v1d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V1(_)))
           case SchemaVersion.V2 =>
             v2d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V2(_)))
+        }
+    }
+
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectRemoved] =
+    val v1d = from[F, v1.ProjectRemoved](v1.ProjectRemoved.SCHEMA$)
+    val v2d = from[F, v2.ProjectRemoved](v2.ProjectRemoved.SCHEMA$)
+    QueueMessageDecoder.instance { qmsg =>
+      MonadThrow[F]
+        .fromEither(
+          SchemaVersion
+            .fromString(qmsg.header.schemaVersion)
+            .leftMap(err => new Exception(err))
+        )
+        .flatMap {
+          case SchemaVersion.V1 =>
+            v1d.decodeMessage(qmsg).map(_.map(e => ProjectRemoved(e.id.toId)))
+          case SchemaVersion.V2 =>
+            v2d.decodeMessage(qmsg).map(_.map(e => ProjectRemoved(e.id.toId)))
         }
     }

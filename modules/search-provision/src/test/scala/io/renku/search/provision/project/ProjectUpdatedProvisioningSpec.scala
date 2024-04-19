@@ -57,7 +57,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
           _ <- queueClient.enqueue(
             queueConfig.projectUpdated,
             messageHeaderGen(tc.projectUpdated.schema).generateOne
-              .copy(schemaVersion = SchemaVersion(tc.projectUpdated.version.name)),
+              .copy(schemaVersion = SchemaVersion(tc.projectUpdated.version.head.name)),
             tc.projectUpdated
           )
 

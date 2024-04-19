@@ -58,7 +58,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
               tc.projectCreated.schema,
               DataContentType.Binary
             ).generateOne
-              .copy(schemaVersion = SchemaVersion(tc.projectCreated.version.name)),
+              .copy(schemaVersion = SchemaVersion(tc.projectCreated.version.head.name)),
             tc.projectCreated
           )
           _ <- collector.waitUntil(docs =>
@@ -80,7 +80,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
           messageHeaderGen(created.schema, DataContentType.Binary).generateOne
-            .copy(schemaVersion = SchemaVersion(created.version.name)),
+            .copy(schemaVersion = SchemaVersion(created.version.head.name)),
           created
         )
         collector <- BackgroundCollector(
@@ -106,7 +106,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
           messageHeaderGen(created.schema, DataContentType.Json).generateOne
-            .copy(schemaVersion = SchemaVersion(created.version.name)),
+            .copy(schemaVersion = SchemaVersion(created.version.head.name)),
           created
         )
         collector <- BackgroundCollector(

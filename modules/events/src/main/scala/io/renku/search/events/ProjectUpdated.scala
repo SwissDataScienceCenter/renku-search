@@ -22,11 +22,13 @@ import io.renku.events.{v1, v2}
 import io.renku.avro.codec.AvroEncoder
 import org.apache.avro.Schema
 import io.renku.search.model.Id
+import cats.data.NonEmptyList
 
 sealed trait ProjectUpdated extends RenkuEvent:
   def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A
   def withId(id: Id): ProjectUpdated
-  def version: SchemaVersion = fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2)
+  def version: NonEmptyList[SchemaVersion] =
+    NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v1.ProjectUpdated.SCHEMA$, _ => v2.ProjectUpdated.SCHEMA$)
 

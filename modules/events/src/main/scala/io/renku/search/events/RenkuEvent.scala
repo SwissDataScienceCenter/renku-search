@@ -19,7 +19,8 @@
 package io.renku.search.events
 
 import io.renku.search.model.Id
+import cats.data.NonEmptyList
 
 trait RenkuEvent:
   def id: Id
-  def version: SchemaVersion
+  def version: NonEmptyList[SchemaVersion]

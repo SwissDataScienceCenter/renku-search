@@ -27,6 +27,7 @@ sealed trait ProjectCreated:
   def id: Id
   def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A
   def withId(id: Id): ProjectCreated
+  def version: SchemaVersion = fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2)
   def schema: Schema =
     fold(_ => v1.ProjectCreated.SCHEMA$, _ => v2.ProjectCreated.SCHEMA$)
 

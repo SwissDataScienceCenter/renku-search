@@ -25,7 +25,7 @@ import io.renku.avro.codec.all.given
 import io.renku.queue.client.{DataContentType, QueueMessage}
 import org.apache.avro.Schema
 import io.renku.events.{v1, v2}
-import io.renku.search.events.ProjectCreated
+import io.renku.search.events.{ProjectCreated, SchemaVersion}
 
 trait QueueMessageDecoder[F[_], A]:
   def decodeMessage(message: QueueMessage): F[Seq[A]]
@@ -92,11 +92,17 @@ object QueueMessageDecoder:
       v2d: QueueMessageDecoder[F, v2.ProjectCreated]
   ): QueueMessageDecoder[F, ProjectCreated] =
     QueueMessageDecoder.instance { qmsg =>
-      qmsg.header.schemaVersion.toLowerCase match
-        case "v1" => v1d.decodeMessage(qmsg).map(_.map(ProjectCreated.V1(_)))
-        case "v2" => v2d.decodeMessage(qmsg).map(_.map(ProjectCreated.V2(_)))
-        case v =>
-          MonadThrow[F].raiseError(
-            new Exception(s"Cannot decode message with schema version: $v")
-          )
+      MonadThrow[F]
+        .fromEither(
+          SchemaVersion
+            .fromString(qmsg.header.schemaVersion)
+            .leftMap(err => new Exception(err))
+        )
+        .flatMap {
+          case SchemaVersion.V1 =>
+            v1d.decodeMessage(qmsg).map(_.map(ProjectCreated.V1(_)))
+          case SchemaVersion.V2 =>
+            v2d.decodeMessage(qmsg).map(_.map(ProjectCreated.V2(_)))
+
+        }
     }

@@ -35,6 +35,7 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
 import io.renku.search.provision.handler.DocumentMerger
 import io.renku.solr.client.DocVersion
+import io.renku.queue.client.SchemaVersion
 
 class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 
@@ -56,7 +57,8 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
             messageHeaderGen(
               tc.projectCreated.schema,
               DataContentType.Binary
-            ).generateOne,
+            ).generateOne
+              .copy(schemaVersion = SchemaVersion(tc.projectCreated.version.name)),
             tc.projectCreated
           )
           _ <- collector.waitUntil(docs =>
@@ -77,7 +79,8 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(created.schema, DataContentType.Binary).generateOne,
+          messageHeaderGen(created.schema, DataContentType.Binary).generateOne
+            .copy(schemaVersion = SchemaVersion(created.version.name)),
           created
         )
         collector <- BackgroundCollector(
@@ -102,7 +105,8 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(created.schema, DataContentType.Json).generateOne,
+          messageHeaderGen(created.schema, DataContentType.Json).generateOne
+            .copy(schemaVersion = SchemaVersion(created.version.name)),
           created
         )
         collector <- BackgroundCollector(

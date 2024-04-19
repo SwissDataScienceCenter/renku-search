@@ -62,7 +62,10 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
       (handlers, queueClient, solrClient)
     }
 
-  def loadPartialOrEntity(solrClient: SearchSolrClient[IO], id: Id): IO[Set[SolrDocument]] =
+  def loadPartialOrEntity(
+      solrClient: SearchSolrClient[IO],
+      id: Id
+  ): IO[Set[SolrDocument]] =
     (
       solrClient.findById[EntityDocument](
         CompoundId.projectEntity(id)

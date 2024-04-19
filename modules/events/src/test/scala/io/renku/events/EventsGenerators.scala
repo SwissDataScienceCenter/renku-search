@@ -23,7 +23,7 @@ import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import io.renku.search.events.ProjectCreated
+import io.renku.search.events.{ProjectCreated, ProjectUpdated}
 import io.renku.search.model.ModelGenerators
 
 object EventsGenerators:
@@ -93,7 +93,7 @@ object EventsGenerators:
       v2ProjectCreatedGen(prefix).map(ProjectCreated.V2.apply)
     )
 
-  def projectUpdatedGen(prefix: String): Gen[v1.ProjectUpdated] =
+  def v1ProjectUpdatedGen(prefix: String): Gen[v1.ProjectUpdated] =
     for
       id <- Gen.uuid.map(_.toString)
       name <- stringGen(max = 5).map(v => s"$prefix-$v")
@@ -110,6 +110,34 @@ object EventsGenerators:
       visibility,
       maybeDesc,
       keywords.map(_.value)
+    )
+
+  def v2ProjectUpdatedGen(prefix: String): Gen[v2.ProjectUpdated] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      name <- stringGen(max = 5).map(v => s"$prefix-$v")
+      ns <- ModelGenerators.namespaceGen
+      slug = s"${ns.value}/$name"
+      repositoriesCount <- Gen.choose(1, 3)
+      repositories <- Gen.listOfN(repositoriesCount, stringGen(10))
+      visibility <- v2ProjectVisibilityGen
+      maybeDesc <- Gen.option(stringGen(20))
+      keywords <- ModelGenerators.keywordsGen
+    yield v2.ProjectUpdated(
+      id,
+      name,
+      ns.value,
+      slug,
+      repositories,
+      visibility,
+      maybeDesc,
+      keywords.map(_.value)
+    )
+
+  def projectUpdatedGen(prefix: String): Gen[ProjectUpdated] =
+    Gen.oneOf(
+      v1ProjectUpdatedGen(prefix).map(ProjectUpdated.V1.apply),
+      v2ProjectUpdatedGen(prefix).map(ProjectUpdated.V2.apply)
     )
 
   def projectAuthorizationAddedGen(

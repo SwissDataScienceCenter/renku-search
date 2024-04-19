@@ -47,6 +47,7 @@ object PartialEntityDocument:
       id: Id,
       @key("_version_") version: DocVersion = DocVersion.Off,
       name: Option[Name] = None,
+      namespace: Option[Namespace] = None,
       slug: Option[Slug] = None,
       repositories: Seq[Repository] = Seq.empty,
       visibility: Option[Visibility] = None,
@@ -69,6 +70,7 @@ object PartialEntityDocument:
             .addMembers(MemberRole.Member, members.toList)
             .copy(
               name = name.getOrElse(p.name),
+              namespace = namespace.orElse(p.namespace),
               slug = slug.getOrElse(p.slug),
               repositories = if (repositories.isEmpty) p.repositories else repositories,
               visibility = visibility.getOrElse(p.visibility),

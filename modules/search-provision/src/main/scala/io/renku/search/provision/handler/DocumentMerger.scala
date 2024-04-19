@@ -22,7 +22,7 @@ import cats.syntax.all.*
 
 import io.github.arainko.ducktape.*
 import io.renku.events.{v1, v2}
-import io.renku.search.events.ProjectCreated
+import io.renku.search.events.{ProjectCreated, ProjectUpdated}
 import io.renku.search.model.Id
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
@@ -83,7 +83,7 @@ object DocumentMerger:
         case _ => None
     )
 
-  given v1Merge: DocumentMerger[v1.ProjectCreated] =
+  given v1ProjectCreatedMerge: DocumentMerger[v1.ProjectCreated] =
     def convert(pc: v1.ProjectCreated): ProjectDocument =
       pc.toModel(DocVersion.NotExists)
 
@@ -102,7 +102,7 @@ object DocumentMerger:
           None
     )
 
-  given v2Merge: DocumentMerger[v2.ProjectCreated] =
+  given v2ProjectCreatedMerge: DocumentMerger[v2.ProjectCreated] =
     def convert(pc: v2.ProjectCreated): ProjectDocument =
       pc.toModel(DocVersion.NotExists)
 
@@ -134,7 +134,7 @@ object DocumentMerger:
       case (ProjectCreated.V2(event), existing) => v2m.merge(event, existing)
     }
 
-  given DocumentMerger[v1.ProjectUpdated] =
+  given v1ProjectUpdatedMerge: DocumentMerger[v1.ProjectUpdated] =
     instance[v1.ProjectUpdated](_.toModel(DocVersion.NotExists).some)((pu, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
@@ -143,6 +143,28 @@ object DocumentMerger:
           pu.toModel(orig).some
         case _ => None
     )
+
+  given v2ProjectUpdatedMerge: DocumentMerger[v2.ProjectUpdated] =
+    instance[v2.ProjectUpdated](_.toModel(DocVersion.NotExists).some)((pu, existing) =>
+      existing match
+        case p: PartialEntityDocument.Project =>
+          pu.toModel(p).some
+        case orig: ProjectDocument =>
+          pu.toModel(orig).some
+        case _ => None
+    )
+
+  given (using
+      v1m: DocumentMerger[v1.ProjectUpdated],
+      v2m: DocumentMerger[v2.ProjectUpdated]
+  ): DocumentMerger[ProjectUpdated] =
+    DocumentMerger.instance[ProjectUpdated] {
+      case ProjectUpdated.V1(event) => v1m.create(event)
+      case ProjectUpdated.V2(event) => v2m.create(event)
+    } {
+      case (ProjectUpdated.V1(event), existing) => v1m.merge(event, existing)
+      case (ProjectUpdated.V2(event), existing) => v2m.merge(event, existing)
+    }
 
   given DocumentMerger[v1.UserAdded] =
     def convert(ua: v1.UserAdded): UserDocument =

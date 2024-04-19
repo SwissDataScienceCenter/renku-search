@@ -23,29 +23,29 @@ import io.renku.avro.codec.AvroEncoder
 import org.apache.avro.Schema
 import io.renku.search.model.Id
 
-sealed trait ProjectCreated extends RenkuEvent:
-  def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A
-  def withId(id: Id): ProjectCreated
+sealed trait ProjectUpdated extends RenkuEvent:
+  def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A
+  def withId(id: Id): ProjectUpdated
   def version: SchemaVersion = fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2)
   def schema: Schema =
-    fold(_ => v1.ProjectCreated.SCHEMA$, _ => v2.ProjectCreated.SCHEMA$)
+    fold(_ => v1.ProjectUpdated.SCHEMA$, _ => v2.ProjectUpdated.SCHEMA$)
 
-object ProjectCreated:
+object ProjectUpdated:
 
-  final case class V1(event: v1.ProjectCreated) extends ProjectCreated:
+  final case class V1(event: v1.ProjectUpdated) extends ProjectUpdated:
     val id: Id = Id(event.id)
-    def withId(id: Id): ProjectCreated = V1(event.copy(id = id.value))
-    def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A = fv1(event)
+    def withId(id: Id): ProjectUpdated = V1(event.copy(id = id.value))
+    def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A = fv1(event)
 
-  final case class V2(event: v2.ProjectCreated) extends ProjectCreated:
+  final case class V2(event: v2.ProjectUpdated) extends ProjectUpdated:
     val id: Id = Id(event.id)
-    def withId(id: Id): ProjectCreated = V2(event.copy(id = id.value))
-    def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A = fv2(event)
+    def withId(id: Id): ProjectUpdated = V2(event.copy(id = id.value))
+    def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A = fv2(event)
 
   given (using
-      v1e: AvroEncoder[v1.ProjectCreated],
-      v2e: AvroEncoder[v2.ProjectCreated]
-  ): AvroEncoder[ProjectCreated] =
+      v1e: AvroEncoder[v1.ProjectUpdated],
+      v2e: AvroEncoder[v2.ProjectUpdated]
+  ): AvroEncoder[ProjectUpdated] =
     AvroEncoder { (schema, v) =>
       v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
     }

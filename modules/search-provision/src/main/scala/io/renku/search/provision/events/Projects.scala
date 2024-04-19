@@ -69,12 +69,39 @@ trait Projects:
       score = None
     )
 
+  def fromProjectUpdated(pu: v2.ProjectUpdated, orig: ProjectDocument): ProjectDocument =
+    orig.copy(
+      id = pu.id.toId,
+      version = orig.version,
+      name = pu.name.toName,
+      namespace = pu.namespace.toNamespace.some,
+      slug = pu.slug.toSlug,
+      repositories = pu.repositories.map(_.toRepository),
+      visibility = pu.visibility.toModel,
+      description = pu.description.map(_.toDescription),
+      keywords = pu.keywords.map(_.toKeyword).toList,
+      score = None
+    )
+
   def fromProjectUpdated(
       pu: v1.ProjectUpdated,
       orig: PartialEntityDocument.Project
   ): PartialEntityDocument.Project =
     orig.copy(
       name = pu.name.toName.some,
+      slug = pu.slug.toSlug.some,
+      repositories = pu.repositories.map(_.toRepository),
+      visibility = pu.visibility.toModel.some,
+      description = pu.description.map(_.toDescription)
+    )
+
+  def fromProjectUpdated(
+      pu: v2.ProjectUpdated,
+      orig: PartialEntityDocument.Project
+  ): PartialEntityDocument.Project =
+    orig.copy(
+      name = pu.name.toName.some,
+      namespace = pu.namespace.toNamespace.some,
       slug = pu.slug.toSlug.some,
       repositories = pu.repositories.map(_.toRepository),
       visibility = pu.visibility.toModel.some,
@@ -89,6 +116,22 @@ trait Projects:
       id = pu.id.toId,
       version = version,
       name = pu.name.toName.some,
+      slug = pu.slug.toSlug.some,
+      repositories = pu.repositories.map(_.toRepository),
+      visibility = pu.visibility.toModel.some,
+      description = pu.description.map(_.toDescription),
+      keywords = pu.keywords.map(_.toKeyword).toList
+    )
+
+  def fromProjectUpdated(
+      pu: v2.ProjectUpdated,
+      version: DocVersion
+  ): PartialEntityDocument.Project =
+    PartialEntityDocument.Project(
+      id = pu.id.toId,
+      version = version,
+      name = pu.name.toName.some,
+      namespace = pu.namespace.toNamespace.some,
       slug = pu.slug.toSlug.some,
       repositories = pu.repositories.map(_.toRepository),
       visibility = pu.visibility.toModel.some,

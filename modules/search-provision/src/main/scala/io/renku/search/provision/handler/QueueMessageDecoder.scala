@@ -25,7 +25,7 @@ import io.renku.avro.codec.all.given
 import io.renku.queue.client.{DataContentType, QueueMessage}
 import org.apache.avro.Schema
 import io.renku.events.{v1, v2}
-import io.renku.search.events.{ProjectCreated, SchemaVersion}
+import io.renku.search.events.{ProjectCreated, ProjectUpdated, SchemaVersion}
 
 trait QueueMessageDecoder[F[_], A]:
   def decodeMessage(message: QueueMessage): F[Seq[A]]
@@ -63,8 +63,11 @@ object QueueMessageDecoder:
   given v2ProjectCreated[F[_]: MonadThrow]: QueueMessageDecoder[F, v2.ProjectCreated] =
     from(v2.ProjectCreated.SCHEMA$)
 
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectUpdated] =
+  given v1ProjectUpdated[F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectUpdated] =
     from(v1.ProjectUpdated.SCHEMA$)
+  given v2ProjectUpdated[F[_]: MonadThrow]: QueueMessageDecoder[F, v2.ProjectUpdated] =
+    from(v2.ProjectUpdated.SCHEMA$)
+
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectRemoved] =
     from(v1.ProjectRemoved.SCHEMA$)
 
@@ -103,6 +106,24 @@ object QueueMessageDecoder:
             v1d.decodeMessage(qmsg).map(_.map(ProjectCreated.V1(_)))
           case SchemaVersion.V2 =>
             v2d.decodeMessage(qmsg).map(_.map(ProjectCreated.V2(_)))
+        }
+    }
 
+  given [F[_]: MonadThrow](using
+      v1d: QueueMessageDecoder[F, v1.ProjectUpdated],
+      v2d: QueueMessageDecoder[F, v2.ProjectUpdated]
+  ): QueueMessageDecoder[F, ProjectUpdated] =
+    QueueMessageDecoder.instance { qmsg =>
+      MonadThrow[F]
+        .fromEither(
+          SchemaVersion
+            .fromString(qmsg.header.schemaVersion)
+            .leftMap(err => new Exception(err))
+        )
+        .flatMap {
+          case SchemaVersion.V1 =>
+            v1d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V1(_)))
+          case SchemaVersion.V2 =>
+            v2d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V2(_)))
         }
     }

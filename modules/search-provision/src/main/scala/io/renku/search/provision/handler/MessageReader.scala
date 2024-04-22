@@ -24,7 +24,6 @@ import cats.syntax.all.*
 import fs2.{Chunk, Stream}
 import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
 import io.renku.redis.client.{ClientId, MessageId, QueueName}
-import io.renku.search.provision.QueueMessageDecoder
 import scribe.Scribe
 
 import scala.concurrent.duration.FiniteDuration

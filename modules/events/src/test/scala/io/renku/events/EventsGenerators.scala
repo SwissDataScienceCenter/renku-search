@@ -23,7 +23,7 @@ import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import io.renku.search.events.{ProjectCreated, ProjectUpdated}
+import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectUpdated}
 import io.renku.search.model.ModelGenerators
 
 object EventsGenerators:
@@ -173,13 +173,16 @@ object EventsGenerators:
       email
     )
 
-  def groupAddedGen(prefix: String): Gen[v2.GroupAdded] =
+  def v2GroupAddedGen(prefix: String): Gen[v2.GroupAdded] =
     for
       id <- Gen.uuid.map(_.toString)
       name <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
       maybeDesc <- Gen.option(stringGen(20))
       namespace <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
     yield v2.GroupAdded(id, name, maybeDesc, namespace)
+
+  def groupAddedGen(prefix: String): Gen[GroupAdded] =
+    v2GroupAddedGen(prefix).map(GroupAdded.V2.apply)
 
   def stringGen(max: Int): Gen[String] =
     Gen

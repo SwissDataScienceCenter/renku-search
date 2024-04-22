@@ -31,7 +31,7 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.ModelGenerators.memberRoleGen
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.provision.QueueMessageDecoder
+import io.renku.search.provision.handler.QueueMessageDecoder
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import io.renku.solr.client.DocVersion

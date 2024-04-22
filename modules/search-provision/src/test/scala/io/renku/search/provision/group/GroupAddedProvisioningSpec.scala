@@ -22,13 +22,15 @@ import cats.data.NonEmptyList
 import cats.effect.{IO, Resource}
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.groupAddedGen
-import io.renku.events.v2.GroupAdded
+import io.renku.events.v2
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.SchemaVersion
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.GroupAdded
 import io.renku.search.model.{Id, groups}
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
+import io.renku.search.provision.handler.QueueMessageDecoder.given
 import io.renku.search.provision.handler.ShowInstances
 import io.renku.search.solr.documents.{CompoundId, EntityDocument, Group as GroupDocument}
 import io.renku.solr.client.DocVersion
@@ -43,13 +45,13 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
         _ <- solrClient.deleteIds(NonEmptyList.of(id))
         add1 <- queueClient.enqueue(
           queueConfig.groupAdded,
-          messageHeaderGen(GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
-          GroupAdded(id.value, "SDSC", None, "sdsc-namespace")
+          messageHeaderGen(v2.GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
+          v2.GroupAdded(id.value, "SDSC", None, "sdsc-namespace")
         )
         add2 <- queueClient.enqueue(
           queueConfig.groupAdded,
-          messageHeaderGen(GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
-          GroupAdded(id.value, "Renku", None, "sdsc-namespace")
+          messageHeaderGen(v2.GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
+          v2.GroupAdded(id.value, "Renku", None, "sdsc-namespace")
         )
         results <- handlers
           .makeUpsert[GroupAdded](queueConfig.groupAdded)
@@ -71,7 +73,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
       for
         _ <- queueClient.enqueue(
           queueConfig.groupAdded,
-          messageHeaderGen(GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
+          messageHeaderGen(v2.GroupAdded.SCHEMA$, SchemaVersion.V2).generateOne,
           groupAdded
         )
 
@@ -85,12 +87,12 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
         _ = assert(result.isSuccess)
 
         doc <- solrClient.findById[EntityDocument](
-          CompoundId.groupEntity(Id(groupAdded.id))
+          CompoundId.groupEntity(groupAdded.id)
         )
         _ = assert(doc.isDefined)
         _ = assertEquals(
           doc.get.setVersion(DocVersion.Off),
-          groupAdded.toModel(DocVersion.Off)
+          groupAdded.fold(_.toModel(DocVersion.Off))
         )
       yield ()
     }

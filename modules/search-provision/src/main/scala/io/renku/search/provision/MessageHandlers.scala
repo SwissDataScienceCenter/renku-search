@@ -23,9 +23,9 @@ import cats.data.OptionT
 import cats.effect.*
 import fs2.Stream
 import io.renku.events.v1.*
-import io.renku.events.v2.{GroupAdded, GroupRemoved}
+import io.renku.events.v2.GroupRemoved
 import io.renku.redis.client.QueueName
-import io.renku.search.events.{ProjectCreated, ProjectRemoved, ProjectUpdated}
+import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectRemoved, ProjectUpdated}
 import io.renku.search.provision.handler.*
 import io.renku.solr.client.UpsertResponse
 

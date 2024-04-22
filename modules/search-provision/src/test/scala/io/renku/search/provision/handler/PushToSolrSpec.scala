@@ -32,7 +32,6 @@ import io.renku.queue.client.Generators as QueueGenerators
 import io.renku.redis.client.MessageId
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.ModelGenerators.idGen
-import io.renku.search.provision.QueueMessageDecoder
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.documents.User as UserDocument
 import io.renku.solr.client.DocVersion

@@ -19,7 +19,7 @@
 package io.renku.search.provision.handler
 
 import io.renku.events.{v1, v2}
-import io.renku.search.events.{ProjectCreated, ProjectRemoved, ProjectUpdated}
+import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectRemoved, ProjectUpdated}
 import io.renku.search.model.Id
 
 trait IdExtractor[A]:
@@ -40,7 +40,7 @@ object IdExtractor:
   given IdExtractor[v1.UserAdded] = createStr(_.id)
   given IdExtractor[v1.UserUpdated] = createStr(_.id)
   given IdExtractor[v1.UserRemoved] = createStr(_.id)
-  given IdExtractor[v2.GroupAdded] = createStr(_.id)
+  given IdExtractor[GroupAdded] = createStr(_.fold(_.id))
   given IdExtractor[v2.GroupRemoved] = createStr(_.id)
   given IdExtractor[v1.ProjectAuthorizationAdded] = createStr(_.projectId)
   given IdExtractor[v1.ProjectAuthorizationUpdated] = createStr(_.projectId)

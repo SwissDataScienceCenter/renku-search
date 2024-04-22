@@ -19,10 +19,9 @@
 package io.renku.search.provision.handler
 
 import cats.syntax.all.*
-
 import io.github.arainko.ducktape.*
 import io.renku.events.{v1, v2}
-import io.renku.search.events.{ProjectCreated, ProjectUpdated}
+import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectUpdated}
 import io.renku.search.model.Id
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
@@ -184,7 +183,7 @@ object DocumentMerger:
         case _ => None
     )
 
-  given DocumentMerger[v2.GroupAdded] =
+  private val v2gaMerger: DocumentMerger[v2.GroupAdded] =
     def convert(ga: v2.GroupAdded): GroupDocument =
       ga.toModel(DocVersion.NotExists)
 
@@ -193,3 +192,10 @@ object DocumentMerger:
         case u: EntityDocument        => Some(convert(ga).setVersion(u.version))
         case _: PartialEntityDocument => None
     )
+
+  given DocumentMerger[GroupAdded] =
+    instance[GroupAdded] { case GroupAdded.V2(e) =>
+      v2gaMerger.create(e)
+    } { case (GroupAdded.V2(e), existing) =>
+      v2gaMerger.merge(e, existing)
+    }

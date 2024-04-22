@@ -45,15 +45,13 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
         provisioningFiber <- handlers.groupRemoved.compile.drain.start
 
         added = groupAddedGen(prefix = "group-removal").generateOne
-        _ <- solrClient.upsert(Seq(added.toModel(DocVersion.Off).widen))
+        _ <- solrClient.upsert(Seq(added.fold(_.toModel(DocVersion.Off).widen)))
 
         docsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
             .evalMap(_ =>
-              solrClient.findById[EntityDocument](
-                CompoundId.groupEntity(Id(added.id))
-              )
+              solrClient.findById[EntityDocument](CompoundId.groupEntity(added.id))
             )
             .evalMap(e => solrDoc.update(_ => e))
             .compile
@@ -62,7 +60,7 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
 
         _ <- solrDoc.waitUntil(_.nonEmpty)
 
-        removed = GroupRemoved(added.id)
+        removed = GroupRemoved(added.id.value)
         _ <- queueClient.enqueue(
           queueConfig.groupRemoved,
           messageHeaderGen(GroupRemoved.SCHEMA$, SchemaVersion.V2).generateOne,

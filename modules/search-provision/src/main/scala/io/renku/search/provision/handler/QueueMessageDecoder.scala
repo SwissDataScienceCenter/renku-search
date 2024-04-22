@@ -16,30 +16,37 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision
+package io.renku.search.provision.handler
 
 import cats.MonadThrow
 import cats.syntax.all.*
-import io.renku.avro.codec.{AvroDecoder, AvroReader}
 import io.renku.avro.codec.all.given
-import io.renku.queue.client.{DataContentType, QueueMessage}
-import org.apache.avro.Schema
+import io.renku.avro.codec.{AvroDecoder, AvroReader}
 import io.renku.events.{v1, v2}
+import io.renku.queue.client.{DataContentType, QueueMessage}
+import io.renku.search.events.*
 import io.renku.search.events.syntax.*
-import io.renku.search.events.{
-  ProjectCreated,
-  ProjectRemoved,
-  ProjectUpdated,
-  SchemaVersion
-}
+import org.apache.avro.Schema
 
 trait QueueMessageDecoder[F[_], A]:
   def decodeMessage(message: QueueMessage): F[Seq[A]]
 
 object QueueMessageDecoder:
+
   def instance[F[_], A](f: QueueMessage => F[Seq[A]]): QueueMessageDecoder[F, A] =
     new QueueMessageDecoder[F, A] {
       def decodeMessage(message: QueueMessage): F[Seq[A]] = f(message)
+    }
+
+  private def forSchemaVersion[F[_]: MonadThrow, A](
+      f: (QueueMessage, SchemaVersion) => F[Seq[A]]
+  ): QueueMessageDecoder[F, A] =
+    instance { qmsg =>
+      MonadThrow[F]
+        .fromEither(
+          SchemaVersion.fromString(qmsg.header.schemaVersion).leftMap(new Exception(_))
+        )
+        .flatMap(f(qmsg, _))
     }
 
   def from[F[_]: MonadThrow, A](schema: Schema)(using
@@ -71,8 +78,16 @@ object QueueMessageDecoder:
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.UserRemoved] =
     from(v1.UserRemoved.SCHEMA$)
 
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v2.GroupAdded] =
-    from(v2.GroupAdded.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, GroupAdded] =
+    val v2d = from[F, v2.GroupAdded](v2.GroupAdded.SCHEMA$)
+    QueueMessageDecoder.forSchemaVersion {
+      case (_, SchemaVersion.V1) =>
+        new Exception(s"GroupAdded does not exists for ${SchemaVersion.V1}")
+          .raiseError[F, Seq[GroupAdded]]
+      case (qmsg, SchemaVersion.V2) =>
+        v2d.decodeMessage(qmsg).map(_.map(GroupAdded.V2.apply))
+    }
+
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v2.GroupRemoved] =
     from(v2.GroupRemoved.SCHEMA$)
 
@@ -86,53 +101,29 @@ object QueueMessageDecoder:
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectCreated] =
     val v1d = from[F, v1.ProjectCreated](v1.ProjectCreated.SCHEMA$)
     val v2d = from[F, v2.ProjectCreated](v2.ProjectCreated.SCHEMA$)
-    QueueMessageDecoder.instance { qmsg =>
-      MonadThrow[F]
-        .fromEither(
-          SchemaVersion
-            .fromString(qmsg.header.schemaVersion)
-            .leftMap(err => new Exception(err))
-        )
-        .flatMap {
-          case SchemaVersion.V1 =>
-            v1d.decodeMessage(qmsg).map(_.map(ProjectCreated.V1(_)))
-          case SchemaVersion.V2 =>
-            v2d.decodeMessage(qmsg).map(_.map(ProjectCreated.V2(_)))
-        }
+    QueueMessageDecoder.forSchemaVersion {
+      case (qmsg, SchemaVersion.V1) =>
+        v1d.decodeMessage(qmsg).map(_.map(ProjectCreated.V1.apply))
+      case (qmsg, SchemaVersion.V2) =>
+        v2d.decodeMessage(qmsg).map(_.map(ProjectCreated.V2.apply))
     }
 
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectUpdated] =
     val v1d = from[F, v1.ProjectUpdated](v1.ProjectUpdated.SCHEMA$)
     val v2d = from[F, v2.ProjectUpdated](v2.ProjectUpdated.SCHEMA$)
-    QueueMessageDecoder.instance { qmsg =>
-      MonadThrow[F]
-        .fromEither(
-          SchemaVersion
-            .fromString(qmsg.header.schemaVersion)
-            .leftMap(err => new Exception(err))
-        )
-        .flatMap {
-          case SchemaVersion.V1 =>
-            v1d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V1(_)))
-          case SchemaVersion.V2 =>
-            v2d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V2(_)))
-        }
+    QueueMessageDecoder.forSchemaVersion {
+      case (qmsg, SchemaVersion.V1) =>
+        v1d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V1.apply))
+      case (qmsg, SchemaVersion.V2) =>
+        v2d.decodeMessage(qmsg).map(_.map(ProjectUpdated.V2.apply))
     }
 
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, ProjectRemoved] =
     val v1d = from[F, v1.ProjectRemoved](v1.ProjectRemoved.SCHEMA$)
     val v2d = from[F, v2.ProjectRemoved](v2.ProjectRemoved.SCHEMA$)
-    QueueMessageDecoder.instance { qmsg =>
-      MonadThrow[F]
-        .fromEither(
-          SchemaVersion
-            .fromString(qmsg.header.schemaVersion)
-            .leftMap(err => new Exception(err))
-        )
-        .flatMap {
-          case SchemaVersion.V1 =>
-            v1d.decodeMessage(qmsg).map(_.map(e => ProjectRemoved(e.id.toId)))
-          case SchemaVersion.V2 =>
-            v2d.decodeMessage(qmsg).map(_.map(e => ProjectRemoved(e.id.toId)))
-        }
+    QueueMessageDecoder.forSchemaVersion {
+      case (qmsg, SchemaVersion.V1) =>
+        v1d.decodeMessage(qmsg).map(_.map(e => ProjectRemoved(e.id.toId)))
+      case (qmsg, SchemaVersion.V2) =>
+        v2d.decodeMessage(qmsg).map(_.map(e => ProjectRemoved(e.id.toId)))
     }

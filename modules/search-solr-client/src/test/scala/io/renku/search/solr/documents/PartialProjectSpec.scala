@@ -183,10 +183,9 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
     }
 
   test("removeMember should remove the given userId from the correct bucket in the doc"):
-    Prop.forAll(partialProjectGen, idGen, memberRoleGen) {
-      case (project, userId, role) =>
-        val updated = project.addMember(userId, role)
-        assertEquals(updated.removeMember(userId), project)
+    Prop.forAll(partialProjectGen, idGen, memberRoleGen) { case (project, userId, role) =>
+      val updated = project.addMember(userId, role)
+      assertEquals(updated.removeMember(userId), project)
     }
 
   test("removeMember should do nothing if there's no member/owner with the given userId"):

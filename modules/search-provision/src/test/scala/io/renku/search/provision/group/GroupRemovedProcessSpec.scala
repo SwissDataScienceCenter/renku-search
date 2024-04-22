@@ -23,7 +23,7 @@ import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v2.GroupRemoved
+import io.renku.events.v2
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.queue.client.SchemaVersion
 import io.renku.search.GeneratorSyntax.*
@@ -60,11 +60,10 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
 
         _ <- solrDoc.waitUntil(_.nonEmpty)
 
-        removed = GroupRemoved(added.id.value)
         _ <- queueClient.enqueue(
           queueConfig.groupRemoved,
-          messageHeaderGen(GroupRemoved.SCHEMA$, SchemaVersion.V2).generateOne,
-          removed
+          messageHeaderGen(v2.GroupRemoved.SCHEMA$, SchemaVersion.V2).generateOne,
+          v2.GroupRemoved(added.id.value)
         )
 
         _ <- solrDoc.waitUntil(_.isEmpty)

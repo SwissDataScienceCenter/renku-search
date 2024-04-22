@@ -22,10 +22,9 @@ import cats.Show
 import cats.data.OptionT
 import cats.effect.*
 import fs2.Stream
-import io.renku.events.v1.*
-import io.renku.events.v2.GroupRemoved
+import io.renku.events.v1
 import io.renku.redis.client.QueueName
-import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectRemoved, ProjectUpdated}
+import io.renku.search.events.*
 import io.renku.search.provision.handler.*
 import io.renku.solr.client.UpsertResponse
 
@@ -67,36 +66,36 @@ final class MessageHandlers[F[_]: Async](
   val projectAuthAdded: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationAdded,
-      makeUpsert[ProjectAuthorizationAdded](cfg.projectAuthorizationAdded).drain
+      makeUpsert[v1.ProjectAuthorizationAdded](cfg.projectAuthorizationAdded).drain
     )
 
   val projectAuthUpdated: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationUpdated,
-      makeUpsert[ProjectAuthorizationUpdated](cfg.projectAuthorizationUpdated).drain
+      makeUpsert[v1.ProjectAuthorizationUpdated](cfg.projectAuthorizationUpdated).drain
     )
 
   val projectAuthRemoved: Stream[F, Unit] = add(
     cfg.projectAuthorizationRemoved,
-    makeUpsert[ProjectAuthorizationRemoved](cfg.projectAuthorizationRemoved).drain
+    makeUpsert[v1.ProjectAuthorizationRemoved](cfg.projectAuthorizationRemoved).drain
   )
 
   val userAdded: Stream[F, Unit] =
-    add(cfg.userAdded, makeUpsert[UserAdded](cfg.userAdded).drain)
+    add(cfg.userAdded, makeUpsert[v1.UserAdded](cfg.userAdded).drain)
 
   val userUpdated: Stream[F, Unit] =
-    add(cfg.userUpdated, makeUpsert[UserUpdated](cfg.userUpdated).drain)
+    add(cfg.userUpdated, makeUpsert[v1.UserUpdated](cfg.userUpdated).drain)
 
   val userRemoved: Stream[F, Unit] =
     val ps = steps(cfg.userRemoved)
     add(
       cfg.userRemoved,
       ps.reader
-        .read[UserRemoved]
+        .read[v1.UserRemoved]
         .through(ps.deleteFromSolr.tryDeleteAll)
         .through(ps.deleteFromSolr.whenSuccess { msg =>
           Stream
-            .emit(msg.map(IdExtractor[UserRemoved].getId))
+            .emit(msg.map(IdExtractor[v1.UserRemoved].getId))
             .through(ps.userUtils.removeFromProjects)
             .compile
             .drain

@@ -28,6 +28,8 @@ import io.renku.search.events.*
 import io.renku.search.events.syntax.*
 import org.apache.avro.Schema
 
+import scala.reflect.ClassTag
+
 trait QueueMessageDecoder[F[_], A]:
   def decodeMessage(message: QueueMessage): F[Seq[A]]
 
@@ -39,14 +41,18 @@ object QueueMessageDecoder:
     }
 
   private def forSchemaVersion[F[_]: MonadThrow, A](
-      f: (QueueMessage, SchemaVersion) => F[Seq[A]]
-  ): QueueMessageDecoder[F, A] =
+      f: PartialFunction[(QueueMessage, SchemaVersion), F[Seq[A]]]
+  )(using ct: ClassTag[A]): QueueMessageDecoder[F, A] =
+    val err: ((QueueMessage, SchemaVersion)) => F[Seq[A]] =
+      (_, sv) =>
+        new Exception(s"${ct.runtimeClass} does not exists for $sv")
+          .raiseError[F, Seq[A]]
     instance { qmsg =>
       MonadThrow[F]
         .fromEither(
           SchemaVersion.fromString(qmsg.header.schemaVersion).leftMap(new Exception(_))
         )
-        .flatMap(f(qmsg, _))
+        .flatMap(sv => f.applyOrElse((qmsg, sv), err))
     }
 
   def from[F[_]: MonadThrow, A](schema: Schema)(using
@@ -80,16 +86,15 @@ object QueueMessageDecoder:
 
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, GroupAdded] =
     val v2d = from[F, v2.GroupAdded](v2.GroupAdded.SCHEMA$)
-    QueueMessageDecoder.forSchemaVersion {
-      case (_, SchemaVersion.V1) =>
-        new Exception(s"GroupAdded does not exists for ${SchemaVersion.V1}")
-          .raiseError[F, Seq[GroupAdded]]
-      case (qmsg, SchemaVersion.V2) =>
-        v2d.decodeMessage(qmsg).map(_.map(GroupAdded.V2.apply))
+    QueueMessageDecoder.forSchemaVersion { case (qmsg, SchemaVersion.V2) =>
+      v2d.decodeMessage(qmsg).map(_.map(GroupAdded.V2.apply))
     }
 
-  given [F[_]: MonadThrow]: QueueMessageDecoder[F, v2.GroupRemoved] =
-    from(v2.GroupRemoved.SCHEMA$)
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, GroupRemoved] =
+    val v2d = from[F, v2.GroupRemoved](v2.GroupRemoved.SCHEMA$)
+    QueueMessageDecoder.forSchemaVersion { case (qmsg, SchemaVersion.V2) =>
+      v2d.decodeMessage(qmsg).map(_.map(GroupRemoved.V2.apply))
+    }
 
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, v1.ProjectAuthorizationAdded] =
     from(v1.ProjectAuthorizationAdded.SCHEMA$)

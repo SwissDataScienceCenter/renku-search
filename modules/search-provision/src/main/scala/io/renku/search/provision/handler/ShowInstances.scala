@@ -18,8 +18,8 @@
 
 package io.renku.search.provision.handler
 
-import io.renku.events.{v1, v2}
-import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectUpdated}
+import io.renku.events.v1
+import io.renku.search.events.{GroupAdded, GroupRemoved, ProjectCreated, ProjectUpdated}
 import cats.Show
 import cats.syntax.all.*
 
@@ -47,8 +47,8 @@ trait ShowInstances:
   given Show[GroupAdded] =
     Show.show[GroupAdded](g => show"name '${g.fold(_.name)}'")
 
-  given Show[v2.GroupRemoved] =
-    Show.show[v2.GroupRemoved](e => show"id '${e.id}'")
+  given Show[GroupRemoved] =
+    Show.show[GroupRemoved](e => show"id '${e.id}'")
 
   given Show[v1.ProjectAuthorizationAdded] =
     Show.show[v1.ProjectAuthorizationAdded](v =>

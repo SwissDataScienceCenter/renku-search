@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.project
+package io.renku.search.provision
 
 import cats.effect.std.CountDownLatch
 import cats.effect.{IO, Resource}
@@ -24,16 +24,19 @@ import cats.syntax.all.*
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators
 import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole, Visibility}
-import io.renku.search.events.ProjectCreated
 import io.renku.queue.client.DataContentType
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.ProjectCreated
 import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.handler.{DocumentMerger, ShowInstances}
-import io.renku.search.provision.project.ConcurrentUpdateSpec.testCases
-import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
+import io.renku.search.provision.ConcurrentUpdateSpec.testCases
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
+import io.renku.search.solr.documents.{
+  EntityMembers,
+  Project as ProjectDocument,
+  SolrDocument
+}
 
 import scala.concurrent.duration.*
 
@@ -49,9 +52,8 @@ class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
             loadPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
-          msgFiber <- List(handlers.projectCreated, handlers.projectAuthAdded).traverse(
-            _.compile.drain.start
-          )
+          msgFiber <- List(handlers.projectCreated, handlers.projectAuthAdded)
+            .traverse(_.compile.drain.start)
 
           latch <- CountDownLatch[IO](1)
 
@@ -107,12 +109,16 @@ object ConcurrentUpdateSpec:
       case DbState.Empty =>
         val p = DocumentMerger[ProjectCreated].create(projectCreated).get
         p.asInstanceOf[ProjectDocument]
-          .copy(
-            owners = Set(user).filter(_ => role == MemberRole.Owner).toList,
-            members = Set(user).filter(_ => role == MemberRole.Member).toList
+          .apply(
+            EntityMembers(
+              owners = Set(user).filter(_ => role == MemberRole.Owner),
+              editors = Set(user).filter(_ => role == MemberRole.Editor),
+              viewers = Set(user).filter(_ => role == MemberRole.Viewer),
+              members = Set(user).filter(_ => role == MemberRole.Member)
+            )
           )
 
-    val projectId = dbState match
+    val projectId: Id = dbState match
       case DbState.Empty => expectedProject.id
 
     val authAdded: ProjectAuthorizationAdded =

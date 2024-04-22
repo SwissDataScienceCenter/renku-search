@@ -35,6 +35,10 @@ object EntityDocumentSchema:
     val name: FieldName = FieldName("name")
     val nestPath: FieldName = FieldName("_nest_path_")
     val owners: FieldName = FieldName("owners")
+    val editors: FieldName = FieldName("editors")
+    val viewers: FieldName = FieldName("viewers")
+    // catch-all members field
+    val membersAll: FieldName = FieldName("members_all")
     val repositories: FieldName = FieldName("repositories")
     val slug: FieldName = FieldName("slug")
     val visibility: FieldName = FieldName("visibility")
@@ -102,4 +106,14 @@ object EntityDocumentSchema:
   val namespaceField: Seq[SchemaCommand] = Seq(
     SchemaCommand.Add(Field(Fields.namespace, FieldTypes.string)),
     SchemaCommand.Add(CopyFieldRule(Fields.namespace, Fields.contentAll))
+  )
+
+  val editorAndViewerRoles: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(Field(Fields.editors, FieldTypes.id).makeMultiValued),
+    SchemaCommand.Add(Field(Fields.viewers, FieldTypes.id).makeMultiValued),
+    SchemaCommand.Add(Field(Fields.membersAll, FieldTypes.id).makeMultiValued),
+    SchemaCommand.Add(CopyFieldRule(Fields.owners, Fields.membersAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.editors, Fields.membersAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.viewers, Fields.membersAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.members, Fields.membersAll))
   )

@@ -94,10 +94,7 @@ object FetchFromSolr:
         val query = QueryString(
           List(
             SolrToken.entityTypeIs(EntityType.Project),
-            List(
-              SolrToken.ownerIs(userId),
-              SolrToken.memberIs(userId)
-            ).foldOr
+            SolrToken.anyMemberIs(userId)
           ).foldAnd.value
         )
         solrClient.queryAll[ProjectId](QueryData(query))

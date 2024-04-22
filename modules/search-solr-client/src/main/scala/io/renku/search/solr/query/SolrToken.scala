@@ -84,17 +84,22 @@ object SolrToken:
     fieldIs(SolrField.visibility, fromVisibility(Visibility.Public))
 
   def ownerIs(id: Id): SolrToken = fieldIs(SolrField.owners, fromId(id))
+  def editorIs(id: Id): SolrToken = fieldIs(SolrField.editors, fromId(id))
+  def viewerIs(id: Id): SolrToken = fieldIs(SolrField.viewers, fromId(id))
   def memberIs(id: Id): SolrToken = fieldIs(SolrField.members, fromId(id))
+  def anyMemberIs(id: Id): SolrToken = fieldIs(SolrField.membersAll, fromId(id))
 
   def roleIs(id: Id, role: MemberRole): SolrToken = role match
     case MemberRole.Owner  => ownerIs(id)
+    case MemberRole.Editor => editorIs(id)
+    case MemberRole.Viewer => viewerIs(id)
     case MemberRole.Member => memberIs(id)
 
   def roleIn(id: Id, roles: NonEmptyList[MemberRole]): SolrToken =
     roles.toList.distinct.map(roleIs(id, _)).foldOr
 
   def forUser(id: Id): SolrToken =
-    Seq(publicOnly, ownerIs(id), memberIs(id)).foldOr
+    Seq(publicOnly, anyMemberIs(id)).foldOr
 
   def fieldIs(field: FieldName, value: SolrToken): SolrToken =
     s"${field.name}:$value"

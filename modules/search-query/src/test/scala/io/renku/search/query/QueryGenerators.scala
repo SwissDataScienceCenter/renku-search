@@ -137,8 +137,8 @@ object QueryGenerators:
   val roleTerm: Gen[FieldTerm] =
     Gen
       .frequency(
-        10 -> ModelGenerators.projectMemberRoleGen.map(NonEmptyList.one),
-        1 -> CommonGenerators.nelOfN(2, ModelGenerators.projectMemberRoleGen)
+        10 -> ModelGenerators.memberRoleGen.map(NonEmptyList.one),
+        1 -> CommonGenerators.nelOfN(2, ModelGenerators.memberRoleGen)
       )
       .map(vs => FieldTerm.RoleIs(vs))
 

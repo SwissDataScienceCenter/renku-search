@@ -24,9 +24,12 @@ import io.bullet.borer.{Decoder, Encoder}
 
 enum MemberRole:
   lazy val name: String = productPrefix.toLowerCase
-  case Owner, Member
+  case Owner, Editor, Viewer, Member
 
 object MemberRole:
+
+  val valuesV1: Set[MemberRole] = Set(Owner, Member)
+
   given Order[MemberRole] = Order.by(_.ordinal)
 
   given Encoder[MemberRole] = Encoder.forString.contramap(_.name)

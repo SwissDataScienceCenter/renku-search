@@ -104,7 +104,7 @@ object AuthorizationAddedProvisioningSpec:
         p.addMember(user, role)
 
       case DbState.PartialProject(p) =>
-        p.add(user, role)
+        p.addMember(user, role)
 
     def checkExpected(d: SolrDocument): Boolean =
       d.setVersion(DocVersion.Off) == expectedProject.setVersion(DocVersion.Off)
@@ -113,7 +113,7 @@ object AuthorizationAddedProvisioningSpec:
 
   val testCases =
     for {
-      role <- MemberRole.values.toList
+      role <- MemberRole.valuesV1.toList
       proj = SolrDocumentGenerators.projectDocumentGen.generateOne
       pproj = SolrDocumentGenerators.partialProjectGen.generateOne
       dbState <- List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))

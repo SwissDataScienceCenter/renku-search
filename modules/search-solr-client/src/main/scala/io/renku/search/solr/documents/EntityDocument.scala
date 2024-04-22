@@ -51,39 +51,35 @@ final case class Project(
     description: Option[projects.Description] = None,
     createdBy: Id,
     creationDate: projects.CreationDate,
-    owners: List[Id] = List.empty,
-    members: List[Id] = List.empty,
+    owners: Set[Id] = Set.empty,
+    editors: Set[Id] = Set.empty,
+    viewers: Set[Id] = Set.empty,
+    members: Set[Id] = Set.empty,
     keywords: List[Keyword] = List.empty,
     namespace: Option[Namespace] = None,
     score: Option[Double] = None
 ) extends EntityDocument:
   def setVersion(v: DocVersion): Project = copy(version = v)
-  def addMember(userId: Id, role: MemberRole): Project =
-    role match {
-      case Owner =>
-        copy(
-          owners = (userId :: owners).distinct,
-          members = members.filterNot(_ == userId).distinct,
-          score = None
-        )
-      case Member =>
-        copy(
-          owners = owners.filterNot(_ == userId).distinct,
-          members = (userId :: members).distinct,
-          score = None
-        )
-    }
 
-  def addMembers(role: MemberRole, ids: List[Id]): Project = role match
-    case Owner  => copy(owners = (owners ++ ids).distinct)
-    case Member => copy(members = (members ++ ids).distinct)
+  private def toEntityMembers: EntityMembers =
+    EntityMembers(owners, editors, viewers, members)
+
+  def apply(em: EntityMembers): Project =
+    copy(
+      owners = em.owners,
+      editors = em.editors,
+      viewers = em.viewers,
+      members = em.members
+    )
+
+  def addMember(userId: Id, role: MemberRole): Project =
+    apply(toEntityMembers.addMember(userId, role))
+
+  def addMembers(role: MemberRole, ids: List[Id]): Project =
+    apply(toEntityMembers.addMembers(role, ids))
 
   def removeMember(userId: Id): Project =
-    copy(
-      owners = owners.filterNot(_ == userId),
-      members = members.filterNot(_ == userId),
-      score = None
-    )
+    apply(toEntityMembers.removeMember(userId))
 
 object Project:
   given Encoder[Project] =

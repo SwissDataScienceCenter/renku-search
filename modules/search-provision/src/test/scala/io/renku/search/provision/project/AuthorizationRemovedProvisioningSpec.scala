@@ -95,7 +95,7 @@ object AuthorizationRemovedProvisioningSpec:
         Set(p.removeMember(user))
 
       case DbState.PartialProject(p) =>
-        Set(p.remove(user))
+        Set(p.removeMember(user))
 
     def checkExpected(d: Set[SolrDocument]): Boolean =
       expectedProject
@@ -106,9 +106,12 @@ object AuthorizationRemovedProvisioningSpec:
     override def toString = s"AuthRemove(${user.value.take(6)}… db=$dbState)"
 
   private val testCases =
-    val proj = SolrDocumentGenerators.projectDocumentGen.generateOne
-    val pproj = SolrDocumentGenerators.partialProjectGen.generateOne
     val userId = ModelGenerators.idGen.generateOne
+    val userRole = ModelGenerators.memberRoleGen.generateOne
+    val proj =
+      SolrDocumentGenerators.projectDocumentGen.generateOne.addMember(userId, userRole)
+    val pproj =
+      SolrDocumentGenerators.partialProjectGen.generateOne.addMember(userId, userRole)
     val dbState =
       List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
     dbState.map(TestCase(_, userId))

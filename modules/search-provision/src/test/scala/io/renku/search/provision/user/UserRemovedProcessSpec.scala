@@ -19,17 +19,16 @@
 package io.renku.search.provision.user
 
 import scala.concurrent.duration.*
-
 import cats.effect.{IO, Resource}
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.events.v1.*
 import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.queue.client.SchemaVersion
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.ModelGenerators.projectMemberRoleGen
+import io.renku.search.model.ModelGenerators.memberRoleGen
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.QueueMessageDecoder
@@ -56,7 +55,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
         user = userDocumentGen.generateOne
         affectedProjects = projectCreatedGen("affected")
           .map(
-            _.toModel(DocVersion.Off).addMember(user.id, projectMemberRoleGen.generateOne)
+            _.toModel(DocVersion.Off).addMember(user.id, memberRoleGen.generateOne)
           )
           .generateList(min = 20, max = 25)
         notAffectedProject = projectCreatedGen(
@@ -89,7 +88,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
 
         _ <- queueClient.enqueue(
           queueConfig.userRemoved,
-          messageHeaderGen(UserRemoved.SCHEMA$).generateOne,
+          messageHeaderGen(UserRemoved.SCHEMA$, SchemaVersion.V1).generateOne,
           UserRemoved(user.id.value)
         )
 

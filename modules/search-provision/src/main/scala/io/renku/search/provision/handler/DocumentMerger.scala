@@ -66,7 +66,7 @@ object DocumentMerger:
     )((pau, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
-          p.remove(pau.userId.toId).applyTo(pau.toModel(p.version)).some
+          p.removeMember(pau.userId.toId).applyTo(pau.toModel(p.version)).some
         case p: ProjectDocument =>
           pau.toModel(p.version).applyTo(p.removeMember(pau.userId.toId)).some
         case _ => None
@@ -76,7 +76,7 @@ object DocumentMerger:
     instance[v1.ProjectAuthorizationRemoved](_ => None)((par, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
-          p.remove(par.userId.to[Id]).some
+          p.removeMember(par.userId.to[Id]).some
         case p: ProjectDocument =>
           p.removeMember(par.userId.to[Id]).some
 

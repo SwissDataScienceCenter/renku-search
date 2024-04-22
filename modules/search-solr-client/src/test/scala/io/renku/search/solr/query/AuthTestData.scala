@@ -89,7 +89,10 @@ final case class AuthTestData(
   private def setupRelations =
     // user1 is member of user2 private project
     modifyProject(user2.id -> Visibility.Private)(
-      _.addMember(user1.id, MemberRole.Member)
+      _.addMember(
+        user1.id,
+        Gen.oneOf(MemberRole.values.toSet - MemberRole.Owner).generateOne
+      )
     )
       // user2 is owner of user3 private project
       .modifyProject(user3.id -> Visibility.Private)(
@@ -105,7 +108,7 @@ object AuthTestData:
         "description",
         Gen.const(vis)
       )
-      .map(p => (user.id, vis) -> p.copy(owners = List(user.id)))
+      .map(p => (user.id, vis) -> p.copy(owners = Set(user.id)))
 
   val generator: Gen[AuthTestData] = for {
     u1 <- SolrDocumentGenerators.userDocumentGen

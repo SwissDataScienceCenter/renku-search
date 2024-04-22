@@ -90,6 +90,8 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
           Field.computed(_.createdBy, s => user.id),
           Field.computed(_.creationDate, s => projects.CreationDate(s.created_at)),
           Field.default(_.owners),
+          Field.default(_.editors),
+          Field.default(_.viewers),
           Field.default(_.members),
           Field.default(_.score)
         ) -> all).some.pure[F]

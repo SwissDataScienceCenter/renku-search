@@ -54,14 +54,28 @@ object PartialEntityDocument:
       description: Option[Description] = None,
       keywords: List[Keyword] = Nil,
       owners: Set[Id] = Set.empty,
+      editors: Set[Id] = Set.empty,
+      viewers: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
     def setVersion(v: DocVersion): Project = copy(version = v)
-    def remove(id: Id): Project = copy(owners = owners - id, members = members - id)
-    def add(id: Id, role: MemberRole): Project =
-      role match
-        case MemberRole.Owner  => copy(owners = owners + id, members = members - id)
-        case MemberRole.Member => copy(members = members + id, owners = owners - id)
+
+    def removeMember(id: Id): Project =
+      apply(toEntityMembers.removeMember(id))
+
+    def addMember(id: Id, role: MemberRole): Project =
+      apply(toEntityMembers.addMember(id, role))
+
+    private def toEntityMembers: EntityMembers =
+      EntityMembers(owners, editors, viewers, members)
+
+    def apply(em: EntityMembers): Project =
+      copy(
+        owners = em.owners,
+        editors = em.editors,
+        viewers = em.viewers,
+        members = em.members
+      )
 
     def applyTo(e: EntityDocument): EntityDocument =
       e match
@@ -82,11 +96,15 @@ object PartialEntityDocument:
 
     private def combine(p: Project): Project =
       if (p.id == id)
-        p.copy(
-          version = version,
-          members = p.members ++ (members -- p.owners),
-          owners = p.owners ++ (owners -- p.members)
-        )
+        p.copy(version = version)
+          .apply(
+            EntityMembers(
+              owners = p.owners ++ (owners -- p.editors -- p.viewers -- p.members),
+              editors = p.editors ++ (editors -- p.owners -- p.viewers -- p.members),
+              viewers = p.viewers ++ (viewers -- p.owners -- p.editors -- p.members),
+              members = p.members ++ (members -- p.owners -- p.editors -- p.viewers)
+            )
+          )
       else p
 
     def applyTo(e: PartialEntityDocument): PartialEntityDocument =

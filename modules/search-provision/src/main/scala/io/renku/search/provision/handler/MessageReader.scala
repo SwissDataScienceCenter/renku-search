@@ -49,6 +49,7 @@ object MessageReader:
     val id: MessageId = raw.id
     val requestId: RequestId = RequestId(raw.header.requestId)
     def map[B](f: A => B): Message[B] = Message(raw, decoded.map(f))
+    def flatten[B](using A => IterableOnce[B]): Message[B] = Message(raw, decoded.flatten)
     def stream[F[_]]: Stream[F, A] = Stream.emits(decoded).covary[F]
 
   /** MessageReader that dequeues messages attempt to decode it. If decoding fails, the

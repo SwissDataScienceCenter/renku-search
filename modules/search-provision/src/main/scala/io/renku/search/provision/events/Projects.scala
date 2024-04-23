@@ -27,6 +27,20 @@ import io.renku.search.solr.documents.PartialEntityDocument
 
 trait Projects:
 
+  def partialProjectFromDocument(pd: ProjectDocument): PartialEntityDocument.Project =
+    PartialEntityDocument
+      .Project(
+        id = pd.id,
+        version = pd.version,
+        name = pd.name.some,
+        slug = pd.slug.some,
+        repositories = pd.repositories,
+        visibility = pd.visibility.some,
+        description = pd.description,
+        keywords = pd.keywords
+      )
+      .apply(pd.toEntityMembers)
+
   def fromProjectCreated(pc: v1.ProjectCreated, version: DocVersion): ProjectDocument =
     ProjectDocument(
       id = pc.id.toId,

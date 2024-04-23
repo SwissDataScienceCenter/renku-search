@@ -22,7 +22,7 @@ import cats.Monoid
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 import io.renku.search.model.projects.Visibility
-import io.renku.search.model.{EntityType, Id, Keyword, MemberRole}
+import io.renku.search.model.{EntityType, Id, Keyword, MemberRole, Namespace}
 import io.renku.search.query.Comparison
 import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
@@ -69,6 +69,9 @@ object SolrToken:
 
   def orFieldIs(field: FieldName, values: NonEmptyList[SolrToken]): SolrToken =
     values.map(fieldIs(field, _)).toList.foldOr
+
+  def namespaceIs(ns: Namespace): SolrToken =
+    fieldIs(SolrField.namespace, fromString(ns.value))
 
   def createdDateIs(date: Instant): SolrToken =
     fieldIs(SolrField.creationDate, fromInstant(date))

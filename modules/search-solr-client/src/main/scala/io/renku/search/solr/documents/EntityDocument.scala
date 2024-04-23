@@ -61,7 +61,7 @@ final case class Project(
 ) extends EntityDocument:
   def setVersion(v: DocVersion): Project = copy(version = v)
 
-  private def toEntityMembers: EntityMembers =
+  def toEntityMembers: EntityMembers =
     EntityMembers(owners, editors, viewers, members)
 
   def apply(em: EntityMembers): Project =

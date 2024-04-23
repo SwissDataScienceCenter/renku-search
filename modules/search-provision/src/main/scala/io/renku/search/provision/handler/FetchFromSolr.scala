@@ -21,32 +21,30 @@ package io.renku.search.provision.handler
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Pipe, Stream}
-
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs
-import io.renku.search.model.EntityType
-import io.renku.search.model.Id
+import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.FetchFromSolr.*
 import io.renku.search.provision.handler.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.CompoundId
-import io.renku.search.solr.documents.EntityDocument
-import io.renku.search.solr.documents.PartialEntityDocument
+import io.renku.search.solr.documents.{CompoundId, EntityDocument, PartialEntityDocument}
 import io.renku.search.solr.query.SolrToken
-import io.renku.solr.client.QueryData
-import io.renku.solr.client.QueryString
+import io.renku.solr.client.{QueryData, QueryString}
 
 trait FetchFromSolr[F[_]]:
   def fetchEntity[A](using IdExtractor[A]): Pipe[F, Message[A], MessageDocument[A]]
   def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId]
+  def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.ProjectId]
   def fetchEntityOrPartial[A](using
       IdExtractor[A]
   ): Pipe[F, Message[A], MessageEntityOrPartial[A]]
+  def fetchEntityOrPartialById[A](v: A)(using IdExtractor[A]): F[Option[EntityOrPartial]]
 
 object FetchFromSolr:
   final case class ProjectId(id: Id)
   object ProjectId:
     given Decoder[ProjectId] = MapBasedCodecs.deriveDecoder
+    given IdExtractor[ProjectId] = _.id
 
   final case class MessageDocument[A: IdExtractor](
       message: MessageReader.Message[A],
@@ -84,6 +82,12 @@ object FetchFromSolr:
         }
       )
 
+    lazy val asMessage: MessageReader.Message[EntityOrPartial] =
+      Message(
+        message.raw,
+        documents.values.toSeq
+      )
+
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F]
   ): FetchFromSolr[F] =
@@ -95,6 +99,15 @@ object FetchFromSolr:
           List(
             SolrToken.entityTypeIs(EntityType.Project),
             SolrToken.anyMemberIs(userId)
+          ).foldAnd.value
+        )
+        solrClient.queryAll[ProjectId](QueryData(query))
+
+      def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.ProjectId] =
+        val query = QueryString(
+          List(
+            SolrToken.entityTypeIs(EntityType.Project),
+            SolrToken.namespaceIs(ns)
           ).foldAnd.value
         )
         solrClient.queryAll[ProjectId](QueryData(query))
@@ -130,23 +143,26 @@ object FetchFromSolr:
         _.evalMap { msg =>
           val loaded =
             msg.decoded
-              .map(IdExtractor[A].getId)
-              .traverse { id =>
-                val eid = CompoundId.entity(id)
-                val pid = CompoundId.partial(id)
-                solrClient.findById[EntityDocument](eid).flatMap {
-                  case Some(e) => (e: EntityOrPartial).some.pure[F]
-                  case None =>
-                    logger.debug(
-                      s"Did not find entity document for id $id, look for a partial"
-                    ) >>
-                      solrClient
-                        .findById[PartialEntityDocument](pid)
-                        .map(_.map(e => e: EntityOrPartial))
-                }
-              }
+              .traverse(fetchEntityOrPartialById)
               .map(_.flatten.map(e => e.id -> e).toMap)
 
           loaded.map(docs => MessageEntityOrPartial(msg, docs))
+        }
+
+      def fetchEntityOrPartialById[A](v: A)(using
+          IdExtractor[A]
+      ): F[Option[EntityOrPartial]] =
+        val id = IdExtractor[A].getId(v)
+        val eid = CompoundId.entity(id)
+        val pid = CompoundId.partial(id)
+        solrClient.findById[EntityDocument](eid).flatMap {
+          case Some(e) => (e: EntityOrPartial).some.pure[F]
+          case None =>
+            logger.debug(
+              s"Did not find entity document for id $id, look for a partial"
+            ) >>
+              solrClient
+                .findById[PartialEntityDocument](pid)
+                .map(_.map(e => e: EntityOrPartial))
         }
     }

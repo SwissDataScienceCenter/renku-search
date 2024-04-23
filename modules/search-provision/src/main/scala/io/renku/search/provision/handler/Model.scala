@@ -26,6 +26,7 @@ import io.renku.search.solr.documents.PartialEntityDocument
 type EntityOrPartial = EntityDocument | PartialEntityDocument
 
 object EntityOrPartial:
+
   given (using
       ee: Encoder[EntityDocument],
       ep: Encoder[PartialEntityDocument]
@@ -36,3 +37,5 @@ object EntityOrPartial:
           case e: EntityDocument        => ee.write(w, e)
           case p: PartialEntityDocument => ep.write(w, p)
     }
+
+  given IdExtractor[EntityOrPartial] = _.id

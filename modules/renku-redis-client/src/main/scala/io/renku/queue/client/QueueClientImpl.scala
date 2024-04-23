@@ -113,7 +113,7 @@ private class QueueClientImpl[F[_]: Async](redisQueueClient: RedisQueueClient[F]
         m.toMessage[T](schema)
       }
       .evalMap {
-        //TODO mark as processed for error case
+        // TODO mark as processed for error case
         case Right(m)  => Some(m).pure[F]
         case Left(err) => Scribe[F].warn(s"Error decoding redis message: $err").as(None)
       }

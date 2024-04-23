@@ -19,6 +19,7 @@
 package io.renku.search.provision.group
 
 import cats.effect.{IO, Resource}
+import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.encoders.all.given
@@ -30,46 +31,80 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
-import io.renku.search.solr.documents.{CompoundId, EntityDocument}
+import io.renku.search.solr.client.SolrDocumentGenerators.*
+import io.renku.search.solr.documents.{
+  CompoundId,
+  EntityDocument,
+  Group as GroupDocument,
+  PartialEntityDocument,
+  SolrDocument
+}
 import io.renku.solr.client.DocVersion
 
 import scala.concurrent.duration.*
 
 class GroupRemovedProcessSpec extends ProvisioningSuite:
 
-  test("can fetch events, decode them, and remove the Group from Solr"):
+  test(
+    "can fetch events, decode them, remove the Group from Solr, " +
+      "and turn all the group's project to partial in Solr"
+  ):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
+        groupSolrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
+        projSolrDoc <- SignallingRef.of[IO, Option[SolrDocument]](None)
 
         provisioningFiber <- handlers.groupRemoved.compile.drain.start
 
-        added = groupAddedGen(prefix = "group-removal").generateOne
-        _ <- solrClient.upsert(Seq(added.fold(_.toModel(DocVersion.Off).widen)))
+        group = groupAddedGen(prefix = "group-removal").generateOne
+          .fold(_.toModel(DocVersion.Off))
+        project = projectDocumentGen.generateOne.copy(namespace = group.namespace.some)
+        _ <- solrClient.upsert(Seq(group, project))
 
-        docsCollectorFiber <-
+        groupDocsCollectorFiber <-
           Stream
             .awakeEvery[IO](500 millis)
             .evalMap(_ =>
-              solrClient.findById[EntityDocument](CompoundId.groupEntity(added.id))
+              solrClient.findById[EntityDocument](CompoundId.groupEntity(group.id))
             )
-            .evalMap(e => solrDoc.update(_ => e))
+            .evalMap(e => groupSolrDoc.update(_ => e))
+            .compile
+            .drain
+            .start
+        projectDocsCollectorFiber <-
+          Stream
+            .awakeEvery[IO](500 millis)
+            .evalMap(_ =>
+              solrClient
+                .findById[EntityDocument](CompoundId.projectEntity(project.id))
+                .flatMap {
+                  case None =>
+                    solrClient.findById[PartialEntityDocument](
+                      CompoundId.projectPartial(project.id)
+                    )
+                  case e => e.pure[IO]
+                }
+            )
+            .evalMap(e => projSolrDoc.update(_ => e))
             .compile
             .drain
             .start
 
-        _ <- solrDoc.waitUntil(_.nonEmpty)
+        _ <- groupSolrDoc.waitUntil(_.nonEmpty)
+        _ <- projSolrDoc.waitUntil(_.exists(_.isInstanceOf[EntityDocument]))
 
         _ <- queueClient.enqueue(
           queueConfig.groupRemoved,
           messageHeaderGen(v2.GroupRemoved.SCHEMA$, SchemaVersion.V2).generateOne,
-          v2.GroupRemoved(added.id.value)
+          v2.GroupRemoved(group.id.value)
         )
 
-        _ <- solrDoc.waitUntil(_.isEmpty)
+        _ <- groupSolrDoc.waitUntil(_.isEmpty)
+        _ <- projSolrDoc.waitUntil(_.exists(_.isInstanceOf[PartialEntityDocument]))
 
         _ <- provisioningFiber.cancel
-        _ <- docsCollectorFiber.cancel
+        _ <- groupDocsCollectorFiber.cancel
+        _ <- projectDocsCollectorFiber.cancel
       yield ()
     }
 

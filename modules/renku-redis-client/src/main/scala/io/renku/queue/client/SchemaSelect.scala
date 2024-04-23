@@ -32,7 +32,7 @@ object SchemaSelect:
   def fromVersion(f: SchemaVersion => Schema): SchemaSelect =
     instance(h => f(h.schemaVersion))
 
-  //hm, not sure about this…
+  // hm, not sure about this…
   val projectRemoved: SchemaSelect =
     fromVersion {
       case SchemaVersion.V1 => v1.ProjectRemoved.SCHEMA$

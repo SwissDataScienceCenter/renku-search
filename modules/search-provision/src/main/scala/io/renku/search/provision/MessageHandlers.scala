@@ -25,7 +25,11 @@ import fs2.Stream
 import io.renku.events.v1
 import io.renku.redis.client.QueueName
 import io.renku.search.events.*
+import io.renku.search.model.Namespace
+import io.renku.search.provision.events.Conversion.partialProjectFromDocument
 import io.renku.search.provision.handler.*
+import io.renku.search.provision.handler.EntityOrPartial.given
+import io.renku.search.solr.documents.{Group, PartialEntityDocument, Project}
 import io.renku.solr.client.UpsertResponse
 
 /** The entry point for defining all message handlers.
@@ -106,10 +110,48 @@ final class MessageHandlers[F[_]: Async](
     add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)
 
   val groupRemoved: Stream[F, Unit] =
+    val ps = steps(cfg.groupRemoved)
+    val entityToNamespace: MessageReader.Message[EntityOrPartial] => Seq[Namespace] =
+      _.map {
+        case g: Group => Some(g.namespace)
+        case _        => Option.empty[Namespace]
+      }.flatten.decoded
+    val turnToPartial: EntityOrPartial => Option[EntityOrPartial] = {
+      case p: PartialEntityDocument.Project => Some(p)
+      case p: Project                       => Some(partialProjectFromDocument(p))
+      case _                                => None
+    }
     add(
       cfg.groupRemoved,
-      makeRemovedSimple[GroupRemoved](cfg.groupRemoved).drain
+      ps.reader
+        .read[GroupRemoved]
+        .through(ps.fetchFromSolr.fetchEntityOrPartial)
+        .map(_.asMessage)
+        .through(ps.deleteFromSolr.tryDeleteAll)
+        .through(ps.deleteFromSolr.whenSuccess { msg =>
+          Stream
+            .emits(entityToNamespace(msg))
+            .flatMap(ps.fetchFromSolr.fetchProjectByNamespace)
+            .evalMap(ps.fetchFromSolr.fetchEntityOrPartialById)
+            .unNone
+            .map(turnToPartial)
+            .unNone
+            .map(p => MessageReader.Message(msg.raw, Seq(p)))
+            .flatMap(pushWithRetry(ps, _, maxConflictRetries))
+            .compile
+            .drain
+        })
     )
+
+  private def pushWithRetry(
+      ps: PipelineSteps[F],
+      msg: MessageReader.Message[EntityOrPartial],
+      retries: Int
+  ): Stream[F, UpsertResponse] =
+    lazy val retry = OptionT.when(retries > 0)(pushWithRetry(ps, msg, retries - 1))
+    Stream
+      .emit[F, MessageReader.Message[EntityOrPartial]](msg)
+      .through(ps.pushToSolr.push(onConflict = retry))
 
   private[provision] def makeUpsert[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],

@@ -16,27 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.search.events
+package io.renku.queue.client
 
+import io.renku.events.{v1, v2}
+import io.renku.search.events.*
 import org.apache.avro.Schema
-import io.renku.avro.codec.AvroEncoder
-import scodec.bits.ByteVector
-import io.renku.avro.codec.AvroWriter
 
-final case class EventMessage[P <: RenkuEventPayload](
-    /* id: MessageId? */
-    header: MessageHeader,
-    payloadSchema: Schema,
-    payload: Seq[P]
-):
+trait SchemaSelect:
+  def select(header: MessageHeader): Schema
 
-  private val payloadWriter = AvroWriter(payloadSchema)
+object SchemaSelect:
+  def instance(f: MessageHeader => Schema): SchemaSelect =
+    (h: MessageHeader) => f(h)
 
-  def toAvro(v: SchemaVersion)(using AvroEncoder[P]): EventMessage.AvroPayload =
-    val h = header.toAvro(v, payload.getClass.getName)
-    val b = payloadWriter.write(payload)
-    EventMessage.AvroPayload(h, b)
+  def fromVersion(f: SchemaVersion => Schema): SchemaSelect =
+    instance(h => f(h.schemaVersion))
 
-object EventMessage:
-
-  final case class AvroPayload(header: ByteVector, payload: ByteVector)
+  //hm, not sure about this…
+  val projectRemoved: SchemaSelect =
+    fromVersion {
+      case SchemaVersion.V1 => v1.ProjectRemoved.SCHEMA$
+      case SchemaVersion.V2 => v2.ProjectRemoved.SCHEMA$
+    }

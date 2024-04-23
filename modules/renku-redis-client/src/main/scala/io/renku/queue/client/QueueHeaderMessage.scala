@@ -38,8 +38,8 @@ final case class QueueHeaderMessage(
 ):
   def toMessage[A <: RenkuEventPayload](schema: Schema)(using
       AvroDecoder[A]
-  ): Either[Throwable, Seq[EventMessage[A]]] =
-    decodePayload(schema).map(_.map(pl => EventMessage(header, schema, pl)))
+  ): Either[Throwable, EventMessage[A]] =
+    decodePayload(schema).map(pl => EventMessage(header, schema, pl))
 
   def decodePayload[A: AvroDecoder](schema: Schema): Either[Throwable, Seq[A]] =
     decodePayload(AvroReader(schema))

@@ -37,6 +37,8 @@ object IdExtractor:
   given IdExtractor[ProjectCreated] = createStr(_.fold(_.id, _.id))
   given IdExtractor[ProjectUpdated] = createStr(_.fold(_.id, _.id))
   given IdExtractor[ProjectRemoved] = create(_.id)
+  given IdExtractor[ProjectMemberAdded] = create(_.id)
+
   given IdExtractor[v1.UserAdded] = createStr(_.id)
   given IdExtractor[v1.UserUpdated] = createStr(_.id)
   given IdExtractor[v1.UserRemoved] = createStr(_.id)

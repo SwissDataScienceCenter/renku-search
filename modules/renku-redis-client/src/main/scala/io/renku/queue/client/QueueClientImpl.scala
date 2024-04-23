@@ -101,6 +101,24 @@ private class QueueClientImpl[F[_]: Async](redisQueueClient: RedisQueueClient[F]
       )
       .collect { case Some(qm) => qm }
 
+  def acquireMessageStream[T <: RenkuEventPayload](
+      queueName: QueueName,
+      chunkSize: Int,
+      maybeOffset: Option[MessageId],
+      schemaSelect: SchemaSelect
+  )(using AvroDecoder[T]): Stream[F, EventMessage[T]] =
+    acquireHeaderEventsStream(queueName, chunkSize, maybeOffset)
+      .map { m =>
+        val schema = schemaSelect.select(m.header)
+        m.toMessage[T](schema)
+      }
+      .evalMap {
+        //TODO mark as processed for error case
+        case Right(m)  => Some(m).pure[F]
+        case Left(err) => Scribe[F].warn(s"Error decoding redis message: $err").as(None)
+      }
+      .unNone
+
   override def markProcessed(
       clientId: ClientId,
       queueName: QueueName,

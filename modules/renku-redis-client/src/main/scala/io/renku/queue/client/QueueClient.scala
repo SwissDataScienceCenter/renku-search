@@ -23,6 +23,7 @@ import fs2.Stream
 import io.renku.avro.codec.AvroEncoder
 import io.renku.search.events.{EventMessage, RenkuEventPayload, SchemaVersion}
 import io.renku.redis.client.*
+import io.renku.avro.codec.AvroDecoder
 
 trait QueueClient[F[_]]:
 
@@ -49,6 +50,13 @@ trait QueueClient[F[_]]:
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, QueueHeaderMessage]
+
+  def acquireMessageStream[T <: RenkuEventPayload](
+      queueName: QueueName,
+      chunkSize: Int,
+      maybeOffset: Option[MessageId],
+      schemaSelect: SchemaSelect
+  )(using AvroDecoder[T]): Stream[F, EventMessage[T]]
 
   def markProcessed(
       clientId: ClientId,

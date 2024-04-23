@@ -27,7 +27,7 @@ object AvroSchemaDownload extends AutoPlugin {
   override def projectSettings = AvroCodeGen.avroHuggerSettings ++ Seq(
     schemaEnableDownload := true,
     schemaRepository := "https://github.com/SwissDataScienceCenter/renku-schema",
-    schemaRef := Some("d6ab61f375db16f399bcf7241544f9b01de2cb03"),
+    schemaRef := Some("main"),
     schemaTargetDirectory := (Compile / target).value / "renku-avro-schemas",
     schemaClearDownload := {
       val target = schemaTargetDirectory.value

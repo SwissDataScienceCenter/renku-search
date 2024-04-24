@@ -26,12 +26,18 @@ import io.renku.search.model.Id
 import cats.data.NonEmptyList
 
 sealed trait ProjectMemberUpdated extends RenkuEventPayload:
-  def fold[A](fv1: v1.ProjectAuthorizationUpdated => A, fv2: v2.ProjectMemberUpdated => A): A
+  def fold[A](
+      fv1: v1.ProjectAuthorizationUpdated => A,
+      fv2: v2.ProjectMemberUpdated => A
+  ): A
   def withId(id: Id): ProjectMemberUpdated
   def version: NonEmptyList[SchemaVersion] =
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
-    fold(_ => v1.ProjectAuthorizationUpdated.SCHEMA$, _ => v2.ProjectMemberUpdated.SCHEMA$)
+    fold(
+      _ => v1.ProjectAuthorizationUpdated.SCHEMA$,
+      _ => v2.ProjectMemberUpdated.SCHEMA$
+    )
 
 object ProjectMemberUpdated:
 

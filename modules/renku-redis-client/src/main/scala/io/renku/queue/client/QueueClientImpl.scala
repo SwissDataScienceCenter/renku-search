@@ -61,7 +61,7 @@ private class QueueClientImpl[F[_]: Async](
     val data = msg.toAvro(schemaVersion)
     redisQueueClient.enqueue(queueName, data.header, data.payload)
 
-  //deprecated
+  // deprecated
   override def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int,
@@ -85,9 +85,7 @@ private class QueueClientImpl[F[_]: Async](
       .evalMap(rm =>
         decodeHeader(rm)
           .map(
-            _.map(h =>
-              io.renku.queue.client.QueueMessage(rm.id, h, rm.payload)
-            )
+            _.map(h => io.renku.queue.client.QueueMessage(rm.id, h, rm.payload))
           )
       )
       .collect { case Some(qm) => qm }

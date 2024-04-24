@@ -27,7 +27,7 @@ import io.renku.queue.client.{MessageHeader => OldHeader}
 
 trait QueueClient[F[_]]:
 
-  //deprecated
+  // deprecated
   def enqueue[P: AvroEncoder](
       queueName: QueueName,
       header: OldHeader,
@@ -40,7 +40,7 @@ trait QueueClient[F[_]]:
       msg: EventMessage[P]
   ): F[MessageId]
 
-  //deprecated
+  // deprecated
   def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int,

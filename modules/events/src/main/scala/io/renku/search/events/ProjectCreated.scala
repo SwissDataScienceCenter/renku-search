@@ -20,9 +20,11 @@ package io.renku.search.events
 
 import io.renku.events.{v1, v2}
 import io.renku.avro.codec.AvroEncoder
+import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
 import io.renku.search.model.Id
 import cats.data.NonEmptyList
+import io.renku.avro.codec.AvroDecoder
 
 sealed trait ProjectCreated extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A
@@ -44,10 +46,24 @@ object ProjectCreated:
     def withId(id: Id): ProjectCreated = V2(event.copy(id = id.value))
     def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A = fv2(event)
 
-  given (using
-      v1e: AvroEncoder[v1.ProjectCreated],
-      v2e: AvroEncoder[v2.ProjectCreated]
-  ): AvroEncoder[ProjectCreated] =
+  given AvroEncoder[ProjectCreated] =
     AvroEncoder { (schema, v) =>
-      v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
+      v.fold(
+        a => AvroEncoder[v1.ProjectCreated].encode(schema)(a),
+        b => AvroEncoder[v2.ProjectCreated].encode(schema)(b)
+      )
+    }
+
+  given EventMessageDecoder[ProjectCreated] =
+    EventMessageDecoder.instance { qm =>
+      qm.header.schemaVersion match
+        case SchemaVersion.V1 =>
+          val schema = v1.ProjectCreated.SCHEMA$
+          qm.toMessage[v1.ProjectCreated](schema)
+            .map(_.map(ProjectCreated.V1.apply))
+
+        case SchemaVersion.V2 =>
+          val schema = v2.ProjectCreated.SCHEMA$
+          qm.toMessage[v2.ProjectCreated](schema)
+            .map(_.map(ProjectCreated.V2.apply))
     }

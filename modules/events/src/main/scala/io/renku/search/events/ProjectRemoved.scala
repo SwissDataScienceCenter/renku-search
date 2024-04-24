@@ -19,9 +19,9 @@
 package io.renku.search.events
 
 import cats.data.NonEmptyList
-import io.renku.events.v2
+import io.renku.events.{v1, v2}
 import io.renku.search.model.Id
-import io.renku.avro.codec.encoders.all.given
+import io.renku.avro.codec.all.given
 import io.renku.avro.codec.AvroEncoder
 import cats.Show
 
@@ -36,4 +36,18 @@ object ProjectRemoved:
     AvroEncoder { (_, v) =>
       val event = v2.ProjectRemoved(v.id.value)
       v2e.encode(v2.ProjectRemoved.SCHEMA$)(event)
+    }
+
+  given EventMessageDecoder[ProjectRemoved] =
+    EventMessageDecoder.instance { qm =>
+      qm.header.schemaVersion match
+        case SchemaVersion.V1 =>
+          val schema = v1.ProjectRemoved.SCHEMA$
+          qm.toMessage[v1.ProjectRemoved](schema)
+            .map(_.map(e => ProjectRemoved(Id(e.id))))
+
+        case SchemaVersion.V2 =>
+          val schema = v2.ProjectRemoved.SCHEMA$
+          qm.toMessage[v2.ProjectRemoved](schema)
+            .map(_.map(e => ProjectRemoved(Id(e.id))))
     }

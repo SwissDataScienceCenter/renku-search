@@ -16,23 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.metrics
+package io.renku.search.events
 
-import cats.Monad
-import cats.syntax.all.*
-import io.renku.queue.client.QueueClient
-import io.renku.redis.client.QueueName
+opaque type MessageId = String
 
-private class UnprocessedCountGaugeUpdater[F[_]: Monad](
-    rc: QueueClient[F],
-    gauge: UnprocessedCountGauge
-) extends CollectorUpdater[F]:
+object MessageId:
 
-  override def update(queueName: QueueName): F[Unit] =
-    rc
-      .findLastProcessed(queueName)
-      .flatMap {
-        case None     => rc.getSize(queueName)
-        case Some(lm) => rc.getSize(queueName, lm)
-      }
-      .map(s => gauge.set(queueName, s.toDouble))
+  def apply(id: String): MessageId = id
+
+  extension (self: MessageId) def value: String = self

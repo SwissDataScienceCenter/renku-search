@@ -16,25 +16,13 @@
  * limitations under the License.
  */
 
-package io.renku.queue.client
+package io.renku.search.events
 
-import io.renku.events.{v1, v2}
-import io.renku.search.events.*
-import org.apache.avro.Schema
+trait EventMessageDecoder[T]:
+  def decode(qm: QueueMessage): Either[Throwable, EventMessage[T]]
 
-trait SchemaSelect:
-  def select(header: MessageHeader): Schema
-
-object SchemaSelect:
-  def instance(f: MessageHeader => Schema): SchemaSelect =
-    (h: MessageHeader) => f(h)
-
-  def fromVersion(f: SchemaVersion => Schema): SchemaSelect =
-    instance(h => f(h.schemaVersion))
-
-  // hm, not sure about this…
-  val projectRemoved: SchemaSelect =
-    fromVersion {
-      case SchemaVersion.V1 => v1.ProjectRemoved.SCHEMA$
-      case SchemaVersion.V2 => v2.ProjectRemoved.SCHEMA$
-    }
+object EventMessageDecoder:
+  def instance[T](
+      f: QueueMessage => Either[Throwable, EventMessage[T]]
+  ): EventMessageDecoder[T] =
+    (qm: QueueMessage) => f(qm)

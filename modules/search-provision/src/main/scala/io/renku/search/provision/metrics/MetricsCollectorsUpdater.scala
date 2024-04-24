@@ -39,7 +39,6 @@ object MetricsCollectorsUpdater:
   ): MetricsCollectorsUpdater[F] =
     new MetricsCollectorsUpdater[F](
       RedisMetricsCollectorsUpdater[F](
-        clientId,
         queuesConfig,
         updateInterval,
         queueClient

@@ -21,7 +21,6 @@ package io.renku.search.provision.project
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
-import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*

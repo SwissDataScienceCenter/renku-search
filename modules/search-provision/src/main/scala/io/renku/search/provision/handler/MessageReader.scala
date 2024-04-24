@@ -23,7 +23,7 @@ import cats.effect.Async
 import cats.syntax.all.*
 import fs2.{Chunk, Stream}
 import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
-import io.renku.redis.client.{ClientId, MessageId, QueueName}
+import io.renku.redis.client.{MessageId, QueueName}
 import scribe.Scribe
 
 import scala.concurrent.duration.FiniteDuration
@@ -58,7 +58,6 @@ object MessageReader:
   def apply[F[_]: Async](
       queueClient: Stream[F, QueueClient[F]],
       queue: QueueName,
-      clientId: ClientId,
       chunkSize: Int
   ): MessageReader[F] =
     new MessageReader[F]:
@@ -70,7 +69,7 @@ object MessageReader:
       ): Stream[F, Message[A]] =
         for {
           client <- queueClient
-          last <- Stream.eval(client.findLastProcessed(clientId, queue))
+          last <- Stream.eval(client.findLastProcessed(queue))
           qmsg <- client.acquireEventsStream(queue, chunkSize, last)
           dec <- Stream
             .eval(QueueMessageDecoder[F, A].decodeMessage(qmsg).attempt)
@@ -84,14 +83,14 @@ object MessageReader:
                       err
                     )
                   )
-                  _ <- Stream.eval(client.markProcessed(clientId, queue, qmsg.id))
+                  _ <- Stream.eval(client.markProcessed(queue, qmsg.id))
                 } yield Message(qmsg, Seq.empty)
             }
           _ <- Stream.eval(logInfo(dec))
         } yield dec
 
       override def markProcessed(id: MessageId): F[Unit] =
-        queueClient.evalMap(_.markProcessed(clientId, queue, id)).take(1).compile.drain
+        queueClient.evalMap(_.markProcessed(queue, id)).take(1).compile.drain
 
       override def markProcessedError(err: Throwable, id: MessageId)(using
           logger: Scribe[F]

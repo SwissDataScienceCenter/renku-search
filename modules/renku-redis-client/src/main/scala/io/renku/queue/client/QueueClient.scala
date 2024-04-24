@@ -21,50 +21,50 @@ package io.renku.queue.client
 import cats.effect.{Async, Resource}
 import fs2.Stream
 import io.renku.avro.codec.AvroEncoder
-import io.renku.search.events.{EventMessage, RenkuEventPayload, SchemaVersion}
+import io.renku.search.events.{MessageId => _, *}
 import io.renku.redis.client.*
-import io.renku.avro.codec.AvroDecoder
+import io.renku.queue.client.{MessageHeader => OldHeader}
 
 trait QueueClient[F[_]]:
 
+  //deprecated
   def enqueue[P: AvroEncoder](
       queueName: QueueName,
-      header: MessageHeader,
+      header: OldHeader,
       payload: P
   ): F[MessageId]
 
-  def enqueue[P <: RenkuEventPayload: AvroEncoder](
+  def enqueue[P: AvroEncoder](
       queueName: QueueName,
       schemaVersion: SchemaVersion,
       msg: EventMessage[P]
   ): F[MessageId]
 
+  //deprecated
   def acquireEventsStream(
       queueName: QueueName,
       chunkSize: Int,
       maybeOffset: Option[MessageId]
-  ): Stream[F, QueueMessage]
+  ): Stream[F, io.renku.queue.client.QueueMessage]
 
   def acquireHeaderEventsStream(
       queueName: QueueName,
       chunkSize: Int,
       maybeOffset: Option[MessageId]
-  ): Stream[F, QueueHeaderMessage]
+  ): Stream[F, QueueMessage]
 
-  def acquireMessageStream[T <: RenkuEventPayload](
+  def acquireMessageStream[T](
       queueName: QueueName,
       chunkSize: Int,
-      maybeOffset: Option[MessageId],
-      schemaSelect: SchemaSelect
-  )(using AvroDecoder[T]): Stream[F, EventMessage[T]]
+      maybeOffset: Option[MessageId]
+  )(using EventMessageDecoder[T]): Stream[F, EventMessage[T]]
 
   def markProcessed(
-      clientId: ClientId,
       queueName: QueueName,
       messageId: MessageId
   ): F[Unit]
 
-  def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
+  def findLastProcessed(queueName: QueueName): F[Option[MessageId]]
 
   def getSize(queueName: QueueName): F[Long]
 
@@ -75,11 +75,17 @@ object QueueClient:
   // Be aware that it was observed that the client can lose the connection to Redis.
   // Because of that consider using the QueueClient.stream
   // that auto-refreshes (recreates) the connection every connectionRefreshInterval.
-  def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
-    RedisQueueClient.make[F](redisConfig).map(new QueueClientImpl[F](_))
+  def make[F[_]: Async](
+      redisConfig: RedisConfig,
+      clientId: ClientId
+  ): Resource[F, QueueClient[F]] =
+    RedisQueueClient.make[F](redisConfig).map(new QueueClientImpl[F](_, clientId))
 
-  def stream[F[_]: Async](redisConfig: RedisConfig): Stream[F, QueueClient[F]] =
+  def stream[F[_]: Async](
+      redisConfig: RedisConfig,
+      clientId: ClientId
+  ): Stream[F, QueueClient[F]] =
     val s = Stream
-      .resource[F, QueueClient[F]](make(redisConfig))
+      .resource[F, QueueClient[F]](make(redisConfig, clientId))
       .interruptAfter(redisConfig.connectionRefreshInterval)
-    s ++ stream(redisConfig)
+    s ++ stream(redisConfig, clientId)

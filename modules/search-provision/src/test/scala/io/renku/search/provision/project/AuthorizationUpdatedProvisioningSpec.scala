@@ -20,7 +20,7 @@ package io.renku.search.provision
 package project
 
 import cats.effect.{IO, Resource}
-import io.renku.avro.codec.encoders.all.given
+import io.renku.avro.codec.all.given
 import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*

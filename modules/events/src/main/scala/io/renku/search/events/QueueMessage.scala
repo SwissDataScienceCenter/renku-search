@@ -16,35 +16,23 @@
  * limitations under the License.
  */
 
-package io.renku.queue.client
+package io.renku.search.events
 
 import cats.syntax.all.*
 
 import io.renku.avro.codec.{AvroDecoder, AvroReader}
-import io.renku.redis.client.MessageId
-import io.renku.search.events.{
-  DataContentType,
-  EventMessage,
-  MessageHeader,
-  RenkuEventPayload
-}
 import org.apache.avro.Schema
 import scodec.bits.ByteVector
 
-final case class QueueHeaderMessage(
-    id: MessageId,
-    header: MessageHeader,
-    payload: ByteVector
-):
-  def toMessage[A <: RenkuEventPayload](schema: Schema)(using
-      AvroDecoder[A]
-  ): Either[Throwable, EventMessage[A]] =
-    decodePayload(schema).map(pl => EventMessage(header, schema, pl))
+final case class QueueMessage(id: MessageId, header: MessageHeader, payload: ByteVector):
 
   def decodePayload[A: AvroDecoder](schema: Schema): Either[Throwable, Seq[A]] =
     decodePayload(AvroReader(schema))
 
-  def decodePayload[A: AvroDecoder](avro: AvroReader): Either[Throwable, Seq[A]] =
+  def toMessage[A: AvroDecoder](schema: Schema): Either[Throwable, EventMessage[A]] =
+    decodePayload(schema).map(p => EventMessage(id, header, schema, p))
+
+  private def decodePayload[A: AvroDecoder](avro: AvroReader): Either[Throwable, Seq[A]] =
     header.dataContentType match
       case DataContentType.Binary => Either.catchNonFatal(avro.read[A](payload))
       case DataContentType.Json   => Either.catchNonFatal(avro.readJson[A](payload))

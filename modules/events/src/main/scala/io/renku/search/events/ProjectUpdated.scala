@@ -20,6 +20,7 @@ package io.renku.search.events
 
 import io.renku.events.{v1, v2}
 import io.renku.avro.codec.AvroEncoder
+import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
 import io.renku.search.model.Id
 import cats.data.NonEmptyList
@@ -44,10 +45,23 @@ object ProjectUpdated:
     def withId(id: Id): ProjectUpdated = V2(event.copy(id = id.value))
     def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A = fv2(event)
 
-  given (using
-      v1e: AvroEncoder[v1.ProjectUpdated],
-      v2e: AvroEncoder[v2.ProjectUpdated]
-  ): AvroEncoder[ProjectUpdated] =
+  given AvroEncoder[ProjectUpdated] =
+    val v1e = AvroEncoder[v1.ProjectUpdated]
+    val v2e = AvroEncoder[v2.ProjectUpdated]
     AvroEncoder { (schema, v) =>
       v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
+    }
+
+  given EventMessageDecoder[ProjectUpdated] =
+    EventMessageDecoder.instance { qm =>
+      qm.header.schemaVersion match
+        case SchemaVersion.V1 =>
+          val schema = v1.ProjectUpdated.SCHEMA$
+          qm.toMessage[v1.ProjectUpdated](schema)
+            .map(_.map(ProjectUpdated.V1.apply))
+
+        case SchemaVersion.V2 =>
+          val schema = v2.ProjectUpdated.SCHEMA$
+          qm.toMessage[v2.ProjectUpdated](schema)
+            .map(_.map(ProjectUpdated.V2.apply))
     }

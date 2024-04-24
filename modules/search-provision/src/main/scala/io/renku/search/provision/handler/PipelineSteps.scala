@@ -45,7 +45,7 @@ object PipelineSteps:
   ): PipelineSteps[F] =
     new PipelineSteps[F] {
       val reader: MessageReader[F] =
-        MessageReader[F](queueClient, queue, clientId, inChunkSize)
+        MessageReader[F](queueClient, queue, inChunkSize)
       val pushToSolr: PushToSolr[F] =
         PushToSolr[F](solrClient, reader)
       val fetchFromSolr: FetchFromSolr[F] =

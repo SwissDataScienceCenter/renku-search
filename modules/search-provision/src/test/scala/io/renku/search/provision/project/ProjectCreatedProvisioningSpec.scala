@@ -20,7 +20,6 @@ package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 
-import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.projectCreatedGen
 import io.renku.search.events.ProjectCreated
 import io.renku.queue.client.DataContentType

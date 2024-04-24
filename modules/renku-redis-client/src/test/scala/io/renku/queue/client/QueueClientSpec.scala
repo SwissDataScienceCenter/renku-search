@@ -21,7 +21,6 @@ package io.renku.queue.client
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroWriter
-import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators
 import io.renku.search.events.ProjectCreated
 import io.renku.queue.client.DataContentType.{Binary, Json}

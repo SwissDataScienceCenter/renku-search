@@ -23,19 +23,21 @@ import io.renku.avro.codec.AvroEncoder
 import scodec.bits.ByteVector
 import io.renku.avro.codec.AvroWriter
 
-final case class EventMessage[P <: RenkuEventPayload](
-    /* id: MessageId? */
+final case class EventMessage[P](
+    id: MessageId,
     header: MessageHeader,
     payloadSchema: Schema,
     payload: Seq[P]
 ):
-
-  private val payloadWriter = AvroWriter(payloadSchema)
+  private lazy val payloadWriter = AvroWriter(payloadSchema)
 
   def toAvro(v: SchemaVersion)(using AvroEncoder[P]): EventMessage.AvroPayload =
     val h = header.toAvro(v, payload.getClass.getName)
     val b = payloadWriter.write(payload)
     EventMessage.AvroPayload(h, b)
+
+  def map[B](f: P => B): EventMessage[B] =
+    EventMessage(id, header, payloadSchema, payload.map(f))
 
 object EventMessage:
 

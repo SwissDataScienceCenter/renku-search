@@ -25,49 +25,49 @@ import org.apache.avro.Schema
 import io.renku.search.model.Id
 import cats.data.NonEmptyList
 
-sealed trait ProjectMemberAdded extends RenkuEventPayload:
-  def fold[A](fv1: v1.ProjectAuthorizationAdded => A, fv2: v2.ProjectMemberAdded => A): A
-  def withId(id: Id): ProjectMemberAdded
+sealed trait ProjectMemberUpdated extends RenkuEventPayload:
+  def fold[A](fv1: v1.ProjectAuthorizationUpdated => A, fv2: v2.ProjectMemberUpdated => A): A
+  def withId(id: Id): ProjectMemberUpdated
   def version: NonEmptyList[SchemaVersion] =
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
-    fold(_ => v1.ProjectAuthorizationAdded.SCHEMA$, _ => v2.ProjectMemberAdded.SCHEMA$)
+    fold(_ => v1.ProjectAuthorizationUpdated.SCHEMA$, _ => v2.ProjectMemberUpdated.SCHEMA$)
 
-object ProjectMemberAdded:
+object ProjectMemberUpdated:
 
-  final case class V1(event: v1.ProjectAuthorizationAdded) extends ProjectMemberAdded:
+  final case class V1(event: v1.ProjectAuthorizationUpdated) extends ProjectMemberUpdated:
     lazy val id: Id = Id(event.projectId)
-    def withId(id: Id): ProjectMemberAdded = V1(event.copy(projectId = id.value))
+    def withId(id: Id): ProjectMemberUpdated = V1(event.copy(projectId = id.value))
     def fold[A](
-        fv1: v1.ProjectAuthorizationAdded => A,
-        fv2: v2.ProjectMemberAdded => A
+        fv1: v1.ProjectAuthorizationUpdated => A,
+        fv2: v2.ProjectMemberUpdated => A
     ): A = fv1(event)
 
-  final case class V2(event: v2.ProjectMemberAdded) extends ProjectMemberAdded:
+  final case class V2(event: v2.ProjectMemberUpdated) extends ProjectMemberUpdated:
     lazy val id: Id = Id(event.projectId)
-    def withId(id: Id): ProjectMemberAdded = V2(event.copy(projectId = id.value))
+    def withId(id: Id): ProjectMemberUpdated = V2(event.copy(projectId = id.value))
     def fold[A](
-        fv1: v1.ProjectAuthorizationAdded => A,
-        fv2: v2.ProjectMemberAdded => A
+        fv1: v1.ProjectAuthorizationUpdated => A,
+        fv2: v2.ProjectMemberUpdated => A
     ): A = fv2(event)
 
-  given AvroEncoder[ProjectMemberAdded] =
-    val v1e = AvroEncoder[v1.ProjectAuthorizationAdded]
-    val v2e = AvroEncoder[v2.ProjectMemberAdded]
+  given AvroEncoder[ProjectMemberUpdated] =
+    val v1e = AvroEncoder[v1.ProjectAuthorizationUpdated]
+    val v2e = AvroEncoder[v2.ProjectMemberUpdated]
     AvroEncoder { (schema, v) =>
       v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
     }
 
-  given EventMessageDecoder[ProjectMemberAdded] =
+  given EventMessageDecoder[ProjectMemberUpdated] =
     EventMessageDecoder.instance { qm =>
       qm.header.schemaVersion match
         case SchemaVersion.V1 =>
-          val schema = v1.ProjectAuthorizationAdded.SCHEMA$
-          qm.toMessage[v1.ProjectAuthorizationAdded](schema)
-            .map(_.map(ProjectMemberAdded.V1.apply))
+          val schema = v1.ProjectAuthorizationUpdated.SCHEMA$
+          qm.toMessage[v1.ProjectAuthorizationUpdated](schema)
+            .map(_.map(ProjectMemberUpdated.V1.apply))
 
         case SchemaVersion.V2 =>
-          val schema = v2.ProjectMemberAdded.SCHEMA$
-          qm.toMessage[v2.ProjectMemberAdded](schema)
-            .map(_.map(ProjectMemberAdded.V2.apply))
+          val schema = v2.ProjectMemberUpdated.SCHEMA$
+          qm.toMessage[v2.ProjectMemberUpdated](schema)
+            .map(_.map(ProjectMemberUpdated.V2.apply))
     }

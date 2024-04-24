@@ -21,6 +21,7 @@ package io.renku.search.cli.perftests
 import cats.effect.IO
 import cats.syntax.all.*
 import fs2.Stream
+import io.renku.redis.client.ClientId
 
 object PerfTestsRunner:
 
@@ -43,7 +44,7 @@ object PerfTestsRunner:
       .through(enqueuer.enqueue)
 
   private def makeEnqueuer(config: PerfTestsConfig) =
-    Enqueuer.make[IO](config.dryRun)
+    Enqueuer.make[IO](config.dryRun, ClientId("search-provisioner"))
 
   private def makeDocsCreators(config: PerfTestsConfig)(using ModelTypesGenerators[IO]) =
     findDocsCreators(config)

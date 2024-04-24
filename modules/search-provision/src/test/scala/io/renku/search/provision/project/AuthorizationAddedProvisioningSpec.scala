@@ -19,19 +19,19 @@
 package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
-
 import io.renku.avro.codec.encoders.all.given
 import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model._
-import io.renku.search.model.MemberRole
+import io.renku.search.model.*
 import io.renku.search.provision.project.AuthorizationAddedProvisioningSpec.testCases
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.client.SolrDocumentGenerators
-import io.renku.search.solr.documents.PartialEntityDocument
-import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
+import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
+import io.renku.search.solr.documents.{
+  PartialEntityDocument,
+  Project as ProjectDocument,
+  SolrDocument
+}
 import io.renku.solr.client.DocVersion
 
 class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
@@ -44,7 +44,7 @@ class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
 

@@ -22,9 +22,8 @@ import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.projects.*
-import io.renku.search.model.{Id, Keyword, MemberRole, Name, Namespace, groups}
-import io.renku.search.solr.documents.Project as ProjectDocument
-import io.renku.search.solr.documents.Group as GroupDocument
+import io.renku.search.model.*
+import io.renku.search.solr.documents.{Group as GroupDocument, Project as ProjectDocument}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.{DocVersion, EncoderSupport}
 
@@ -122,8 +121,8 @@ object PartialEntityDocument:
   final case class Group(
       id: Id,
       @key("_version_") version: DocVersion = DocVersion.Off,
-      name: Option[groups.Name],
-      namespace: Option[Namespace],
+      name: Option[groups.Name] = None,
+      namespace: Option[Namespace] = None,
       description: Option[groups.Description] = None
   ) extends PartialEntityDocument:
 
@@ -139,16 +138,13 @@ object PartialEntityDocument:
           ).setVersion(version)
         case _ => e
 
-    private def combine(p: Group): Group =
-      if (p.id == id)
-        p.copy(
-          version = version
-        )
-      else p
+    private def combine(g: Group): Group =
+      if (g.id == id) g.copy(version = version)
+      else g
 
     def applyTo(e: PartialEntityDocument): PartialEntityDocument =
       e match
-        case p: Group => combine(p)
+        case g: Group => combine(g)
         case _        => e
 
   object Group:

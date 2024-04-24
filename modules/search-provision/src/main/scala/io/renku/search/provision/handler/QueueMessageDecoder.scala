@@ -89,7 +89,11 @@ object QueueMessageDecoder:
     QueueMessageDecoder.forSchemaVersion { case (qmsg, SchemaVersion.V2) =>
       v2d.decodeMessage(qmsg).map(_.map(GroupAdded.V2.apply))
     }
-
+  given [F[_]: MonadThrow]: QueueMessageDecoder[F, GroupUpdated] =
+    val v2d = from[F, v2.GroupUpdated](v2.GroupUpdated.SCHEMA$)
+    QueueMessageDecoder.forSchemaVersion { case (qmsg, SchemaVersion.V2) =>
+      v2d.decodeMessage(qmsg).map(_.map(GroupUpdated.V2.apply))
+    }
   given [F[_]: MonadThrow]: QueueMessageDecoder[F, GroupRemoved] =
     val v2d = from[F, v2.GroupRemoved](v2.GroupRemoved.SCHEMA$)
     QueueMessageDecoder.forSchemaVersion { case (qmsg, SchemaVersion.V2) =>

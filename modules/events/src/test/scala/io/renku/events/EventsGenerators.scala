@@ -18,14 +18,14 @@
 
 package io.renku.events
 
+import io.renku.search.events.*
+import io.renku.search.model.ModelGenerators
+import org.apache.avro.Schema
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import io.renku.search.model.ModelGenerators
-import io.renku.search.events.*
-import org.apache.avro.Schema
 
 object EventsGenerators:
 
@@ -222,6 +222,17 @@ object EventsGenerators:
 
   def groupAddedGen(prefix: String): Gen[GroupAdded] =
     v2GroupAddedGen(prefix).map(GroupAdded.V2.apply)
+
+  def v2GroupUpdatedGen(prefix: String): Gen[v2.GroupUpdated] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      name <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
+      maybeDesc <- Gen.option(stringGen(20))
+      namespace <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
+    yield v2.GroupUpdated(id, name, maybeDesc, namespace)
+
+  def groupUpdatedGen(prefix: String): Gen[GroupUpdated] =
+    v2GroupUpdatedGen(prefix).map(GroupUpdated.V2.apply)
 
   def stringGen(max: Int): Gen[String] =
     Gen

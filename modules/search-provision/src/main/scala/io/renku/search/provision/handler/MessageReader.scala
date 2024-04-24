@@ -25,6 +25,7 @@ import fs2.{Chunk, Stream}
 import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
 import io.renku.redis.client.QueueName
 import io.renku.search.events.*
+import io.renku.search.events.MessageId
 import scribe.Scribe
 
 import scala.concurrent.duration.FiniteDuration

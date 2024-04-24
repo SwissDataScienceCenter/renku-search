@@ -43,7 +43,7 @@ class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
 

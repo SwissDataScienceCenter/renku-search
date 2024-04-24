@@ -58,6 +58,7 @@
         userUpdated = "user.updated";
         userRemoved = "user.removed";
         groupAdded = "group.added";
+        groupUpdated = "group.updated";
         groupRemoved = "groupRemoved";
       };
 

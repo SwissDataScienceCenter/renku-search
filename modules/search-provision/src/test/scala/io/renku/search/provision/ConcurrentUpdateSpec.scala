@@ -29,8 +29,8 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.ProjectCreated
 import io.renku.search.model.{Id, MemberRole, ModelGenerators}
-import io.renku.search.provision.handler.{DocumentMerger, ShowInstances}
 import io.renku.search.provision.ConcurrentUpdateSpec.testCases
+import io.renku.search.provision.handler.{DocumentMerger, ShowInstances}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.{
   EntityMembers,
@@ -49,7 +49,7 @@ class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
           msgFiber <- List(handlers.projectCreated, handlers.projectAuthAdded)

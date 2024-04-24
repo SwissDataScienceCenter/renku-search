@@ -34,6 +34,7 @@ final case class QueuesConfig(
     userUpdated: QueueName,
     userRemoved: QueueName,
     groupAdded: QueueName,
+    groupUpdated: QueueName,
     groupRemoved: QueueName
 ):
   lazy val all: Set[QueueName] = Set(
@@ -47,6 +48,7 @@ final case class QueuesConfig(
     userUpdated,
     userRemoved,
     groupAdded,
+    groupUpdated,
     groupRemoved
   )
 
@@ -63,5 +65,6 @@ object QueuesConfig:
       ConfigValues.eventQueue("userUpdated"),
       ConfigValues.eventQueue("userRemoved"),
       ConfigValues.eventQueue("groupAdded"),
+      ConfigValues.eventQueue("groupUpdated"),
       ConfigValues.eventQueue("groupRemoved")
     ).mapN(QueuesConfig.apply)

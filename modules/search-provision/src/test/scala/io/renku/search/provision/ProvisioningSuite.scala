@@ -21,10 +21,9 @@ package io.renku.search.provision
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
-
 import io.renku.queue.client.{QueueClient, QueueSpec}
 import io.renku.redis.client.{ClientId, QueueName}
-import io.renku.search.model.Id
+import io.renku.search.model.{EntityType, Id}
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
 import io.renku.search.solr.documents.*
@@ -42,6 +41,7 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
     userUpdated = QueueName("userUpdated"),
     userRemoved = QueueName("userRemoved"),
     groupAdded = QueueName("groupAdded"),
+    groupUpdated = QueueName("groupUpdated"),
     groupRemoved = QueueName("groupRemoved")
   )
 
@@ -62,15 +62,28 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
       (handlers, queueClient, solrClient)
     }
 
+  def loadProjectPartialOrEntity(
+      solrClient: SearchSolrClient[IO],
+      id: Id
+  ): IO[Set[SolrDocument]] =
+    loadPartialOrEntity(solrClient, EntityType.Project, id)
+
+  def loadGroupPartialOrEntity(
+      solrClient: SearchSolrClient[IO],
+      id: Id
+  ): IO[Set[SolrDocument]] =
+    loadPartialOrEntity(solrClient, EntityType.Group, id)
+
   def loadPartialOrEntity(
       solrClient: SearchSolrClient[IO],
+      entityType: EntityType,
       id: Id
   ): IO[Set[SolrDocument]] =
     (
       solrClient.findById[EntityDocument](
-        CompoundId.projectEntity(id)
+        CompoundId.entity(id, entityType.some)
       ),
       solrClient.findById[PartialEntityDocument](
-        CompoundId.projectPartial(id)
+        CompoundId.partial(id, entityType.some)
       )
     ).mapN((a, b) => a.toSet ++ b.toSet)

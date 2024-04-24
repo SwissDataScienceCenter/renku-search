@@ -109,6 +109,9 @@ final class MessageHandlers[F[_]: Async](
   val groupAdded: Stream[F, Unit] =
     add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)
 
+  val groupUpdated: Stream[F, Unit] =
+    add(cfg.groupUpdated, makeUpsert[GroupUpdated](cfg.groupUpdated).drain)
+
   val groupRemoved: Stream[F, Unit] =
     val ps = steps(cfg.groupRemoved)
     val entityToNamespace: MessageReader.Message[EntityOrPartial] => Seq[Namespace] =

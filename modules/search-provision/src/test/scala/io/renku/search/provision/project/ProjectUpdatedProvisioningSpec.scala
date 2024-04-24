@@ -20,20 +20,19 @@ package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-
+import io.renku.events.EventsGenerators
 import io.renku.events.EventsGenerators.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.model.Id
-import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
-import io.renku.search.solr.documents.Project as ProjectDocument
-import io.renku.search.solr.documents.PartialEntityDocument
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.client.SolrDocumentGenerators
-import io.renku.search.provision.BackgroundCollector
-import io.renku.search.solr.documents.SolrDocument
-import io.renku.events.EventsGenerators
+import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
+import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
+import io.renku.search.solr.documents.{
+  PartialEntityDocument,
+  Project as ProjectDocument,
+  SolrDocument
+}
 import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
 
@@ -46,7 +45,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
 

@@ -21,7 +21,7 @@ package io.renku.search.provision.handler
 import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.events.{v1, v2}
-import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectUpdated}
+import io.renku.search.events.{GroupAdded, GroupUpdated, ProjectCreated, ProjectUpdated}
 import io.renku.search.model.Id
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
@@ -42,8 +42,10 @@ object DocumentMerger:
       onCreate: A => Option[EntityOrPartial]
   )(onMerge: (A, EntityOrPartial) => Option[EntityOrPartial]): DocumentMerger[A] =
     new DocumentMerger[A] {
-      def create(value: A) = onCreate(value)
-      def merge(value: A, existing: EntityOrPartial) = onMerge(value, existing)
+      def create(value: A): Option[EntityOrPartial] =
+        onCreate(value)
+      def merge(value: A, existing: EntityOrPartial): Option[EntityOrPartial] =
+        onMerge(value, existing)
     }
 
   given DocumentMerger[v1.ProjectAuthorizationAdded] =
@@ -198,4 +200,24 @@ object DocumentMerger:
       v2gaMerger.create(e)
     } { case (GroupAdded.V2(e), existing) =>
       v2gaMerger.merge(e, existing)
+    }
+
+  private val v2guMerger: DocumentMerger[v2.GroupUpdated] =
+    def convert(ga: v2.GroupUpdated): PartialEntityDocument.Group =
+      ga.toModel(DocVersion.NotExists)
+
+    instance[v2.GroupUpdated](convert(_).some)((ga, existing) =>
+      existing match
+        case p: PartialEntityDocument.Group =>
+          ga.toModel(p).some
+        case orig: GroupDocument =>
+          ga.toModel(orig).some
+        case _ => None
+    )
+
+  given DocumentMerger[GroupUpdated] =
+    instance[GroupUpdated] { case GroupUpdated.V2(e) =>
+      v2guMerger.create(e)
+    } { case (GroupUpdated.V2(e), existing) =>
+      v2guMerger.merge(e, existing)
     }

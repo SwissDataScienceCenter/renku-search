@@ -26,11 +26,12 @@ import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.project.AuthorizationUpdatedProvisioningSpec.testCases
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.client.SolrDocumentGenerators
-import io.renku.search.solr.documents.PartialEntityDocument
-import io.renku.search.solr.documents.SolrDocument
-import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
+import io.renku.search.solr.documents.{
+  PartialEntityDocument,
+  Project as ProjectDocument,
+  SolrDocument
+}
 import io.renku.solr.client.DocVersion
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
@@ -42,7 +43,7 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
 

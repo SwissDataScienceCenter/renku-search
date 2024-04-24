@@ -25,6 +25,7 @@ import org.apache.avro.Schema
 import io.renku.search.model.Id
 import cats.data.NonEmptyList
 import io.renku.avro.codec.AvroDecoder
+import cats.Show
 
 sealed trait ProjectCreated extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A
@@ -67,3 +68,6 @@ object ProjectCreated:
           qm.toMessage[v2.ProjectCreated](schema)
             .map(_.map(ProjectCreated.V2.apply))
     }
+
+  given Show[ProjectCreated] =
+    Show.show(v => s"slug '${v.fold(_.slug, _.slug)}'")

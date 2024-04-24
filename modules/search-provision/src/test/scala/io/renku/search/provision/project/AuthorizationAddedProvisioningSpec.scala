@@ -19,10 +19,11 @@
 package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
-import io.renku.avro.codec.encoders.all.given
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
-import io.renku.queue.client.Generators.messageHeaderGen
+
+import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.ProjectMemberAdded
+import io.renku.search.model.MemberRole
 import io.renku.search.model.*
 import io.renku.search.provision.project.AuthorizationAddedProvisioningSpec.testCases
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
@@ -33,6 +34,7 @@ import io.renku.search.solr.documents.{
   SolrDocument
 }
 import io.renku.solr.client.DocVersion
+import org.scalacheck.Gen
 
 class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
 
@@ -52,8 +54,7 @@ class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectAuthorizationAdded,
-            messageHeaderGen(ProjectAuthorizationAdded.SCHEMA$).generateOne,
-            tc.authAdded
+            EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
           )
           _ <- collector.waitUntil(docs =>
             scribe.debug(s"Check for ${tc.expectedProject}")
@@ -85,12 +86,8 @@ object AuthorizationAddedProvisioningSpec:
       case DbState.Project(p)        => p.id
       case DbState.PartialProject(p) => p.id
 
-    val authAdded: ProjectAuthorizationAdded =
-      ProjectAuthorizationAdded(
-        projectId.value,
-        user.value,
-        ProjectMemberRole.valueOf(role.name.toUpperCase())
-      )
+    val authAdded: ProjectMemberAdded =
+      EventsGenerators.projectMemberAdded(projectId, user, role).generateOne
 
     val expectedProject: SolrDocument = dbState match
       case DbState.Empty =>
@@ -98,7 +95,9 @@ object AuthorizationAddedProvisioningSpec:
           id = projectId,
           version = DocVersion.Off,
           owners = Set(user).filter(_ => role == MemberRole.Owner),
-          members = Set(user).filter(_ => role == MemberRole.Member)
+          members = Set(user).filter(_ => role == MemberRole.Member),
+          viewers = Set(user).filter(_ => role == MemberRole.Viewer),
+          editors = Set(user).filter(_ => role == MemberRole.Editor)
         )
       case DbState.Project(p) =>
         p.addMember(user, role)

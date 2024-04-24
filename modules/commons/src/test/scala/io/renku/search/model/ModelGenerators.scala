@@ -43,6 +43,7 @@ object ModelGenerators:
 
   val namespaceGen: Gen[Namespace] =
     alphaStringGen(max = 10).map(Namespace.apply)
+
   val memberRoleGen: Gen[MemberRole] =
     Gen.oneOf(MemberRole.values.toList)
 

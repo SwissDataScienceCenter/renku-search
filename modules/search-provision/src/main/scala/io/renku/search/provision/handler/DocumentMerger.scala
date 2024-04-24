@@ -30,6 +30,7 @@ import io.renku.search.solr.documents.User as UserDocument
 import io.renku.search.solr.documents.Group as GroupDocument
 import io.renku.search.provision.events.syntax.*
 import io.renku.solr.client.DocVersion
+import io.renku.search.events.ProjectMemberAdded
 
 trait DocumentMerger[A]:
   def create(value: A): Option[EntityOrPartial]
@@ -48,7 +49,7 @@ object DocumentMerger:
         onMerge(value, existing)
     }
 
-  given DocumentMerger[v1.ProjectAuthorizationAdded] =
+  given v1ProjectAuthAdded: DocumentMerger[v1.ProjectAuthorizationAdded] =
     instance[v1.ProjectAuthorizationAdded](
       _.toModel(DocVersion.NotExists).some
     )((paa, existing) =>
@@ -60,6 +61,30 @@ object DocumentMerger:
         case _: PartialEntityDocument.Group =>
           None
     )
+
+  given v2ProjectMemberAdded: DocumentMerger[v2.ProjectMemberAdded] =
+    instance[v2.ProjectMemberAdded](
+      _.toModel(DocVersion.NotExists).some
+    )((paa, existing) =>
+      existing match
+        case p: PartialEntityDocument.Project =>
+          p.applyTo(paa.toModel(p.version)).some
+        case p: EntityDocument =>
+          paa.toModel(p.version).applyTo(p).some
+        case _: PartialEntityDocument.Group =>
+          None
+    )
+
+  given DocumentMerger[ProjectMemberAdded] =
+    val v1m = DocumentMerger[v1.ProjectAuthorizationAdded]
+    val v2m = DocumentMerger[v2.ProjectMemberAdded]
+    instance[ProjectMemberAdded] {
+      case ProjectMemberAdded.V1(event) => v1m.create(event)
+      case ProjectMemberAdded.V2(event) => v2m.create(event)
+    } {
+      case (ProjectMemberAdded.V1(event), existing) => v1m.merge(event, existing)
+      case (ProjectMemberAdded.V2(event), existing) => v2m.merge(event, existing)
+    }
 
   given DocumentMerger[v1.ProjectAuthorizationUpdated] =
     instance[v1.ProjectAuthorizationUpdated](
@@ -123,10 +148,9 @@ object DocumentMerger:
           None
     }
 
-  given (using
-      v1m: DocumentMerger[v1.ProjectCreated],
-      v2m: DocumentMerger[v2.ProjectCreated]
-  ): DocumentMerger[ProjectCreated] =
+  given DocumentMerger[ProjectCreated] =
+    val v1m = DocumentMerger[v1.ProjectCreated]
+    val v2m = DocumentMerger[v2.ProjectCreated]
     DocumentMerger.instance[ProjectCreated] {
       case ProjectCreated.V1(event) => v1m.create(event)
       case ProjectCreated.V2(event) => v2m.create(event)

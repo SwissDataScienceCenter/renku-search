@@ -24,10 +24,13 @@ import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
 import io.renku.search.model.Id
 import cats.data.NonEmptyList
+import cats.Show
+import io.renku.search.model.MemberRole
 
 sealed trait ProjectMemberAdded extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectAuthorizationAdded => A, fv2: v2.ProjectMemberAdded => A): A
   def withId(id: Id): ProjectMemberAdded
+  def withRole(role: MemberRole): ProjectMemberAdded
   def version: NonEmptyList[SchemaVersion] =
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
@@ -38,6 +41,13 @@ object ProjectMemberAdded:
   final case class V1(event: v1.ProjectAuthorizationAdded) extends ProjectMemberAdded:
     lazy val id: Id = Id(event.projectId)
     def withId(id: Id): ProjectMemberAdded = V1(event.copy(projectId = id.value))
+    def withRole(role: MemberRole): ProjectMemberAdded =
+      role match
+        case MemberRole.Member => V1(event.copy(role = v1.ProjectMemberRole.MEMBER))
+        case MemberRole.Viewer => V1(event.copy(role = v1.ProjectMemberRole.MEMBER))
+        case MemberRole.Editor => V1(event.copy(role = v1.ProjectMemberRole.MEMBER))
+        case MemberRole.Owner  => V1(event.copy(role = v1.ProjectMemberRole.OWNER))
+
     def fold[A](
         fv1: v1.ProjectAuthorizationAdded => A,
         fv2: v2.ProjectMemberAdded => A
@@ -46,6 +56,13 @@ object ProjectMemberAdded:
   final case class V2(event: v2.ProjectMemberAdded) extends ProjectMemberAdded:
     lazy val id: Id = Id(event.projectId)
     def withId(id: Id): ProjectMemberAdded = V2(event.copy(projectId = id.value))
+    def withRole(role: MemberRole): ProjectMemberAdded =
+      role match
+        case MemberRole.Member => V2(event.copy(role = v2.MemberRole.VIEWER))
+        case MemberRole.Viewer => V2(event.copy(role = v2.MemberRole.VIEWER))
+        case MemberRole.Editor => V2(event.copy(role = v2.MemberRole.EDITOR))
+        case MemberRole.Owner  => V2(event.copy(role = v2.MemberRole.OWNER))
+
     def fold[A](
         fv1: v1.ProjectAuthorizationAdded => A,
         fv2: v2.ProjectMemberAdded => A
@@ -71,3 +88,6 @@ object ProjectMemberAdded:
           qm.toMessage[v2.ProjectMemberAdded](schema)
             .map(_.map(ProjectMemberAdded.V2.apply))
     }
+
+  given Show[ProjectMemberAdded] =
+    Show.show(_.fold(_.toString, _.toString))

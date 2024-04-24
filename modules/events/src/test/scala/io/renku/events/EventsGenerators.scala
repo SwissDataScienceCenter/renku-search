@@ -18,14 +18,17 @@
 
 package io.renku.events
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+
+import io.renku.events.v1.ProjectAuthorizationAdded
 import io.renku.search.events.*
+import io.renku.search.model.Id
+import io.renku.search.model.MemberRole
 import io.renku.search.model.ModelGenerators
 import org.apache.avro.Schema
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaChar, alphaNumChar}
-
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 
 object EventsGenerators:
 
@@ -179,7 +182,7 @@ object EventsGenerators:
       v2ProjectUpdatedGen(prefix).map(ProjectUpdated.V2.apply)
     )
 
-  def projectAuthorizationAddedGen(
+  def v1ProjectAuthorizationAddedGen(
       projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
       roleGen: Gen[v1.ProjectMemberRole] = projectMemberRoleGen
   ): Gen[v1.ProjectAuthorizationAdded] =
@@ -188,6 +191,57 @@ object EventsGenerators:
       userId <- Gen.uuid.map(_.toString)
       role <- roleGen
     yield v1.ProjectAuthorizationAdded(projectId, userId, role)
+
+  def v2ProjectMemberAddedGen(
+      projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
+      roleGen: Gen[v2.MemberRole] = v2ProjectMemberRoleGen
+  ): Gen[v2.ProjectMemberAdded] =
+    for
+      projectId <- projectIdGen
+      userId <- Gen.uuid.map(_.toString)
+      role <- roleGen
+    yield v2.ProjectMemberAdded(projectId, userId, role)
+
+  def projectMemberAddedGen: Gen[ProjectMemberAdded] =
+    Gen.oneOf(
+      v1ProjectAuthorizationAddedGen().map(ProjectMemberAdded.V1.apply),
+      v2ProjectMemberAddedGen().map(ProjectMemberAdded.V2.apply)
+    )
+
+  def projectMemberAdded(
+      projectId: Id,
+      userId: Id,
+      role: MemberRole
+  ): Gen[ProjectMemberAdded] =
+    role match
+      case MemberRole.Member =>
+        Gen.const(
+          ProjectMemberAdded.V1(
+            v1.ProjectAuthorizationAdded(
+              projectId.value,
+              userId.value,
+              v1.ProjectMemberRole.MEMBER
+            )
+          )
+        )
+      case MemberRole.Viewer =>
+        Gen.const(
+          ProjectMemberAdded.V2(
+            v2.ProjectMemberAdded(projectId.value, userId.value, v2.MemberRole.VIEWER)
+          )
+        )
+      case MemberRole.Editor =>
+        Gen.const(
+          ProjectMemberAdded.V2(
+            v2.ProjectMemberAdded(projectId.value, userId.value, v2.MemberRole.EDITOR)
+          )
+        )
+      case MemberRole.Owner =>
+        Gen.const(
+          ProjectMemberAdded.V2(
+            v2.ProjectMemberAdded(projectId.value, userId.value, v2.MemberRole.OWNER)
+          )
+        )
 
   def projectAuthorizationUpdatedGen(
       projectIdGen: Gen[String] = Gen.uuid.map(_.toString),

@@ -29,7 +29,7 @@ import fs2.Stream
 import io.renku.avro.codec.all.given
 import io.renku.events.v1.UserAdded
 import io.renku.queue.client.Generators as QueueGenerators
-import io.renku.redis.client.MessageId
+import io.renku.search.events.MessageId
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.ModelGenerators.idGen
 import io.renku.search.solr.client.SearchSolrSuite

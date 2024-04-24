@@ -23,9 +23,10 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 import io.renku.avro.codec.encoders.all.given
+import io.renku.search.events.MessageId
 import io.renku.events.v1.ProjectAuthorizationRemoved
 import io.renku.queue.client.*
-import io.renku.redis.client.{ClientId, MessageId}
+import io.renku.redis.client.{ClientId, MessageId => _}
 import io.renku.search.provision.QueuesConfig
 import scribe.Scribe
 

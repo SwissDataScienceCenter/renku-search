@@ -84,7 +84,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
     )
     makeStreamingConnection
       .flatMap(_.append(message))
-      .map(id => MessageId(id.value))
+      .map(id => id.value)
       .compile
       .toList
       .map(_.head)
@@ -96,12 +96,12 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
   ): Stream[F, RedisMessage] =
     val initialOffset: String => StreamingOffset[String] =
       maybeOffset
-        .map(id => StreamingOffset.Custom[String](_, id.value))
+        .map(id => StreamingOffset.Custom[String](_, id))
         .getOrElse(StreamingOffset.All[String])
 
     def toMessage(rm: XReadMessage[String, ByteVector]): Option[RedisMessage] =
       (rm.body.get(MessageBodyKeys.headers), rm.body.get(MessageBodyKeys.payload))
-        .mapN(RedisMessage(MessageId(rm.id.value), _, _))
+        .mapN(RedisMessage(rm.id.value, _, _))
 
     lazy val logInfo: ((XReadMessage[?, ?], Option[RedisMessage])) => F[Unit] = {
       case (m, None) =>
@@ -124,7 +124,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
       messageId: MessageId
   ): F[Unit] =
     createStringCommands.use {
-      _.set(formProcessedKey(clientId, queueName), messageId.value)
+      _.set(formProcessedKey(clientId, queueName), messageId)
     }
 
   override def findLastProcessed(
@@ -132,7 +132,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
       queueName: QueueName
   ): F[Option[MessageId]] =
     createStringCommands.use {
-      _.get(formProcessedKey(clientId, queueName)).map(_.map(MessageId.apply))
+      _.get(formProcessedKey(clientId, queueName))
     }
 
   private def formProcessedKey(clientId: ClientId, queueName: QueueName) =
@@ -154,7 +154,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
         script,
         ScriptOutputType.Integer,
         List(queueName.name),
-        List(from.value, "+")
+        List(from, "+")
       )
     )
 

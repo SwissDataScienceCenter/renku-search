@@ -22,10 +22,10 @@ import cats.effect.IO
 import fs2.concurrent.SignallingRef
 import io.renku.avro.codec.AvroWriter
 import io.renku.events.EventsGenerators
-import io.renku.search.events.ProjectCreated
+import io.renku.search.events.{MessageId, ProjectCreated}
 import io.renku.queue.client.DataContentType.{Binary, Json}
 import io.renku.queue.client.Generators.*
-import io.renku.redis.client.{MessageId, RedisClientGenerators}
+import io.renku.redis.client.{RedisClientGenerators}
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.search.GeneratorSyntax.*
 import munit.CatsEffectSuite
@@ -63,4 +63,4 @@ class QueueClientSpec extends CatsEffectSuite with QueueSpec:
       case Binary => AvroWriter(payload.schema).write(Seq(payload))
       case Json   => AvroWriter(payload.schema).writeJson(Seq(payload))
     }
-    QueueMessage(id, header.toSchemaHeader(payload), encodedPayload)
+    QueueMessage(id.value, header.toSchemaHeader(payload), encodedPayload)

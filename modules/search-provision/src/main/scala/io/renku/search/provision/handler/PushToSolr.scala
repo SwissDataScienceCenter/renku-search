@@ -29,6 +29,7 @@ import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
 
 import io.renku.queue.client.QueueMessage
+import io.renku.search.events.MessageId
 import io.renku.search.provision.handler.Model$package.EntityOrPartial.given
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.EntityDocument
@@ -60,7 +61,9 @@ object PushToSolr:
               logger.debug(s"Push ${docSeq} to solr") >>
                 solrClient
                   .upsert(docSeq)
-                  .onError(reader.markProcessedError(_, lastMessage.id)(using logger))
+                  .onError(
+                    reader.markProcessedError(_, MessageId(lastMessage.id))(using logger)
+                  )
             case None =>
               val r = UpsertResponse.Success(ResponseHeader.empty)
               Async[F].pure(r)

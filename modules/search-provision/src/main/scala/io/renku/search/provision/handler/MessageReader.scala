@@ -23,7 +23,8 @@ import cats.effect.Async
 import cats.syntax.all.*
 import fs2.{Chunk, Stream}
 import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
-import io.renku.redis.client.{MessageId, QueueName}
+import io.renku.redis.client.{QueueName}
+import io.renku.search.events.MessageId
 import scribe.Scribe
 
 import scala.concurrent.duration.FiniteDuration
@@ -46,7 +47,7 @@ trait MessageReader[F[_]]:
 
 object MessageReader:
   final case class Message[A](raw: QueueMessage, decoded: Seq[A]):
-    val id: MessageId = raw.id
+    val id: MessageId = MessageId(raw.id)
     val requestId: RequestId = RequestId(raw.header.requestId)
     def map[B](f: A => B): Message[B] = Message(raw, decoded.map(f))
     def flatten[B](using A => IterableOnce[B]): Message[B] = Message(raw, decoded.flatten)
@@ -83,7 +84,7 @@ object MessageReader:
                       err
                     )
                   )
-                  _ <- Stream.eval(client.markProcessed(queue, qmsg.id))
+                  _ <- Stream.eval(client.markProcessed(queue, MessageId(qmsg.id)))
                 } yield Message(qmsg, Seq.empty)
             }
           _ <- Stream.eval(logInfo(dec))

@@ -20,9 +20,4 @@ package io.renku.redis.client
 
 import scodec.bits.ByteVector
 
-final case class RedisMessage(id: MessageId, header: ByteVector, payload: ByteVector)
-
-opaque type MessageId = String
-object MessageId:
-  def apply(v: String): MessageId = v
-  extension (self: MessageId) def value: String = self
+final case class RedisMessage(id: String, header: ByteVector, payload: ByteVector)

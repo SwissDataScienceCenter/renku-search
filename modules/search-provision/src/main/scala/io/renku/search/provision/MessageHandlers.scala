@@ -61,7 +61,7 @@ final class MessageHandlers[F[_]: Async](
   val projectUpdated: Stream[F, Unit] =
     add(
       cfg.projectUpdated,
-      makeUpsert[ProjectUpdated](cfg.projectUpdated).drain
+      makeUpsert2[ProjectUpdated](cfg.projectUpdated).drain
     )
 
   val projectRemoved: Stream[F, Unit] =
@@ -204,12 +204,12 @@ final class MessageHandlers[F[_]: Async](
       .flatMap(processMsg(_, maxConflictRetries))
 
   private def makeRemovedSimple[A](queue: QueueName)(using
-      QueueMessageDecoder[F, A],
+      EventMessageDecoder[A],
       Show[A],
       IdExtractor[A]
   ): Stream[F, Unit] =
     val ps = steps(queue)
     ps.reader
-      .read[A]
+      .readEvents[A]
       .chunks
-      .through(ps.deleteFromSolr.deleteAll)
+      .through(ps.deleteFromSolr.deleteAll2)

@@ -22,9 +22,8 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators.*
-import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.events.ProjectUpdated
+import io.renku.search.events.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
@@ -36,7 +35,7 @@ import io.renku.search.provision.BackgroundCollector
 import io.renku.search.solr.documents.SolrDocument
 import io.renku.events.EventsGenerators
 import io.renku.solr.client.DocVersion
-import io.renku.queue.client.SchemaVersion
+import org.scalacheck.Gen
 
 class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
@@ -55,9 +54,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectUpdated,
-            messageHeaderGen(tc.projectUpdated.schema).generateOne
-              .copy(schemaVersion = SchemaVersion(tc.projectUpdated.version.head.name)),
-            tc.projectUpdated
+            EventsGenerators.eventMessageGen(Gen.const(tc.projectUpdated)).generateOne
           )
 
           _ <- collector.waitUntil(docs => docs.exists(tc.checkExpected))

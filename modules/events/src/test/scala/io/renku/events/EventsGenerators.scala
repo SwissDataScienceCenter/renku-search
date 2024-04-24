@@ -23,8 +23,9 @@ import org.scalacheck.Gen.{alphaChar, alphaNumChar}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import io.renku.search.events.{GroupAdded, ProjectCreated, ProjectUpdated}
 import io.renku.search.model.ModelGenerators
+import io.renku.search.events.*
+import org.apache.avro.Schema
 
 object EventsGenerators:
 
@@ -39,6 +40,44 @@ object EventsGenerators:
 
   val v2ProjectMemberRoleGen: Gen[v2.MemberRole] =
     Gen.oneOf(v2.MemberRole.values().toList)
+
+  def messageIdGen: Gen[MessageId] =
+    Gen.uuid.map(uid => MessageId(uid.toString))
+
+  def messageSourceGen: Gen[MessageSource] =
+    stringGen(max = 6).map(n => MessageSource(s"ms-$n"))
+
+  def dataContentTypeGen: Gen[DataContentType] =
+    Gen.oneOf(DataContentType.values.toSeq)
+
+  def schemaVersionGen: Gen[SchemaVersion] =
+    Gen.oneOf(SchemaVersion.all.toList)
+
+  val requestIdGen: Gen[RequestId] = Gen.uuid.map(_.toString).map(RequestId(_))
+
+  def messageHeaderGen: Gen[MessageHeader] =
+    for
+      src <- messageSourceGen
+      dt <- dataContentTypeGen
+      sv <- schemaVersionGen
+      ts <- ModelGenerators.timestampGen
+      req <- requestIdGen
+    yield MessageHeader(src, dt, sv, ts, req)
+
+  def eventMessageGen[A](schema: Schema, plgen: Gen[Seq[A]]): Gen[EventMessage[A]] =
+    for
+      id <- messageIdGen
+      mh <- messageHeaderGen
+      pl <- plgen
+    yield EventMessage(id, mh, schema, pl)
+
+  def eventMessageGen[A <: RenkuEventPayload](plgen: Gen[A]): Gen[EventMessage[A]] =
+    Gen.listOfN(1, plgen).flatMap { pl =>
+      val schema = pl.head.schema
+      eventMessageGen(schema, Gen.const(pl)).map(msg =>
+        msg.copy(header = msg.header.withSchemaVersion(pl.head.version.head))
+      )
+    }
 
   def v1ProjectCreatedGen(prefix: String): Gen[v1.ProjectCreated] =
     for

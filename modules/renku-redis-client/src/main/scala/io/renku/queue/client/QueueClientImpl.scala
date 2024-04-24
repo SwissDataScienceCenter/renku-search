@@ -55,10 +55,9 @@ private class QueueClientImpl[F[_]: Async](
 
   def enqueue[P: AvroEncoder](
       queueName: QueueName,
-      schemaVersion: SchemaVersion,
       msg: EventMessage[P]
   ): F[MessageId] =
-    val data = msg.toAvro(schemaVersion)
+    val data = msg.toAvro
     redisQueueClient.enqueue(queueName, data.header, data.payload).map(MessageId.apply)
 
   // deprecated
@@ -118,7 +117,8 @@ private class QueueClientImpl[F[_]: Async](
   )(using d: EventMessageDecoder[T]): Stream[F, EventMessage[T]] =
     acquireHeaderEventsStream(queueName, chunkSize, maybeOffset).evalMap { m =>
       d.decode(m) match
-        case Right(m) => Some(m).pure[F]
+        case Right(m) =>
+          Scribe[F].trace(s"Got message: $m").as(Some(m))
         case Left(err) =>
           Scribe[F]
             .warn(s"Error decoding redis message: $err")

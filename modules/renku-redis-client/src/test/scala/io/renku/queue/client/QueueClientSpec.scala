@@ -25,7 +25,7 @@ import io.renku.events.EventsGenerators
 import io.renku.search.events.{MessageId, ProjectCreated}
 import io.renku.queue.client.DataContentType.{Binary, Json}
 import io.renku.queue.client.Generators.*
-import io.renku.redis.client.{RedisClientGenerators}
+import io.renku.redis.client.RedisClientGenerators
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.search.GeneratorSyntax.*
 import munit.CatsEffectSuite

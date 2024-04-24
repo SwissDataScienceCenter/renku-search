@@ -23,13 +23,16 @@ import cats.effect.Async
 import cats.syntax.all.*
 import fs2.{Chunk, Stream}
 import io.renku.queue.client.{QueueClient, QueueMessage, RequestId}
-import io.renku.redis.client.{QueueName}
-import io.renku.search.events.MessageId
+import io.renku.redis.client.QueueName
+import io.renku.search.events.*
 import scribe.Scribe
 
 import scala.concurrent.duration.FiniteDuration
+import io.renku.search.events.EventMessage
 
 trait MessageReader[F[_]]:
+  def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]]
+
   def read[A](using
       QueueMessageDecoder[F, A],
       Show[A]
@@ -63,6 +66,13 @@ object MessageReader:
   ): MessageReader[F] =
     new MessageReader[F]:
       val logger: Scribe[F] = scribe.cats.effect[F]
+
+      def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]] =
+        for {
+          client <- queueClient
+          last <- Stream.eval(client.findLastProcessed(queue))
+          msg <- client.acquireMessageStream(queue, chunkSize, last)
+        } yield msg
 
       override def read[A](using
           QueueMessageDecoder[F, A],

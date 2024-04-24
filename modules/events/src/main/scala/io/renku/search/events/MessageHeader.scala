@@ -33,14 +33,16 @@ final case class MessageHeader(
     time: Timestamp,
     requestId: RequestId
 ):
+  def withContentType(dt: DataContentType): MessageHeader = copy(dataContentType = dt)
+  def withSchemaVersion(v: SchemaVersion): MessageHeader = copy(schemaVersion = v)
 
-  def toAvro(v: SchemaVersion, payloadType: String): ByteVector =
+  def toAvro(payloadType: String): ByteVector =
     val h =
       Header(
         source.value,
         payloadType,
         dataContentType.mimeType,
-        v.name,
+        schemaVersion.name,
         time.toInstant,
         requestId.value
       )

@@ -21,9 +21,7 @@ package io.renku.search.provision.project
 import cats.effect.{IO, Resource}
 
 import io.renku.events.EventsGenerators.projectCreatedGen
-import io.renku.search.events.ProjectCreated
-import io.renku.queue.client.DataContentType
-import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.search.events.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
@@ -34,10 +32,10 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
 import io.renku.search.provision.handler.DocumentMerger
 import io.renku.solr.client.DocVersion
-import io.renku.queue.client.SchemaVersion
+import io.renku.events.EventsGenerators
+import org.scalacheck.Gen
 
 class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
-
   ProjectCreatedProvisioningSpec.testCases.foreach { tc =>
     test(s"processes message and update solr: $tc"):
       withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
@@ -53,12 +51,10 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectCreated,
-            messageHeaderGen(
-              tc.projectCreated.schema,
-              DataContentType.Binary
-            ).generateOne
-              .copy(schemaVersion = SchemaVersion(tc.projectCreated.version.head.name)),
-            tc.projectCreated
+            EventsGenerators
+              .eventMessageGen(Gen.const(tc.projectCreated))
+              .map(_.modifyHeader(_.withContentType(DataContentType.Binary)))
+              .generateOne
           )
           _ <- collector.waitUntil(docs =>
             scribe.info(s"Check for ${tc.expectedProject}")
@@ -78,9 +74,10 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(created.schema, DataContentType.Binary).generateOne
-            .copy(schemaVersion = SchemaVersion(created.version.head.name)),
-          created
+          EventsGenerators
+            .eventMessageGen(Gen.const(created))
+            .map(_.modifyHeader(_.withContentType(DataContentType.Binary)))
+            .generateOne
         )
         collector <- BackgroundCollector(
           solrClient
@@ -104,9 +101,10 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(created.schema, DataContentType.Json).generateOne
-            .copy(schemaVersion = SchemaVersion(created.version.head.name)),
-          created
+          EventsGenerators
+            .eventMessageGen(Gen.const(created))
+            .map(_.modifyHeader(_.withContentType(DataContentType.Json)))
+            .generateOne
         )
         collector <- BackgroundCollector(
           solrClient

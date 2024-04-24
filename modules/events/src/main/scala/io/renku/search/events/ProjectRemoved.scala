@@ -24,9 +24,11 @@ import io.renku.search.model.Id
 import io.renku.avro.codec.all.given
 import io.renku.avro.codec.AvroEncoder
 import cats.Show
+import org.apache.avro.Schema
 
 final case class ProjectRemoved(id: Id) extends RenkuEventPayload:
   val version: NonEmptyList[SchemaVersion] = SchemaVersion.all
+  val schema: Schema = v2.ProjectRemoved.SCHEMA$
 
 object ProjectRemoved:
   given Show[ProjectRemoved] = Show.fromToString
@@ -35,7 +37,7 @@ object ProjectRemoved:
     val v2e = AvroEncoder[v2.ProjectRemoved]
     AvroEncoder { (_, v) =>
       val event = v2.ProjectRemoved(v.id.value)
-      v2e.encode(v2.ProjectRemoved.SCHEMA$)(event)
+      v2e.encode(v.schema)(event)
     }
 
   given EventMessageDecoder[ProjectRemoved] =

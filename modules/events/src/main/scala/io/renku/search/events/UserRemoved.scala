@@ -28,6 +28,7 @@ import org.apache.avro.Schema
 final case class UserRemoved(id: Id) extends RenkuEventPayload:
   def withId(id: Id): UserRemoved = copy(id = id)
   def version: NonEmptyList[SchemaVersion] = SchemaVersion.all
+  val schema: Schema = v2.UserRemoved.SCHEMA$
 
 object UserRemoved:
 
@@ -35,7 +36,7 @@ object UserRemoved:
     val v2e = AvroEncoder[v2.UserRemoved]
     AvroEncoder { (_, v) =>
       val event = v2.UserRemoved(v.id.value)
-      v2e.encode(v2.UserRemoved.SCHEMA$)(event)
+      v2e.encode(v.schema)(event)
     }
 
   given EventMessageDecoder[UserRemoved] =

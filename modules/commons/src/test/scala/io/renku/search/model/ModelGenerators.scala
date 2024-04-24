@@ -33,6 +33,14 @@ object ModelGenerators:
   val projectDescGen: Gen[projects.Description] =
     alphaStringGen(max = 30).map(projects.Description.apply)
 
+  val timestampGen: Gen[Timestamp] =
+    Gen
+      .choose(
+        Instant.parse("2020-01-01T01:00:00Z").toEpochMilli,
+        Instant.now().toEpochMilli
+      )
+      .map(millis => Timestamp(Instant.ofEpochMilli(millis)))
+
   val namespaceGen: Gen[Namespace] =
     alphaStringGen(max = 10).map(Namespace.apply)
   val memberRoleGen: Gen[MemberRole] =

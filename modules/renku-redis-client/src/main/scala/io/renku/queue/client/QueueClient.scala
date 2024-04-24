@@ -36,7 +36,6 @@ trait QueueClient[F[_]]:
 
   def enqueue[P: AvroEncoder](
       queueName: QueueName,
-      schemaVersion: SchemaVersion,
       msg: EventMessage[P]
   ): F[MessageId]
 

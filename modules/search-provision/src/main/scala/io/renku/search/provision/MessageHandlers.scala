@@ -56,7 +56,7 @@ final class MessageHandlers[F[_]: Async](
   def getAll: Map[String, F[Unit]] = tasks
 
   val projectCreated: Stream[F, Unit] =
-    add(cfg.projectCreated, makeUpsert[ProjectCreated](cfg.projectCreated).drain)
+    add(cfg.projectCreated, makeUpsert2[ProjectCreated](cfg.projectCreated).drain)
 
   val projectUpdated: Stream[F, Unit] =
     add(
@@ -176,6 +176,31 @@ final class MessageHandlers[F[_]: Async](
 
     ps.reader
       .read[A]
+      .flatMap(processMsg(_, maxConflictRetries))
+
+  private[provision] def makeUpsert2[A](queue: QueueName)(using
+      EventMessageDecoder[A],
+      DocumentMerger[A],
+      IdExtractor[A],
+      Show[A]
+  ): Stream[F, UpsertResponse] =
+    val ps = steps(queue)
+    def processMsg(
+        msg: EventMessage[A],
+        retries: Int
+    ): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchEntityOrPartial2)
+        .map { m =>
+          val merger = DocumentMerger[A]
+          m.merge(merger.create, merger.merge)
+        }
+        .through(ps.pushToSolr.push2(onConflict = retry))
+
+    ps.reader
+      .readEvents[A]
       .flatMap(processMsg(_, maxConflictRetries))
 
   private def makeRemovedSimple[A](queue: QueueName)(using

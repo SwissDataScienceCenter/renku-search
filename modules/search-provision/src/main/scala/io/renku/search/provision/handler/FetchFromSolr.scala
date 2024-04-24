@@ -23,6 +23,7 @@ import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs
+import io.renku.search.events.EventMessage
 import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.FetchFromSolr.*
 import io.renku.search.provision.handler.MessageReader.Message
@@ -38,6 +39,10 @@ trait FetchFromSolr[F[_]]:
   def fetchEntityOrPartial[A](using
       IdExtractor[A]
   ): Pipe[F, Message[A], MessageEntityOrPartial[A]]
+  def fetchEntityOrPartial2[A](using
+      IdExtractor[A]
+  ): Pipe[F, EventMessage[A], EntityOrPartialMessage[A]]
+
   def fetchEntityOrPartialById[A](v: A)(using IdExtractor[A]): F[Option[EntityOrPartial]]
 
 object FetchFromSolr:
@@ -147,6 +152,18 @@ object FetchFromSolr:
               .map(_.flatten.map(e => e.id -> e).toMap)
 
           loaded.map(docs => MessageEntityOrPartial(msg, docs))
+        }
+
+      def fetchEntityOrPartial2[A](using
+          IdExtractor[A]
+      ): Pipe[F, EventMessage[A], EntityOrPartialMessage[A]] =
+        _.evalMap { msg =>
+          val loaded =
+            msg.payload
+              .traverse(fetchEntityOrPartialById)
+              .map(_.flatten.map(e => e.id -> e).toMap)
+
+          loaded.map(docs => EntityOrPartialMessage(msg, docs))
         }
 
       def fetchEntityOrPartialById[A](v: A)(using

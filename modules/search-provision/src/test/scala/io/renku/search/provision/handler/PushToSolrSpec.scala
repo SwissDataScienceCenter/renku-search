@@ -29,7 +29,7 @@ import fs2.Stream
 import io.renku.avro.codec.all.given
 import io.renku.events.v1.UserAdded
 import io.renku.queue.client.Generators as QueueGenerators
-import io.renku.search.events.MessageId
+import io.renku.search.events.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.ModelGenerators.idGen
 import io.renku.search.solr.client.SearchSolrSuite
@@ -110,7 +110,7 @@ object PushToSolrSpec:
   class MessageReaderMock extends MessageReader[IO]:
     private val processedIds: Ref[IO, Set[MessageId]] = Ref.unsafe(Set.empty)
     def getProcessed: IO[Set[MessageId]] = processedIds.get
-
+    def readEvents[A](using EventMessageDecoder[A]): Stream[IO, EventMessage[A]] = ???
     def read[A](using
         QueueMessageDecoder[IO, A],
         Show[A]

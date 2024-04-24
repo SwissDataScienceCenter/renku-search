@@ -31,13 +31,18 @@ final case class EventMessage[P](
 ):
   private lazy val payloadWriter = AvroWriter(payloadSchema)
 
-  def toAvro(v: SchemaVersion)(using AvroEncoder[P]): EventMessage.AvroPayload =
-    val h = header.toAvro(v, payload.getClass.getName)
-    val b = payloadWriter.write(payload)
+  def toAvro(using AvroEncoder[P]): EventMessage.AvroPayload =
+    val h = header.toAvro(payload.getClass.getName)
+    val b = header.dataContentType match
+      case DataContentType.Binary => payloadWriter.write(payload)
+      case DataContentType.Json   => payloadWriter.writeJson(payload)
     EventMessage.AvroPayload(h, b)
 
   def map[B](f: P => B): EventMessage[B] =
     EventMessage(id, header, payloadSchema, payload.map(f))
+
+  def modifyHeader(f: MessageHeader => MessageHeader): EventMessage[P] =
+    copy(header = f(header))
 
 object EventMessage:
 

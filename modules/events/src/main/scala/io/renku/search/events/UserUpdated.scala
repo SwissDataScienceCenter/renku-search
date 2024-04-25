@@ -24,6 +24,7 @@ import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}
 import io.renku.search.model.Id
 import org.apache.avro.Schema
+import cats.Show
 
 sealed trait UserUpdated extends RenkuEventPayload:
   def fold[A](fv1: v1.UserUpdated => A, fv2: v2.UserUpdated => A): A
@@ -64,3 +65,5 @@ object UserUpdated:
           qm.toMessage[v2.UserUpdated](schema)
             .map(_.map(UserUpdated.V2.apply))
     }
+
+  given Show[UserUpdated] = Show.show(_.fold(_.toString, _.toString))

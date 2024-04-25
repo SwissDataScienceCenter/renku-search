@@ -88,8 +88,8 @@ final class MessageHandlers[F[_]: Async](
   val userAdded: Stream[F, Unit] =
     add(cfg.userAdded, makeUpsert2[UserAdded](cfg.userAdded).drain)
 
-  val userUpdated: Stream[F, Unit] =
-    add(cfg.userUpdated, makeUpsert[v1.UserUpdated](cfg.userUpdated).drain)
+  val userUpdated: Stream[F, Unit] = z
+  add(cfg.userUpdated, makeUpsert2[UserUpdated](cfg.userUpdated).drain)
 
   val userRemoved: Stream[F, Unit] =
     val ps = steps(cfg.userRemoved)

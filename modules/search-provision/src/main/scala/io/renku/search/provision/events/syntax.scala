@@ -102,6 +102,10 @@ trait syntax extends io.renku.search.events.syntax:
     def toModel(orig: UserDocument): UserDocument =
       Conversion.fromUserUpdated(self, orig)
 
+  extension (self: UserUpdated)
+    def toModel(orig: UserDocument): UserDocument =
+      self.fold(_.toModel(orig), _.toModel(orig))
+
   extension (self: v2.GroupAdded)
     def toModel(version: DocVersion): GroupDocument =
       Conversion.fromGroupAdded(self, version)

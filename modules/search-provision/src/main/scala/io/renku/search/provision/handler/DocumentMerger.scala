@@ -259,13 +259,29 @@ object DocumentMerger:
       case (UserAdded.V2(event), existing) => v2m.merge(event, existing)
     }
 
-  given DocumentMerger[v1.UserUpdated] =
+  given v1UserUpdated: DocumentMerger[v1.UserUpdated] =
     instance[v1.UserUpdated](_ => None)((uu, existing) =>
       existing match
         case orig: UserDocument =>
           uu.toModel(orig).some
         case _ => None
     )
+
+  given v2UserUpdated: DocumentMerger[v2.UserUpdated] =
+    instance[v2.UserUpdated](_ => None)((uu, existing) =>
+      existing match
+        case orig: UserDocument =>
+          uu.toModel(orig).some
+        case _ => None
+    )
+
+  given DocumentMerger[UserUpdated] =
+    val v1m = DocumentMerger[v1.UserUpdated]
+    val v2m = DocumentMerger[v2.UserUpdated]
+    instance[UserUpdated](_.fold(v1m.create, v2m.create)) {
+      case (UserUpdated.V1(event), existing) => v1m.merge(event, existing)
+      case (UserUpdated.V2(event), existing) => v2m.merge(event, existing)
+    }
 
   private val v2gaMerger: DocumentMerger[v2.GroupAdded] =
     def convert(ga: v2.GroupAdded): GroupDocument =

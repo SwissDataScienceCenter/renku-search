@@ -22,16 +22,18 @@ import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
-import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
+import io.renku.search.provision.handler.DeleteFromSolr.{DeleteResult, DeleteResult2}
 import io.renku.search.provision.handler.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.events.EventMessage
 
 trait DeleteFromSolr[F[_]]:
   def tryDeleteAll[A](using IdExtractor[A]): Pipe[F, Message[A], DeleteResult[A]]
+  def tryDeleteAll2[A](using IdExtractor[A]): Pipe[F, EventMessage[A], DeleteResult2[A]]
   def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[Message[A]], Unit]
   def deleteAll2[A](using IdExtractor[A]): Pipe[F, Chunk[EventMessage[A]], Unit]
   def whenSuccess[A](fb: Message[A] => F[Unit]): Pipe[F, DeleteResult[A], Unit]
+  def whenSuccess2[A](fb: EventMessage[A] => F[Unit]): Pipe[F, DeleteResult2[A], Unit]
 
 object DeleteFromSolr:
   enum DeleteResult[A](val message: Message[A]):
@@ -101,6 +103,19 @@ object DeleteFromSolr:
           case result => result.pure[F]
         }
           .through(markProcessed)
+
+      def whenSuccess2[A](
+          fb: EventMessage[A] => F[Unit]
+      ): Pipe[F, DeleteResult2[A], Unit] =
+        _.evalMap {
+          case DeleteResult2.Success(m) =>
+            logger.debug(
+              s"Deletion ${m.id} successful, running post processing action"
+            ) >>
+              fb(m).attempt.map(DeleteResult2.from(m))
+          case result => result.pure[F]
+        }
+          .through(markProcessed2)
 
       def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[Message[A]], Unit] =
         _.flatMap(Stream.chunk)

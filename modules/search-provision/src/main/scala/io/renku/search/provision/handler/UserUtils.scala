@@ -18,14 +18,14 @@
 
 package io.renku.search.provision.handler
 
-import fs2.{Pipe, Stream}
-import MessageReader.Message
-import io.renku.search.model.Id
 import cats.effect.Sync
-import io.renku.events.v1.ProjectAuthorizationRemoved
+import fs2.{Pipe, Stream}
+
+import io.renku.search.events.*
+import io.renku.search.model.Id
 
 trait UserUtils[F[_]]:
-  def removeFromProjects: Pipe[F, Message[Id], Unit]
+  def removeFromProjects: Pipe[F, EventMessage[Id], Unit]
 
 object UserUtils:
   def apply[F[_]: Sync](
@@ -34,18 +34,20 @@ object UserUtils:
   ): UserUtils[F] =
     new UserUtils[F] with ShowInstances {
       val logger = scribe.cats.effect[F]
-      def removeFromProjects: Pipe[F, Message[Id], Unit] =
+      def removeFromProjects: Pipe[F, EventMessage[Id], Unit] =
         _.evalMap { msg =>
           (Stream.eval(
-            logger.debug(s"Send authRemove events for user ids: ${msg.decoded}")
+            logger.debug(s"Send authRemove events for user ids: ${msg.payload}")
           ) ++
             Stream
-              .emits(msg.decoded)
+              .emits(msg.payload)
               .flatMap(id => fetchFromSolr.fetchProjectForUser(id).map(_ -> id))
               .map { case (projectId, userId) =>
-                ProjectAuthorizationRemoved(projectId.id.value, userId.value)
+                ProjectMemberRemoved(projectId.id, userId)
               }
               .evalTap(data => logger.info(s"Sending $data to redis"))
-              .through(pushToRedis.pushAuthorizationRemoved(msg.requestId))).compile.drain
+              .through(
+                pushToRedis.pushAuthorizationRemoved(msg.header.requestId)
+              )).compile.drain
         }
     }

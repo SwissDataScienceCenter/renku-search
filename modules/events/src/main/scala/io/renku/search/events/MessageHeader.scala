@@ -25,6 +25,7 @@ import io.renku.avro.codec.all.given
 import io.renku.events.Header
 import io.renku.search.model.Timestamp
 import scodec.bits.ByteVector
+import cats.effect.Sync
 
 final case class MessageHeader(
     source: MessageSource,
@@ -49,6 +50,13 @@ final case class MessageHeader(
     AvroWriter(Header.SCHEMA$).write(Seq(h))
 
 object MessageHeader:
+  def create[F[_]: Sync](
+      src: MessageSource,
+      ct: DataContentType,
+      sv: SchemaVersion,
+      reqId: RequestId
+  ): F[MessageHeader] =
+    Timestamp.now[F].map(ts => MessageHeader(src, ct, sv, ts, reqId))
 
   def fromByteVector(bv: ByteVector): Either[String, MessageHeader] =
     Either

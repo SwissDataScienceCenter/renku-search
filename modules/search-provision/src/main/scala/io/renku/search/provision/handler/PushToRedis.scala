@@ -22,11 +22,10 @@ import cats.Show
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Pipe, Stream}
-import io.renku.avro.codec.encoders.all.given
-import io.renku.search.events.MessageId
-import io.renku.events.v1.ProjectAuthorizationRemoved
-import io.renku.queue.client.*
+
+import io.renku.queue.client.QueueClient
 import io.renku.redis.client.{ClientId, MessageId => _}
+import io.renku.search.events.*
 import io.renku.search.provision.QueuesConfig
 import scribe.Scribe
 
@@ -34,8 +33,8 @@ trait PushToRedis[F[_]]:
   def pushAuthorizationRemoved(
       requestId: RequestId
   )(using
-      Show[ProjectAuthorizationRemoved]
-  ): Pipe[F, ProjectAuthorizationRemoved, MessageId]
+      Show[ProjectMemberRemoved]
+  ): Pipe[F, ProjectMemberRemoved, MessageId]
 
 object PushToRedis:
 
@@ -50,27 +49,25 @@ object PushToRedis:
       def pushAuthorizationRemoved(
           requestId: RequestId
       )(using
-          Show[ProjectAuthorizationRemoved]
-      ): Pipe[F, ProjectAuthorizationRemoved, MessageId] =
-        _.evalMap(payload => createHeader(requestId).tupleRight(payload))
-          .evalTap { case (_, payload) => logger.debug(show"Pushing $payload to redis") }
-          .flatMap(enqueue)
-
-      private def enqueue(header: MessageHeader, payload: ProjectAuthorizationRemoved) =
-        queueClient.evalMap(
-          _.enqueue(
-            queueConfig.projectAuthorizationRemoved,
-            header,
-            payload
+          Show[ProjectMemberRemoved]
+      ): Pipe[F, ProjectMemberRemoved, MessageId] =
+        _.evalMap(payload => createMessage(payload, requestId))
+          .evalTap { case msg => logger.debug(show"Pushing ${msg.payload} to redis") }
+          .flatMap(msg =>
+            queueClient.evalMap(_.enqueue(queueConfig.projectAuthorizationRemoved, msg))
           )
-        )
 
-      private def createHeader(requestId: RequestId): F[MessageHeader] =
-        MessageHeader[F](
-          MessageSource(clientId.value),
-          ProjectAuthorizationRemoved.SCHEMA$,
-          DataContentType.Binary,
-          SchemaVersion.V1,
-          requestId
-        )
+      private def createMessage(
+          payload: ProjectMemberRemoved,
+          requestId: RequestId
+      ): F[EventMessage[ProjectMemberRemoved]] =
+        for
+          id <- MessageId.random[F]
+          header <- MessageHeader.create[F](
+            MessageSource(clientId.value),
+            DataContentType.Binary,
+            SchemaVersion.V1,
+            requestId
+          )
+        yield EventMessage(id, header, payload.schema, Seq(payload))
     }

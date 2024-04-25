@@ -41,6 +41,8 @@ sealed trait ProjectMemberRemoved extends RenkuEventPayload:
     )
 
 object ProjectMemberRemoved:
+  def apply(projectId: Id, userId: Id): ProjectMemberRemoved =
+    V2(v2.ProjectMemberRemoved(projectId.value, userId.value))
 
   final case class V1(event: v1.ProjectAuthorizationRemoved) extends ProjectMemberRemoved:
     lazy val id: Id = Id(event.projectId)

@@ -23,7 +23,6 @@ import cats.data.OptionT
 import cats.effect.*
 import fs2.Stream
 
-import io.renku.events.v1
 import io.renku.redis.client.QueueName
 import io.renku.search.events.*
 import io.renku.search.model.Namespace
@@ -88,19 +87,19 @@ final class MessageHandlers[F[_]: Async](
   val userAdded: Stream[F, Unit] =
     add(cfg.userAdded, makeUpsert2[UserAdded](cfg.userAdded).drain)
 
-  val userUpdated: Stream[F, Unit] = z
-  add(cfg.userUpdated, makeUpsert2[UserUpdated](cfg.userUpdated).drain)
+  val userUpdated: Stream[F, Unit] =
+    add(cfg.userUpdated, makeUpsert2[UserUpdated](cfg.userUpdated).drain)
 
   val userRemoved: Stream[F, Unit] =
     val ps = steps(cfg.userRemoved)
     add(
       cfg.userRemoved,
       ps.reader
-        .read[v1.UserRemoved]
-        .through(ps.deleteFromSolr.tryDeleteAll)
-        .through(ps.deleteFromSolr.whenSuccess { msg =>
+        .readEvents[UserRemoved]
+        .through(ps.deleteFromSolr.tryDeleteAll2)
+        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
           Stream
-            .emit(msg.map(IdExtractor[v1.UserRemoved].getId))
+            .emit(msg.map(_.id))
             .through(ps.userUtils.removeFromProjects)
             .compile
             .drain

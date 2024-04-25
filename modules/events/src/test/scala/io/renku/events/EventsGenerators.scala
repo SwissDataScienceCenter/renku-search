@@ -243,7 +243,7 @@ object EventsGenerators:
           )
         )
 
-  def projectAuthorizationUpdatedGen(
+  def v1ProjectAuthorizationUpdatedGen(
       projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
       roleGen: Gen[v1.ProjectMemberRole] = projectMemberRoleGen
   ): Gen[v1.ProjectAuthorizationUpdated] =
@@ -252,6 +252,57 @@ object EventsGenerators:
       userId <- Gen.uuid.map(_.toString)
       role <- roleGen
     yield v1.ProjectAuthorizationUpdated(projectId, userId, role)
+
+  def v2ProjectMemberUpdatedGen(
+      projectIdGen: Gen[String] = Gen.uuid.map(_.toString),
+      roleGen: Gen[v2.MemberRole] = v2ProjectMemberRoleGen
+  ): Gen[v2.ProjectMemberUpdated] =
+    for
+      projectId <- projectIdGen
+      userId <- Gen.uuid.map(_.toString)
+      role <- roleGen
+    yield v2.ProjectMemberUpdated(projectId, userId, role)
+
+  def projectMemberUpdatedGen: Gen[ProjectMemberUpdated] =
+    Gen.oneOf(
+      v1ProjectAuthorizationUpdatedGen().map(ProjectMemberUpdated.V1.apply),
+      v2ProjectMemberUpdatedGen().map(ProjectMemberUpdated.V2.apply)
+    )
+
+  def projectMemberUpdated(
+      projectId: Id,
+      userId: Id,
+      role: MemberRole
+  ): Gen[ProjectMemberUpdated] =
+    role match
+      case MemberRole.Member =>
+        Gen.const(
+          ProjectMemberUpdated.V1(
+            v1.ProjectAuthorizationUpdated(
+              projectId.value,
+              userId.value,
+              v1.ProjectMemberRole.MEMBER
+            )
+          )
+        )
+      case MemberRole.Viewer =>
+        Gen.const(
+          ProjectMemberUpdated.V2(
+            v2.ProjectMemberUpdated(projectId.value, userId.value, v2.MemberRole.VIEWER)
+          )
+        )
+      case MemberRole.Editor =>
+        Gen.const(
+          ProjectMemberUpdated.V2(
+            v2.ProjectMemberUpdated(projectId.value, userId.value, v2.MemberRole.EDITOR)
+          )
+        )
+      case MemberRole.Owner =>
+        Gen.const(
+          ProjectMemberUpdated.V2(
+            v2.ProjectMemberUpdated(projectId.value, userId.value, v2.MemberRole.OWNER)
+          )
+        )
 
   def userAddedGen(prefix: String): Gen[v1.UserAdded] =
     for

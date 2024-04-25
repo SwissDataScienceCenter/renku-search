@@ -20,9 +20,6 @@ package io.renku.search.provision
 package project
 
 import cats.effect.{IO, Resource}
-import io.renku.avro.codec.all.given
-import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
-import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.project.AuthorizationUpdatedProvisioningSpec.testCases
@@ -33,6 +30,9 @@ import io.renku.search.solr.documents.{
   SolrDocument
 }
 import io.renku.solr.client.DocVersion
+import io.renku.events.EventsGenerators
+import io.renku.search.events.ProjectMemberUpdated
+import org.scalacheck.Gen
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
@@ -51,8 +51,7 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectAuthorizationUpdated,
-            messageHeaderGen(ProjectAuthorizationUpdated.SCHEMA$).generateOne,
-            tc.authUpdated
+            EventsGenerators.eventMessageGen(Gen.const(tc.authUpdated)).generateOne
           )
           _ <- collector.waitUntil(docs =>
             scribe.debug(s"Check for ${tc.expectedProject}")
@@ -84,12 +83,8 @@ object AuthorizationUpdatedProvisioningSpec:
       case DbState.Project(p)        => p.id
       case DbState.PartialProject(p) => p.id
 
-    val authUpdated: ProjectAuthorizationUpdated =
-      ProjectAuthorizationUpdated(
-        projectId.value,
-        user.value,
-        ProjectMemberRole.valueOf(role.name.toUpperCase())
-      )
+    val authUpdated: ProjectMemberUpdated =
+      EventsGenerators.projectMemberUpdated(projectId, user, role).generateOne
 
     val expectedProject: Set[SolrDocument] = dbState match
       case DbState.Empty =>

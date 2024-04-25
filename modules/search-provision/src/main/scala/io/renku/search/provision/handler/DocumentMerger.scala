@@ -31,6 +31,7 @@ import io.renku.search.solr.documents.Group as GroupDocument
 import io.renku.search.provision.events.syntax.*
 import io.renku.solr.client.DocVersion
 import io.renku.search.events.ProjectMemberAdded
+import io.renku.search.events.ProjectMemberUpdated
 
 trait DocumentMerger[A]:
   def create(value: A): Option[EntityOrPartial]
@@ -86,7 +87,7 @@ object DocumentMerger:
       case (ProjectMemberAdded.V2(event), existing) => v2m.merge(event, existing)
     }
 
-  given DocumentMerger[v1.ProjectAuthorizationUpdated] =
+  given v1ProjectAuthUpdated: DocumentMerger[v1.ProjectAuthorizationUpdated] =
     instance[v1.ProjectAuthorizationUpdated](
       _.toModel(DocVersion.NotExists).some
     )((pau, existing) =>
@@ -97,6 +98,29 @@ object DocumentMerger:
           pau.toModel(p.version).applyTo(p.removeMember(pau.userId.toId)).some
         case _ => None
     )
+
+  given v2ProjectMemberUpdated: DocumentMerger[v2.ProjectMemberUpdated] =
+    instance[v2.ProjectMemberUpdated](
+      _.toModel(DocVersion.NotExists).some
+    )((pau, existing) =>
+      existing match
+        case p: PartialEntityDocument.Project =>
+          p.removeMember(pau.userId.toId).applyTo(pau.toModel(p.version)).some
+        case p: ProjectDocument =>
+          pau.toModel(p.version).applyTo(p.removeMember(pau.userId.toId)).some
+        case _ => None
+    )
+
+  given DocumentMerger[ProjectMemberUpdated] =
+    val v1m = DocumentMerger[v1.ProjectAuthorizationUpdated]
+    val v2m = DocumentMerger[v2.ProjectMemberUpdated]
+    instance[ProjectMemberUpdated] {
+      case ProjectMemberUpdated.V1(event) => v1m.create(event)
+      case ProjectMemberUpdated.V2(event) => v2m.create(event)
+    } {
+      case (ProjectMemberUpdated.V1(event), existing) => v1m.merge(event, existing)
+      case (ProjectMemberUpdated.V2(event), existing) => v2m.merge(event, existing)
+    }
 
   given DocumentMerger[v1.ProjectAuthorizationRemoved] =
     instance[v1.ProjectAuthorizationRemoved](_ => None)((par, existing) =>

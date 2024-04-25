@@ -24,6 +24,7 @@ import io.renku.search.events.syntax.*
 import io.renku.search.solr.documents.{EntityMembers, PartialEntityDocument}
 import io.renku.solr.client.DocVersion
 import io.renku.events.v2.ProjectMemberAdded
+import io.renku.events.v2.ProjectMemberUpdated
 
 trait ProjectAuthorization:
 
@@ -83,5 +84,21 @@ trait ProjectAuthorization:
           editors = Set.empty,
           viewers = Set.empty,
           members = members
+        )
+      )
+
+  def fromProjectMemberUpdated(
+      paa: ProjectMemberUpdated,
+      version: DocVersion
+  ): PartialEntityDocument.Project =
+    val (owners, editors, viewers) = resolveRole(paa.role, paa.userId)
+    PartialEntityDocument
+      .Project(id = paa.projectId.toId, version = version)
+      .apply(
+        EntityMembers(
+          owners = owners,
+          editors = editors,
+          viewers = viewers,
+          members = Set.empty
         )
       )

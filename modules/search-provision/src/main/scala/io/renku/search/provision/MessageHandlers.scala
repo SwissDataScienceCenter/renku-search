@@ -76,7 +76,7 @@ final class MessageHandlers[F[_]: Async](
   val projectAuthUpdated: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationUpdated,
-      makeUpsert[v1.ProjectAuthorizationUpdated](cfg.projectAuthorizationUpdated).drain
+      makeUpsert2[ProjectMemberUpdated](cfg.projectAuthorizationUpdated).drain
     )
 
   val projectAuthRemoved: Stream[F, Unit] = add(

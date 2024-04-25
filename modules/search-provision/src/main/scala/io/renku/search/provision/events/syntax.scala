@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.events
 
-import io.renku.search.events.{GroupUpdated, ProjectCreated, ProjectUpdated}
+import io.renku.search.events.*
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.solr.client.DocVersion
 import io.renku.search.solr.documents.{
@@ -86,7 +86,19 @@ trait syntax extends io.renku.search.events.syntax:
     def toModel(version: DocVersion): UserDocument =
       Conversion.fromUserAdded(self, version)
 
+  extension (self: v2.UserAdded)
+    def toModel(version: DocVersion): UserDocument =
+      Conversion.fromUserAdded(self, version)
+
+  extension (self: UserAdded)
+    def toModel(version: DocVersion): UserDocument =
+      self.fold(_.toModel(version), _.toModel(version))
+
   extension (self: v1.UserUpdated)
+    def toModel(orig: UserDocument): UserDocument =
+      Conversion.fromUserUpdated(self, orig)
+
+  extension (self: v2.UserUpdated)
     def toModel(orig: UserDocument): UserDocument =
       Conversion.fromUserUpdated(self, orig)
 

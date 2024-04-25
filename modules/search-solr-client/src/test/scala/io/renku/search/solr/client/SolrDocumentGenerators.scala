@@ -70,9 +70,14 @@ trait SolrDocumentGenerators:
       )
 
   def userDocumentGen: Gen[User] =
-    (idGen, Gen.option(userFirstNameGen), Gen.option(userLastNameGen))
-      .flatMapN { case (id, f, l) =>
-        User.of(id, f, l)
+    (
+      idGen,
+      Gen.option(userFirstNameGen),
+      Gen.option(userLastNameGen),
+      Gen.option(ModelGenerators.namespaceGen)
+    )
+      .flatMapN { case (id, f, l, ns) =>
+        User.of(id, ns, f, l)
       }
 
   lazy val entityMembersGen: Gen[EntityMembers] =

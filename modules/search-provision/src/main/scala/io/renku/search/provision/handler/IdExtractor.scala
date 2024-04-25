@@ -34,12 +34,16 @@ object IdExtractor:
   def createStr[A](f: A => String): IdExtractor[A] =
     (a: A) => Id(f(a))
 
-  given IdExtractor[ProjectCreated] = createStr(_.fold(_.id, _.id))
-  given IdExtractor[ProjectUpdated] = createStr(_.fold(_.id, _.id))
-  given IdExtractor[ProjectRemoved] = create(_.id)
-  given IdExtractor[ProjectMemberAdded] = create(_.id)
-  given IdExtractor[ProjectMemberUpdated] = create(_.id)
-  given IdExtractor[ProjectMemberRemoved] = create(_.id)
+  given [A <: RenkuEventPayload]: IdExtractor[A] =
+    create(_.id)
+
+  // given IdExtractor[ProjectCreated] = createStr(_.fold(_.id, _.id))
+  // given IdExtractor[ProjectUpdated] = createStr(_.fold(_.id, _.id))
+  // given IdExtractor[ProjectRemoved] = create(_.id)
+  // given IdExtractor[ProjectMemberAdded] = create(_.id)
+  // given IdExtractor[ProjectMemberUpdated] = create(_.id)
+  // given IdExtractor[ProjectMemberRemoved] = create(_.id)
+  // given IdExtractor[UserAdded] = create(_.id)
 
   given IdExtractor[v1.UserAdded] = createStr(_.id)
   given IdExtractor[v1.UserUpdated] = createStr(_.id)

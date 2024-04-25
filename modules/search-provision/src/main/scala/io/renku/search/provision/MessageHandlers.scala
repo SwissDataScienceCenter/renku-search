@@ -22,13 +22,14 @@ import cats.Show
 import cats.data.OptionT
 import cats.effect.*
 import fs2.Stream
+
 import io.renku.events.v1
 import io.renku.redis.client.QueueName
 import io.renku.search.events.*
 import io.renku.search.model.Namespace
 import io.renku.search.provision.events.Conversion.partialProjectFromDocument
-import io.renku.search.provision.handler.*
 import io.renku.search.provision.handler.EntityOrPartial.given
+import io.renku.search.provision.handler.*
 import io.renku.search.solr.documents.{Group, PartialEntityDocument, Project}
 import io.renku.solr.client.UpsertResponse
 
@@ -85,7 +86,7 @@ final class MessageHandlers[F[_]: Async](
   )
 
   val userAdded: Stream[F, Unit] =
-    add(cfg.userAdded, makeUpsert[v1.UserAdded](cfg.userAdded).drain)
+    add(cfg.userAdded, makeUpsert2[UserAdded](cfg.userAdded).drain)
 
   val userUpdated: Stream[F, Unit] =
     add(cfg.userUpdated, makeUpsert[v1.UserUpdated](cfg.userUpdated).drain)

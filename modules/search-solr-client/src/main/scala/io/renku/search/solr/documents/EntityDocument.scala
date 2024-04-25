@@ -94,6 +94,7 @@ final case class User(
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     name: Option[Name] = None,
+    namespace: Option[Namespace] = None,
     score: Option[Double] = None
 ) extends EntityDocument:
   def setVersion(v: DocVersion): User = copy(version = v)
@@ -115,6 +116,7 @@ object User:
 
   def of(
       id: Id,
+      namespace: Option[Namespace] = None,
       firstName: Option[users.FirstName] = None,
       lastName: Option[users.LastName] = None,
       score: Option[Double] = None
@@ -125,6 +127,7 @@ object User:
       firstName,
       lastName,
       nameFrom(firstName.map(_.value), lastName.map(_.value)),
+      namespace,
       score
     )
 

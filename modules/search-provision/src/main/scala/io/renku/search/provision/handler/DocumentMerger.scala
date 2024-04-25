@@ -21,7 +21,6 @@ package io.renku.search.provision.handler
 import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.events.{v1, v2}
-import io.renku.search.events.{GroupAdded, GroupUpdated, ProjectCreated, ProjectUpdated}
 import io.renku.search.model.Id
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
@@ -30,9 +29,7 @@ import io.renku.search.solr.documents.User as UserDocument
 import io.renku.search.solr.documents.Group as GroupDocument
 import io.renku.search.provision.events.syntax.*
 import io.renku.solr.client.DocVersion
-import io.renku.search.events.ProjectMemberAdded
-import io.renku.search.events.ProjectMemberUpdated
-import io.renku.search.events.ProjectMemberRemoved
+import io.renku.search.events.*
 
 trait DocumentMerger[A]:
   def create(value: A): Option[EntityOrPartial]
@@ -223,10 +220,9 @@ object DocumentMerger:
         case _ => None
     )
 
-  given (using
-      v1m: DocumentMerger[v1.ProjectUpdated],
-      v2m: DocumentMerger[v2.ProjectUpdated]
-  ): DocumentMerger[ProjectUpdated] =
+  given DocumentMerger[ProjectUpdated] =
+    val v1m = DocumentMerger[v1.ProjectUpdated]
+    val v2m = DocumentMerger[v2.ProjectUpdated]
     DocumentMerger.instance[ProjectUpdated] {
       case ProjectUpdated.V1(event) => v1m.create(event)
       case ProjectUpdated.V2(event) => v2m.create(event)
@@ -235,7 +231,7 @@ object DocumentMerger:
       case (ProjectUpdated.V2(event), existing) => v2m.merge(event, existing)
     }
 
-  given DocumentMerger[v1.UserAdded] =
+  given v1UserAdded: DocumentMerger[v1.UserAdded] =
     def convert(ua: v1.UserAdded): UserDocument =
       ua.toModel(DocVersion.NotExists)
 
@@ -244,6 +240,24 @@ object DocumentMerger:
         case u: EntityDocument        => Some(convert(ua).setVersion(u.version))
         case _: PartialEntityDocument => None
     )
+
+  given v2UserAdded: DocumentMerger[v2.UserAdded] =
+    def convert(ua: v2.UserAdded): UserDocument =
+      ua.toModel(DocVersion.NotExists)
+
+    instance[v2.UserAdded](convert(_).some)((ua, existing) =>
+      existing match
+        case u: EntityDocument        => Some(convert(ua).setVersion(u.version))
+        case _: PartialEntityDocument => None
+    )
+
+  given DocumentMerger[UserAdded] =
+    val v1m = DocumentMerger[v1.UserAdded]
+    val v2m = DocumentMerger[v2.UserAdded]
+    instance[UserAdded](_.fold(v1m.create, v2m.create)) {
+      case (UserAdded.V1(event), existing) => v1m.merge(event, existing)
+      case (UserAdded.V2(event), existing) => v2m.merge(event, existing)
+    }
 
   given DocumentMerger[v1.UserUpdated] =
     instance[v1.UserUpdated](_ => None)((uu, existing) =>

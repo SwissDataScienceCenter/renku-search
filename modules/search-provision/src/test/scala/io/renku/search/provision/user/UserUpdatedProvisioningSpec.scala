@@ -22,7 +22,7 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
 import io.renku.avro.codec.all.given
-import io.renku.events.EventsGenerators.{stringGen, userAddedGen}
+import io.renku.events.EventsGenerators.{stringGen, v1UserAddedGen}
 import io.renku.events.v1.{UserAdded, UserUpdated}
 import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
@@ -36,7 +36,7 @@ import io.renku.search.provision.BackgroundCollector
 class UserUpdatedProvisioningSpec extends ProvisioningSuite:
   (firstNameUpdate :: lastNameUpdate :: emailUpdate :: noUpdate :: Nil).foreach {
     case TestCase(name, updateF) =>
-      val userAdded = userAddedGen(prefix = "user-update").generateOne
+      val userAdded = v1UserAddedGen(prefix = "user-update").generateOne
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
         withMessageHandlers(queueConfig).use { case (handler, queueClient, solrClient) =>
           for

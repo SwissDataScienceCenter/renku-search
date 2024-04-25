@@ -29,6 +29,7 @@ import io.renku.search.model.ModelGenerators
 import org.apache.avro.Schema
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaChar, alphaNumChar}
+import io.renku.search.model.users.FirstName
 
 object EventsGenerators:
 
@@ -312,10 +313,13 @@ object EventsGenerators:
       ProjectMemberRemoved.V2(v2.ProjectMemberRemoved(projectId.value, userId.value))
     )
 
-  def userAddedGen(prefix: String): Gen[v1.UserAdded] =
+  def v1UserAddedGen(
+      prefix: String,
+      firstName: Gen[FirstName] = ModelGenerators.userFirstNameGen
+  ): Gen[v1.UserAdded] =
     for
       id <- Gen.uuid.map(_.toString)
-      firstName <- Gen.option(alphaStringGen(max = 5).map(v => s"$prefix-$v"))
+      firstName <- Gen.option(firstName.map(_.value))
       lastName <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
       email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
     yield v1.UserAdded(
@@ -323,6 +327,33 @@ object EventsGenerators:
       firstName,
       Some(lastName),
       email
+    )
+
+  def v2UserAddedGen(
+      prefix: String,
+      firstName: Gen[FirstName] = ModelGenerators.userFirstNameGen
+  ): Gen[v2.UserAdded] =
+    for
+      id <- Gen.uuid.map(_.toString)
+      firstName <- Gen.option(firstName.map(_.value))
+      lastName <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
+      email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
+      ns <- ModelGenerators.namespaceGen
+    yield v2.UserAdded(
+      id,
+      firstName,
+      Some(lastName),
+      email,
+      ns.value
+    )
+
+  def userAddedGen(
+      prefix: String,
+      firstName: Gen[FirstName] = ModelGenerators.userFirstNameGen
+  ): Gen[UserAdded] =
+    Gen.oneOf(
+      v1UserAddedGen(prefix, firstName).map(UserAdded.V1.apply),
+      v2UserAddedGen(prefix, firstName).map(UserAdded.V2.apply)
     )
 
   def v2GroupAddedGen(prefix: String): Gen[v2.GroupAdded] =

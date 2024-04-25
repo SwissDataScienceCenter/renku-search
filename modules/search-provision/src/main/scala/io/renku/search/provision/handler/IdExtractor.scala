@@ -39,6 +39,7 @@ object IdExtractor:
   given IdExtractor[ProjectRemoved] = create(_.id)
   given IdExtractor[ProjectMemberAdded] = create(_.id)
   given IdExtractor[ProjectMemberUpdated] = create(_.id)
+  given IdExtractor[ProjectMemberRemoved] = create(_.id)
 
   given IdExtractor[v1.UserAdded] = createStr(_.id)
   given IdExtractor[v1.UserUpdated] = createStr(_.id)

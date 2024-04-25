@@ -32,6 +32,7 @@ import io.renku.search.provision.events.syntax.*
 import io.renku.solr.client.DocVersion
 import io.renku.search.events.ProjectMemberAdded
 import io.renku.search.events.ProjectMemberUpdated
+import io.renku.search.events.ProjectMemberRemoved
 
 trait DocumentMerger[A]:
   def create(value: A): Option[EntityOrPartial]
@@ -122,7 +123,7 @@ object DocumentMerger:
       case (ProjectMemberUpdated.V2(event), existing) => v2m.merge(event, existing)
     }
 
-  given DocumentMerger[v1.ProjectAuthorizationRemoved] =
+  given v1ProjectAuthRemoved: DocumentMerger[v1.ProjectAuthorizationRemoved] =
     instance[v1.ProjectAuthorizationRemoved](_ => None)((par, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
@@ -132,6 +133,25 @@ object DocumentMerger:
 
         case _ => None
     )
+
+  given v2ProjectMemberRemoved: DocumentMerger[v2.ProjectMemberRemoved] =
+    instance[v2.ProjectMemberRemoved](_ => None)((par, existing) =>
+      existing match
+        case p: PartialEntityDocument.Project =>
+          p.removeMember(par.userId.to[Id]).some
+        case p: ProjectDocument =>
+          p.removeMember(par.userId.to[Id]).some
+
+        case _ => None
+    )
+
+  given DocumentMerger[ProjectMemberRemoved] =
+    val v1m = DocumentMerger[v1.ProjectAuthorizationRemoved]
+    val v2m = DocumentMerger[v2.ProjectMemberRemoved]
+    instance[ProjectMemberRemoved](_.fold(v1m.create, v2m.create)) {
+      case (ProjectMemberRemoved.V1(event), existing) => v1m.merge(event, existing)
+      case (ProjectMemberRemoved.V2(event), existing) => v2m.merge(event, existing)
+    }
 
   given v1ProjectCreatedMerge: DocumentMerger[v1.ProjectCreated] =
     def convert(pc: v1.ProjectCreated): ProjectDocument =

@@ -304,6 +304,14 @@ object EventsGenerators:
           )
         )
 
+  def projectMemberRemoved(projectId: Id, userId: Id): Gen[ProjectMemberRemoved] =
+    Gen.oneOf(
+      ProjectMemberRemoved.V1(
+        v1.ProjectAuthorizationRemoved(projectId.value, userId.value)
+      ),
+      ProjectMemberRemoved.V2(v2.ProjectMemberRemoved(projectId.value, userId.value))
+    )
+
   def userAddedGen(prefix: String): Gen[v1.UserAdded] =
     for
       id <- Gen.uuid.map(_.toString)

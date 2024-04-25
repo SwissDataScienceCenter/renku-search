@@ -21,9 +21,6 @@ package project
 
 import cats.effect.IO
 
-import io.renku.avro.codec.encoders.all.given
-import io.renku.events.v1.*
-import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
@@ -33,6 +30,9 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
 import io.renku.solr.client.DocVersion
+import io.renku.search.events.ProjectMemberRemoved
+import io.renku.events.EventsGenerators
+import org.scalacheck.Gen
 
 class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
@@ -51,8 +51,7 @@ class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectAuthorizationRemoved,
-            messageHeaderGen(ProjectAuthorizationRemoved.SCHEMA$).generateOne,
-            tc.authRemoved
+            EventsGenerators.eventMessageGen(Gen.const(tc.authRemoved)).generateOne
           )
           _ <- collector.waitUntil(docs =>
             scribe.debug(s"Check for ${tc.expectedProject}")
@@ -84,8 +83,8 @@ object AuthorizationRemovedProvisioningSpec:
       case DbState.Project(p)        => p.id
       case DbState.PartialProject(p) => p.id
 
-    val authRemoved: ProjectAuthorizationRemoved =
-      ProjectAuthorizationRemoved(projectId.value, user.value)
+    val authRemoved: ProjectMemberRemoved =
+      EventsGenerators.projectMemberRemoved(projectId, user).generateOne
 
     val expectedProject: Set[SolrDocument] = dbState match
       case DbState.Empty =>

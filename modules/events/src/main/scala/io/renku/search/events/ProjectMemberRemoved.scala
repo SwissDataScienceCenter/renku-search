@@ -24,6 +24,7 @@ import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
 import io.renku.search.model.Id
 import cats.data.NonEmptyList
+import cats.Show
 
 sealed trait ProjectMemberRemoved extends RenkuEventPayload:
   def fold[A](
@@ -61,7 +62,7 @@ object ProjectMemberRemoved:
     val v1e = AvroEncoder[v1.ProjectAuthorizationRemoved]
     val v2e = AvroEncoder[v2.ProjectMemberRemoved]
     AvroEncoder { (schema, v) =>
-      v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
+      v.fold(v1e.encode(schema), v2e.encode(schema))
     }
 
   given EventMessageDecoder[ProjectMemberRemoved] =
@@ -77,3 +78,6 @@ object ProjectMemberRemoved:
           qm.toMessage[v2.ProjectMemberRemoved](schema)
             .map(_.map(ProjectMemberRemoved.V2.apply))
     }
+
+  given Show[ProjectMemberRemoved] =
+    Show.show(_.fold(_.toString, _.toString))

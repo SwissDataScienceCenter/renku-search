@@ -41,6 +41,8 @@ final case class EventMessage[P](
   def map[B](f: P => B): EventMessage[B] =
     EventMessage(id, header, payloadSchema, payload.map(f))
 
+  def withPayload(pl: Seq[P]): EventMessage[P] = copy(payload = pl)
+
   def modifyHeader(f: MessageHeader => MessageHeader): EventMessage[P] =
     copy(header = f(header))
 

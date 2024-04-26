@@ -22,14 +22,6 @@ import io.bullet.borer.Codec
 import io.github.arainko.ducktape.Transformer
 
 object groups:
-
-  opaque type Name = String
-  object Name:
-    def apply(v: String): Name = v
-    extension (self: Name) def value: String = self
-    given Transformer[String, Name] = apply
-    given Codec[Name] = Codec.bimap[String, Name](_.value, Name.apply)
-
   opaque type Description = String
   object Description:
     def apply(v: String): Description = v

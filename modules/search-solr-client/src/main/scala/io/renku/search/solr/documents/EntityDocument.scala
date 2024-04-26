@@ -134,7 +134,7 @@ object User:
 final case class Group(
     id: Id,
     @key("_version_") version: DocVersion = DocVersion.Off,
-    name: groups.Name,
+    name: Name,
     namespace: Namespace,
     description: Option[groups.Description] = None,
     score: Option[Double] = None
@@ -153,7 +153,7 @@ object Group:
 
   def of(
       id: Id,
-      name: groups.Name,
+      name: Name,
       namespace: Namespace,
       description: Option[groups.Description] = None,
       score: Option[Double] = None

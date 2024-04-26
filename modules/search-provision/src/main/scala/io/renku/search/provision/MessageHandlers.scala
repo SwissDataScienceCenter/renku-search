@@ -107,18 +107,20 @@ final class MessageHandlers[F[_]: Async](
     )
 
   val groupAdded: Stream[F, Unit] =
-    add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)
+    add(cfg.groupAdded, makeUpsert2[GroupAdded](cfg.groupAdded).drain)
 
   val groupUpdated: Stream[F, Unit] =
-    add(cfg.groupUpdated, makeUpsert[GroupUpdated](cfg.groupUpdated).drain)
+    add(cfg.groupUpdated, makeUpsert2[GroupUpdated](cfg.groupUpdated).drain)
 
   val groupRemoved: Stream[F, Unit] =
     val ps = steps(cfg.groupRemoved)
-    val entityToNamespace: MessageReader.Message[EntityOrPartial] => Seq[Namespace] =
-      _.map {
-        case g: Group => Some(g.namespace)
-        case _        => Option.empty[Namespace]
-      }.flatten.decoded
+    val entityToNamespace: EventMessage[EntityOrPartial] => Seq[Namespace] =
+      _.payload
+        .map {
+          case g: Group => Some(g.namespace)
+          case _        => Option.empty[Namespace]
+        }
+        .flatten
     val turnToPartial: EntityOrPartial => Option[EntityOrPartial] = {
       case p: PartialEntityDocument.Project => Some(p)
       case p: Project                       => Some(partialProjectFromDocument(p))
@@ -127,11 +129,11 @@ final class MessageHandlers[F[_]: Async](
     add(
       cfg.groupRemoved,
       ps.reader
-        .read[GroupRemoved]
-        .through(ps.fetchFromSolr.fetchEntityOrPartial)
+        .readEvents[GroupRemoved]
+        .through(ps.fetchFromSolr.fetchEntityOrPartial2)
         .map(_.asMessage)
-        .through(ps.deleteFromSolr.tryDeleteAll)
-        .through(ps.deleteFromSolr.whenSuccess { msg =>
+        .through(ps.deleteFromSolr.tryDeleteAll2)
+        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
           Stream
             .emits(entityToNamespace(msg))
             .flatMap(ps.fetchFromSolr.fetchProjectByNamespace)
@@ -139,7 +141,7 @@ final class MessageHandlers[F[_]: Async](
             .unNone
             .map(turnToPartial)
             .unNone
-            .map(p => MessageReader.Message(msg.raw, Seq(p)))
+            .map(p => msg.withPayload(Seq(p)))
             .flatMap(pushWithRetry(ps, _, maxConflictRetries))
             .compile
             .drain
@@ -148,14 +150,15 @@ final class MessageHandlers[F[_]: Async](
 
   private def pushWithRetry(
       ps: PipelineSteps[F],
-      msg: MessageReader.Message[EntityOrPartial],
+      msg: EventMessage[EntityOrPartial],
       retries: Int
   ): Stream[F, UpsertResponse] =
     lazy val retry = OptionT.when(retries > 0)(pushWithRetry(ps, msg, retries - 1))
     Stream
-      .emit[F, MessageReader.Message[EntityOrPartial]](msg)
-      .through(ps.pushToSolr.push(onConflict = retry))
+      .emit[F, EventMessage[EntityOrPartial]](msg)
+      .through(ps.pushToSolr.push2(onConflict = retry))
 
+  // TODO remove
   private[provision] def makeUpsert[A](queue: QueueName)(using
       QueueMessageDecoder[F, A],
       DocumentMerger[A],

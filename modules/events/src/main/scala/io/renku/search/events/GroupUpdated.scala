@@ -24,6 +24,7 @@ import io.renku.avro.codec.all.given
 import io.renku.events.v2
 import io.renku.search.model.Id
 import org.apache.avro.Schema
+import cats.Show
 
 sealed trait GroupUpdated extends RenkuEventPayload:
   def fold[A](fv2: v2.GroupUpdated => A): A
@@ -37,13 +38,25 @@ object GroupUpdated:
 
   final case class V2(event: v2.GroupUpdated) extends GroupUpdated:
     val id: Id = Id(event.id)
-
     def withId(id: Id): GroupUpdated = V2(event.copy(id = id.value))
-
     def fold[A](fv2: v2.GroupUpdated => A): A = fv2(event)
 
   given AvroEncoder[GroupUpdated] =
     val v2e = AvroEncoder[v2.GroupUpdated]
-    AvroEncoder { (schema, v) =>
-      v.fold(b => v2e.encode(schema)(b))
+    AvroEncoder.basic { v =>
+      v.fold(v2e.encode(v.schema))
     }
+
+  given EventMessageDecoder[GroupUpdated] =
+    EventMessageDecoder.instance { qm =>
+      qm.header.schemaVersion match
+        case SchemaVersion.V1 =>
+          Left(DecodeFailure.VersionNotSupported(qm.id, qm.header))
+
+        case SchemaVersion.V2 =>
+          val schema = v2.GroupUpdated.SCHEMA$
+          qm.toMessage[v2.GroupUpdated](schema)
+            .map(_.map(GroupUpdated.V2.apply))
+    }
+
+  given Show[GroupUpdated] = Show.show(_.fold(_.toString))

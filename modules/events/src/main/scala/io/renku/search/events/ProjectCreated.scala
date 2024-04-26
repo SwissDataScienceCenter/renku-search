@@ -48,10 +48,10 @@ object ProjectCreated:
     def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A = fv2(event)
 
   given AvroEncoder[ProjectCreated] =
-    AvroEncoder { (schema, v) =>
+    AvroEncoder.basic { v =>
       v.fold(
-        a => AvroEncoder[v1.ProjectCreated].encode(schema)(a),
-        b => AvroEncoder[v2.ProjectCreated].encode(schema)(b)
+        AvroEncoder[v1.ProjectCreated].encode(v.schema),
+        AvroEncoder[v2.ProjectCreated].encode(v.schema)
       )
     }
 

@@ -106,7 +106,7 @@ object User:
 
 final case class Group(
     id: Id,
-    name: groups.Name,
+    name: Name,
     namespace: Namespace,
     description: Option[groups.Description] = None,
     score: Option[Double] = None
@@ -114,7 +114,7 @@ final case class Group(
 
 object Group:
   private given Schema[Id] = Schema.string[Id]
-  private given Schema[groups.Name] = Schema.string[groups.Name]
+  private given Schema[Name] = Schema.string[Name]
   private given Schema[Namespace] = Schema.string[Namespace]
   private given Schema[groups.Description] = Schema.string[groups.Description]
   given Schema[Group] = Schema
@@ -122,7 +122,7 @@ object Group:
     .jsonExample(
       Group(
         Id("2CAF4C73F50D4514A041C9EDDB025A36"),
-        groups.Name("SDSC"),
+        Name("SDSC"),
         Namespace("SDSC"),
         Some(groups.Description("SDSC group")),
         Some(1.1)

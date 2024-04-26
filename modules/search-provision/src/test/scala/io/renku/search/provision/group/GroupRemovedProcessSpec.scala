@@ -22,11 +22,6 @@ import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-import io.renku.avro.codec.encoders.all.given
-import io.renku.events.EventsGenerators.*
-import io.renku.events.v2
-import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.SchemaVersion
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
@@ -42,6 +37,9 @@ import io.renku.search.solr.documents.{
 import io.renku.solr.client.DocVersion
 
 import scala.concurrent.duration.*
+import io.renku.events.EventsGenerators
+import org.scalacheck.Gen
+import io.renku.search.events.GroupRemoved
 
 class GroupRemovedProcessSpec extends ProvisioningSuite:
 
@@ -56,7 +54,9 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
 
         provisioningFiber <- handlers.groupRemoved.compile.drain.start
 
-        group = groupAddedGen(prefix = "group-removal").generateOne
+        group = EventsGenerators
+          .groupAddedGen(prefix = "group-removal")
+          .generateOne
           .fold(_.toModel(DocVersion.Off))
         project = projectDocumentGen.generateOne.copy(namespace = group.namespace.some)
         _ <- solrClient.upsert(Seq(group, project))
@@ -95,8 +95,7 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
 
         _ <- queueClient.enqueue(
           queueConfig.groupRemoved,
-          messageHeaderGen(v2.GroupRemoved.SCHEMA$, SchemaVersion.V2).generateOne,
-          v2.GroupRemoved(group.id.value)
+          EventsGenerators.eventMessageGen(Gen.const(GroupRemoved(group.id))).generateOne
         )
 
         _ <- groupSolrDoc.waitUntil(_.isEmpty)

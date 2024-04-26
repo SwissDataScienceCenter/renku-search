@@ -121,7 +121,7 @@ object PartialEntityDocument:
   final case class Group(
       id: Id,
       @key("_version_") version: DocVersion = DocVersion.Off,
-      name: Option[groups.Name] = None,
+      name: Option[Name] = None,
       namespace: Option[Namespace] = None,
       description: Option[groups.Description] = None
   ) extends PartialEntityDocument:

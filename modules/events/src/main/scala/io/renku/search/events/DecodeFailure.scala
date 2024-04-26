@@ -18,11 +18,19 @@
 
 package io.renku.search.events
 
-trait EventMessageDecoder[T]:
-  def decode(qm: QueueMessage): Either[DecodeFailure, EventMessage[T]]
+trait DecodeFailure extends RuntimeException
 
-object EventMessageDecoder:
-  def instance[T](
-      f: QueueMessage => Either[DecodeFailure, EventMessage[T]]
-  ): EventMessageDecoder[T] =
-    (qm: QueueMessage) => f(qm)
+object DecodeFailure:
+  abstract private[events] class NoStackTrace(message: String)
+      extends RuntimeException(message)
+      with DecodeFailure:
+    override def fillInStackTrace(): Throwable = this
+
+  final case class AvroReadFailure(cause: Throwable)
+      extends RuntimeException(cause)
+      with DecodeFailure
+
+  final case class VersionNotSupported(id: MessageId, header: MessageHeader)
+      extends NoStackTrace(
+        s"Version ${header.schemaVersion} not supported for payload in message $id (header: $header)"
+      )

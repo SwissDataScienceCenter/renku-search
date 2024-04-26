@@ -21,9 +21,6 @@ package io.renku.search.provision.group
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import io.renku.events.EventsGenerators
-import io.renku.events.EventsGenerators.*
-import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.queue.client.SchemaVersion
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.GroupUpdated
 import io.renku.search.model.Id
@@ -36,6 +33,7 @@ import io.renku.search.solr.documents.{
   SolrDocument
 }
 import io.renku.solr.client.DocVersion
+import org.scalacheck.Gen
 
 class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
 
@@ -54,9 +52,7 @@ class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.groupUpdated,
-            messageHeaderGen(tc.groupUpdated.schema).generateOne
-              .copy(schemaVersion = SchemaVersion(tc.groupUpdated.version.head.name)),
-            tc.groupUpdated
+            EventsGenerators.eventMessageGen(Gen.const(tc.groupUpdated)).generateOne
           )
 
           _ <- collector.waitUntil(docs => docs.exists(tc.checkExpected))

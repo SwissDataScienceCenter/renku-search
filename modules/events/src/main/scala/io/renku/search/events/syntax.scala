@@ -52,7 +52,7 @@ trait syntax:
     def toFirstName: FirstName = FirstName(self)
     def toLastName: LastName = LastName(self)
     def toKeyword: Keyword = Keyword(self)
-    def toGroupName: groups.Name = groups.Name(self)
+    def toGroupName: Name = toName
     def toGroupDescription: groups.Description = groups.Description(self)
 
   extension (self: Instant) def toCreationDate: CreationDate = CreationDate(self)

@@ -89,9 +89,9 @@ object ModelGenerators:
       userLastNameGen
     ).mapN((f, l, p) => users.Email(s"$f.$l@$p"))
 
-  val groupNameGen: Gen[groups.Name] =
+  val groupNameGen: Gen[Name] =
     Gen.oneOf(
-      List("sdsc", "renku", "datascience", "rocket-science").map(groups.Name.apply)
+      List("sdsc", "renku", "datascience", "rocket-science").map(Name.apply)
     )
   val groupDescGen: Gen[groups.Description] =
     alphaStringGen(max = 5).map(groups.Description.apply)

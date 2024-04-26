@@ -22,10 +22,11 @@ import io.renku.events.{v1, v2}
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, Keyword, Name, Namespace, Timestamp, projects}
 import cats.data.NonEmptyList
 import io.renku.avro.codec.AvroDecoder
 import cats.Show
+import io.renku.search.model.projects.Visibility
 
 sealed trait ProjectCreated extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A
@@ -36,6 +37,34 @@ sealed trait ProjectCreated extends RenkuEventPayload:
     fold(_ => v1.ProjectCreated.SCHEMA$, _ => v2.ProjectCreated.SCHEMA$)
 
 object ProjectCreated:
+  def apply(
+      id: Id,
+      name: Name,
+      namespace: Namespace,
+      slug: projects.Slug,
+      visibility: projects.Visibility,
+      createdBy: Id,
+      creationDate: Timestamp,
+      repositories: Seq[projects.Repository] = Seq(),
+      description: Option[projects.Description] = None,
+      keywords: Seq[Keyword] = Seq()
+  ): ProjectCreated = V2(
+    v2.ProjectCreated(
+      id.value,
+      name.value,
+      namespace.value,
+      slug.value,
+      repositories.map(_.value),
+      visibility match
+        case Visibility.Private => v2.Visibility.PRIVATE
+        case Visibility.Public  => v2.Visibility.PUBLIC
+      ,
+      description.map(_.value),
+      keywords.map(_.value),
+      createdBy.value,
+      creationDate.toInstant
+    )
+  )
 
   final case class V1(event: v1.ProjectCreated) extends ProjectCreated:
     val id: Id = Id(event.id)

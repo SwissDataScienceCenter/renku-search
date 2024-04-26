@@ -28,12 +28,11 @@ import io.renku.search.model.ModelGenerators
 import io.renku.search.model.{Id, Name, Namespace}
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
-import io.renku.search.provision.handler.ShowInstances
 import io.renku.search.solr.documents.{CompoundId, EntityDocument, Group as GroupDocument}
 import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
 
-class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
+class GroupAddedProvisioningSpec extends ProvisioningSuite:
 
   test("overwrite data for duplicate events"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
@@ -59,7 +58,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
             .generateOne
         )
         results <- handlers
-          .makeUpsert2[GroupAdded](queueConfig.groupAdded)
+          .makeUpsert[GroupAdded](queueConfig.groupAdded)
           .take(2)
           .compile
           .toList
@@ -82,7 +81,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
         )
 
         result <- handlers
-          .makeUpsert2[GroupAdded](queueConfig.groupAdded)
+          .makeUpsert[GroupAdded](queueConfig.groupAdded)
           .take(10)
           .find(_.isSuccess)
           .compile

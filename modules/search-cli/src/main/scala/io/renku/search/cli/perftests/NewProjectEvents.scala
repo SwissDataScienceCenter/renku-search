@@ -18,52 +18,48 @@
 
 package io.renku.search.cli.perftests
 
-import cats.Monad
-import cats.effect.Clock
+import cats.effect.Sync
 import cats.syntax.all.*
-import io.renku.avro.codec.all.given
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectCreated, UserAdded}
-import io.renku.queue.client.*
+import io.renku.search.events.*
 import io.renku.redis.client.QueueName
-import org.apache.avro.Schema
 
 final private case class NewProjectEvents(
     projectCreated: ProjectCreated,
     users: List[UserAdded],
-    authAdded: List[ProjectAuthorizationAdded]
+    authAdded: List[ProjectMemberAdded]
 ):
   private val messageSource = MessageSource("perf-tests")
 
-  def toQueueDelivery[F[_]: Monad: Clock: ModelTypesGenerators]: F[List[QueueDelivery]] =
+  def toQueueDelivery[F[_]: Sync: ModelTypesGenerators]: F[List[QueueDelivery]] =
     (projectToDelivery ::
       users.map(userToDelivery) :::
       authAdded.map(authToDelivery)).sequence
 
-  private def projectToDelivery[F[_]: Monad: Clock: ModelTypesGenerators]
-      : F[QueueDelivery] =
-    createHeader[F](ProjectCreated.SCHEMA$)
-      .map(h => QueueDelivery(QueueName("project.created"), h, projectCreated))
+  private def projectToDelivery[F[_]: Sync: ModelTypesGenerators]: F[QueueDelivery] =
+    createMessage[F, ProjectCreated](projectCreated).map(m =>
+      QueueDelivery(QueueName("project.created"), m)
+    )
 
-  private def userToDelivery[F[_]: Monad: Clock: ModelTypesGenerators](
+  private def userToDelivery[F[_]: Sync: ModelTypesGenerators](
       p: UserAdded
   ): F[QueueDelivery] =
-    createHeader[F](UserAdded.SCHEMA$)
-      .map(h => QueueDelivery(QueueName("user.added"), h, p))
+    createMessage[F, UserAdded](p).map(m => QueueDelivery(QueueName("user.added"), m))
 
-  private def authToDelivery[F[_]: Monad: Clock: ModelTypesGenerators](
-      p: ProjectAuthorizationAdded
+  private def authToDelivery[F[_]: Sync: ModelTypesGenerators](
+      p: ProjectMemberAdded
   ): F[QueueDelivery] =
-    createHeader[F](ProjectAuthorizationAdded.SCHEMA$)
-      .map(h => QueueDelivery(QueueName("projectAuth.added"), h, p))
+    createMessage[F, ProjectMemberAdded](p).map(m =>
+      QueueDelivery(QueueName("projectAuth.added"), m)
+    )
 
-  private def createHeader[F[_]: Monad: Clock: ModelTypesGenerators](schema: Schema) =
-    ModelTypesGenerators[F].generateRequestId
-      .flatMap(reqId =>
-        MessageHeader[F](
-          messageSource,
-          schema,
-          DataContentType.Binary,
-          SchemaVersion.V1,
-          reqId
-        )
+  private def createMessage[F[_], A <: RenkuEventPayload](
+      pl: A
+  )(using Sync[F], ModelTypesGenerators[F]): F[EventMessage[A]] =
+    ModelTypesGenerators[F].generateRequestId.flatMap { reqId =>
+      EventMessage.create[F, A](
+        messageSource,
+        DataContentType.Binary,
+        reqId,
+        pl
       )
+    }

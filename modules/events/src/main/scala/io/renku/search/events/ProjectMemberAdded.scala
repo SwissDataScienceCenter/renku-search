@@ -37,6 +37,9 @@ sealed trait ProjectMemberAdded extends RenkuEventPayload:
     fold(_ => v1.ProjectAuthorizationAdded.SCHEMA$, _ => v2.ProjectMemberAdded.SCHEMA$)
 
 object ProjectMemberAdded:
+  def apply(projectId: Id, userId: Id, role: MemberRole): ProjectMemberAdded =
+    V2(v2.ProjectMemberAdded(projectId.value, userId.value, v2.MemberRole.VIEWER))
+      .withRole(role)
 
   final case class V1(event: v1.ProjectAuthorizationAdded) extends ProjectMemberAdded:
     lazy val id: Id = Id(event.projectId)

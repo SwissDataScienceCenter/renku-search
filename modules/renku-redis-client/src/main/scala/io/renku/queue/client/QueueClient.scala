@@ -23,28 +23,13 @@ import fs2.Stream
 import io.renku.avro.codec.AvroEncoder
 import io.renku.search.events.*
 import io.renku.redis.client.{MessageId => _, *}
-import io.renku.queue.client.{MessageHeader => OldHeader}
 
 trait QueueClient[F[_]]:
-
-  // deprecated
-  def enqueue[P: AvroEncoder](
-      queueName: QueueName,
-      header: OldHeader,
-      payload: P
-  ): F[MessageId]
 
   def enqueue[P: AvroEncoder](
       queueName: QueueName,
       msg: EventMessage[P]
   ): F[MessageId]
-
-  // deprecated
-  def acquireEventsStream(
-      queueName: QueueName,
-      chunkSize: Int,
-      maybeOffset: Option[MessageId]
-  ): Stream[F, io.renku.queue.client.QueueMessage]
 
   def acquireHeaderEventsStream(
       queueName: QueueName,

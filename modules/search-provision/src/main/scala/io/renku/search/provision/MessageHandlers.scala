@@ -41,7 +41,7 @@ final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
     cfg: QueuesConfig,
     maxConflictRetries: Int = 20
-) extends ShowInstances:
+):
   assert(maxConflictRetries >= 0, "maxConflictRetries must be >= 0")
 
   private val logger = scribe.cats.effect[F]
@@ -56,12 +56,12 @@ final class MessageHandlers[F[_]: Async](
   def getAll: Map[String, F[Unit]] = tasks
 
   val projectCreated: Stream[F, Unit] =
-    add(cfg.projectCreated, makeUpsert2[ProjectCreated](cfg.projectCreated).drain)
+    add(cfg.projectCreated, makeUpsert[ProjectCreated](cfg.projectCreated).drain)
 
   val projectUpdated: Stream[F, Unit] =
     add(
       cfg.projectUpdated,
-      makeUpsert2[ProjectUpdated](cfg.projectUpdated).drain
+      makeUpsert[ProjectUpdated](cfg.projectUpdated).drain
     )
 
   val projectRemoved: Stream[F, Unit] =
@@ -70,25 +70,25 @@ final class MessageHandlers[F[_]: Async](
   val projectAuthAdded: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationAdded,
-      makeUpsert2[ProjectMemberAdded](cfg.projectAuthorizationAdded).drain
+      makeUpsert[ProjectMemberAdded](cfg.projectAuthorizationAdded).drain
     )
 
   val projectAuthUpdated: Stream[F, Unit] =
     add(
       cfg.projectAuthorizationUpdated,
-      makeUpsert2[ProjectMemberUpdated](cfg.projectAuthorizationUpdated).drain
+      makeUpsert[ProjectMemberUpdated](cfg.projectAuthorizationUpdated).drain
     )
 
   val projectAuthRemoved: Stream[F, Unit] = add(
     cfg.projectAuthorizationRemoved,
-    makeUpsert2[ProjectMemberRemoved](cfg.projectAuthorizationRemoved).drain
+    makeUpsert[ProjectMemberRemoved](cfg.projectAuthorizationRemoved).drain
   )
 
   val userAdded: Stream[F, Unit] =
-    add(cfg.userAdded, makeUpsert2[UserAdded](cfg.userAdded).drain)
+    add(cfg.userAdded, makeUpsert[UserAdded](cfg.userAdded).drain)
 
   val userUpdated: Stream[F, Unit] =
-    add(cfg.userUpdated, makeUpsert2[UserUpdated](cfg.userUpdated).drain)
+    add(cfg.userUpdated, makeUpsert[UserUpdated](cfg.userUpdated).drain)
 
   val userRemoved: Stream[F, Unit] =
     val ps = steps(cfg.userRemoved)
@@ -96,8 +96,8 @@ final class MessageHandlers[F[_]: Async](
       cfg.userRemoved,
       ps.reader
         .readEvents[UserRemoved]
-        .through(ps.deleteFromSolr.tryDeleteAll2)
-        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
+        .through(ps.deleteFromSolr.tryDeleteAll)
+        .through(ps.deleteFromSolr.whenSuccess { msg =>
           Stream
             .emit(msg.map(_.id))
             .through(ps.userUtils.removeFromProjects)
@@ -107,10 +107,10 @@ final class MessageHandlers[F[_]: Async](
     )
 
   val groupAdded: Stream[F, Unit] =
-    add(cfg.groupAdded, makeUpsert2[GroupAdded](cfg.groupAdded).drain)
+    add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)
 
   val groupUpdated: Stream[F, Unit] =
-    add(cfg.groupUpdated, makeUpsert2[GroupUpdated](cfg.groupUpdated).drain)
+    add(cfg.groupUpdated, makeUpsert[GroupUpdated](cfg.groupUpdated).drain)
 
   val groupRemoved: Stream[F, Unit] =
     val ps = steps(cfg.groupRemoved)
@@ -130,10 +130,10 @@ final class MessageHandlers[F[_]: Async](
       cfg.groupRemoved,
       ps.reader
         .readEvents[GroupRemoved]
-        .through(ps.fetchFromSolr.fetchEntityOrPartial2)
+        .through(ps.fetchFromSolr.fetchEntityOrPartial)
         .map(_.asMessage)
-        .through(ps.deleteFromSolr.tryDeleteAll2)
-        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
+        .through(ps.deleteFromSolr.tryDeleteAll)
+        .through(ps.deleteFromSolr.whenSuccess { msg =>
           Stream
             .emits(entityToNamespace(msg))
             .flatMap(ps.fetchFromSolr.fetchProjectByNamespace)
@@ -156,35 +156,9 @@ final class MessageHandlers[F[_]: Async](
     lazy val retry = OptionT.when(retries > 0)(pushWithRetry(ps, msg, retries - 1))
     Stream
       .emit[F, EventMessage[EntityOrPartial]](msg)
-      .through(ps.pushToSolr.push2(onConflict = retry))
+      .through(ps.pushToSolr.push(onConflict = retry))
 
-  // TODO remove
   private[provision] def makeUpsert[A](queue: QueueName)(using
-      QueueMessageDecoder[F, A],
-      DocumentMerger[A],
-      IdExtractor[A],
-      Show[A]
-  ): Stream[F, UpsertResponse] =
-    val ps = steps(queue)
-    def processMsg(
-        msg: MessageReader.Message[A],
-        retries: Int
-    ): Stream[F, UpsertResponse] =
-      lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
-      Stream
-        .emit(msg)
-        .through(ps.fetchFromSolr.fetchEntityOrPartial)
-        .map { m =>
-          val merger = DocumentMerger[A]
-          m.merge(merger.create, merger.merge)
-        }
-        .through(ps.pushToSolr.push(onConflict = retry))
-
-    ps.reader
-      .read[A]
-      .flatMap(processMsg(_, maxConflictRetries))
-
-  private[provision] def makeUpsert2[A](queue: QueueName)(using
       EventMessageDecoder[A],
       DocumentMerger[A],
       IdExtractor[A],
@@ -198,12 +172,12 @@ final class MessageHandlers[F[_]: Async](
       lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
       Stream
         .emit(msg)
-        .through(ps.fetchFromSolr.fetchEntityOrPartial2)
+        .through(ps.fetchFromSolr.fetchEntityOrPartial)
         .map { m =>
           val merger = DocumentMerger[A]
           m.merge(merger.create, merger.merge)
         }
-        .through(ps.pushToSolr.push2(onConflict = retry))
+        .through(ps.pushToSolr.push(onConflict = retry))
 
     ps.reader
       .readEvents[A]
@@ -218,4 +192,4 @@ final class MessageHandlers[F[_]: Async](
     ps.reader
       .readEvents[A]
       .chunks
-      .through(ps.deleteFromSolr.deleteAll2)
+      .through(ps.deleteFromSolr.deleteAll)

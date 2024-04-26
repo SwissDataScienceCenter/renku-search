@@ -29,6 +29,7 @@ enum MemberRole:
 object MemberRole:
 
   val valuesV1: Set[MemberRole] = Set(Owner, Member)
+  val valuesV2: Set[MemberRole] = Set(Owner, Editor, Viewer)
 
   given Order[MemberRole] = Order.by(_.ordinal)
 

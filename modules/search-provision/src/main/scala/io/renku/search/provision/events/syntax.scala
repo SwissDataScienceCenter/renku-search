@@ -38,6 +38,10 @@ trait syntax extends io.renku.search.events.syntax:
     def toModel(version: DocVersion): PartialEntityDocument =
       Conversion.fromProjectMemberAdded(self, version)
 
+  extension (self: ProjectMemberAdded)
+    def toModel(version: DocVersion): PartialEntityDocument =
+      self.fold(_.toModel(version), _.toModel(version))
+
   extension (self: v1.ProjectAuthorizationUpdated)
     def toModel(version: DocVersion): PartialEntityDocument =
       Conversion.fromProjectAuthorizationUpdated(self, version)
@@ -45,6 +49,10 @@ trait syntax extends io.renku.search.events.syntax:
   extension (self: v2.ProjectMemberUpdated)
     def toModel(version: DocVersion): PartialEntityDocument =
       Conversion.fromProjectMemberUpdated(self, version)
+
+  extension (self: ProjectMemberUpdated)
+    def toModel(version: DocVersion): PartialEntityDocument =
+      self.fold(_.toModel(version), _.toModel(version))
 
   extension (self: v1.ProjectCreated)
     def toModel(version: DocVersion): ProjectDocument =
@@ -109,6 +117,10 @@ trait syntax extends io.renku.search.events.syntax:
   extension (self: v2.GroupAdded)
     def toModel(version: DocVersion): GroupDocument =
       Conversion.fromGroupAdded(self, version)
+
+  extension (self: GroupAdded)
+    def toModel(version: DocVersion): GroupDocument =
+      self.fold(_.toModel(version))
 
   extension (self: v2.GroupUpdated)
     def toModel(version: DocVersion): PartialEntityDocument.Group =

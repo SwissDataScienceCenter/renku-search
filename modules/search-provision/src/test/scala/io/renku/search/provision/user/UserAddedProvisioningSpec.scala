@@ -27,14 +27,13 @@ import io.renku.search.model.users.FirstName
 import io.renku.search.events.UserAdded
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.provision.handler.ShowInstances
 import io.renku.search.solr.documents.{CompoundId, EntityDocument, User as UserDocument}
 import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
 import io.renku.search.model.ModelGenerators
 import io.renku.events.EventsGenerators
 
-class UserAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
+class UserAddedProvisioningSpec extends ProvisioningSuite:
   test("overwrite data for duplicate events"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
@@ -61,7 +60,7 @@ class UserAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
             .generateOne
         )
         results <- handlers
-          .makeUpsert2[UserAdded](queueConfig.userAdded)
+          .makeUpsert[UserAdded](queueConfig.userAdded)
           .take(2)
           .compile
           .toList
@@ -84,7 +83,7 @@ class UserAddedProvisioningSpec extends ProvisioningSuite with ShowInstances:
         )
 
         result <- handlers
-          .makeUpsert2[UserAdded](queueConfig.userAdded)
+          .makeUpsert[UserAdded](queueConfig.userAdded)
           .take(10)
           .find(_.isSuccess)
           .compile

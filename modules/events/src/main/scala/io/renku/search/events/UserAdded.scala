@@ -22,7 +22,7 @@ import cats.data.NonEmptyList
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, Namespace, users}
 import org.apache.avro.Schema
 import cats.Show
 
@@ -35,6 +35,23 @@ sealed trait UserAdded extends RenkuEventPayload:
     fold(_ => v1.UserAdded.SCHEMA$, _ => v2.UserAdded.SCHEMA$)
 
 object UserAdded:
+  def apply(
+      id: Id,
+      namespace: Namespace,
+      firstName: Option[users.FirstName],
+      lastName: Option[users.LastName],
+      email: Option[users.Email]
+  ): UserAdded =
+    V2(
+      v2.UserAdded(
+        id.value,
+        firstName.map(_.value),
+        lastName.map(_.value),
+        email.map(_.value),
+        namespace.value
+      )
+    )
+
   final case class V1(event: v1.UserAdded) extends UserAdded:
     val id: Id = Id(event.id)
     def withId(id: Id): UserAdded = V1(event.copy(id = id.value))

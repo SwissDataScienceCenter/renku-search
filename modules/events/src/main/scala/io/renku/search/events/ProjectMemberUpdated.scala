@@ -39,6 +39,7 @@ sealed trait ProjectMemberUpdated extends RenkuEventPayload:
       _ => v1.ProjectAuthorizationUpdated.SCHEMA$,
       _ => v2.ProjectMemberUpdated.SCHEMA$
     )
+  def userId: Id = fold(a => Id(a.userId), b => Id(b.userId))
 
 object ProjectMemberUpdated:
 

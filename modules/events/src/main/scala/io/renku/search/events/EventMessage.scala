@@ -18,6 +18,8 @@
 
 package io.renku.search.events
 
+import cats.syntax.all.*
+import cats.effect.Sync
 import org.apache.avro.Schema
 import io.renku.avro.codec.AvroEncoder
 import scodec.bits.ByteVector
@@ -47,5 +49,13 @@ final case class EventMessage[P](
     copy(header = f(header))
 
 object EventMessage:
+  def create[F[_]: Sync, A <: RenkuEventPayload](
+      src: MessageSource,
+      ct: DataContentType,
+      reqId: RequestId,
+      payload: A
+  ): F[EventMessage[A]] =
+    (MessageId.random[F], MessageHeader.create(src, ct, payload.version.head, reqId))
+      .mapN((id, h) => EventMessage(id, h, payload.schema, Seq(payload)))
 
   final case class AvroPayload(header: ByteVector, payload: ByteVector)

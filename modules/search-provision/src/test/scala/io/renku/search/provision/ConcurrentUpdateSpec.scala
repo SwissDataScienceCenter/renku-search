@@ -21,16 +21,12 @@ package io.renku.search.provision
 import cats.effect.std.CountDownLatch
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
-import io.renku.queue.client.DataContentType
-import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.events.ProjectCreated
+import io.renku.search.events.*
 import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.ConcurrentUpdateSpec.testCases
-import io.renku.search.provision.handler.{DocumentMerger, ShowInstances}
+import io.renku.search.provision.handler.DocumentMerger
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.{
   EntityMembers,
@@ -39,8 +35,10 @@ import io.renku.search.solr.documents.{
 }
 
 import scala.concurrent.duration.*
+import org.scalacheck.Gen
+import io.renku.search.events.ProjectMemberAdded
 
-class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
+class ConcurrentUpdateSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
     test(s"process concurrent events: $tc"):
 
@@ -59,17 +57,12 @@ class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
 
           sendAuth <- (latch.await >> queueClient.enqueue(
             queueConfig.projectAuthorizationAdded,
-            messageHeaderGen(ProjectAuthorizationAdded.SCHEMA$).generateOne,
-            tc.authAdded
+            EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
           )).start
 
           sendCreate <- (latch.await >> queueClient.enqueue(
             queueConfig.projectCreated,
-            messageHeaderGen(
-              tc.projectCreated.schema,
-              DataContentType.Binary
-            ).generateOne,
-            tc.projectCreated
+            EventsGenerators.eventMessageGen(Gen.const(tc.projectCreated)).generateOne
           )).start
 
           _ <- latch.release
@@ -121,12 +114,8 @@ object ConcurrentUpdateSpec:
     val projectId: Id = dbState match
       case DbState.Empty => expectedProject.id
 
-    val authAdded: ProjectAuthorizationAdded =
-      ProjectAuthorizationAdded(
-        projectId.value,
-        user.value,
-        ProjectMemberRole.valueOf(role.name.toUpperCase())
-      )
+    val authAdded: ProjectMemberAdded =
+      ProjectMemberAdded(projectId, user, role)
 
     def checkExpected(doc: SolrDocument): Boolean =
       val e = expectedProject

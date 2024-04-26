@@ -45,7 +45,7 @@ private class RedisEnqueuer[F[_]: Async](qc: QueueClient[F]) extends Enqueuer[F]
   override def enqueue: Pipe[F, QueueDelivery, Unit] =
     _.evalTap { delivery =>
       given AvroEncoder[delivery.P] = delivery.encoder
-      qc.enqueue(delivery.queue, delivery.header, delivery.payload).void
+      qc.enqueue(delivery.queue, delivery.message).void
     }.through(dryRun.enqueue)
 
 private class DryRunEnqueuer[F[_]: Async] extends Enqueuer[F]:

@@ -39,6 +39,7 @@ sealed trait ProjectMemberRemoved extends RenkuEventPayload:
       _ => v1.ProjectAuthorizationRemoved.SCHEMA$,
       _ => v2.ProjectMemberRemoved.SCHEMA$
     )
+  def userId: Id = fold(a => Id(a.userId), b => Id(b.userId))
 
 object ProjectMemberRemoved:
   def apply(projectId: Id, userId: Id): ProjectMemberRemoved =

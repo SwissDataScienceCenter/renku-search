@@ -22,13 +22,13 @@ import cats.Monad
 import cats.effect.IO
 import cats.effect.std.{Random, UUIDGen}
 import cats.syntax.all.*
-import io.renku.events.v1.{ProjectMemberRole, Visibility}
-import io.renku.queue.client.RequestId
+import io.renku.search.events.*
 import io.renku.search.model.{Id, projects}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.time.temporal.ChronoUnit.DAYS
+import io.renku.search.model.MemberRole
 
 private object ModelTypesGenerators:
 
@@ -58,7 +58,6 @@ private trait ModelTypesGenerators[F[_]: Monad: Random: UUIDGen]:
       .map(projects.CreationDate.apply)
   def generateVisibility: F[projects.Visibility] =
     Random[F].shuffleList(projects.Visibility.values.toList).map(_.head)
-  def generateV1Visibility: F[Visibility] =
-    Random[F].shuffleList(Visibility.values().toList).map(_.head)
-  def generateV1MemberRole: F[ProjectMemberRole] =
-    Random[F].shuffleList(ProjectMemberRole.values().toList).map(_.head)
+
+  def generateRole: F[MemberRole] =
+    Random[F].shuffleList(MemberRole.values.toList).map(_.head)

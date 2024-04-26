@@ -32,7 +32,7 @@ object UserUtils:
       fetchFromSolr: FetchFromSolr[F],
       pushToRedis: PushToRedis[F]
   ): UserUtils[F] =
-    new UserUtils[F] with ShowInstances {
+    new UserUtils[F] {
       val logger = scribe.cats.effect[F]
       def removeFromProjects: Pipe[F, EventMessage[Id], Unit] =
         _.evalMap { msg =>

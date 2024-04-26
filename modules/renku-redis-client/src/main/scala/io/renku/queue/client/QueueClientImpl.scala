@@ -18,18 +18,12 @@
 
 package io.renku.queue.client
 
-import cats.MonadThrow
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
-import io.renku.avro.codec.decoders.all.given
-import io.renku.avro.codec.encoders.all.given
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder, AvroReader, AvroWriter}
-import io.renku.events.v1.Header
-import io.renku.queue.client.DataContentType.*
+import io.renku.avro.codec.AvroEncoder
 import io.renku.search.events.*
 import io.renku.redis.client.{MessageId => _, *}
-import io.renku.queue.client.{MessageHeader => OldHeader}
 
 import scribe.Scribe
 
@@ -42,52 +36,10 @@ private class QueueClientImpl[F[_]: Async](
 
   override def enqueue[P: AvroEncoder](
       queueName: QueueName,
-      header: OldHeader,
-      payload: P
-  ): F[MessageId] =
-    val schemaHeader = header.toSchemaHeader(payload)
-    val encHeader = AvroWriter(Header.SCHEMA$).writeJson(Seq(schemaHeader))
-    val encPayload = header.dataContentType match {
-      case Binary => AvroWriter(header.payloadSchema).write(Seq(payload))
-      case Json   => AvroWriter(header.payloadSchema).writeJson(Seq(payload))
-    }
-    redisQueueClient.enqueue(queueName, encHeader, encPayload).map(MessageId.apply)
-
-  def enqueue[P: AvroEncoder](
-      queueName: QueueName,
       msg: EventMessage[P]
   ): F[MessageId] =
     val data = msg.toAvro
     redisQueueClient.enqueue(queueName, data.header, data.payload).map(MessageId.apply)
-
-  // deprecated
-  override def acquireEventsStream(
-      queueName: QueueName,
-      chunkSize: Int,
-      maybeOffset: Option[MessageId]
-  ): Stream[F, io.renku.queue.client.QueueMessage] =
-
-    def decodeHeader(rm: RedisMessage): F[Option[Header]] =
-      MonadThrow[F]
-        .catchNonFatal(AvroReader(Header.SCHEMA$).readJson[Header](rm.header).toList)
-        .flatMap {
-          case h :: Nil => h.some.pure[F]
-          case h =>
-            Scribe[F]
-              .error(s"${h.size} header(s) in Redis instead of one")
-              .as(Option.empty[Header])
-              .flatTap(_ => markProcessed(queueName, MessageId(rm.id)))
-        }
-
-    redisQueueClient
-      .acquireEventsStream(queueName, chunkSize, maybeOffset.map(_.value))
-      .evalMap(rm =>
-        decodeHeader(rm)
-          .map(
-            _.map(h => io.renku.queue.client.QueueMessage(rm.id, h, rm.payload))
-          )
-      )
-      .collect { case Some(qm) => qm }
 
   override def acquireHeaderEventsStream(
       queueName: QueueName,

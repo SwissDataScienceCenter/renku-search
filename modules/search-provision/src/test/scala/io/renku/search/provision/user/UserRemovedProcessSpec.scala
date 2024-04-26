@@ -35,6 +35,8 @@ import io.renku.events.EventsGenerators
 import org.scalacheck.Gen
 
 class UserRemovedProcessSpec extends ProvisioningSuite:
+  private val logger = scribe.cats.io
+
   test(
     "can fetch events, decode them, and remove from Solr relevant User document " +
       "and issue ProjectMemberRemoved events for all affected projects"
@@ -81,9 +83,9 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
             .drain
             .start
 
-        _ <- scribe.cats.io.info("Waiting for test documents to be inserted")
+        _ <- logger.info("Waiting for test documents to be inserted")
         _ <- solrDoc.waitUntil(_.nonEmpty)
-        _ <- scribe.cats.io.info("Test documents inserted")
+        _ <- logger.info("Test documents inserted")
 
         _ <- queueClient.enqueue(
           queueConfig.userRemoved,
@@ -91,7 +93,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
         )
 
         _ <- solrDoc.waitUntil(_.isEmpty)
-        _ <- scribe.cats.io.info(
+        _ <- logger.info(
           "User has been removed. Waiting for project auth removals"
         )
 

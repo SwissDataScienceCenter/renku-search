@@ -63,8 +63,8 @@ object ProjectMemberRemoved:
   given AvroEncoder[ProjectMemberRemoved] =
     val v1e = AvroEncoder[v1.ProjectAuthorizationRemoved]
     val v2e = AvroEncoder[v2.ProjectMemberRemoved]
-    AvroEncoder { (schema, v) =>
-      v.fold(v1e.encode(schema), v2e.encode(schema))
+    AvroEncoder.basic { v =>
+      v.fold(v1e.encode(v.schema), v2e.encode(v.schema))
     }
 
   given EventMessageDecoder[ProjectMemberRemoved] =

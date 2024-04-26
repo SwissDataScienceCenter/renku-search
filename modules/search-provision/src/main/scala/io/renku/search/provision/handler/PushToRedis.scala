@@ -66,7 +66,7 @@ object PushToRedis:
           header <- MessageHeader.create[F](
             MessageSource(clientId.value),
             DataContentType.Binary,
-            SchemaVersion.V1,
+            payload.version.head,
             requestId
           )
         yield EventMessage(id, header, payload.schema, Seq(payload))

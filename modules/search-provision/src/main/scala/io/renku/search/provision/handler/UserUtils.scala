@@ -45,7 +45,7 @@ object UserUtils:
               .map { case (projectId, userId) =>
                 ProjectMemberRemoved(projectId.id, userId)
               }
-              .evalTap(data => logger.info(s"Sending $data to redis"))
+              .evalTap(data => logger.info(s"Sending to redis: $data"))
               .through(
                 pushToRedis.pushAuthorizationRemoved(msg.header.requestId)
               )).compile.drain

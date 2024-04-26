@@ -102,7 +102,7 @@ object ConcurrentUpdateSpec:
       case DbState.Empty =>
         val p = DocumentMerger[ProjectCreated].create(projectCreated).get
         p.asInstanceOf[ProjectDocument]
-          .apply(
+          .setMembers(
             EntityMembers(
               owners = Set(user).filter(_ => role == MemberRole.Owner),
               editors = Set(user).filter(_ => role == MemberRole.Editor),

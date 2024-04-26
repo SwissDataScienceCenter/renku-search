@@ -42,7 +42,10 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
     userRemoved = QueueName("userRemoved"),
     groupAdded = QueueName("groupAdded"),
     groupUpdated = QueueName("groupUpdated"),
-    groupRemoved = QueueName("groupRemoved")
+    groupRemoved = QueueName("groupRemoved"),
+    groupMemberAdded = QueueName("groupMemberAdded"),
+    groupMemberUpdated = QueueName("groupMemberUpdated"),
+    groupMemberRemoved = QueueName("groupMemberRemoved")
   )
 
   def withMessageHandlers(

@@ -91,10 +91,10 @@ object AuthorizationRemovedProvisioningSpec:
         Set.empty
 
       case DbState.Project(p) =>
-        Set(p.removeMember(user))
+        Set(p.modifyEntityMembers(_.removeMember(user)))
 
       case DbState.PartialProject(p) =>
-        Set(p.removeMember(user))
+        Set(p.modifyEntityMembers(_.removeMember(user)))
 
     def checkExpected(d: Set[SolrDocument]): Boolean =
       expectedProject
@@ -108,9 +108,13 @@ object AuthorizationRemovedProvisioningSpec:
     val userId = ModelGenerators.idGen.generateOne
     val userRole = ModelGenerators.memberRoleGen.generateOne
     val proj =
-      SolrDocumentGenerators.projectDocumentGen.generateOne.addMember(userId, userRole)
+      SolrDocumentGenerators.projectDocumentGen.generateOne.modifyEntityMembers(
+        _.addMember(userId, userRole)
+      )
     val pproj =
-      SolrDocumentGenerators.partialProjectGen.generateOne.addMember(userId, userRole)
+      SolrDocumentGenerators.partialProjectGen.generateOne.modifyEntityMembers(
+        _.addMember(userId, userRole)
+      )
     val dbState =
       List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
     dbState.map(TestCase(_, userId))

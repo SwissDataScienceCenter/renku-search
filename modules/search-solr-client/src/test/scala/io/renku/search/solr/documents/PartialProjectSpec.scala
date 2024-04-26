@@ -33,7 +33,7 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   test("add should add the userId to the relevant bucket"):
     Prop.forAll(partialProjectGen, idGen, memberRoleGen) {
       case (existing, userId, role) =>
-        val updated = existing.addMember(userId, role)
+        val updated = existing.modifyEntityMembers(_.addMember(userId, role))
 
         role match {
           case Owner =>
@@ -65,7 +65,7 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
     Prop.forAll(idGen, versionGen, idGen, memberRoleGen) {
       case (projectId, version, userId, role) =>
         val existing = Project(id = projectId, version = version)
-          .apply(
+          .setMembers(
             EntityMembers(
               owners = Set(userId),
               editors = Set(userId),
@@ -74,7 +74,7 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
             )
           )
 
-        val updated = existing.addMember(userId, role)
+        val updated = existing.modifyEntityMembers(_.addMember(userId, role))
 
         role match {
           case Owner =>
@@ -103,7 +103,9 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
   test("applyTo should add members and owners from the caller object"):
     Prop.forAll(partialProjectGen, idGen, memberRoleGen) {
       case (existing, userId, role) =>
-        val update = Project(existing.id, existing.version).addMember(userId, role)
+        val update = Project(existing.id, existing.version).modifyEntityMembers(
+          _.addMember(userId, role)
+        )
 
         val updated = existing.applyTo(update).asInstanceOf[Project]
 
@@ -141,7 +143,7 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
     Prop.forAll(idGen, versionGen, idGen, memberRoleGen) {
       case (projectId, version, userId, role) =>
         val existing = Project(id = projectId, version = version)
-          .apply(
+          .setMembers(
             EntityMembers(
               owners = Set(userId),
               editors = Set(userId),
@@ -150,7 +152,9 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
             )
           )
 
-        val update = Project(projectId, DocVersion.Exists).addMember(userId, role)
+        val update = Project(projectId, DocVersion.Exists).modifyEntityMembers(
+          _.addMember(userId, role)
+        )
 
         val updated = existing.applyTo(update).asInstanceOf[Project]
 
@@ -184,13 +188,13 @@ class PartialProjectSpec extends ScalaCheckSuite with GeneratorSyntax:
 
   test("removeMember should remove the given userId from the correct bucket in the doc"):
     Prop.forAll(partialProjectGen, idGen, memberRoleGen) { case (project, userId, role) =>
-      val updated = project.addMember(userId, role)
-      assertEquals(updated.removeMember(userId), project)
+      val updated = project.modifyEntityMembers(_.addMember(userId, role))
+      assertEquals(updated.modifyEntityMembers(_.removeMember(userId)), project)
     }
 
   test("removeMember should do nothing if there's no member/owner with the given userId"):
     Prop.forAll(partialProjectGen, idGen, idGen, memberRoleGen) {
       case (project, existingUserId, toDeleteUserId, role) =>
-        val updated = project.addMember(existingUserId, role)
-        assertEquals(updated.removeMember(toDeleteUserId), updated)
+        val updated = project.modifyEntityMembers(_.addMember(existingUserId, role))
+        assertEquals(updated.modifyEntityMembers(_.removeMember(toDeleteUserId)), updated)
     }

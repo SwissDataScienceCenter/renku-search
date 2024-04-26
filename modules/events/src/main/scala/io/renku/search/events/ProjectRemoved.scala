@@ -35,7 +35,7 @@ object ProjectRemoved:
 
   given AvroEncoder[ProjectRemoved] =
     val v2e = AvroEncoder[v2.ProjectRemoved]
-    AvroEncoder { (_, v) =>
+    AvroEncoder.basic { v =>
       val event = v2.ProjectRemoved(v.id.value)
       v2e.encode(v.schema)(event)
     }

@@ -53,7 +53,8 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
         user = userDocumentGen.generateOne
         affectedProjects = projectCreatedGen("affected")
           .map(
-            _.toModel(DocVersion.Off).addMember(user.id, memberRoleGen.generateOne)
+            _.toModel(DocVersion.Off)
+              .modifyEntityMembers(_.addMember(user.id, memberRoleGen.generateOne))
           )
           .generateList(min = 20, max = 25)
         notAffectedProject = projectCreatedGen(

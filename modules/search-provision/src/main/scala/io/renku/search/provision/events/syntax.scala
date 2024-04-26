@@ -138,4 +138,12 @@ trait syntax extends io.renku.search.events.syntax:
     def toModel(orig: PartialEntityDocument.Group): PartialEntityDocument.Group =
       self.fold(_.toModel(orig))
 
+  extension (self: GroupMemberAdded)
+    def toModel(version: DocVersion): PartialEntityDocument.Group =
+      self.fold(Conversion.fromGroupMemberAdded(_, version))
+
+  extension (self: GroupMemberUpdated)
+    def toModel(version: DocVersion): PartialEntityDocument.Group =
+      self.fold(Conversion.fromGroupMemberUpdated(_, version))
+
 object syntax extends syntax

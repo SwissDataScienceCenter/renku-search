@@ -39,7 +39,7 @@ trait SolrDocumentGenerators:
   val partialProjectGen: Gen[PartialEntityDocument.Project] =
     (idGen, const(DocVersion.Off), entityMembersGen)
       .mapN((id, v, mem) =>
-        PartialEntityDocument.Project(id = id, version = v).apply(mem)
+        PartialEntityDocument.Project(id = id, version = v).setMembers(mem)
       )
 
   val projectDocumentGen: Gen[Project] =

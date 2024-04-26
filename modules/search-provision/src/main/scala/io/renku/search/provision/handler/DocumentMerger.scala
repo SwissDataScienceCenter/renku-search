@@ -50,10 +50,10 @@ object DocumentMerger:
       (paa, existing) =>
         existing match
           case p: PartialEntityDocument.Project =>
-            p.applyTo(paa.toModel(p.version)).some
-          case p: EntityDocument =>
-            paa.toModel(p.version).applyTo(p).some
-          case _: PartialEntityDocument.Group => None
+            p.modifyEntityMembers(_.addMember(paa.userId, paa.role)).some
+          case p: ProjectDocument =>
+            p.modifyEntityMembers(_.addMember(paa.userId, paa.role)).some
+          case _: PartialEntityDocument.Group | _: GroupDocument | _: UserDocument => None
     }
 
   given DocumentMerger[ProjectMemberUpdated] =
@@ -61,9 +61,9 @@ object DocumentMerger:
       (pmu, existing) =>
         existing match
           case p: PartialEntityDocument.Project =>
-            p.removeMember(pmu.userId).applyTo(pmu.toModel(p.version)).some
+            p.modifyEntityMembers(_.addMember(pmu.userId, pmu.role)).some
           case p: ProjectDocument =>
-            pmu.toModel(p.version).applyTo(p.removeMember(pmu.userId)).some
+            p.modifyEntityMembers(_.addMember(pmu.userId, pmu.role)).some
           case _ => None
     }
 
@@ -71,9 +71,9 @@ object DocumentMerger:
     instance[ProjectMemberRemoved](_ => None) { (pmr, existing) =>
       existing match
         case p: PartialEntityDocument.Project =>
-          p.removeMember(pmr.userId).some
+          p.modifyEntityMembers(_.removeMember(pmr.userId)).some
         case p: ProjectDocument =>
-          p.removeMember(pmr.userId).some
+          p.modifyEntityMembers(_.removeMember(pmr.userId)).some
         case _: UserDocument | _: GroupDocument | _: PartialEntityDocument.Group =>
           None
     }
@@ -84,14 +84,7 @@ object DocumentMerger:
         case p: PartialEntityDocument.Project =>
           p.applyTo(pc.toModel(p.version)).some
         case p: ProjectDocument =>
-          pc.toModel(p.version)
-            .copy(
-              owners = p.owners,
-              members = p.members,
-              viewers = p.viewers,
-              editors = p.editors
-            )
-            .some
+          pc.toModel(p.version).modifyEntityMembers(m => p.toEntityMembers ++ m).some
         case _: UserDocument | _: GroupDocument | _: PartialEntityDocument.Group =>
           None
     }
@@ -137,3 +130,27 @@ object DocumentMerger:
         gu.toModel(g).some
       case _ => None
     }
+
+  given DocumentMerger[GroupMemberAdded] =
+    instance[GroupMemberAdded](_.toModel(DocVersion.NotExists).some) { (gma, existing) =>
+      existing match
+        case g: PartialEntityDocument.Group =>
+          g.applyTo(gma.toModel(g.version)).some
+        case g: EntityDocument =>
+          gma.toModel(g.version).applyTo(g).some
+        case _: PartialEntityDocument.Project => None
+    }
+
+  given DocumentMerger[GroupMemberUpdated] =
+    instance[GroupMemberUpdated](_.toModel(DocVersion.NotExists).some) {
+      (gma, existing) =>
+        existing match
+          case g: PartialEntityDocument.Group =>
+            g.applyTo(gma.toModel(g.version)).some
+          case g: EntityDocument =>
+            gma.toModel(g.version).applyTo(g).some
+          case _: PartialEntityDocument.Project => None
+    }
+
+  given DocumentMerger[GroupMemberRemoved] =
+    ???

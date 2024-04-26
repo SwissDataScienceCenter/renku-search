@@ -98,10 +98,10 @@ object AuthorizationUpdatedProvisioningSpec:
         )
 
       case DbState.Project(p) =>
-        Set(p.removeMember(user).addMember(user, role))
+        Set(p.modifyEntityMembers(_.removeMember(user).addMember(user, role)))
 
       case DbState.PartialProject(p) =>
-        Set(p.removeMember(user).addMember(user, role))
+        Set(p.modifyEntityMembers(_.removeMember(user).addMember(user, role)))
 
     def checkExpected(d: Set[SolrDocument]): Boolean =
       expectedProject

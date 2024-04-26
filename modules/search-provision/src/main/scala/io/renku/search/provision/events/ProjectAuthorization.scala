@@ -21,84 +21,41 @@ package io.renku.search.provision.events
 import io.renku.events.{v1, v2}
 import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectAuthorizationUpdated}
 import io.renku.search.events.syntax.*
-import io.renku.search.solr.documents.{EntityMembers, PartialEntityDocument}
+import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.solr.client.DocVersion
 import io.renku.events.v2.ProjectMemberAdded
 import io.renku.events.v2.ProjectMemberUpdated
 
 trait ProjectAuthorization:
 
-  private def resolveRole(role: v1.ProjectMemberRole, userId: String) =
-    role match
-      case v1.ProjectMemberRole.MEMBER => (Set.empty, Set(userId.toId))
-      case v1.ProjectMemberRole.OWNER  => (Set(userId.toId), Set.empty)
-
-  private def resolveRole(role: v2.MemberRole, userId: String) =
-    role match
-      case v2.MemberRole.OWNER  => (Set(userId.toId), Set.empty, Set.empty)
-      case v2.MemberRole.EDITOR => (Set.empty, Set(userId.toId), Set.empty)
-      case v2.MemberRole.VIEWER => (Set.empty, Set.empty, Set(userId.toId))
-
   def fromProjectAuthorizationAdded(
       paa: ProjectAuthorizationAdded,
       version: DocVersion
   ): PartialEntityDocument.Project =
-    val (owners, members) = resolveRole(paa.role, paa.userId)
     PartialEntityDocument
       .Project(id = paa.projectId.toId, version = version)
-      .apply(
-        EntityMembers(
-          owners = owners,
-          editors = Set.empty,
-          viewers = Set.empty,
-          members = members
-        )
-      )
+      .modifyEntityMembers(_.addMember(paa.userId.toId, paa.role.toModel))
 
   def fromProjectMemberAdded(
       paa: ProjectMemberAdded,
       version: DocVersion
   ): PartialEntityDocument.Project =
-    val (owners, editors, viewers) = resolveRole(paa.role, paa.userId)
     PartialEntityDocument
       .Project(id = paa.projectId.toId, version = version)
-      .apply(
-        EntityMembers(
-          owners = owners,
-          editors = editors,
-          viewers = viewers,
-          members = Set.empty
-        )
-      )
+      .modifyEntityMembers(_.addMember(paa.userId.toId, paa.role.toModel))
 
   def fromProjectAuthorizationUpdated(
       paa: ProjectAuthorizationUpdated,
       version: DocVersion
   ): PartialEntityDocument.Project =
-    val (owners, members) = resolveRole(paa.role, paa.userId)
     PartialEntityDocument
       .Project(id = paa.projectId.toId, version = version)
-      .apply(
-        EntityMembers(
-          owners = owners,
-          editors = Set.empty,
-          viewers = Set.empty,
-          members = members
-        )
-      )
+      .modifyEntityMembers(_.addMember(paa.userId.toId, paa.role.toModel))
 
   def fromProjectMemberUpdated(
       paa: ProjectMemberUpdated,
       version: DocVersion
   ): PartialEntityDocument.Project =
-    val (owners, editors, viewers) = resolveRole(paa.role, paa.userId)
     PartialEntityDocument
       .Project(id = paa.projectId.toId, version = version)
-      .apply(
-        EntityMembers(
-          owners = owners,
-          editors = editors,
-          viewers = viewers,
-          members = Set.empty
-        )
-      )
+      .modifyEntityMembers(_.addMember(paa.userId.toId, paa.role.toModel))

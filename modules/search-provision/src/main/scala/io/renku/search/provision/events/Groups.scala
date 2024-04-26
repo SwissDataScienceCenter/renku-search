@@ -22,6 +22,8 @@ import io.renku.events.v2
 import io.renku.search.events.syntax.*
 import io.renku.search.solr.documents.{Group as GroupDocument, PartialEntityDocument}
 import io.renku.solr.client.DocVersion
+import io.renku.events.v2.GroupMemberAdded
+import io.renku.events.v2.GroupMemberUpdated
 
 trait Groups:
 
@@ -64,3 +66,25 @@ trait Groups:
       namespace = Some(gu.namespace.toNamespace),
       description = gu.description.map(_.toGroupDescription)
     )
+
+  def fromGroupMemberAdded(
+      ga: GroupMemberAdded,
+      version: DocVersion
+  ): PartialEntityDocument.Group =
+    PartialEntityDocument
+      .Group(
+        id = ga.groupId.toId,
+        version = version
+      )
+      .modifyEntityMembers(_.addMember(ga.userId.toId, ga.role.toModel))
+
+  def fromGroupMemberUpdated(
+      ga: GroupMemberUpdated,
+      version: DocVersion
+  ): PartialEntityDocument.Group =
+    PartialEntityDocument
+      .Group(
+        id = ga.groupId.toId,
+        version = version
+      )
+      .modifyEntityMembers(_.addMember(ga.userId.toId, ga.role.toModel))

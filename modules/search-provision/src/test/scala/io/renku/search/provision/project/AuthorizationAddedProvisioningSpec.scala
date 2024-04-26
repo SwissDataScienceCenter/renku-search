@@ -100,10 +100,10 @@ object AuthorizationAddedProvisioningSpec:
           editors = Set(user).filter(_ => role == MemberRole.Editor)
         )
       case DbState.Project(p) =>
-        p.addMember(user, role)
+        p.modifyEntityMembers(_.addMember(user, role))
 
       case DbState.PartialProject(p) =>
-        p.addMember(user, role)
+        p.modifyEntityMembers(_.addMember(user, role))
 
     def checkExpected(d: SolrDocument): Boolean =
       d.setVersion(DocVersion.Off) == expectedProject.setVersion(DocVersion.Off)

@@ -22,7 +22,7 @@ import io.renku.events.{v1, v2}
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, MemberRole}
 import cats.data.NonEmptyList
 import cats.Show
 
@@ -40,6 +40,7 @@ sealed trait ProjectMemberUpdated extends RenkuEventPayload:
       _ => v2.ProjectMemberUpdated.SCHEMA$
     )
   def userId: Id = fold(a => Id(a.userId), b => Id(b.userId))
+  def role: MemberRole
 
 object ProjectMemberUpdated:
 
@@ -50,6 +51,9 @@ object ProjectMemberUpdated:
         fv1: v1.ProjectAuthorizationUpdated => A,
         fv2: v2.ProjectMemberUpdated => A
     ): A = fv1(event)
+    def role: MemberRole = event.role match
+      case v1.ProjectMemberRole.OWNER  => MemberRole.Owner
+      case v1.ProjectMemberRole.MEMBER => MemberRole.Member
 
   final case class V2(event: v2.ProjectMemberUpdated) extends ProjectMemberUpdated:
     lazy val id: Id = Id(event.projectId)
@@ -58,12 +62,16 @@ object ProjectMemberUpdated:
         fv1: v1.ProjectAuthorizationUpdated => A,
         fv2: v2.ProjectMemberUpdated => A
     ): A = fv2(event)
+    def role: MemberRole = event.role match
+      case v2.MemberRole.OWNER  => MemberRole.Owner
+      case v2.MemberRole.EDITOR => MemberRole.Editor
+      case v2.MemberRole.VIEWER => MemberRole.Viewer
 
   given AvroEncoder[ProjectMemberUpdated] =
     val v1e = AvroEncoder[v1.ProjectAuthorizationUpdated]
     val v2e = AvroEncoder[v2.ProjectMemberUpdated]
-    AvroEncoder { (schema, v) =>
-      v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
+    AvroEncoder.basic { v =>
+      v.fold(v1e.encode(v.schema), v2e.encode(v.schema))
     }
 
   given EventMessageDecoder[ProjectMemberUpdated] =

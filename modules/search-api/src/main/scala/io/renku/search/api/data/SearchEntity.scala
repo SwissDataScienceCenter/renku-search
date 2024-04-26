@@ -104,6 +104,31 @@ object User:
       ): SearchEntity
     )
 
+final case class Group(
+    id: Id,
+    name: Name,
+    namespace: Namespace,
+    description: Option[groups.Description] = None,
+    score: Option[Double] = None
+) extends SearchEntity
+
+object Group:
+  private given Schema[Id] = Schema.string[Id]
+  private given Schema[Name] = Schema.string[Name]
+  private given Schema[Namespace] = Schema.string[Namespace]
+  private given Schema[groups.Description] = Schema.string[groups.Description]
+  given Schema[Group] = Schema
+    .derived[Group]
+    .jsonExample(
+      Group(
+        Id("2CAF4C73F50D4514A041C9EDDB025A36"),
+        Name("SDSC"),
+        Namespace("SDSC"),
+        Some(groups.Description("SDSC group")),
+        Some(1.1)
+      ): SearchEntity
+    )
+
 object SearchEntity:
 
   private val discriminatorField = "type"

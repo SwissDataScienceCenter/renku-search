@@ -18,73 +18,75 @@
 
 package io.renku.queue.client
 
-import cats.MonadThrow
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
-import io.renku.avro.codec.decoders.all.given
-import io.renku.avro.codec.encoders.all.given
-import io.renku.avro.codec.{AvroDecoder, AvroEncoder, AvroReader, AvroWriter}
-import io.renku.events.v1.Header
-import io.renku.queue.client.DataContentType.*
-import io.renku.redis.client.*
+import io.renku.avro.codec.AvroEncoder
+import io.renku.search.events.*
+import io.renku.redis.client.{MessageId => _, *}
+
 import scribe.Scribe
 
-private class QueueClientImpl[F[_]: Async](redisQueueClient: RedisQueueClient[F])
-    extends QueueClient[F]:
+private class QueueClientImpl[F[_]: Async](
+    redisQueueClient: RedisQueueClient[F],
+    clientId: ClientId
+) extends QueueClient[F]:
 
   private given Scribe[F] = scribe.cats[F]
 
   override def enqueue[P: AvroEncoder](
       queueName: QueueName,
-      header: MessageHeader,
-      payload: P
+      msg: EventMessage[P]
   ): F[MessageId] =
-    val schemaHeader = header.toSchemaHeader(payload)
-    val encHeader = AvroWriter(Header.SCHEMA$).writeJson(Seq(schemaHeader))
-    val encPayload = header.dataContentType match {
-      case Binary => AvroWriter(header.payloadSchema).write(Seq(payload))
-      case Json   => AvroWriter(header.payloadSchema).writeJson(Seq(payload))
-    }
-    redisQueueClient.enqueue(queueName, encHeader, encPayload)
+    val data = msg.toAvro
+    redisQueueClient.enqueue(queueName, data.header, data.payload).map(MessageId.apply)
 
-  override def acquireEventsStream(
+  override def acquireHeaderEventsStream(
       queueName: QueueName,
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, QueueMessage] =
-
-    def decodeHeader(rm: RedisMessage): F[Option[Header]] =
-      MonadThrow[F]
-        .catchNonFatal(AvroReader(Header.SCHEMA$).readJson[Header](rm.header).toList)
-        .flatMap {
-          case h :: Nil => h.some.pure[F]
-          case h =>
-            Scribe[F]
-              .error(s"${h.size} header(s) in Redis instead of one")
-              .as(Option.empty[Header])
-        }
+    def decodeHeader(rm: RedisMessage): F[Option[MessageHeader]] =
+      MessageHeader.fromByteVector(rm.header) match
+        case Right(h) => Some(h).pure[F]
+        case Left(err) =>
+          Scribe[F]
+            .error(s"Error decoding message header: $err")
+            .as(Option.empty[MessageHeader])
+            .flatTap(_ => markProcessed(queueName, MessageId(rm.id)))
 
     redisQueueClient
-      .acquireEventsStream(queueName, chunkSize, maybeOffset)
-      .evalMap(rm => decodeHeader(rm).map(_.map(QueueMessage(rm.id, _, rm.payload))))
+      .acquireEventsStream(queueName, chunkSize, maybeOffset.map(_.value))
+      .evalMap(rm =>
+        decodeHeader(rm).map(_.map(QueueMessage(MessageId(rm.id), _, rm.payload)))
+      )
       .collect { case Some(qm) => qm }
 
-  override def markProcessed(
-      clientId: ClientId,
+  def acquireMessageStream[T](
       queueName: QueueName,
-      messageId: MessageId
-  ): F[Unit] =
-    redisQueueClient.markProcessed(clientId, queueName, messageId)
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  )(using d: EventMessageDecoder[T]): Stream[F, EventMessage[T]] =
+    acquireHeaderEventsStream(queueName, chunkSize, maybeOffset).evalMap { m =>
+      d.decode(m) match
+        case Right(m) =>
+          Scribe[F].trace(s"Got message: $m").as(Some(m))
+        case Left(err) =>
+          Scribe[F]
+            .warn(s"Error decoding redis message: $err")
+            .as(None)
+            .flatTap(_ => markProcessed(queueName, MessageId(m.id.value)))
 
-  override def findLastProcessed(
-      clientId: ClientId,
-      queueName: QueueName
-  ): F[Option[MessageId]] =
-    redisQueueClient.findLastProcessed(clientId, queueName)
+    }.unNone
+
+  override def markProcessed(queueName: QueueName, messageId: MessageId): F[Unit] =
+    redisQueueClient.markProcessed(clientId, queueName, messageId.value)
+
+  override def findLastProcessed(queueName: QueueName): F[Option[MessageId]] =
+    redisQueueClient.findLastProcessed(clientId, queueName).map(_.map(MessageId.apply))
 
   override def getSize(queueName: QueueName): F[Long] =
     redisQueueClient.getSize(queueName)
 
   override def getSize(queueName: QueueName, from: MessageId): F[Long] =
-    redisQueueClient.getSize(queueName, from)
+    redisQueueClient.getSize(queueName, from.value)

@@ -33,10 +33,22 @@ object ModelGenerators:
   val projectDescGen: Gen[projects.Description] =
     alphaStringGen(max = 30).map(projects.Description.apply)
 
+  val timestampGen: Gen[Timestamp] =
+    Gen
+      .choose(
+        Instant.parse("2020-01-01T01:00:00Z").toEpochMilli,
+        Instant.now().toEpochMilli
+      )
+      .map(millis => Timestamp(Instant.ofEpochMilli(millis)))
+
+  val namespaceGen: Gen[Namespace] =
+    alphaStringGen(max = 10).map(Namespace.apply)
+
+  val memberRoleGen: Gen[MemberRole] =
+    Gen.oneOf(MemberRole.values.toList)
+
   val projectVisibilityGen: Gen[projects.Visibility] =
     Gen.oneOf(projects.Visibility.values.toList)
-  val projectMemberRoleGen: Gen[projects.MemberRole] =
-    Gen.oneOf(projects.MemberRole.values.toList)
   val projectCreationDateGen: Gen[projects.CreationDate] =
     instantGen().map(projects.CreationDate.apply)
 
@@ -76,3 +88,10 @@ object ModelGenerators:
       userFirstNameGen,
       userLastNameGen
     ).mapN((f, l, p) => users.Email(s"$f.$l@$p"))
+
+  val groupNameGen: Gen[Name] =
+    Gen.oneOf(
+      List("sdsc", "renku", "datascience", "rocket-science").map(Name.apply)
+    )
+  val groupDescGen: Gen[groups.Description] =
+    alphaStringGen(max = 5).map(groups.Description.apply)

@@ -24,6 +24,7 @@ import io.bullet.borer.Decoder
 enum EntityType:
   case Project
   case User
+  case Group
 
   def name: String = productPrefix
 

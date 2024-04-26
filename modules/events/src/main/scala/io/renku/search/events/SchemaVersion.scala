@@ -16,10 +16,19 @@
  * limitations under the License.
  */
 
-package io.renku.queue.client
+package io.renku.search.events
 
-import io.renku.events.v1.Header
-import io.renku.redis.client.MessageId
-import scodec.bits.ByteVector
+import cats.data.NonEmptyList
 
-final case class QueueMessage(id: MessageId, header: Header, payload: ByteVector)
+enum SchemaVersion:
+  case V1
+  case V2
+
+  lazy val name: String = productPrefix
+
+object SchemaVersion:
+  val all: NonEmptyList[SchemaVersion] =
+    NonEmptyList.fromListUnsafe(SchemaVersion.values.toList)
+
+  def fromString(s: String): Either[String, SchemaVersion] =
+    all.find(_.name.equalsIgnoreCase(s)).toRight(s"Invalid schema version: $s")

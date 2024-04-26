@@ -21,29 +21,28 @@ package io.renku.search.provision.user
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
-import io.renku.avro.codec.all.given
-import io.renku.events.EventsGenerators.{stringGen, userAddedGen}
-import io.renku.events.v1.{UserAdded, UserUpdated}
-import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.events.{v1, v2}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Id
+import io.renku.search.events.*
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import io.renku.solr.client.DocVersion
 import io.renku.search.provision.BackgroundCollector
+import io.renku.events.EventsGenerators
+import org.scalacheck.Gen
 
 class UserUpdatedProvisioningSpec extends ProvisioningSuite:
   (firstNameUpdate :: lastNameUpdate :: emailUpdate :: noUpdate :: Nil).foreach {
     case TestCase(name, updateF) =>
-      val userAdded = userAddedGen(prefix = "user-update").generateOne
+      val userAdded = EventsGenerators.userAddedGen(prefix = "user-update").generateOne
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
         withMessageHandlers(queueConfig).use { case (handler, queueClient, solrClient) =>
           for
             collector <- BackgroundCollector[EntityDocument](
               solrClient
                 .findById[EntityDocument](
-                  CompoundId.userEntity(Id(userAdded.id))
+                  CompoundId.userEntity(userAdded.id)
                 )
                 .map(_.toSet)
             )
@@ -57,8 +56,7 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
             userUpdated = updateF(userAdded)
             _ <- queueClient.enqueue(
               queueConfig.userUpdated,
-              messageHeaderGen(UserUpdated.SCHEMA$).generateOne,
-              userUpdated
+              EventsGenerators.eventMessageGen(Gen.const(userUpdated)).generateOne
             )
 
             _ <- collector.waitUntil(docs =>
@@ -75,37 +73,86 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
   private case class TestCase(name: String, f: UserAdded => UserUpdated)
   private lazy val firstNameUpdate = TestCase(
     "firstName update",
-    ua =>
-      UserUpdated(
-        ua.id,
-        stringGen(max = 5).generateOne.some,
-        ua.lastName,
-        ua.email
-      )
+    {
+      case UserAdded.V1(ua) =>
+        UserUpdated.V1(
+          v1.UserUpdated(
+            ua.id,
+            EventsGenerators.stringGen(max = 5).generateOne.some,
+            ua.lastName,
+            ua.email
+          )
+        )
+      case UserAdded.V2(ua) =>
+        UserUpdated.V2(
+          v2.UserUpdated(
+            ua.id,
+            EventsGenerators.stringGen(max = 5).generateOne.some,
+            ua.lastName,
+            ua.email,
+            ua.namespace
+          )
+        )
+    }
   )
   private lazy val lastNameUpdate = TestCase(
     "lastName update",
-    ua =>
-      UserUpdated(
-        ua.id,
-        ua.firstName,
-        stringGen(max = 5).generateOne.some,
-        ua.email
-      )
+    {
+      case UserAdded.V1(ua) =>
+        UserUpdated.V1(
+          v1.UserUpdated(
+            ua.id,
+            ua.firstName,
+            EventsGenerators.stringGen(max = 5).generateOne.some,
+            ua.email
+          )
+        )
+      case UserAdded.V2(ua) =>
+        UserUpdated.V2(
+          v2.UserUpdated(
+            ua.id,
+            ua.firstName,
+            EventsGenerators.stringGen(max = 5).generateOne.some,
+            ua.email,
+            ua.namespace
+          )
+        )
+    }
   )
   private lazy val emailUpdate = TestCase(
     "email update",
-    ua =>
-      UserUpdated(
-        ua.id,
-        ua.firstName,
-        ua.lastName,
-        stringGen(max = 5).map(v => s"v@host.com").generateOne.some
-      )
+    {
+      case UserAdded.V1(ua) =>
+        UserUpdated.V1(
+          v1.UserUpdated(
+            ua.id,
+            ua.firstName,
+            ua.lastName,
+            EventsGenerators.stringGen(max = 5).map(v => s"v@host.com").generateOne.some
+          )
+        )
+      case UserAdded.V2(ua) =>
+        UserUpdated.V2(
+          v2.UserUpdated(
+            ua.id,
+            ua.firstName,
+            ua.lastName,
+            EventsGenerators.stringGen(max = 5).map(v => s"v@host.com").generateOne.some,
+            ua.namespace
+          )
+        )
+    }
   )
   private lazy val noUpdate = TestCase(
     "no update",
-    ua => UserUpdated(ua.id, ua.firstName, ua.lastName, ua.email)
+    {
+      case UserAdded.V1(ua) =>
+        UserUpdated.V1(v1.UserUpdated(ua.id, ua.firstName, ua.lastName, ua.email))
+      case UserAdded.V2(ua) =>
+        UserUpdated.V2(
+          v2.UserUpdated(ua.id, ua.firstName, ua.lastName, ua.email, ua.namespace)
+        )
+    }
   )
 
   override def munitFixtures: Seq[Fixture[?]] =

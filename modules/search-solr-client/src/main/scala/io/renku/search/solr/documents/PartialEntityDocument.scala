@@ -18,12 +18,12 @@
 
 package io.renku.search.solr.documents
 
-import io.bullet.borer.NullOptions.given
 import io.bullet.borer.*
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.projects.*
-import io.renku.search.model.{Id, Keyword, Name}
-import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.search.model.*
+import io.renku.search.solr.documents.{Group as GroupDocument, Project as ProjectDocument}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.{DocVersion, EncoderSupport}
 
@@ -46,20 +46,35 @@ object PartialEntityDocument:
       id: Id,
       @key("_version_") version: DocVersion = DocVersion.Off,
       name: Option[Name] = None,
+      namespace: Option[Namespace] = None,
       slug: Option[Slug] = None,
       repositories: Seq[Repository] = Seq.empty,
       visibility: Option[Visibility] = None,
       description: Option[Description] = None,
       keywords: List[Keyword] = Nil,
       owners: Set[Id] = Set.empty,
+      editors: Set[Id] = Set.empty,
+      viewers: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
     def setVersion(v: DocVersion): Project = copy(version = v)
-    def remove(id: Id): Project = copy(owners = owners - id, members = members - id)
-    def add(id: Id, role: MemberRole): Project =
-      role match
-        case MemberRole.Owner  => copy(owners = owners + id, members = members - id)
-        case MemberRole.Member => copy(members = members + id, owners = owners - id)
+
+    def removeMember(id: Id): Project =
+      apply(toEntityMembers.removeMember(id))
+
+    def addMember(id: Id, role: MemberRole): Project =
+      apply(toEntityMembers.addMember(id, role))
+
+    private def toEntityMembers: EntityMembers =
+      EntityMembers(owners, editors, viewers, members)
+
+    def apply(em: EntityMembers): Project =
+      copy(
+        owners = em.owners,
+        editors = em.editors,
+        viewers = em.viewers,
+        members = em.members
+      )
 
     def applyTo(e: EntityDocument): EntityDocument =
       e match
@@ -68,6 +83,7 @@ object PartialEntityDocument:
             .addMembers(MemberRole.Member, members.toList)
             .copy(
               name = name.getOrElse(p.name),
+              namespace = namespace.orElse(p.namespace),
               slug = slug.getOrElse(p.slug),
               repositories = if (repositories.isEmpty) p.repositories else repositories,
               visibility = visibility.getOrElse(p.visibility),
@@ -79,19 +95,60 @@ object PartialEntityDocument:
 
     private def combine(p: Project): Project =
       if (p.id == id)
-        p.copy(
-          version = version,
-          members = p.members ++ (members -- p.owners),
-          owners = p.owners ++ (owners -- p.members)
-        )
+        p.copy(version = version)
+          .apply(
+            EntityMembers(
+              owners = p.owners ++ (owners -- p.editors -- p.viewers -- p.members),
+              editors = p.editors ++ (editors -- p.owners -- p.viewers -- p.members),
+              viewers = p.viewers ++ (viewers -- p.owners -- p.editors -- p.members),
+              members = p.members ++ (members -- p.owners -- p.editors -- p.viewers)
+            )
+          )
       else p
 
     def applyTo(e: PartialEntityDocument): PartialEntityDocument =
       e match
         case p: Project => combine(p)
+        case _          => e
 
   object Project:
     given Encoder[Project] =
+      EncoderSupport.deriveWith(
+        DocumentKind.PartialEntity.additionalField,
+        EncoderSupport.AdditionalFields.productPrefix(SolrField.entityType.name)
+      )
+
+  final case class Group(
+      id: Id,
+      @key("_version_") version: DocVersion = DocVersion.Off,
+      name: Option[Name] = None,
+      namespace: Option[Namespace] = None,
+      description: Option[groups.Description] = None
+  ) extends PartialEntityDocument:
+
+    def setVersion(v: DocVersion): Group = copy(version = v)
+
+    def applyTo(e: EntityDocument): EntityDocument =
+      e match
+        case g: GroupDocument if g.id == id =>
+          g.copy(
+            name = name.getOrElse(g.name),
+            namespace = namespace.getOrElse(g.namespace),
+            description = description.orElse(g.description)
+          ).setVersion(version)
+        case _ => e
+
+    private def combine(g: Group): Group =
+      if (g.id == id) g.copy(version = version)
+      else g
+
+    def applyTo(e: PartialEntityDocument): PartialEntityDocument =
+      e match
+        case g: Group => combine(g)
+        case _        => e
+
+  object Group:
+    given Encoder[Group] =
       EncoderSupport.deriveWith(
         DocumentKind.PartialEntity.additionalField,
         EncoderSupport.AdditionalFields.productPrefix(SolrField.entityType.name)

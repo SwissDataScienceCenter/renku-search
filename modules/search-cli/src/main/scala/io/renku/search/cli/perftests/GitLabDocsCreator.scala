@@ -35,6 +35,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.headers.Accept
 import org.http4s.{Header, MediaType, Method, Uri}
 import io.renku.solr.client.DocVersion
+import io.renku.search.model.Namespace
 
 private object GitLabDocsCreator:
   def make[F[_]: Async: Network: ModelTypesGenerators](
@@ -79,6 +80,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       (glProj
         .into[Project]
         .transform(
+          Field.default(_.namespace),
           Field.computed(_.keywords, _.tagsAndTopics.map(Keyword.apply)),
           Field.default(_.version),
           Field.computed(_.id, s => Id(s"gl_proj_${s.id}")),
@@ -89,6 +91,8 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
           Field.computed(_.createdBy, s => user.id),
           Field.computed(_.creationDate, s => projects.CreationDate(s.created_at)),
           Field.default(_.owners),
+          Field.default(_.editors),
+          Field.default(_.viewers),
           Field.default(_.members),
           Field.default(_.score)
         ) -> all).some.pure[F]
@@ -118,6 +122,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     glUser
       .into[User]
       .transform(
+        Field.computed(_.namespace, u => Namespace(u.username).some),
         Field.default(_.version),
         Field.computed(_.id, s => Id(s"gl_user_${s.id}")),
         Field.computed(

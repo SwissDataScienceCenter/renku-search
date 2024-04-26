@@ -16,17 +16,13 @@
  * limitations under the License.
  */
 
-package io.renku.queue.client
+package io.renku.search.events
 
-enum DataContentType(val mimeType: String):
-  lazy val name: String = productPrefix
-  case Binary extends DataContentType("application/avro+binary")
-  case Json extends DataContentType("application/avro+json")
+trait EventMessageDecoder[T]:
+  def decode(qm: QueueMessage): Either[DecodeFailure, EventMessage[T]]
 
-object DataContentType:
-  def from(mimeType: String): Either[Throwable, DataContentType] =
-    DataContentType.values.toList
-      .find(_.mimeType == mimeType)
-      .toRight(
-        new IllegalArgumentException(s"'$mimeType' not a valid 'DataContentType' value")
-      )
+object EventMessageDecoder:
+  def instance[T](
+      f: QueueMessage => Either[DecodeFailure, EventMessage[T]]
+  ): EventMessageDecoder[T] =
+    (qm: QueueMessage) => f(qm)

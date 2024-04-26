@@ -22,26 +22,25 @@ import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
-
 import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
-import io.renku.search.provision.handler.MessageReader.Message
 import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.events.EventMessage
 
 trait DeleteFromSolr[F[_]]:
-  def tryDeleteAll[A](using IdExtractor[A]): Pipe[F, Message[A], DeleteResult[A]]
-  def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[Message[A]], Unit]
-  def whenSuccess[A](fb: Message[A] => F[Unit]): Pipe[F, DeleteResult[A], Unit]
+  def tryDeleteAll[A](using IdExtractor[A]): Pipe[F, EventMessage[A], DeleteResult[A]]
+  def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[EventMessage[A]], Unit]
+  def whenSuccess[A](fb: EventMessage[A] => F[Unit]): Pipe[F, DeleteResult[A], Unit]
 
 object DeleteFromSolr:
-  enum DeleteResult[A](val message: Message[A]):
-    case Success(override val message: Message[A]) extends DeleteResult(message)
-    case Failed(override val message: Message[A], error: Throwable)
+  enum DeleteResult[A](val message: EventMessage[A]):
+    case Success(override val message: EventMessage[A]) extends DeleteResult(message)
+    case Failed(override val message: EventMessage[A], error: Throwable)
         extends DeleteResult(message)
-    case NoIds(override val message: Message[A]) extends DeleteResult(message)
+    case NoIds(override val message: EventMessage[A]) extends DeleteResult(message)
 
   object DeleteResult:
-    def from[A](msg: Message[A])(eab: Either[Throwable, Unit]): DeleteResult[A] =
-      eab.fold(err => Failed(msg, err), _ => Success(msg))
+    def from[A](msg: EventMessage[A])(eab: Either[Throwable, Unit]): DeleteResult[A] =
+      eab.fold(err => DeleteResult.Failed(msg, err), _ => DeleteResult.Success(msg))
 
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F],
@@ -51,9 +50,9 @@ object DeleteFromSolr:
       val logger = scribe.cats.effect[F]
       def tryDeleteAll[A](using
           IdExtractor[A]
-      ): Pipe[F, Message[A], DeleteResult[A]] =
+      ): Pipe[F, EventMessage[A], DeleteResult[A]] =
         _.evalMap { msg =>
-          NonEmptyList.fromList(msg.decoded.map(IdExtractor[A].getId).toList) match
+          NonEmptyList.fromList(msg.payload.map(IdExtractor[A].getId).toList) match
             case Some(nel) =>
               logger.debug(s"Deleting documents with ids: $nel") >>
                 solrClient
@@ -65,7 +64,9 @@ object DeleteFromSolr:
               Sync[F].pure(DeleteResult.NoIds(msg))
         }
 
-      def whenSuccess[A](fb: Message[A] => F[Unit]): Pipe[F, DeleteResult[A], Unit] =
+      def whenSuccess[A](
+          fb: EventMessage[A] => F[Unit]
+      ): Pipe[F, DeleteResult[A], Unit] =
         _.evalMap {
           case DeleteResult.Success(m) =>
             logger.debug(
@@ -76,7 +77,7 @@ object DeleteFromSolr:
         }
           .through(markProcessed)
 
-      def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[Message[A]], Unit] =
+      def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[EventMessage[A]], Unit] =
         _.flatMap(Stream.chunk)
           .through(tryDeleteAll)
           .through(markProcessed)

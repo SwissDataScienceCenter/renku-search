@@ -20,38 +20,36 @@ package io.renku.search.provision.handler
 
 import scala.concurrent.duration.*
 
-import cats.Show
 import cats.data.OptionT
 import cats.effect.IO
 import cats.effect.Ref
 import fs2.Stream
 
-import io.renku.avro.codec.all.given
-import io.renku.events.v1.UserAdded
-import io.renku.queue.client.Generators as QueueGenerators
-import io.renku.redis.client.MessageId
+import io.renku.search.events.*
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.model.Namespace
 import io.renku.search.model.ModelGenerators.idGen
-import io.renku.search.provision.QueueMessageDecoder
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.documents.User as UserDocument
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.UpsertResponse
 import org.scalacheck.Gen
 import scribe.Scribe
+import io.renku.events.EventsGenerators
 
 class PushToSolrSpec extends SearchSolrSuite:
 
-  val messageGen: Gen[MessageReader.Message[UserDocument]] =
+  val messageGen: Gen[EventMessage[UserDocument]] =
     for
       userId <- idGen
-      added = UserAdded(userId.value, None, None, None)
-      raw <- QueueGenerators.queueMessageGen(UserAdded.SCHEMA$, added)
-      doc = UserDocument(userId)
-    yield MessageReader.Message(raw, Seq(doc))
+      added = UserAdded(userId, Namespace("sdsc-ns"), None, None, None)
+      doc = added.toModel(DocVersion.Off)
+      ev <- EventsGenerators.eventMessageGen(added.schema, Gen.const(Seq(doc)))
+    yield ev
 
   def pushData(solr: PushToSolr[IO], runBefore: IO[Unit])(
-      msg: MessageReader.Message[EntityOrPartial],
+      msg: EventMessage[EntityOrPartial],
       retries: Int
   ): Stream[IO, UpsertResponse] =
     val retry: OptionT[IO, Stream[IO, UpsertResponse]] =
@@ -90,7 +88,7 @@ class PushToSolrSpec extends SearchSolrSuite:
       val post = counter.updateAndGet(_ + 1).flatMap {
         case n if n == 3 =>
           scribe.cats.io.info(s"inserting now") >> client
-            .upsertSuccess(msg.decoded.map(_.setVersion(DocVersion.Off)))
+            .upsertSuccess(msg.payload.map(_.setVersion(DocVersion.Off)))
             .void
         case _ => IO.unit
       }
@@ -111,11 +109,7 @@ object PushToSolrSpec:
   class MessageReaderMock extends MessageReader[IO]:
     private val processedIds: Ref[IO, Set[MessageId]] = Ref.unsafe(Set.empty)
     def getProcessed: IO[Set[MessageId]] = processedIds.get
-
-    def read[A](using
-        QueueMessageDecoder[IO, A],
-        Show[A]
-    ): Stream[IO, MessageReader.Message[A]] = ???
+    def readEvents[A](using EventMessageDecoder[A]): Stream[IO, EventMessage[A]] = ???
     def markProcessed(id: MessageId): IO[Unit] = processedIds.update(_ + id)
     def markProcessedError(err: Throwable, id: MessageId)(using
         logger: Scribe[IO]

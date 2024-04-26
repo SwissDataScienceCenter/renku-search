@@ -16,33 +16,29 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.project
-
-import scala.concurrent.duration.*
+package io.renku.search.provision
 
 import cats.effect.std.CountDownLatch
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-
-import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators
-import io.renku.events.v1.ProjectCreated
-import io.renku.events.v1.Visibility
-import io.renku.events.v1.{ProjectAuthorizationAdded, ProjectMemberRole}
-import io.renku.queue.client.DataContentType
-import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.ModelGenerators
-import io.renku.search.model.projects.MemberRole
-import io.renku.search.model.{Id, projects}
+import io.renku.search.events.*
+import io.renku.search.model.{Id, MemberRole, ModelGenerators}
+import io.renku.search.provision.ConcurrentUpdateSpec.testCases
 import io.renku.search.provision.handler.DocumentMerger
-import io.renku.search.provision.handler.ShowInstances
-import io.renku.search.provision.project.ConcurrentUpdateSpec.testCases
-import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.{Project as ProjectDocument, SolrDocument}
+import io.renku.search.solr.documents.{
+  EntityMembers,
+  Project as ProjectDocument,
+  SolrDocument
+}
 
-class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
+import scala.concurrent.duration.*
+import org.scalacheck.Gen
+import io.renku.search.events.ProjectMemberAdded
+
+class ConcurrentUpdateSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
     test(s"process concurrent events: $tc"):
 
@@ -51,25 +47,22 @@ class ConcurrentUpdateSpec extends ProvisioningSuite with ShowInstances:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
-          msgFiber <- List(handlers.projectCreated, handlers.projectAuthAdded).traverse(
-            _.compile.drain.start
-          )
+          msgFiber <- List(handlers.projectCreated, handlers.projectAuthAdded)
+            .traverse(_.compile.drain.start)
 
           latch <- CountDownLatch[IO](1)
 
           sendAuth <- (latch.await >> queueClient.enqueue(
             queueConfig.projectAuthorizationAdded,
-            messageHeaderGen(ProjectAuthorizationAdded.SCHEMA$).generateOne,
-            tc.authAdded
+            EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
           )).start
 
           sendCreate <- (latch.await >> queueClient.enqueue(
             queueConfig.projectCreated,
-            messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
-            tc.projectCreated
+            EventsGenerators.eventMessageGen(Gen.const(tc.projectCreated)).generateOne
           )).start
 
           _ <- latch.release
@@ -109,20 +102,20 @@ object ConcurrentUpdateSpec:
       case DbState.Empty =>
         val p = DocumentMerger[ProjectCreated].create(projectCreated).get
         p.asInstanceOf[ProjectDocument]
-          .copy(
-            owners = Set(user).filter(_ => role == MemberRole.Owner).toList,
-            members = Set(user).filter(_ => role == MemberRole.Member).toList
+          .apply(
+            EntityMembers(
+              owners = Set(user).filter(_ => role == MemberRole.Owner),
+              editors = Set(user).filter(_ => role == MemberRole.Editor),
+              viewers = Set(user).filter(_ => role == MemberRole.Viewer),
+              members = Set(user).filter(_ => role == MemberRole.Member)
+            )
           )
 
-    val projectId = dbState match
+    val projectId: Id = dbState match
       case DbState.Empty => expectedProject.id
 
-    val authAdded: ProjectAuthorizationAdded =
-      ProjectAuthorizationAdded(
-        projectId.value,
-        user.value,
-        ProjectMemberRole.valueOf(role.name.toUpperCase())
-      )
+    val authAdded: ProjectMemberAdded =
+      ProjectMemberAdded(projectId, user, role)
 
     def checkExpected(doc: SolrDocument): Boolean =
       val e = expectedProject

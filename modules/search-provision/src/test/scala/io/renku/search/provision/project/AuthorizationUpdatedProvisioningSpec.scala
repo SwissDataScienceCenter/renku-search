@@ -20,20 +20,19 @@ package io.renku.search.provision
 package project
 
 import cats.effect.{IO, Resource}
-
-import io.renku.avro.codec.encoders.all.given
-import io.renku.events.v1.{ProjectAuthorizationUpdated, ProjectMemberRole}
-import io.renku.queue.client.Generators.messageHeaderGen
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.projects.MemberRole
-import io.renku.search.model.{Id, ModelGenerators, projects}
+import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.project.AuthorizationUpdatedProvisioningSpec.testCases
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.client.SolrDocumentGenerators
-import io.renku.search.solr.documents.PartialEntityDocument
-import io.renku.search.solr.documents.SolrDocument
-import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
+import io.renku.search.solr.documents.{
+  PartialEntityDocument,
+  Project as ProjectDocument,
+  SolrDocument
+}
 import io.renku.solr.client.DocVersion
+import io.renku.events.EventsGenerators
+import io.renku.search.events.ProjectMemberUpdated
+import org.scalacheck.Gen
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
@@ -44,7 +43,7 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
 
@@ -52,8 +51,7 @@ class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectAuthorizationUpdated,
-            messageHeaderGen(ProjectAuthorizationUpdated.SCHEMA$).generateOne,
-            tc.authUpdated
+            EventsGenerators.eventMessageGen(Gen.const(tc.authUpdated)).generateOne
           )
           _ <- collector.waitUntil(docs =>
             scribe.debug(s"Check for ${tc.expectedProject}")
@@ -85,12 +83,8 @@ object AuthorizationUpdatedProvisioningSpec:
       case DbState.Project(p)        => p.id
       case DbState.PartialProject(p) => p.id
 
-    val authUpdated: ProjectAuthorizationUpdated =
-      ProjectAuthorizationUpdated(
-        projectId.value,
-        user.value,
-        ProjectMemberRole.valueOf(role.name.toUpperCase())
-      )
+    val authUpdated: ProjectMemberUpdated =
+      EventsGenerators.projectMemberUpdated(projectId, user, role).generateOne
 
     val expectedProject: Set[SolrDocument] = dbState match
       case DbState.Empty =>
@@ -107,7 +101,7 @@ object AuthorizationUpdatedProvisioningSpec:
         Set(p.removeMember(user).addMember(user, role))
 
       case DbState.PartialProject(p) =>
-        Set(p.remove(user).add(user, role))
+        Set(p.removeMember(user).addMember(user, role))
 
     def checkExpected(d: Set[SolrDocument]): Boolean =
       expectedProject
@@ -119,7 +113,7 @@ object AuthorizationUpdatedProvisioningSpec:
 
   val testCases =
     for {
-      role <- MemberRole.values.toList
+      role <- MemberRole.valuesV1.toList
       proj = SolrDocumentGenerators.projectDocumentGen.generateOne
       pproj = SolrDocumentGenerators.partialProjectGen.generateOne
       dbState <- List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))

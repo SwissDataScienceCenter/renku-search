@@ -21,29 +21,34 @@ package io.renku.queue.client
 import cats.effect.{Async, Resource}
 import fs2.Stream
 import io.renku.avro.codec.AvroEncoder
-import io.renku.redis.client.*
+import io.renku.search.events.*
+import io.renku.redis.client.{MessageId => _, *}
 
 trait QueueClient[F[_]]:
 
   def enqueue[P: AvroEncoder](
       queueName: QueueName,
-      header: MessageHeader,
-      payload: P
+      msg: EventMessage[P]
   ): F[MessageId]
 
-  def acquireEventsStream(
+  def acquireHeaderEventsStream(
       queueName: QueueName,
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, QueueMessage]
 
+  def acquireMessageStream[T](
+      queueName: QueueName,
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  )(using EventMessageDecoder[T]): Stream[F, EventMessage[T]]
+
   def markProcessed(
-      clientId: ClientId,
       queueName: QueueName,
       messageId: MessageId
   ): F[Unit]
 
-  def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
+  def findLastProcessed(queueName: QueueName): F[Option[MessageId]]
 
   def getSize(queueName: QueueName): F[Long]
 
@@ -54,11 +59,17 @@ object QueueClient:
   // Be aware that it was observed that the client can lose the connection to Redis.
   // Because of that consider using the QueueClient.stream
   // that auto-refreshes (recreates) the connection every connectionRefreshInterval.
-  def make[F[_]: Async](redisConfig: RedisConfig): Resource[F, QueueClient[F]] =
-    RedisQueueClient.make[F](redisConfig).map(new QueueClientImpl[F](_))
+  def make[F[_]: Async](
+      redisConfig: RedisConfig,
+      clientId: ClientId
+  ): Resource[F, QueueClient[F]] =
+    RedisQueueClient.make[F](redisConfig).map(new QueueClientImpl[F](_, clientId))
 
-  def stream[F[_]: Async](redisConfig: RedisConfig): Stream[F, QueueClient[F]] =
+  def stream[F[_]: Async](
+      redisConfig: RedisConfig,
+      clientId: ClientId
+  ): Stream[F, QueueClient[F]] =
     val s = Stream
-      .resource[F, QueueClient[F]](make(redisConfig))
+      .resource[F, QueueClient[F]](make(redisConfig, clientId))
       .interruptAfter(redisConfig.connectionRefreshInterval)
-    s ++ stream(redisConfig)
+    s ++ stream(redisConfig, clientId)

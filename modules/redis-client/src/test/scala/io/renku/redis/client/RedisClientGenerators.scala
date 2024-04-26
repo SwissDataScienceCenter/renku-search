@@ -40,4 +40,4 @@ object RedisClientGenerators:
     for
       part1 <- Gen.chooseNum(3, 10)
       part2 <- Gen.chooseNum(3, 10)
-    yield MessageId(s"$part1.$part2")
+    yield s"$part1.$part2"

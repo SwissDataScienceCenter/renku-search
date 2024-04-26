@@ -20,11 +20,8 @@ package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 
-import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.projectCreatedGen
-import io.renku.events.v1.{ProjectCreated, Visibility}
-import io.renku.queue.client.DataContentType
-import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.search.events.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
@@ -35,9 +32,10 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
 import io.renku.search.provision.handler.DocumentMerger
 import io.renku.solr.client.DocVersion
+import io.renku.events.EventsGenerators
+import org.scalacheck.Gen
 
 class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
-
   ProjectCreatedProvisioningSpec.testCases.foreach { tc =>
     test(s"processes message and update solr: $tc"):
       withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
@@ -45,7 +43,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
 
@@ -53,8 +51,10 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectCreated,
-            messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
-            tc.projectCreated
+            EventsGenerators
+              .eventMessageGen(Gen.const(tc.projectCreated))
+              .map(_.modifyHeader(_.withContentType(DataContentType.Binary)))
+              .generateOne
           )
           _ <- collector.waitUntil(docs =>
             scribe.info(s"Check for ${tc.expectedProject}")
@@ -74,12 +74,14 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "binary").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Binary).generateOne,
-          created
+          EventsGenerators
+            .eventMessageGen(Gen.const(created))
+            .map(_.modifyHeader(_.withContentType(DataContentType.Binary)))
+            .generateOne
         )
         collector <- BackgroundCollector(
           solrClient
-            .findById[EntityDocument](CompoundId.projectEntity(Id(created.id)))
+            .findById[EntityDocument](CompoundId.projectEntity(created.id))
             .map(_.toSet)
         )
         _ <- collector.start
@@ -99,12 +101,14 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         created = projectCreatedGen(prefix = "json").generateOne
         _ <- queueClient.enqueue(
           queueConfig.projectCreated,
-          messageHeaderGen(ProjectCreated.SCHEMA$, DataContentType.Json).generateOne,
-          created
+          EventsGenerators
+            .eventMessageGen(Gen.const(created))
+            .map(_.modifyHeader(_.withContentType(DataContentType.Json)))
+            .generateOne
         )
         collector <- BackgroundCollector(
           solrClient
-            .findById[EntityDocument](CompoundId.projectEntity(Id(created.id)))
+            .findById[EntityDocument](CompoundId.projectEntity(created.id))
             .map(_.toSet)
         )
         _ <- collector.start
@@ -137,7 +141,7 @@ object ProjectCreatedProvisioningSpec:
       case DbState.PartialProject(p) => p.id
 
     val projectCreated: ProjectCreated =
-      projectCreatedGen("test-").generateOne.copy(id = projectId.value)
+      projectCreatedGen("test-").generateOne.withId(projectId)
 
     val expectedProject: SolrDocument = dbState match
       case DbState.Empty =>

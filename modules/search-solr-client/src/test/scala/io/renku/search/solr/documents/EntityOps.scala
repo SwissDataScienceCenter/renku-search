@@ -29,6 +29,7 @@ trait EntityOps:
     def noneScore: EntityDocument = entity match {
       case e: Project => e.copy(score = None)
       case e: User    => e.copy(score = None)
+      case e: Group   => e.copy(score = None)
     }
 
     def assertVersionNot(v: DocVersion): EntityDocument =

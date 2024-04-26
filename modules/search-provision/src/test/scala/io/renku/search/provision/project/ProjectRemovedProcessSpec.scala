@@ -24,12 +24,11 @@ import cats.effect.{IO, Resource}
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 
-import io.renku.avro.codec.encoders.all.given
+import io.renku.events.{v1, v2}
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.ProjectRemoved
-import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.search.events.{ProjectRemoved, SchemaVersion}
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.{EntityType, Id}
+import io.renku.search.model.EntityType
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.query.Query
@@ -37,6 +36,8 @@ import io.renku.search.query.Query.Segment
 import io.renku.search.query.Query.Segment.typeIs
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import io.renku.solr.client.DocVersion
+import org.scalacheck.Gen
+import io.renku.events.EventsGenerators
 
 class ProjectRemovedProcessSpec extends ProvisioningSuite:
 
@@ -55,7 +56,7 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
             .awakeEvery[IO](500 millis)
             .evalMap(_ =>
               solrClient.findById[EntityDocument](
-                CompoundId.projectEntity(Id(created.id))
+                CompoundId.projectEntity(created.id)
               )
             )
             .evalMap(e => solrDoc.update(_ => e))
@@ -68,10 +69,14 @@ class ProjectRemovedProcessSpec extends ProvisioningSuite:
         )
 
         removed = ProjectRemoved(created.id)
+        schemaVersion = Gen.oneOf(removed.version.toList).generateOne
+        schema = schemaVersion match
+          case SchemaVersion.V1 => v1.ProjectRemoved.SCHEMA$
+          case SchemaVersion.V2 => v2.ProjectRemoved.SCHEMA$
+
         _ <- queueClient.enqueue(
           queueConfig.projectRemoved,
-          messageHeaderGen(ProjectRemoved.SCHEMA$).generateOne,
-          removed
+          EventsGenerators.eventMessageGen(Gen.const(removed)).generateOne
         )
 
         _ <- solrDoc.waitUntil(

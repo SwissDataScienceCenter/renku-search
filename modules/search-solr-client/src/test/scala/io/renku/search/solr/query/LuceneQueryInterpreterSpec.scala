@@ -69,7 +69,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
   test("amend query with auth data"):
     assertEquals(
       query("help", SearchRole.user(model.Id("13"))).query,
-      "((content_all:help~) AND (visibility:public OR owners:13 OR members:13) AND _kind:fullentity)"
+      "((content_all:help~) AND (visibility:public OR members_all:13) AND _kind:fullentity)"
     )
     assertEquals(
       query("help", SearchRole.Anonymous).query,
@@ -83,7 +83,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
   test("amend empty query with auth data"):
     assertEquals(
       query("", SearchRole.user(model.Id("13"))).query,
-      "((visibility:public OR owners:13 OR members:13) AND _kind:fullentity)"
+      "((visibility:public OR members_all:13) AND _kind:fullentity)"
     )
     assertEquals(
       query("", SearchRole.Anonymous).query,
@@ -98,7 +98,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
         .traverse_(client.query[Unit])
     }
 
-  test("generade valid solr queries"):
+  test("generate valid solr queries"):
     PropF.forAllF(QueryGenerators.query) { q =>
       withSolr
         .use { client =>
@@ -122,7 +122,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
             query(q).withFields(Fields.id, Fields.name, Fields.entityType).withLimit(2)
           )
           _ = assert(
-            r.responseBody.docs.size >= 1,
+            r.responseBody.docs.nonEmpty,
             s"Expected at least one result, but got: ${r.responseBody.docs}"
           )
         } yield ()

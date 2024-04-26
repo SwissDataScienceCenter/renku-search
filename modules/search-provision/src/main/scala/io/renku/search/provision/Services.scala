@@ -40,7 +40,7 @@ object Services:
       solr <- SearchSolrClient.make[F](cfg.solrConfig)
 
       // The redis client is refreshed every now and then so it's provided as a stream
-      redis = QueueClient.stream[F](cfg.redisConfig)
+      redis = QueueClient.stream[F](cfg.redisConfig, cfg.clientId)
 
       steps = PipelineSteps[F](
         solr,

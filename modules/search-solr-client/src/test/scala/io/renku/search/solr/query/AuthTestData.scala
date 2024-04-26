@@ -20,10 +20,8 @@ package io.renku.search.solr.query
 
 import cats.effect.IO
 import cats.syntax.all.*
-
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Id
-import io.renku.search.model.projects.MemberRole
+import io.renku.search.model.{Id, MemberRole}
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SolrDocumentGenerators
@@ -91,7 +89,10 @@ final case class AuthTestData(
   private def setupRelations =
     // user1 is member of user2 private project
     modifyProject(user2.id -> Visibility.Private)(
-      _.addMember(user1.id, MemberRole.Member)
+      _.addMember(
+        user1.id,
+        Gen.oneOf(MemberRole.values.toSet - MemberRole.Owner).generateOne
+      )
     )
       // user2 is owner of user3 private project
       .modifyProject(user3.id -> Visibility.Private)(
@@ -107,7 +108,7 @@ object AuthTestData:
         "description",
         Gen.const(vis)
       )
-      .map(p => (user.id, vis) -> p.copy(owners = List(user.id)))
+      .map(p => (user.id, vis) -> p.copy(owners = Set(user.id)))
 
   val generator: Gen[AuthTestData] = for {
     u1 <- SolrDocumentGenerators.userDocumentGen

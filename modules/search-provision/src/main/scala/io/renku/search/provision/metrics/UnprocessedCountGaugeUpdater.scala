@@ -21,17 +21,16 @@ package io.renku.search.provision.metrics
 import cats.Monad
 import cats.syntax.all.*
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.{ClientId, QueueName}
+import io.renku.redis.client.QueueName
 
 private class UnprocessedCountGaugeUpdater[F[_]: Monad](
-    clientId: ClientId,
     rc: QueueClient[F],
     gauge: UnprocessedCountGauge
 ) extends CollectorUpdater[F]:
 
   override def update(queueName: QueueName): F[Unit] =
     rc
-      .findLastProcessed(clientId, queueName)
+      .findLastProcessed(queueName)
       .flatMap {
         case None     => rc.getSize(queueName)
         case Some(lm) => rc.getSize(queueName, lm)

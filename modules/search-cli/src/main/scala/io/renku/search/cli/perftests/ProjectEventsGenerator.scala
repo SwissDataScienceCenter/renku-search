@@ -21,9 +21,9 @@ package io.renku.search.cli.perftests
 import cats.MonadThrow
 import cats.syntax.all.*
 import fs2.Stream
-import io.renku.events.v1.*
-import io.renku.events.v1.ProjectMemberRole.OWNER
-import io.renku.search.model.{Id, Name}
+
+import io.renku.search.events.*
+import io.renku.search.model.{MemberRole, Timestamp}
 import io.renku.search.solr.documents.{Project, User}
 
 private trait ProjectEventsGenerator[F[_]]:
@@ -55,15 +55,16 @@ private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: ModelTypesGenerators]
         .fold(gens.generateId)(_.id.pure[F])
         .map(creator =>
           ProjectCreated(
-            project.id.value,
-            project.name.value,
-            project.slug.value,
-            project.repositories.map(_.value),
-            Visibility.valueOf(project.visibility.name.toUpperCase),
-            project.description.map(_.value),
-            project.keywords.map(_.value),
-            creator.value,
-            project.creationDate.value
+            project.id,
+            project.name,
+            project.namespace.get,
+            project.slug,
+            project.visibility,
+            creator,
+            Timestamp(project.creationDate.value),
+            project.repositories,
+            project.description,
+            project.keywords
           )
         )
   }
@@ -73,9 +74,10 @@ private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: ModelTypesGenerators]
       users
         .map(u =>
           UserAdded(
-            u.id.value,
-            u.firstName.map(_.value),
-            u.lastName.map(_.value),
+            u.id,
+            u.namespace.get,
+            u.firstName,
+            u.lastName,
             email = None
           )
         )
@@ -83,13 +85,13 @@ private class ProjectEventsGeneratorImpl[F[_]: MonadThrow: ModelTypesGenerators]
   }
 
   private lazy val toProjectAuthAdded
-      : ((Project, List[User])) => F[List[ProjectAuthorizationAdded]] = {
+      : ((Project, List[User])) => F[List[ProjectMemberAdded]] = {
     case (project, owner :: users) =>
-      val memberAuth = ProjectAuthorizationAdded(project.id.value, owner.id.value, OWNER)
+      val memberAuth = ProjectMemberAdded(project.id, owner.id, MemberRole.Owner)
       users
         .map { u =>
-          gens.generateV1MemberRole
-            .map(ProjectAuthorizationAdded(project.id.value, u.id.value, _))
+          gens.generateRole
+            .map(ProjectMemberAdded(project.id, u.id, _))
         }
         .sequence
         .map(memberAuth :: _)

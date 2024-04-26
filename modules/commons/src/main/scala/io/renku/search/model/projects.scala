@@ -18,14 +18,13 @@
 
 package io.renku.search.model
 
-import java.time.Instant
-
 import cats.kernel.Order
-
 import io.bullet.borer.derivation.MapBasedCodecs.*
 import io.bullet.borer.{Codec, Decoder, Encoder}
 import io.github.arainko.ducktape.*
 import io.renku.search.borer.codecs.all.given
+
+import java.time.Instant
 
 object projects:
   opaque type Slug = String
@@ -78,21 +77,4 @@ object projects:
         .toRight(s"Invalid visibility: $v")
 
     def unsafeFromString(v: String): Visibility =
-      fromString(v).fold(sys.error, identity)
-
-  enum MemberRole:
-    lazy val name: String = productPrefix.toLowerCase
-    case Owner, Member
-
-  object MemberRole:
-    given Order[MemberRole] = Order.by(_.ordinal)
-    given Encoder[MemberRole] = Encoder.forString.contramap(_.name)
-    given Decoder[MemberRole] = Decoder.forString.mapEither(MemberRole.fromString)
-
-    def fromString(v: String): Either[String, MemberRole] =
-      MemberRole.values
-        .find(_.name.equalsIgnoreCase(v))
-        .toRight(s"Invalid member-role: $v")
-
-    def unsafeFromString(v: String): MemberRole =
       fromString(v).fold(sys.error, identity)

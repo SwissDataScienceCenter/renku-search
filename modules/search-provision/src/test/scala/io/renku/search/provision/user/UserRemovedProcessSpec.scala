@@ -19,35 +19,32 @@
 package io.renku.search.provision.user
 
 import scala.concurrent.duration.*
-
 import cats.effect.{IO, Resource}
 import fs2.Stream
 import fs2.concurrent.SignallingRef
-
-import io.renku.avro.codec.encoders.all.given
 import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.*
-import io.renku.queue.client.Generators.messageHeaderGen
+import io.renku.search.events.*
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.ModelGenerators.projectMemberRoleGen
+import io.renku.search.model.ModelGenerators.memberRoleGen
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.provision.QueueMessageDecoder
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import io.renku.solr.client.DocVersion
+import io.renku.events.EventsGenerators
+import org.scalacheck.Gen
 
 class UserRemovedProcessSpec extends ProvisioningSuite:
+  private val logger = scribe.cats.io
+
   test(
     "can fetch events, decode them, and remove from Solr relevant User document " +
-      "and issue ProjectAuthorizationRemoved events for all affected projects"
+      "and issue ProjectMemberRemoved events for all affected projects"
   ):
-    val messageDecoder = QueueMessageDecoder[IO, ProjectAuthorizationRemoved]
-
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
         solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
-        authRemovalEvents <- SignallingRef.of[IO, Set[ProjectAuthorizationRemoved]](
+        authRemovalEvents <- SignallingRef.of[IO, Set[ProjectMemberRemoved]](
           Set.empty
         )
 
@@ -56,7 +53,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
         user = userDocumentGen.generateOne
         affectedProjects = projectCreatedGen("affected")
           .map(
-            _.toModel(DocVersion.Off).addMember(user.id, projectMemberRoleGen.generateOne)
+            _.toModel(DocVersion.Off).addMember(user.id, memberRoleGen.generateOne)
           )
           .generateList(min = 20, max = 25)
         notAffectedProject = projectCreatedGen(
@@ -76,31 +73,33 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
             .start
         eventsCollectorFiber <-
           queueClient
-            .acquireEventsStream(queueConfig.projectAuthorizationRemoved, 1, None)
-            .evalMap(messageDecoder.decodeMessage)
-            .evalMap(e => authRemovalEvents.update(_ ++ e))
+            .acquireMessageStream[ProjectMemberRemoved](
+              queueConfig.projectAuthorizationRemoved,
+              1,
+              None
+            )
+            .evalMap(msg => authRemovalEvents.update(_ ++ msg.payload))
             .compile
             .drain
             .start
 
-        _ <- scribe.cats.io.info("Waiting for test documents to be inserted")
+        _ <- logger.info("Waiting for test documents to be inserted")
         _ <- solrDoc.waitUntil(_.nonEmpty)
-        _ <- scribe.cats.io.info("Test documents inserted")
+        _ <- logger.info("Test documents inserted")
 
         _ <- queueClient.enqueue(
           queueConfig.userRemoved,
-          messageHeaderGen(UserRemoved.SCHEMA$).generateOne,
-          UserRemoved(user.id.value)
+          EventsGenerators.eventMessageGen(Gen.const(UserRemoved(user.id))).generateOne
         )
 
         _ <- solrDoc.waitUntil(_.isEmpty)
-        _ <- scribe.cats.io.info(
+        _ <- logger.info(
           "User has been removed. Waiting for project auth removals"
         )
 
         expectedAuthRemovals =
           affectedProjects
-            .map(ap => ProjectAuthorizationRemoved(ap.id.value, user.id.value))
+            .map(ap => ProjectMemberRemoved(ap.id, user.id))
             .toSet
 
         _ <- authRemovalEvents.waitUntil(x => expectedAuthRemovals.diff(x).isEmpty)

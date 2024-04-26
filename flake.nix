@@ -57,6 +57,9 @@
         userAdded = "user.added";
         userUpdated = "user.updated";
         userRemoved = "user.removed";
+        groupAdded = "group.added";
+        groupUpdated = "group.updated";
+        groupRemoved = "groupRemoved";
       };
 
       queueNameConfig = with nixpkgs.lib; mapAttrs' (key: qn: nameValuePair "RS_REDIS_QUEUE_${key}" qn) queueNames;

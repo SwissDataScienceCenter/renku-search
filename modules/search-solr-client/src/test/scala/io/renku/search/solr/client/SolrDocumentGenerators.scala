@@ -19,10 +19,9 @@
 package io.renku.search.solr.client
 
 import cats.syntax.all.*
-
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.ModelGenerators.*
 import io.renku.search.model.*
+import io.renku.search.model.ModelGenerators.*
 import io.renku.search.model.projects.Visibility
 import io.renku.search.solr.documents.*
 import io.renku.solr.client.DocVersion
@@ -34,14 +33,13 @@ object SolrDocumentGenerators extends SolrDocumentGenerators
 
 trait SolrDocumentGenerators:
 
-  private def projectIdGen: Gen[Id] =
+  private def idGen: Gen[Id] =
     Gen.uuid.map(uuid => Id(uuid.toString))
 
   val partialProjectGen: Gen[PartialEntityDocument.Project] =
-    val ids = Gen.choose(1, 5).flatMap(n => Gen.listOfN(n, idGen)).map(_.toSet)
-    (projectIdGen, const(DocVersion.Off), ids, ids)
-      .mapN((id, v, own, mem) =>
-        PartialEntityDocument.Project(id = id, version = v, owners = own, members = mem)
+    (idGen, const(DocVersion.Off), entityMembersGen)
+      .mapN((id, v, mem) =>
+        PartialEntityDocument.Project(id = id, version = v).apply(mem)
       )
 
   val projectDocumentGen: Gen[Project] =
@@ -56,7 +54,7 @@ trait SolrDocumentGenerators:
       desc: String,
       visibilityGen: Gen[Visibility] = projectVisibilityGen
   ): Gen[Project] =
-    (projectIdGen, idGen, visibilityGen, projectCreationDateGen)
+    (idGen, idGen, visibilityGen, projectCreationDateGen)
       .mapN((projectId, creatorId, visibility, creationDate) =>
         Project(
           projectId,
@@ -72,7 +70,35 @@ trait SolrDocumentGenerators:
       )
 
   def userDocumentGen: Gen[User] =
-    (idGen, Gen.option(userFirstNameGen), Gen.option(userLastNameGen))
-      .flatMapN { case (id, f, l) =>
-        User.of(id, f, l)
+    (
+      idGen,
+      Gen.option(userFirstNameGen),
+      Gen.option(userLastNameGen),
+      Gen.option(ModelGenerators.namespaceGen)
+    )
+      .flatMapN { case (id, f, l, ns) =>
+        User.of(id, ns, f, l)
       }
+
+  lazy val entityMembersGen: Gen[EntityMembers] =
+    val ids = Gen.choose(1, 5).flatMap(n => Gen.listOfN(n, idGen)).map(_.toSet)
+    (ids, ids, ids, ids)
+      .mapN((own, edi, view, mem) => EntityMembers(own, edi, view, mem))
+
+  lazy val groupDocumentGen: Gen[Group] =
+    (idGen, idGen, groupNameGen, namespaceGen, Gen.option(groupDescGen))
+      .mapN((groupId, creatorId, name, namespace, desc) =>
+        Group(groupId, DocVersion.NotExists, name, namespace, desc)
+      )
+
+  val partialGroupGen: Gen[PartialEntityDocument.Group] =
+    (idGen, idGen, groupNameGen, namespaceGen, Gen.option(groupDescGen))
+      .mapN((groupId, creatorId, name, namespace, desc) =>
+        PartialEntityDocument.Group(
+          groupId,
+          DocVersion.NotExists,
+          Some(name),
+          Some(namespace),
+          desc
+        )
+      )

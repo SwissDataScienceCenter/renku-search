@@ -51,9 +51,14 @@ object AvroSchemaDownload extends AutoPlugin {
       // evaluated in correct "dependency order" (unfortunately, the plugin doesn't sort it out)
       // must be constant values, because settingKeys are evaluated at project load time
       Seq(
-        schemaTargetDirectory.value / "common",
-        schemaTargetDirectory.value / "user",
-        schemaTargetDirectory.value / "project"
+        schemaTargetDirectory.value / "header",
+        schemaTargetDirectory.value / "v1" / "common",
+        schemaTargetDirectory.value / "v1" / "user",
+        schemaTargetDirectory.value / "v1" / "project",
+        schemaTargetDirectory.value / "v2" / "common",
+        schemaTargetDirectory.value / "v2" / "user",
+        schemaTargetDirectory.value / "v2" / "project",
+        schemaTargetDirectory.value / "v2" / "group"
       ),
     Compile / sourceGenerators += Def
       .sequential(

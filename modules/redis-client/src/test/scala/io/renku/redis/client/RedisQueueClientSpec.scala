@@ -180,7 +180,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisSpec:
     )
     makeStreamingConnection(client)
       .flatMap(_.append(message))
-      .map(id => MessageId(id.value))
+      .map(id => id.value)
       .compile
       .toList
       .map(_.head)

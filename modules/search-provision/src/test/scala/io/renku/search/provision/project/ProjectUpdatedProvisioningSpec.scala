@@ -20,23 +20,21 @@ package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-
-import io.renku.avro.codec.encoders.all.given
-import io.renku.events.EventsGenerators.*
-import io.renku.events.v1.ProjectUpdated
-import io.renku.queue.client.Generators.messageHeaderGen
-import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Id
-import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.provision.events.syntax.*
-import io.renku.search.solr.documents.Project as ProjectDocument
-import io.renku.search.solr.documents.PartialEntityDocument
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.client.SolrDocumentGenerators
-import io.renku.search.provision.BackgroundCollector
-import io.renku.search.solr.documents.SolrDocument
 import io.renku.events.EventsGenerators
+import io.renku.events.EventsGenerators.*
+import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.*
+import io.renku.search.model.Id
+import io.renku.search.provision.events.syntax.*
+import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
+import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
+import io.renku.search.solr.documents.{
+  PartialEntityDocument,
+  Project as ProjectDocument,
+  SolrDocument
+}
 import io.renku.solr.client.DocVersion
+import org.scalacheck.Gen
 
 class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
@@ -47,7 +45,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
           _ <- tc.dbState.create(solrClient)
 
           collector <- BackgroundCollector[SolrDocument](
-            loadPartialOrEntity(solrClient, tc.projectId)
+            loadProjectPartialOrEntity(solrClient, tc.projectId)
           )
           _ <- collector.start
 
@@ -55,8 +53,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
           _ <- queueClient.enqueue(
             queueConfig.projectUpdated,
-            messageHeaderGen(ProjectUpdated.SCHEMA$).generateOne,
-            tc.projectUpdated
+            EventsGenerators.eventMessageGen(Gen.const(tc.projectUpdated)).generateOne
           )
 
           _ <- collector.waitUntil(docs => docs.exists(tc.checkExpected))
@@ -86,8 +83,7 @@ object ProjectUpdatedProvisioningSpec:
       case DbState.PartialProject(p) => solrClient.upsertSuccess(Seq(p))
 
   case class TestCase(dbState: DbState, projectUpdated: ProjectUpdated):
-    def projectId: Id =
-      Id(projectUpdated.id)
+    def projectId: Id = projectUpdated.id
 
     def checkExpected(d: SolrDocument): Boolean =
       dbState match
@@ -100,21 +96,17 @@ object ProjectUpdatedProvisioningSpec:
         case DbState.Project(p) =>
           d match
             case n: ProjectDocument =>
-              n.id == p.id &&
-              n.name.value == projectUpdated.name &&
-              n.slug.value == projectUpdated.slug &&
-              n.visibility == projectUpdated.visibility.toModel &&
-              n.owners == p.owners &&
-              n.members == p.members
+              projectUpdated.toModel(p).setVersion(DocVersion.Off) == n.setVersion(
+                DocVersion.Off
+              )
             case _ => false
 
         case DbState.PartialProject(p) =>
           d match
             case n: PartialEntityDocument.Project =>
-              n.id == p.id &&
-              n.name.map(_.value) == projectUpdated.name.some &&
-              n.slug.map(_.value) == projectUpdated.slug.some &&
-              n.visibility == projectUpdated.visibility.toModel.some
+              projectUpdated.toModel(p).setVersion(DocVersion.Off) == n.setVersion(
+                DocVersion.Off
+              )
 
             case _ => false
 
@@ -124,5 +116,5 @@ object ProjectUpdatedProvisioningSpec:
     val upd = EventsGenerators.projectUpdatedGen("proj-update").generateOne
     for
       dbState <- List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
-      event = upd.copy(id = dbState.projectId.map(_.value).getOrElse(upd.id))
+      event = upd.withId(dbState.projectId.getOrElse(upd.id))
     yield TestCase(dbState, event)

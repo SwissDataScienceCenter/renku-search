@@ -75,7 +75,7 @@ the given role. Other entities are excluded from the results.
 
 ```scala mdoc:passthrough
 println(
-  projects.MemberRole.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
+  MemberRole.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
 )
 ```
 

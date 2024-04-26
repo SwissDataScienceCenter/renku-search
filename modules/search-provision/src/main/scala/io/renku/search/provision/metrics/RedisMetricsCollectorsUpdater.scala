@@ -22,7 +22,6 @@ import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.ClientId
 import io.renku.search.provision.QueuesConfig
 
 import scala.concurrent.duration.FiniteDuration
@@ -30,7 +29,6 @@ import scala.concurrent.duration.FiniteDuration
 private object RedisMetricsCollectorsUpdater:
 
   def apply[F[_]: Async](
-      clientId: ClientId,
       queuesConfig: QueuesConfig,
       updateInterval: FiniteDuration,
       queueClient: Stream[F, QueueClient[F]]
@@ -38,7 +36,7 @@ private object RedisMetricsCollectorsUpdater:
     new RedisMetricsCollectorsUpdater[F](
       queueClient,
       queuesConfig,
-      RedisMetrics.updaterFactories(clientId),
+      RedisMetrics.updaterFactories,
       updateInterval
     )
 

@@ -46,7 +46,7 @@ final private case class GitLabProject(
 private object GitLabProject extends DateTimeDecoders:
   given Decoder[GitLabProject] = deriveDecoder
 
-final private case class GitLabProjectUser(id: Int, name: String)
+final private case class GitLabProjectUser(id: Int, name: String, username: String)
 
 private object GitLabProjectUser:
   given Decoder[GitLabProjectUser] = deriveDecoder

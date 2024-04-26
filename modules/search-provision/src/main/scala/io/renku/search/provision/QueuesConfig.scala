@@ -32,7 +32,10 @@ final case class QueuesConfig(
     projectAuthorizationRemoved: QueueName,
     userAdded: QueueName,
     userUpdated: QueueName,
-    userRemoved: QueueName
+    userRemoved: QueueName,
+    groupAdded: QueueName,
+    groupUpdated: QueueName,
+    groupRemoved: QueueName
 ):
   lazy val all: Set[QueueName] = Set(
     projectCreated,
@@ -43,7 +46,10 @@ final case class QueuesConfig(
     projectAuthorizationRemoved,
     userAdded,
     userUpdated,
-    userRemoved
+    userRemoved,
+    groupAdded,
+    groupUpdated,
+    groupRemoved
   )
 
 object QueuesConfig:
@@ -57,5 +63,8 @@ object QueuesConfig:
       ConfigValues.eventQueue("projectAuthRemoved"),
       ConfigValues.eventQueue("userAdded"),
       ConfigValues.eventQueue("userUpdated"),
-      ConfigValues.eventQueue("userRemoved")
+      ConfigValues.eventQueue("userRemoved"),
+      ConfigValues.eventQueue("groupAdded"),
+      ConfigValues.eventQueue("groupUpdated"),
+      ConfigValues.eventQueue("groupRemoved")
     ).mapN(QueuesConfig.apply)

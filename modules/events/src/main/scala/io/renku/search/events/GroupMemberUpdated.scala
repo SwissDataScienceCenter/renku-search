@@ -34,6 +34,8 @@ sealed trait GroupMemberUpdated extends RenkuEventPayload:
   def withRole(role: MemberRole): GroupMemberUpdated
   def version: NonEmptyList[SchemaVersion] = NonEmptyList.of(SchemaVersion.V2)
   def schema: Schema = v2.GroupMemberUpdated.SCHEMA$
+  def userId: Id = fold(a => Id(a.userId))
+  def role: MemberRole
 
 object GroupMemberUpdated:
   def apply(groupId: Id, userId: Id, role: MemberRole): GroupMemberUpdated =
@@ -49,6 +51,10 @@ object GroupMemberUpdated:
         case MemberRole.Viewer => V2(event.copy(role = v2.MemberRole.VIEWER))
         case MemberRole.Editor => V2(event.copy(role = v2.MemberRole.EDITOR))
         case MemberRole.Owner  => V2(event.copy(role = v2.MemberRole.OWNER))
+    def role: MemberRole = event.role match
+      case v2.MemberRole.OWNER  => MemberRole.Owner
+      case v2.MemberRole.EDITOR => MemberRole.Editor
+      case v2.MemberRole.VIEWER => MemberRole.Viewer
 
     def fold[A](fv2: v2.GroupMemberUpdated => A): A = fv2(event)
 

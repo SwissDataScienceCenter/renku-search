@@ -157,9 +157,6 @@ final class MessageHandlers[F[_]: Async](
       makeUpsert[GroupMemberUpdated](cfg.groupMemberUpdated).drain
     )
 
-  val groupMemberRemoved: Stream[F, Unit] =
-    ???
-
   private def pushWithRetry(
       ps: PipelineSteps[F],
       msg: EventMessage[EntityOrPartial],

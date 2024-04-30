@@ -19,7 +19,6 @@
 package io.renku.search.provision.handler
 
 import cats.syntax.all.*
-import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
@@ -135,22 +134,32 @@ object DocumentMerger:
     instance[GroupMemberAdded](_.toModel(DocVersion.NotExists).some) { (gma, existing) =>
       existing match
         case g: PartialEntityDocument.Group =>
-          g.applyTo(gma.toModel(g.version)).some
-        case g: EntityDocument =>
-          gma.toModel(g.version).applyTo(g).some
-        case _: PartialEntityDocument.Project => None
+          g.modifyEntityMembers(_.addMember(gma.userId, gma.role)).some
+        case g: GroupDocument =>
+          g.modifyEntityMembers(_.addMember(gma.userId, gma.role)).some
+        case _: PartialEntityDocument.Project | _: UserDocument | _: ProjectDocument =>
+          None
     }
 
   given DocumentMerger[GroupMemberUpdated] =
     instance[GroupMemberUpdated](_.toModel(DocVersion.NotExists).some) {
-      (gma, existing) =>
+      (gmu, existing) =>
         existing match
           case g: PartialEntityDocument.Group =>
-            g.applyTo(gma.toModel(g.version)).some
-          case g: EntityDocument =>
-            gma.toModel(g.version).applyTo(g).some
-          case _: PartialEntityDocument.Project => None
+            g.modifyEntityMembers(_.addMember(gmu.userId, gmu.role)).some
+          case g: GroupDocument =>
+            g.modifyEntityMembers(_.addMember(gmu.userId, gmu.role)).some
+          case _: PartialEntityDocument.Project | _: UserDocument | _: ProjectDocument =>
+            None
     }
 
   given DocumentMerger[GroupMemberRemoved] =
-    ???
+    instance[GroupMemberRemoved](_ => None) { (gmr, existing) =>
+      existing match
+        case p: PartialEntityDocument.Group =>
+          p.modifyEntityMembers(_.removeMember(gmr.userId)).some
+        case p: GroupDocument =>
+          p.modifyEntityMembers(_.removeMember(gmr.userId)).some
+        case _: UserDocument | _: ProjectDocument | _: PartialEntityDocument.Project =>
+          None
+    }

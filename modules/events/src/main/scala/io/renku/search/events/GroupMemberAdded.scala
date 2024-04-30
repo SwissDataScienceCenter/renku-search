@@ -34,6 +34,8 @@ sealed trait GroupMemberAdded extends RenkuEventPayload:
   def withRole(role: MemberRole): GroupMemberAdded
   def version: NonEmptyList[SchemaVersion] = NonEmptyList.of(SchemaVersion.V2)
   def schema: Schema = v2.GroupMemberAdded.SCHEMA$
+  def userId: Id = fold(a => Id(a.userId))
+  def role: MemberRole
 
 object GroupMemberAdded:
   def apply(groupId: Id, userId: Id, role: MemberRole): GroupMemberAdded =
@@ -49,7 +51,10 @@ object GroupMemberAdded:
         case MemberRole.Viewer => V2(event.copy(role = v2.MemberRole.VIEWER))
         case MemberRole.Editor => V2(event.copy(role = v2.MemberRole.EDITOR))
         case MemberRole.Owner  => V2(event.copy(role = v2.MemberRole.OWNER))
-
+    def role: MemberRole = event.role match
+      case v2.MemberRole.OWNER  => MemberRole.Owner
+      case v2.MemberRole.EDITOR => MemberRole.Editor
+      case v2.MemberRole.VIEWER => MemberRole.Viewer
     def fold[A](fv2: v2.GroupMemberAdded => A): A = fv2(event)
 
   given AvroEncoder[GroupMemberAdded] =

@@ -37,6 +37,10 @@ object EntityDocumentSchema:
     val owners: FieldName = FieldName("owners")
     val editors: FieldName = FieldName("editors")
     val viewers: FieldName = FieldName("viewers")
+    val groupOwners: FieldName = FieldName("groupOwners")
+    val groupEditors: FieldName = FieldName("groupEditors")
+    val groupViewers: FieldName = FieldName("groupViewers")
+
     // catch-all members field
     val membersAll: FieldName = FieldName("members_all")
     val repositories: FieldName = FieldName("repositories")
@@ -116,4 +120,13 @@ object EntityDocumentSchema:
     SchemaCommand.Add(CopyFieldRule(Fields.editors, Fields.membersAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.viewers, Fields.membersAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.members, Fields.membersAll))
+  )
+
+  val groupRoles: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Add(Field(Fields.groupEditors, FieldTypes.id).makeMultiValued),
+    SchemaCommand.Add(Field(Fields.groupViewers, FieldTypes.id).makeMultiValued),
+    SchemaCommand.Add(Field(Fields.groupOwners, FieldTypes.id).makeMultiValued),
+    SchemaCommand.Add(CopyFieldRule(Fields.groupOwners, Fields.membersAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.groupEditors, Fields.membersAll)),
+    SchemaCommand.Add(CopyFieldRule(Fields.groupViewers, Fields.membersAll))
   )

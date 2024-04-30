@@ -55,6 +55,9 @@ final case class Project(
     editors: Set[Id] = Set.empty,
     viewers: Set[Id] = Set.empty,
     members: Set[Id] = Set.empty,
+    groupOwners: Set[Id] = Set.empty,
+    groupEditors: Set[Id] = Set.empty,
+    groupViewers: Set[Id] = Set.empty,
     keywords: List[Keyword] = List.empty,
     namespace: Option[Namespace] = None,
     score: Option[Double] = None
@@ -64,6 +67,9 @@ final case class Project(
   def toEntityMembers: EntityMembers =
     EntityMembers(owners, editors, viewers, members)
 
+  def toGroupMembers: EntityMembers =
+    EntityMembers(groupOwners, groupEditors, groupViewers, Set.empty)
+
   def setMembers(em: EntityMembers): Project =
     copy(
       owners = em.owners,
@@ -72,8 +78,14 @@ final case class Project(
       members = em.members
     )
 
+  def setGroupMembers(em: EntityMembers): Project =
+    copy(groupOwners = em.owners, groupEditors = em.editors, groupViewers = em.viewers)
+
   def modifyEntityMembers(f: EntityMembers => EntityMembers): Project =
     setMembers(f(toEntityMembers))
+
+  def modifyGroupMembers(f: EntityMembers => EntityMembers): Project =
+    setGroupMembers(f(toGroupMembers))
 
 object Project:
   given Encoder[Project] =

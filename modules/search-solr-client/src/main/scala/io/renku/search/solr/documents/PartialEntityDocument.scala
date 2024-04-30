@@ -89,16 +89,6 @@ object PartialEntityDocument:
             .setVersion(version)
         case _ => e
 
-    private def combine(p: Project): Project =
-      if (p.id == id)
-        p.copy(version = version).modifyEntityMembers(_ ++ toEntityMembers)
-      else p
-
-    def applyTo(e: PartialEntityDocument): PartialEntityDocument =
-      e match
-        case p: Project => combine(p)
-        case _          => e
-
   object Project:
     given Encoder[Project] =
       EncoderSupport.deriveWith(
@@ -140,15 +130,6 @@ object PartialEntityDocument:
             description = description.orElse(g.description)
           ).setVersion(version)
         case _ => e
-
-    private def combine(g: Group): Group =
-      if (g.id == id) g.copy(version = version)
-      else g
-
-    def applyTo(e: PartialEntityDocument): PartialEntityDocument =
-      e match
-        case g: Group => combine(g)
-        case _        => e
 
   object Group:
     given Encoder[Group] =

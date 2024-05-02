@@ -29,7 +29,6 @@ import io.renku.search.provision.group.GroupMemberAddedSpec.DbState
 import io.renku.search.model.ModelGenerators
 import io.renku.events.EventsGenerators
 import io.renku.search.events.GroupMemberAdded
-import io.renku.search.model.MemberRole
 import io.renku.search.solr.documents.CompoundId
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.solr.client.QueryData
@@ -43,11 +42,9 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
   test("adding member to group and related projects"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       val initialState = DbState.groupWithProjectsGen.generateOne
-      val newMember = GroupMemberAdded(
-        initialState.group.id,
-        ModelGenerators.idGen.generateOne,
-        MemberRole.Editor
-      )
+      val role = ModelGenerators.memberRoleGen.generateOne
+      val newMember =
+        GroupMemberAdded(initialState.group.id, ModelGenerators.idGen.generateOne, role)
       for
         _ <- initialState.setup(solrClient)
         msg = EventsGenerators.eventMessageGen(Gen.const(newMember)).generateOne
@@ -63,8 +60,8 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
           )
           .map(_.get.asInstanceOf[GroupDocument])
         _ = assert(
-          currentGroup.editors.contains(newMember.userId),
-          s"new member '${newMember.userId}' not in group editors"
+          currentGroup.toEntityMembers.getMemberIds(role).contains(newMember.userId),
+          s"new member '${newMember.userId}' not in group $role"
         )
 
         currentProjects <- solrClient
@@ -73,8 +70,10 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
           .map(_.map(_.asInstanceOf[ProjectDocument]))
         _ <- IO.println(currentProjects)
         _ = assert(
-          currentProjects.forall(_.groupEditors.contains(newMember.userId)),
-          s"new member '${newMember.userId}' not in projects group editors"
+          currentProjects.forall(
+            _.toGroupMembers.getMemberIds(role).contains(newMember.userId)
+          ),
+          s"new member '${newMember.userId}' not in projects group $role"
         )
       yield ()
     }

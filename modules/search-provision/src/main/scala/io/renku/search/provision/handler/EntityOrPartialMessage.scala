@@ -48,3 +48,6 @@ final case class EntityOrPartialMessage[A: IdExtractor](
       message.payloadSchema,
       documents.values.toSeq
     )
+
+  def withDocuments(docs: List[EntityOrPartial]): EntityOrPartialMessage[A] =
+    EntityOrPartialMessage(message, docs.map(d => d.id -> d).toMap)

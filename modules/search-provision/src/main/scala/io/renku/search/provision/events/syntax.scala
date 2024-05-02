@@ -29,6 +29,9 @@ import io.renku.search.solr.documents.{
 import io.renku.events.{v1, v2}
 
 trait syntax extends io.renku.search.events.syntax:
+  extension (self: ProjectDocument)
+    def toPartialDocument: PartialEntityDocument.Project =
+      Conversion.partialProjectFromDocument(self)
 
   extension (self: v1.ProjectAuthorizationAdded)
     def toModel(version: DocVersion): PartialEntityDocument =

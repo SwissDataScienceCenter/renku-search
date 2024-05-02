@@ -25,11 +25,7 @@ import fs2.Stream
 
 import io.renku.redis.client.QueueName
 import io.renku.search.events.*
-import io.renku.search.model.Namespace
-import io.renku.search.provision.events.Conversion.partialProjectFromDocument
-import io.renku.search.provision.handler.EntityOrPartial.given
 import io.renku.search.provision.handler.*
-import io.renku.search.solr.documents.{Group, PartialEntityDocument, Project}
 import io.renku.solr.client.UpsertResponse
 
 /** The entry point for defining all message handlers.
@@ -112,41 +108,33 @@ final class MessageHandlers[F[_]: Async](
   val groupUpdated: Stream[F, Unit] =
     add(cfg.groupUpdated, makeUpsert[GroupUpdated](cfg.groupUpdated).drain)
 
-  val groupRemoved: Stream[F, Unit] =
+  val groupRemoved: Stream[F, Unit] = {
     val ps = steps(cfg.groupRemoved)
-    val entityToNamespace: EventMessage[EntityOrPartial] => Seq[Namespace] =
-      _.payload
-        .map {
-          case g: Group => Some(g.namespace)
-          case _        => Option.empty[Namespace]
+    def processMsg(
+        msg: EntityOrPartialMessage[GroupRemoved],
+        retries: Int
+    ): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchProjectsByGroup)
+        .map { m =>
+          val merger = DocumentMerger[GroupRemoved]
+          m.merge(merger.create, merger.merge)
         }
-        .flatten
-    val turnToPartial: EntityOrPartial => Option[EntityOrPartial] = {
-      case p: PartialEntityDocument.Project => Some(p)
-      case p: Project                       => Some(partialProjectFromDocument(p))
-      case _                                => None
-    }
+        .through(ps.pushToSolr.push(onConflict = retry))
+
     add(
       cfg.groupRemoved,
       ps.reader
         .readEvents[GroupRemoved]
         .through(ps.fetchFromSolr.fetchEntityOrPartial)
-        .map(_.asMessage)
-        .through(ps.deleteFromSolr.tryDeleteAll)
-        .through(ps.deleteFromSolr.whenSuccess { msg =>
-          Stream
-            .emits(entityToNamespace(msg))
-            .flatMap(ps.fetchFromSolr.fetchProjectByNamespace)
-            .evalMap(ps.fetchFromSolr.fetchEntityOrPartialById)
-            .unNone
-            .map(turnToPartial)
-            .unNone
-            .map(p => msg.withPayload(Seq(p)))
-            .flatMap(pushWithRetry(ps, _, maxConflictRetries))
-            .compile
-            .drain
+        .through(ps.deleteFromSolr.tryDeleteAll2)
+        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
+          processMsg(msg, maxConflictRetries).compile.drain
         })
     )
+  }
 
   val groupMemberAdded: Stream[F, Unit] =
     add(cfg.groupMemberAdded, makeUpsert[GroupMemberAdded](cfg.groupMemberAdded).drain)
@@ -157,15 +145,16 @@ final class MessageHandlers[F[_]: Async](
       makeUpsert[GroupMemberUpdated](cfg.groupMemberUpdated).drain
     )
 
-  private def pushWithRetry(
-      ps: PipelineSteps[F],
-      msg: EventMessage[EntityOrPartial],
-      retries: Int
-  ): Stream[F, UpsertResponse] =
-    lazy val retry = OptionT.when(retries > 0)(pushWithRetry(ps, msg, retries - 1))
-    Stream
-      .emit[F, EventMessage[EntityOrPartial]](msg)
-      .through(ps.pushToSolr.push(onConflict = retry))
+  // private[provision] def makeGroupChange[A](queue: QueueName)(using
+  //     EventMessageDecoder[A],
+  //     DocumentMerger[A],
+  //     IdExtractor[A],
+  //     Show[A]
+  // ): Stream[F, UpsertResponse] = ???
+    // val ps = steps(queue)
+    // makeUpsert(queue)
+    // makeUpsert
+    // fetch affected projects
 
   private[provision] def makeUpsert[A](queue: QueueName)(using
       EventMessageDecoder[A],

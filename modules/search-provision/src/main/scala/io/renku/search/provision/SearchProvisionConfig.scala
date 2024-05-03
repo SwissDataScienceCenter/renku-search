@@ -22,7 +22,7 @@ import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
 import com.comcast.ip4s.port
 import io.renku.redis.client.{ClientId, RedisConfig}
-import io.renku.search.config.ConfigValues
+import io.renku.search.config.{ConfigValues, QueuesConfig}
 import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.SolrConfig
 

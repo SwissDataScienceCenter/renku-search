@@ -22,7 +22,7 @@ import cats.data.NonEmptyList
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.v2
-import io.renku.search.model.Id
+import io.renku.search.model.*
 import org.apache.avro.Schema
 import cats.Show
 
@@ -35,6 +35,15 @@ sealed trait GroupUpdated extends RenkuEventPayload:
     fold(_ => v2.GroupUpdated.SCHEMA$)
 
 object GroupUpdated:
+  def apply(
+      id: Id,
+      name: Name,
+      namespace: Namespace,
+      description: Option[groups.Description]
+  ): GroupUpdated =
+    GroupUpdated.V2(
+      v2.GroupUpdated(id.value, name.value, description.map(_.value), namespace.value)
+    )
 
   final case class V2(event: v2.GroupUpdated) extends GroupUpdated:
     val id: Id = Id(event.id)

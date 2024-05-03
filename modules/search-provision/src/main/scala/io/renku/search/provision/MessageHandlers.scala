@@ -24,6 +24,7 @@ import cats.effect.*
 import fs2.Stream
 
 import io.renku.redis.client.QueueName
+import io.renku.search.config.QueuesConfig
 import io.renku.search.events.*
 import io.renku.search.provision.handler.*
 import io.renku.solr.client.UpsertResponse

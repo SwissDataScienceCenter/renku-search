@@ -16,12 +16,11 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision
+package io.renku.search.config
 
 import cats.syntax.all.*
 import ciris.{ConfigValue, Effect}
 import io.renku.redis.client.QueueName
-import io.renku.search.config.ConfigValues
 
 final case class QueuesConfig(
     projectCreated: QueueName,

@@ -16,18 +16,29 @@
  * limitations under the License.
  */
 
-package io.renku.search.cli
+package io.renku.search.cli.groups
 
+import cats.effect.*
 import cats.syntax.all.*
 import com.monovore.decline.Opts
-import io.renku.search.cli.perftests.PerfTestsConfig
+import io.renku.search.config.QueuesConfig
+import io.renku.search.cli.{CommonOpts, Services}
+import io.renku.search.model.*
+import io.renku.search.events.GroupRemoved
 
-final private case class CliConfig(perfTestConfig: Option[PerfTestsConfig])
+object RemoveCmd:
 
-private object CliConfig:
+  final case class Options(id: Id):
+    def asPayload: GroupRemoved = GroupRemoved(id)
 
-  private val perfTestOpts: Opts[PerfTestsConfig] =
-    Opts.subcommand("perf-tests", "Run perf tests")(PerfTestsConfig.configOpts)
+  val opts: Opts[Options] =
+    CommonOpts.idOpt.map(Options.apply)
 
-  val configOpts: Opts[CliConfig] =
-    perfTestOpts.orNone.map(CliConfig.apply)
+  def apply(cfg: Options): IO[ExitCode] =
+    Services.queueClient.use { queue =>
+      for
+        queuesCfg <- QueuesConfig.config.load[IO]
+        msg <- Services.createMessage(cfg.asPayload)
+        _ <- queue.enqueue(queuesCfg.groupRemoved, msg)
+      yield ExitCode.Success
+    }

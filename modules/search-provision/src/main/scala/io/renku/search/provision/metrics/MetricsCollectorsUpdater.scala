@@ -24,7 +24,7 @@ import cats.syntax.all.*
 import fs2.Stream
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.ClientId
-import io.renku.search.provision.QueuesConfig
+import io.renku.search.config.QueuesConfig
 import io.renku.search.solr.client.SearchSolrClient
 
 import scala.concurrent.duration.FiniteDuration

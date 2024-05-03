@@ -18,23 +18,23 @@
 
 package io.renku.search.cli
 
-import cats.effect.{ExitCode, IO}
+import cats.syntax.all.*
 import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import io.renku.search.cli.perftests.PerfTestsRunner
+import io.renku.search.cli.perftests.PerfTestsConfig
 
-object SearchCli
-    extends CommandIOApp(
-      name = "search-cli",
-      header = "A set of tools to work with the search services",
-      version = "0.0.1"
-    ):
+enum SubCommands:
+  case PerfTests(opts: PerfTestsConfig)
+  case Group(opts: GroupCmd.SubCmdOpts)
 
-  override def main: Opts[IO[ExitCode]] =
-    SubCommands.opts.map {
-      case SubCommands.PerfTests(opts) =>
-        PerfTestsRunner.run(opts).as(ExitCode.Success)
+private object SubCommands:
 
-      case SubCommands.Group(opts) =>
-        GroupCmd(opts)
-    }
+  private val perfTestOpts: Opts[PerfTestsConfig] =
+    Opts.subcommand("perf-tests", "Run perf tests")(PerfTestsConfig.configOpts)
+
+  private val groupOpts: Opts[GroupCmd.SubCmdOpts] =
+    Opts.subcommand("group", "Manage group events")(GroupCmd.opts)
+
+  val opts: Opts[SubCommands] =
+    perfTestOpts
+      .map(SubCommands.PerfTests.apply)
+      .orElse(groupOpts.map(SubCommands.Group.apply))

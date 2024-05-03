@@ -41,6 +41,16 @@ final case class EntityOrPartialMessage[A: IdExtractor](
       }
     )
 
+  def mapToMessage(
+      f: EntityOrPartial => Option[EntityOrPartial]
+  ): EventMessage[EntityOrPartial] =
+    EventMessage(
+      message.id,
+      message.header,
+      message.payloadSchema,
+      documents.values.toSeq.flatMap(f)
+    )
+
   lazy val asMessage: EventMessage[EntityOrPartial] =
     EventMessage(
       message.id,

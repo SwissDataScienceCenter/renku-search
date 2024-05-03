@@ -19,10 +19,34 @@
 package io.renku.search.solr.documents
 
 import munit.*
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.MemberRole
 import io.renku.search.model.Id
+import io.renku.search.model.ModelGenerators
 
 class EntityMembersSpec extends FunSuite:
+  val someId: Id = ModelGenerators.idGen.generateOne
+
+  MemberRole.values.foreach { role =>
+    test(s"addMember to empty set: $role")
+    val em = EntityMembers.empty.addMember(someId, role)
+    assertEquals(em.getMemberIds(role), Set(someId))
+    MemberRole.values.filter(_ != role).foreach { nr =>
+      assertEquals(em.getMemberIds(nr), Set.empty)
+    }
+  }
+
+  MemberRole.values.foreach { role =>
+    test(s"concatenate empty with $role"):
+      val em1 = EntityMembers.empty ++ EntityMembers.empty.addMember(someId, role)
+      val em2 = EntityMembers.empty.addMember(someId, role) ++ EntityMembers.empty
+      assertEquals(em1.getMemberIds(role), Set(someId))
+      assertEquals(em2.getMemberIds(role), Set(someId))
+      MemberRole.values.filter(_ != role).foreach { nr =>
+        assertEquals(em1.getMemberIds(nr), Set.empty)
+        assertEquals(em2.getMemberIds(nr), Set.empty)
+      }
+  }
 
   test(
     "addMember should add the userId to the relevant bucket and remove from the other bucket if existed"

@@ -130,12 +130,6 @@ object DocumentMerger:
       case _ => None
     }
 
-  given DocumentMerger[GroupRemoved] =
-    instance[GroupRemoved](_ => None) {
-      case (gr, p: ProjectDocument) => p.toPartialDocument.some
-      case _ => None
-    }
-
   given DocumentMerger[GroupMemberAdded] =
     instance[GroupMemberAdded](_.toModel(DocVersion.NotExists).some) { (gma, existing) =>
       existing match

@@ -34,7 +34,7 @@ trait DeleteFromSolr[F[_]]:
   def whenSuccess[A](fb: EventMessage[A] => F[Unit]): Pipe[F, DeleteResult[A], Unit]
   def whenSuccess2[A](
       fb: EntityOrPartialMessage[A] => F[Unit]
-  ): Pipe[F, DeleteResult2[A], Unit]
+  ): Pipe[F, DeleteResult2[A], DeleteResult2[A]]
 
 object DeleteFromSolr:
   enum DeleteResult2[A](val context: EntityOrPartialMessage[A]):
@@ -112,7 +112,7 @@ object DeleteFromSolr:
 
       def whenSuccess2[A](
           fb: EntityOrPartialMessage[A] => F[Unit]
-      ): Pipe[F, DeleteResult2[A], Unit] =
+      ): Pipe[F, DeleteResult2[A], DeleteResult2[A]] =
         _.evalMap {
           case DeleteResult2.Success(m) =>
             logger.debug(
@@ -142,9 +142,9 @@ object DeleteFromSolr:
               )
           }
 
-      private def markProcessed2[A]: Pipe[F, DeleteResult2[A], Unit] =
+      private def markProcessed2[A]: Pipe[F, DeleteResult2[A], DeleteResult2[A]] =
         _.evalTap(result => reader.markProcessed(result.context.message.id))
-          .evalMap {
+          .evalTap {
             case DeleteResult2.Success(_) => Sync[F].unit
 
             case DeleteResult2.Failed(msg, err) =>

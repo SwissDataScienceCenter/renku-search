@@ -108,7 +108,11 @@ final class MessageHandlers[F[_]: Async](
   val groupUpdated: Stream[F, Unit] =
     add(cfg.groupUpdated, makeUpsert[GroupUpdated](cfg.groupUpdated).drain)
 
-  val groupRemoved: Stream[F, Unit] = {
+  private[provision] val makeGroupRemoved
+      : Stream[F, DeleteFromSolr.DeleteResult2[GroupRemoved]] = {
+    import io.renku.search.provision.events.syntax.*
+    import io.renku.search.solr.documents.Project as ProjectDocument
+
     val ps = steps(cfg.groupRemoved)
     def processMsg(
         msg: EntityOrPartialMessage[GroupRemoved],
@@ -119,22 +123,23 @@ final class MessageHandlers[F[_]: Async](
         .emit(msg)
         .through(ps.fetchFromSolr.fetchProjectsByGroup)
         .map { m =>
-          val merger = DocumentMerger[GroupRemoved]
-          m.merge(merger.create, merger.merge)
+          m.mapToMessage {
+            case p: ProjectDocument => Some(p.toPartialDocument)
+            case _                  => None
+          }
         }
         .through(ps.pushToSolr.push(onConflict = retry))
-
-    add(
-      cfg.groupRemoved,
-      ps.reader
-        .readEvents[GroupRemoved]
-        .through(ps.fetchFromSolr.fetchEntityOrPartial)
-        .through(ps.deleteFromSolr.tryDeleteAll2)
-        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
-          processMsg(msg, maxConflictRetries).compile.drain
-        })
-    )
+    ps.reader
+      .readEvents[GroupRemoved]
+      .through(ps.fetchFromSolr.fetchEntityOrPartial)
+      .through(ps.deleteFromSolr.tryDeleteAll2)
+      .through(ps.deleteFromSolr.whenSuccess2 { msg =>
+        processMsg(msg, maxConflictRetries).compile.drain
+      })
   }
+
+  val groupRemove: Stream[F, Unit] =
+    add(cfg.groupRemoved, makeGroupRemoved.drain)
 
   val groupMemberAdded: Stream[F, Unit] =
     add(cfg.groupMemberAdded, makeUpsert[GroupMemberAdded](cfg.groupMemberAdded).drain)
@@ -144,17 +149,6 @@ final class MessageHandlers[F[_]: Async](
       cfg.groupMemberUpdated,
       makeUpsert[GroupMemberUpdated](cfg.groupMemberUpdated).drain
     )
-
-  // private[provision] def makeGroupChange[A](queue: QueueName)(using
-  //     EventMessageDecoder[A],
-  //     DocumentMerger[A],
-  //     IdExtractor[A],
-  //     Show[A]
-  // ): Stream[F, UpsertResponse] = ???
-    // val ps = steps(queue)
-    // makeUpsert(queue)
-    // makeUpsert
-    // fetch affected projects
 
   private[provision] def makeUpsert[A](queue: QueueName)(using
       EventMessageDecoder[A],

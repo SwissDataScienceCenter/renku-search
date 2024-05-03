@@ -73,8 +73,11 @@ object FetchFromSolr:
             SolrToken.kindIs(DocumentKind.FullEntity),
             namespaces.map(SolrToken.namespaceIs).foldOr
           ).foldAnd
-          solrClient.queryAll[EntityDocument](QueryData(QueryString(query.value)))
-            .compile.toList
+          println(s"projects by group query: $query")
+          solrClient
+            .queryAll[EntityDocument](QueryData(QueryString(query.value)))
+            .compile
+            .toList
             .map(msg.withDocuments)
         }
 

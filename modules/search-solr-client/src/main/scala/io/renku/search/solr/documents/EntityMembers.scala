@@ -83,8 +83,11 @@ final case class EntityMembers(
 
   def ++(other: EntityMembers): EntityMembers =
     MemberRole.valuesLowerFirst.foldLeft(this) { (acc, role) =>
-      acc.addMembers(role, getMemberIds(role))
+      acc.addMembers(role, other.getMemberIds(role))
     }
+
+  override def toString =
+    s"EntityMembers(owners=$owners, editors=$editors, viewers=$viewers, members=$members)"
 
 object EntityMembers:
   val empty: EntityMembers = EntityMembers(Set.empty, Set.empty, Set.empty, Set.empty)

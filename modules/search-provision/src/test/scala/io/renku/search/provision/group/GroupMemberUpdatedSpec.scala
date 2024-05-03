@@ -25,32 +25,32 @@ import io.renku.search.solr.documents.{Group as GroupDocument, Project as Projec
 import io.renku.search.solr.client.SolrDocumentGenerators
 import org.scalacheck.Gen
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.provision.group.GroupMemberAddedSpec.DbState
+import io.renku.search.provision.group.GroupMemberUpdatedSpec.DbState
 import io.renku.search.model.ModelGenerators
 import io.renku.events.EventsGenerators
-import io.renku.search.events.GroupMemberAdded
+import io.renku.search.events.GroupMemberUpdated
 import io.renku.search.solr.documents.CompoundId
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.solr.client.QueryData
 import io.renku.solr.client.QueryString
 import io.renku.search.solr.query.SolrToken
 
-class GroupMemberAddedSpec extends ProvisioningSuite:
+class GroupMemberUpdatedSpec extends ProvisioningSuite:
   override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
 
-  test("adding member to group and related projects"):
+  test("updating member to group and related projects"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       val initialState = DbState.groupWithProjectsGen.generateOne
       val role = ModelGenerators.memberRoleGen.generateOne
       val newMember =
-        GroupMemberAdded(initialState.group.id, ModelGenerators.idGen.generateOne, role)
+        GroupMemberUpdated(initialState.group.id, ModelGenerators.idGen.generateOne, role)
       for
         _ <- initialState.setup(solrClient)
         msg = EventsGenerators.eventMessageGen(Gen.const(newMember)).generateOne
-        _ <- queueClient.enqueue(queueConfig.groupMemberAdded, msg)
+        _ <- queueClient.enqueue(queueConfig.groupMemberUpdated, msg)
         _ <- handlers
-          .makeGroupMemberUpsert[GroupMemberAdded](queueConfig.groupMemberAdded)
+          .makeGroupMemberUpsert[GroupMemberUpdated](queueConfig.groupMemberUpdated)
           .take(2) // two updates, one for the single group and one for all its projects
           .compile
           .toList
@@ -78,7 +78,7 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
       yield ()
     }
 
-object GroupMemberAddedSpec:
+object GroupMemberUpdatedSpec:
   enum DbState:
     case GroupWithProjects(group: GroupDocument, projects: List[ProjectDocument])
 

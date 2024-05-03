@@ -18,8 +18,11 @@
 
 package io.renku.search.provision.handler
 
+import cats.syntax.all.*
 import io.renku.search.events.EventMessage
 import io.renku.search.model.Id
+import io.renku.search.solr.documents.Group as GroupDocument
+import io.renku.search.solr.documents.Project as ProjectDocument
 
 final case class EntityOrPartialMessage[A: IdExtractor](
     message: EventMessage[A],
@@ -59,5 +62,18 @@ final case class EntityOrPartialMessage[A: IdExtractor](
       documents.values.toSeq
     )
 
-  def withDocuments(docs: List[EntityOrPartial]): EntityOrPartialMessage[A] =
+  def appendDocuments(docs: List[EntityOrPartial]): EntityOrPartialMessage[A] =
+    EntityOrPartialMessage(message, documents ++ docs.map(d => d.id -> d).toMap)
+
+  def setDocuments(docs: List[EntityOrPartial]): EntityOrPartialMessage[A] =
     EntityOrPartialMessage(message, docs.map(d => d.id -> d).toMap)
+
+  def getGroups: List[GroupDocument] =
+    documents.values.collect { case g: GroupDocument =>
+      g
+    }.toList
+
+  def getProjectsByGroup(g: GroupDocument): List[ProjectDocument] =
+    documents.values.collect {
+      case p: ProjectDocument if p.namespace == g.namespace.some => p
+    }.toList

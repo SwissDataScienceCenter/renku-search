@@ -142,12 +142,21 @@ final class MessageHandlers[F[_]: Async](
     add(cfg.groupRemoved, makeGroupRemoved.drain)
 
   val groupMemberAdded: Stream[F, Unit] =
-    add(cfg.groupMemberAdded, makeUpsert[GroupMemberAdded](cfg.groupMemberAdded).drain)
+    add(
+      cfg.groupMemberAdded,
+      makeGroupMemberUpsert[GroupMemberAdded](cfg.groupMemberAdded).drain
+    )
 
   val groupMemberUpdated: Stream[F, Unit] =
     add(
       cfg.groupMemberUpdated,
-      makeUpsert[GroupMemberUpdated](cfg.groupMemberUpdated).drain
+      makeGroupMemberUpsert[GroupMemberUpdated](cfg.groupMemberUpdated).drain
+    )
+
+  val groupMemberRemoved: Stream[F, Unit] =
+    add(
+      cfg.groupMemberRemoved,
+      makeGroupMemberUpsert[GroupMemberRemoved](cfg.groupMemberRemoved).drain
     )
 
   private[provision] def makeUpsert[A](queue: QueueName)(using
@@ -174,6 +183,64 @@ final class MessageHandlers[F[_]: Async](
     ps.reader
       .readEvents[A]
       .flatMap(processMsg(_, maxConflictRetries))
+
+  private[provision] def makeGroupMemberUpsert[A](queue: QueueName)(using
+      EventMessageDecoder[A],
+      DocumentMerger[A],
+      IdExtractor[A],
+      Show[A]
+  ): Stream[F, UpsertResponse] = {
+    import cats.syntax.all.*
+
+    val ps = steps(queue)
+    def processMsg(
+        msg: EventMessage[A],
+        retries: Int
+    ): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchEntityOrPartial)
+        .map { m =>
+          val merger = DocumentMerger[A]
+          m.merge(merger.create, merger.merge)
+        }
+        .through(ps.pushToSolr.push(onConflict = retry))
+
+    def updateProjects(msg: EventMessage[A], retries: Int): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(updateProjects(msg, retries - 1))
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchEntityOrPartial)
+        .through(ps.fetchFromSolr.fetchProjectsByGroup)
+        .map { m =>
+          val updatedProjects =
+            m.getGroups.flatMap { g =>
+              m.getProjectsByGroup(g).flatMap { p =>
+                msg.payload.flatMap {
+                  case gma: GroupMemberAdded if gma.id == g.id =>
+                    p.modifyGroupMembers(_.addMember(gma.userId, gma.role)).some
+
+                  case gmu: GroupMemberUpdated if gmu.id == g.id =>
+                    p.modifyGroupMembers(_.addMember(gmu.userId, gmu.role)).some
+
+                  case gmr: GroupMemberRemoved if gmr.id == g.id =>
+                    p.modifyGroupMembers(_.removeMember(gmr.userId)).some
+
+                  case _ => None
+                }
+              }
+            }
+
+          m.setDocuments(updatedProjects).asMessage
+        }
+        .through(ps.pushToSolr.push(onConflict = retry))
+    ps.reader
+      .readEvents[A]
+      .flatMap(m =>
+        processMsg(m, maxConflictRetries) ++ updateProjects(m, maxConflictRetries)
+      )
+  }
 
   private def makeRemovedSimple[A](queue: QueueName)(using
       EventMessageDecoder[A],

@@ -25,17 +25,17 @@ import io.renku.search.solr.documents.{Group as GroupDocument, Project as Projec
 import io.renku.search.solr.client.SolrDocumentGenerators
 import org.scalacheck.Gen
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.provision.group.GroupMemberAddedSpec.DbState
-import io.renku.search.model.ModelGenerators
+import io.renku.search.provision.group.GroupMemberRemovedSpec.DbState
+import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.events.EventsGenerators
-import io.renku.search.events.GroupMemberAdded
+import io.renku.search.events.GroupMemberRemoved
 import io.renku.search.solr.documents.CompoundId
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.solr.client.QueryData
 import io.renku.solr.client.QueryString
 import io.renku.search.solr.query.SolrToken
 
-class GroupMemberAddedSpec extends ProvisioningSuite:
+class GroupMemberRemovedSpec extends ProvisioningSuite:
   override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
 
@@ -43,14 +43,13 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       val initialState = DbState.groupWithProjectsGen.generateOne
       val role = ModelGenerators.memberRoleGen.generateOne
-      val newMember =
-        GroupMemberAdded(initialState.group.id, ModelGenerators.idGen.generateOne, role)
+      val removeMember = GroupMemberRemoved(initialState.group.id, initialState.user)
       for
         _ <- initialState.setup(solrClient)
-        msg = EventsGenerators.eventMessageGen(Gen.const(newMember)).generateOne
-        _ <- queueClient.enqueue(queueConfig.groupMemberAdded, msg)
+        msg = EventsGenerators.eventMessageGen(Gen.const(removeMember)).generateOne
+        _ <- queueClient.enqueue(queueConfig.groupMemberRemoved, msg)
         _ <- handlers
-          .makeGroupMemberUpsert[GroupMemberAdded](queueConfig.groupMemberAdded)
+          .makeGroupMemberUpsert[GroupMemberRemoved](queueConfig.groupMemberRemoved)
           .take(2) // two updates, one for the single group and one for all its projects
           .compile
           .toList
@@ -60,8 +59,8 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
           )
           .map(_.get.asInstanceOf[GroupDocument])
         _ = assert(
-          currentGroup.toEntityMembers.getMemberIds(role).contains(newMember.userId),
-          s"new member '${newMember.userId}' not in group $role"
+          !currentGroup.toEntityMembers.getMemberIds(role).contains(removeMember.userId),
+          s"member '${removeMember.userId}' still in group $role"
         )
 
         currentProjects <- solrClient
@@ -71,29 +70,38 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
         _ = assertEquals(currentProjects.size, initialState.projects.size)
         _ = assert(
           currentProjects.forall(
-            _.toGroupMembers.getMemberIds(role).contains(newMember.userId)
+            !_.toGroupMembers.getMemberIds(role).contains(removeMember.userId)
           ),
-          s"new member '${newMember.userId}' not in projects group $role"
+          s"member '${removeMember.userId}' still in projects group $role"
         )
       yield ()
     }
 
-object GroupMemberAddedSpec:
+object GroupMemberRemovedSpec:
   enum DbState:
-    case GroupWithProjects(group: GroupDocument, projects: List[ProjectDocument])
+    case GroupWithProjects(
+        group: GroupDocument,
+        projects: List[ProjectDocument],
+        user: Id,
+        role: MemberRole
+    )
 
     def setup(solrClient: SearchSolrClient[IO]): IO[Unit] = this match
-      case GroupWithProjects(group, projects) =>
+      case GroupWithProjects(group, projects, _, _) =>
         solrClient.upsertSuccess(Seq(group)) >> solrClient.upsertSuccess(projects)
 
     def projectQuery: QueryData = this match
-      case GroupWithProjects(_, projects) =>
+      case GroupWithProjects(_, projects, _, _) =>
         QueryData(QueryString(projects.map(p => SolrToken.idIs(p.id)).foldOr.value))
 
   object DbState:
     def groupWithProjectsGen: Gen[DbState.GroupWithProjects] =
       for
-        groupMembers <- SolrDocumentGenerators.entityMembersGen
+        userId <- ModelGenerators.idGen
+        role <- ModelGenerators.memberRoleGen
+        groupMembers <- SolrDocumentGenerators.entityMembersGen.map(
+          _.addMember(userId, role)
+        )
         group <- SolrDocumentGenerators.groupDocumentGen
           .map(_.setMembers(groupMembers))
         projects <- Gen
@@ -105,4 +113,4 @@ object GroupMemberAddedSpec:
                 .setGroupMembers(groupMembers)
             )
           )
-      yield DbState.GroupWithProjects(group, projects)
+      yield DbState.GroupWithProjects(group, projects, userId, role)

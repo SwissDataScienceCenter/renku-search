@@ -16,7 +16,7 @@ object Dependencies {
     val decline = "2.4.1"
     val ducktape = "0.2.0"
     val fs2 = "3.10.2"
-    val http4s = "0.23.26"
+    val http4s = "0.23.27"
     val http4sPrometheusMetrics = "0.24.6"
     val redis4Cats = "1.7.0"
     val sbtMdoc = "2.5.2"

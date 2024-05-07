@@ -90,12 +90,17 @@ object SolrToken:
   def editorIs(id: Id): SolrToken = fieldIs(SolrField.editors, fromId(id))
   def viewerIs(id: Id): SolrToken = fieldIs(SolrField.viewers, fromId(id))
   def memberIs(id: Id): SolrToken = fieldIs(SolrField.members, fromId(id))
+
   def anyMemberIs(id: Id): SolrToken = fieldIs(SolrField.membersAll, fromId(id))
 
+  def groupOwnerIs(id: Id): SolrToken = fieldIs(SolrField.groupOwners, fromId(id))
+  def groupEditorIs(id: Id): SolrToken = fieldIs(SolrField.groupEditors, fromId(id))
+  def groupViewerIs(id: Id): SolrToken = fieldIs(SolrField.groupViewers, fromId(id))
+
   def roleIs(id: Id, role: MemberRole): SolrToken = role match
-    case MemberRole.Owner  => ownerIs(id)
-    case MemberRole.Editor => editorIs(id)
-    case MemberRole.Viewer => viewerIs(id)
+    case MemberRole.Owner  => List(ownerIs(id), groupOwnerIs(id)).foldOr
+    case MemberRole.Editor => List(editorIs(id), groupEditorIs(id)).foldOr
+    case MemberRole.Viewer => List(viewerIs(id), groupViewerIs(id)).foldOr
     case MemberRole.Member => memberIs(id)
 
   def roleIn(id: Id, roles: NonEmptyList[MemberRole]): SolrToken =

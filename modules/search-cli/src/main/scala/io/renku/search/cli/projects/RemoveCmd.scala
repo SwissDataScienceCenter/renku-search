@@ -16,28 +16,29 @@
  * limitations under the License.
  */
 
-package io.renku.search.cli
+package io.renku.search.cli.projects
 
-import cats.effect.{ExitCode, IO}
+import cats.effect.*
+import cats.syntax.all.*
 import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import io.renku.search.cli.perftests.PerfTestsRunner
+import io.renku.search.config.QueuesConfig
+import io.renku.search.cli.{CommonOpts, Services}
+import io.renku.search.model.*
+import io.renku.search.events.ProjectRemoved
 
-object SearchCli
-    extends CommandIOApp(
-      name = "search-cli",
-      header = "A set of tools to work with the search services",
-      version = "0.0.1"
-    ):
+object RemoveCmd extends CommonOpts:
 
-  override def main: Opts[IO[ExitCode]] =
-    SubCommands.opts.map {
-      case SubCommands.PerfTests(opts) =>
-        PerfTestsRunner.run(opts).as(ExitCode.Success)
+  final case class Options(id: Id):
+    def asPayload: ProjectRemoved = ProjectRemoved(id)
 
-      case SubCommands.Group(opts) =>
-        GroupCmd(opts)
+  val opts: Opts[Options] =
+    idOpt.map(Options.apply)
 
-      case SubCommands.Project(opts) =>
-        ProjectCmd(opts)
+  def apply(cfg: Options): IO[ExitCode] =
+    Services.queueClient.use { queue =>
+      for
+        queuesCfg <- QueuesConfig.config.load[IO]
+        msg <- Services.createMessage(cfg.asPayload)
+        _ <- queue.enqueue(queuesCfg.projectRemoved, msg)
+      yield ExitCode.Success
     }

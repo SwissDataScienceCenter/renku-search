@@ -25,6 +25,7 @@ import io.renku.search.cli.perftests.PerfTestsConfig
 enum SubCommands:
   case PerfTests(opts: PerfTestsConfig)
   case Group(opts: GroupCmd.SubCmdOpts)
+  case Project(opts: ProjectCmd.SubCmdOpts)
 
 private object SubCommands:
 
@@ -34,7 +35,11 @@ private object SubCommands:
   private val groupOpts: Opts[GroupCmd.SubCmdOpts] =
     Opts.subcommand("group", "Manage group events")(GroupCmd.opts)
 
+  private val projectOpts: Opts[ProjectCmd.SubCmdOpts] =
+    Opts.subcommand("project", "Manage project events")(ProjectCmd.opts)
+
   val opts: Opts[SubCommands] =
     perfTestOpts
       .map(SubCommands.PerfTests.apply)
       .orElse(groupOpts.map(SubCommands.Group.apply))
+      .orElse(projectOpts.map(SubCommands.Project.apply))

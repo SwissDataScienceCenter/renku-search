@@ -19,10 +19,11 @@
 package io.renku.search.events
 
 import io.renku.events.{v1, v2}
+import io.renku.search.model.{Id, Keyword, Name, Namespace, projects}
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
-import io.renku.search.model.Id
+import io.renku.search.model.projects.Visibility
 import cats.data.NonEmptyList
 import cats.Show
 
@@ -35,6 +36,30 @@ sealed trait ProjectUpdated extends RenkuEventPayload:
     fold(_ => v1.ProjectUpdated.SCHEMA$, _ => v2.ProjectUpdated.SCHEMA$)
 
 object ProjectUpdated:
+  def apply(
+      id: Id,
+      name: Name,
+      namespace: Namespace,
+      slug: projects.Slug,
+      visibility: projects.Visibility,
+      repositories: Seq[projects.Repository] = Seq(),
+      description: Option[projects.Description] = None,
+      keywords: Seq[Keyword] = Seq()
+  ): ProjectUpdated = V2(
+    v2.ProjectUpdated(
+      id.value,
+      name.value,
+      namespace.value,
+      slug.value,
+      repositories.map(_.value),
+      visibility match
+        case Visibility.Private => v2.Visibility.PRIVATE
+        case Visibility.Public  => v2.Visibility.PUBLIC
+      ,
+      description.map(_.value),
+      keywords.map(_.value)
+    )
+  )
 
   final case class V1(event: v1.ProjectUpdated) extends ProjectUpdated:
     val id: Id = Id(event.id)

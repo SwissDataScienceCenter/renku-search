@@ -34,7 +34,7 @@ object UserRemoved:
 
   given AvroEncoder[UserRemoved] =
     val v2e = AvroEncoder[v2.UserRemoved]
-    AvroEncoder { (_, v) =>
+    AvroEncoder.basic { v =>
       val event = v2.UserRemoved(v.id.value)
       v2e.encode(v.schema)(event)
     }

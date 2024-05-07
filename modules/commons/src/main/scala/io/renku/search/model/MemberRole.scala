@@ -31,6 +31,9 @@ object MemberRole:
   val valuesV1: Set[MemberRole] = Set(Owner, Member)
   val valuesV2: Set[MemberRole] = Set(Owner, Editor, Viewer)
 
+  val valuesLowerFirst: List[MemberRole] =
+    values.toList.sortBy(-_.ordinal)
+
   given Order[MemberRole] = Order.by(_.ordinal)
 
   given Encoder[MemberRole] = Encoder.forString.contramap(_.name)

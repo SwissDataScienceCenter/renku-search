@@ -59,16 +59,10 @@ object PartialEntityDocument:
   ) extends PartialEntityDocument:
     def setVersion(v: DocVersion): Project = copy(version = v)
 
-    def removeMember(id: Id): Project =
-      apply(toEntityMembers.removeMember(id))
-
-    def addMember(id: Id, role: MemberRole): Project =
-      apply(toEntityMembers.addMember(id, role))
-
     private def toEntityMembers: EntityMembers =
       EntityMembers(owners, editors, viewers, members)
 
-    def apply(em: EntityMembers): Project =
+    def setMembers(em: EntityMembers): Project =
       copy(
         owners = em.owners,
         editors = em.editors,
@@ -76,11 +70,13 @@ object PartialEntityDocument:
         members = em.members
       )
 
+    def modifyEntityMembers(f: EntityMembers => EntityMembers): Project =
+      setMembers(f(toEntityMembers))
+
     def applyTo(e: EntityDocument): EntityDocument =
       e match
         case p: ProjectDocument if p.id == id =>
-          p.addMembers(MemberRole.Owner, owners.toList)
-            .addMembers(MemberRole.Member, members.toList)
+          p.modifyEntityMembers(_ ++ toEntityMembers)
             .copy(
               name = name.getOrElse(p.name),
               namespace = namespace.orElse(p.namespace),
@@ -92,24 +88,6 @@ object PartialEntityDocument:
             )
             .setVersion(version)
         case _ => e
-
-    private def combine(p: Project): Project =
-      if (p.id == id)
-        p.copy(version = version)
-          .apply(
-            EntityMembers(
-              owners = p.owners ++ (owners -- p.editors -- p.viewers -- p.members),
-              editors = p.editors ++ (editors -- p.owners -- p.viewers -- p.members),
-              viewers = p.viewers ++ (viewers -- p.owners -- p.editors -- p.members),
-              members = p.members ++ (members -- p.owners -- p.editors -- p.viewers)
-            )
-          )
-      else p
-
-    def applyTo(e: PartialEntityDocument): PartialEntityDocument =
-      e match
-        case p: Project => combine(p)
-        case _          => e
 
   object Project:
     given Encoder[Project] =
@@ -123,10 +101,25 @@ object PartialEntityDocument:
       @key("_version_") version: DocVersion = DocVersion.Off,
       name: Option[Name] = None,
       namespace: Option[Namespace] = None,
-      description: Option[groups.Description] = None
+      description: Option[groups.Description] = None,
+      owners: Set[Id] = Set.empty,
+      editors: Set[Id] = Set.empty,
+      viewers: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
-
     def setVersion(v: DocVersion): Group = copy(version = v)
+
+    private def toEntityMembers: EntityMembers =
+      EntityMembers(owners, editors, viewers, Set.empty)
+
+    def setMembers(em: EntityMembers): Group =
+      copy(
+        owners = em.owners,
+        editors = em.editors,
+        viewers = em.viewers
+      )
+
+    def modifyEntityMembers(f: EntityMembers => EntityMembers): Group =
+      setMembers(f(toEntityMembers))
 
     def applyTo(e: EntityDocument): EntityDocument =
       e match
@@ -137,15 +130,6 @@ object PartialEntityDocument:
             description = description.orElse(g.description)
           ).setVersion(version)
         case _ => e
-
-    private def combine(g: Group): Group =
-      if (g.id == id) g.copy(version = version)
-      else g
-
-    def applyTo(e: PartialEntityDocument): PartialEntityDocument =
-      e match
-        case g: Group => combine(g)
-        case _        => e
 
   object Group:
     given Encoder[Group] =

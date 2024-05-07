@@ -65,8 +65,8 @@ object UserAdded:
   given AvroEncoder[UserAdded] =
     val v1e = AvroEncoder[v1.UserAdded]
     val v2e = AvroEncoder[v2.UserAdded]
-    AvroEncoder { (schema, v) =>
-      v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
+    AvroEncoder.basic { v =>
+      v.fold(v1e.encode(v.schema), v2e.encode(v.schema))
     }
 
   given EventMessageDecoder[UserAdded] =

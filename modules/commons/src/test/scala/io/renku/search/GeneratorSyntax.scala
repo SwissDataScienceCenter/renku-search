@@ -37,10 +37,13 @@ trait GeneratorSyntax:
     def generateList: List[A] = Gen.listOf(self).generateOne
 
     def generateList(min: Int, max: Int): List[A] =
-      Gen.choose(min, max).flatMap(Gen.listOfN(_, self)).generateOne
+      asListOfN(min, max).generateOne
 
     def stream: Stream[Gen, A] =
       Stream.repeatEval(self)
+
+    def asListOfN(min: Int = 1, max: Int = 8): Gen[List[A]] =
+      Gen.choose(min, max).flatMap(Gen.listOfN(_, self))
 
   extension [A](self: Stream[Gen, A])
     def toIO: Stream[IO, A] =

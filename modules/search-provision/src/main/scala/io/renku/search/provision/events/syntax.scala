@@ -29,6 +29,9 @@ import io.renku.search.solr.documents.{
 import io.renku.events.{v1, v2}
 
 trait syntax extends io.renku.search.events.syntax:
+  extension (self: ProjectDocument)
+    def toPartialDocument: PartialEntityDocument.Project =
+      Conversion.partialProjectFromDocument(self)
 
   extension (self: v1.ProjectAuthorizationAdded)
     def toModel(version: DocVersion): PartialEntityDocument =
@@ -137,5 +140,13 @@ trait syntax extends io.renku.search.events.syntax:
       self.fold(_.toModel(orig))
     def toModel(orig: PartialEntityDocument.Group): PartialEntityDocument.Group =
       self.fold(_.toModel(orig))
+
+  extension (self: GroupMemberAdded)
+    def toModel(version: DocVersion): PartialEntityDocument.Group =
+      self.fold(Conversion.fromGroupMemberAdded(_, version))
+
+  extension (self: GroupMemberUpdated)
+    def toModel(version: DocVersion): PartialEntityDocument.Group =
+      self.fold(Conversion.fromGroupMemberUpdated(_, version))
 
 object syntax extends syntax

@@ -49,6 +49,12 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
             )
             .generateOne
         )
+        results1 <- handlers
+          .makeUpsert[UserAdded](queueConfig.userAdded)
+          .take(1)
+          .compile
+          .toList
+
         add2 <- queueClient.enqueue(
           queueConfig.userAdded,
           EventsGenerators
@@ -59,11 +65,12 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
             )
             .generateOne
         )
-        results <- handlers
+        results2 <- handlers
           .makeUpsert[UserAdded](queueConfig.userAdded)
-          .take(2)
+          .take(1)
           .compile
           .toList
+        results = results1 ++ results2
 
         _ = assert(results.nonEmpty && results.forall(_.isSuccess))
         doc <- solrClient.findById[EntityDocument](CompoundId.userEntity(id))

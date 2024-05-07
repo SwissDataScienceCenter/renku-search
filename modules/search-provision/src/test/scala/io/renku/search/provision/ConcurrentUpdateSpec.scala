@@ -102,14 +102,7 @@ object ConcurrentUpdateSpec:
       case DbState.Empty =>
         val p = DocumentMerger[ProjectCreated].create(projectCreated).get
         p.asInstanceOf[ProjectDocument]
-          .apply(
-            EntityMembers(
-              owners = Set(user).filter(_ => role == MemberRole.Owner),
-              editors = Set(user).filter(_ => role == MemberRole.Editor),
-              viewers = Set(user).filter(_ => role == MemberRole.Viewer),
-              members = Set(user).filter(_ => role == MemberRole.Member)
-            )
-          )
+          .setMembers(EntityMembers.empty.addMember(user, role))
 
     val projectId: Id = dbState match
       case DbState.Empty => expectedProject.id
@@ -121,7 +114,7 @@ object ConcurrentUpdateSpec:
       val e = expectedProject
       doc match
         case p: ProjectDocument =>
-          (e.id, e.owners, e.members, e.slug) == (p.id, p.owners, p.members, p.slug)
+          (e.id, e.slug, e.toEntityMembers) == (p.id, p.slug, p.toEntityMembers)
         case _ => false
 
     override def toString = s"$name: ${user.value.take(6)}… db=$dbState"

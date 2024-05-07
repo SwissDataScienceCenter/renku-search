@@ -29,7 +29,7 @@ class ProjectSpec extends ScalaCheckSuite:
   test("addMember should add the given userId and role to the correct bucket in the doc"):
     Prop.forAll(projectDocumentGen, idGen, memberRoleGen) {
       case (project, userId, role) =>
-        val updated = project.addMember(userId, role)
+        val updated = project.modifyEntityMembers(_.addMember(userId, role))
         role match {
           case Owner =>
             assertEquals(updated.owners, project.owners + userId)
@@ -47,8 +47,10 @@ class ProjectSpec extends ScalaCheckSuite:
   ):
     Prop.forAll(projectDocumentGen, idGen) { case (project, userId) =>
       val updated = project
-        .addMember(userId, Member)
-        .addMember(userId, Owner)
+        .modifyEntityMembers(
+          _.addMember(userId, Member)
+            .addMember(userId, Owner)
+        )
 
       assertEquals(updated.owners, project.owners + userId)
       assertEquals(updated.members, project.members - userId)
@@ -57,13 +59,13 @@ class ProjectSpec extends ScalaCheckSuite:
   test("removeMember should remove the given userId from the correct bucket in the doc"):
     Prop.forAll(projectDocumentGen, idGen, memberRoleGen) {
       case (project, userId, role) =>
-        val updated = project.addMember(userId, role)
-        assertEquals(updated.removeMember(userId), project)
+        val updated = project.modifyEntityMembers(_.addMember(userId, role))
+        assertEquals(updated.modifyEntityMembers(_.removeMember(userId)), project)
     }
 
   test("removeMember should do nothing if there's no member/owner with the given userId"):
     Prop.forAll(projectDocumentGen, idGen, idGen, memberRoleGen) {
       case (project, existingUserId, toDeleteUserId, role) =>
-        val updated = project.addMember(existingUserId, role)
-        assertEquals(updated.removeMember(toDeleteUserId), updated)
+        val updated = project.modifyEntityMembers(_.addMember(existingUserId, role))
+        assertEquals(updated.modifyEntityMembers(_.removeMember(toDeleteUserId)), updated)
     }

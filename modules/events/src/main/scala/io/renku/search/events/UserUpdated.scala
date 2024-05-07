@@ -48,8 +48,8 @@ object UserUpdated:
   given AvroEncoder[UserUpdated] =
     val v1e = AvroEncoder[v1.UserUpdated]
     val v2e = AvroEncoder[v2.UserUpdated]
-    AvroEncoder { (schema, v) =>
-      v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
+    AvroEncoder.basic { v =>
+      v.fold(v1e.encode(v.schema), v2e.encode(v.schema))
     }
 
   given EventMessageDecoder[UserUpdated] =

@@ -55,6 +55,9 @@ final case class Project(
     editors: Set[Id] = Set.empty,
     viewers: Set[Id] = Set.empty,
     members: Set[Id] = Set.empty,
+    groupOwners: Set[Id] = Set.empty,
+    groupEditors: Set[Id] = Set.empty,
+    groupViewers: Set[Id] = Set.empty,
     keywords: List[Keyword] = List.empty,
     namespace: Option[Namespace] = None,
     score: Option[Double] = None
@@ -64,7 +67,10 @@ final case class Project(
   def toEntityMembers: EntityMembers =
     EntityMembers(owners, editors, viewers, members)
 
-  def apply(em: EntityMembers): Project =
+  def toGroupMembers: EntityMembers =
+    EntityMembers(groupOwners, groupEditors, groupViewers, Set.empty)
+
+  def setMembers(em: EntityMembers): Project =
     copy(
       owners = em.owners,
       editors = em.editors,
@@ -72,14 +78,14 @@ final case class Project(
       members = em.members
     )
 
-  def addMember(userId: Id, role: MemberRole): Project =
-    apply(toEntityMembers.addMember(userId, role))
+  def setGroupMembers(em: EntityMembers): Project =
+    copy(groupOwners = em.owners, groupEditors = em.editors, groupViewers = em.viewers)
 
-  def addMembers(role: MemberRole, ids: List[Id]): Project =
-    apply(toEntityMembers.addMembers(role, ids))
+  def modifyEntityMembers(f: EntityMembers => EntityMembers): Project =
+    setMembers(f(toEntityMembers))
 
-  def removeMember(userId: Id): Project =
-    apply(toEntityMembers.removeMember(userId))
+  def modifyGroupMembers(f: EntityMembers => EntityMembers): Project =
+    setGroupMembers(f(toGroupMembers))
 
 object Project:
   given Encoder[Project] =
@@ -137,9 +143,25 @@ final case class Group(
     name: Name,
     namespace: Namespace,
     description: Option[groups.Description] = None,
+    owners: Set[Id] = Set.empty,
+    editors: Set[Id] = Set.empty,
+    viewers: Set[Id] = Set.empty,
     score: Option[Double] = None
 ) extends EntityDocument:
   def setVersion(v: DocVersion): Group = copy(version = v)
+
+  def toEntityMembers: EntityMembers =
+    EntityMembers(owners, editors, viewers, Set.empty)
+
+  def setMembers(em: EntityMembers): Group =
+    copy(
+      owners = em.owners,
+      editors = em.editors,
+      viewers = em.viewers
+    )
+
+  def modifyEntityMembers(f: EntityMembers => EntityMembers): Group =
+    setMembers(f(toEntityMembers))
 
 object Group:
   given Encoder[Group] =
@@ -155,7 +177,20 @@ object Group:
       id: Id,
       name: Name,
       namespace: Namespace,
+      owners: Set[Id] = Set.empty,
+      editors: Set[Id] = Set.empty,
+      viewers: Set[Id] = Set.empty,
       description: Option[groups.Description] = None,
       score: Option[Double] = None
   ): Group =
-    Group(id, DocVersion.NotExists, name, namespace, description, score)
+    Group(
+      id,
+      DocVersion.NotExists,
+      name,
+      namespace,
+      description,
+      owners,
+      editors,
+      viewers,
+      score
+    )

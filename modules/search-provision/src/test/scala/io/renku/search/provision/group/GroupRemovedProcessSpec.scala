@@ -20,26 +20,29 @@ package io.renku.search.provision.group
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-import fs2.Stream
-import fs2.concurrent.SignallingRef
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.Id
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{
   CompoundId,
   EntityDocument,
   Group as GroupDocument,
   PartialEntityDocument,
-  SolrDocument
+  Project as ProjectDocument
 }
 import io.renku.solr.client.DocVersion
 
-import scala.concurrent.duration.*
 import io.renku.events.EventsGenerators
 import org.scalacheck.Gen
 import io.renku.search.events.GroupRemoved
+import io.renku.search.solr.client.SolrDocumentGenerators
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.solr.client.QueryData
+import io.renku.solr.client.QueryString
+import io.renku.search.solr.query.SolrToken
+import io.renku.search.solr.documents.DocumentKind
+import io.renku.search.model.EntityType
 
 class GroupRemovedProcessSpec extends ProvisioningSuite:
 
@@ -47,65 +50,71 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
     "can fetch events, decode them, remove the Group from Solr, " +
       "and turn all the group's project to partial in Solr"
   ):
+    val initialState = GroupRemovedProcessSpec.DbState.create.generateOne
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
-        groupSolrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
-        projSolrDoc <- SignallingRef.of[IO, Option[SolrDocument]](None)
-
-        provisioningFiber <- handlers.groupRemoved.compile.drain.start
-
-        group = EventsGenerators
-          .groupAddedGen(prefix = "group-removal")
-          .generateOne
-          .fold(_.toModel(DocVersion.Off))
-        project = projectDocumentGen.generateOne.copy(namespace = group.namespace.some)
-        _ <- solrClient.upsert(Seq(group, project))
-
-        groupDocsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ =>
-              solrClient.findById[EntityDocument](CompoundId.groupEntity(group.id))
-            )
-            .evalMap(e => groupSolrDoc.update(_ => e))
-            .compile
-            .drain
-            .start
-        projectDocsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ =>
-              solrClient
-                .findById[EntityDocument](CompoundId.projectEntity(project.id))
-                .flatMap {
-                  case None =>
-                    solrClient.findById[PartialEntityDocument](
-                      CompoundId.projectPartial(project.id)
-                    )
-                  case e => e.pure[IO]
-                }
-            )
-            .evalMap(e => projSolrDoc.update(_ => e))
-            .compile
-            .drain
-            .start
-
-        _ <- groupSolrDoc.waitUntil(_.nonEmpty)
-        _ <- projSolrDoc.waitUntil(_.exists(_.isInstanceOf[EntityDocument]))
+        _ <- initialState.setup(solrClient)
+        init <- initialState.loadByIds(solrClient)
+        _ = assertEquals(init.setVersion(DocVersion.NotExists), initialState)
 
         _ <- queueClient.enqueue(
           queueConfig.groupRemoved,
-          EventsGenerators.eventMessageGen(Gen.const(GroupRemoved(group.id))).generateOne
+          EventsGenerators
+            .eventMessageGen(Gen.const(GroupRemoved(initialState.group.id)))
+            .generateOne
         )
 
-        _ <- groupSolrDoc.waitUntil(_.isEmpty)
-        _ <- projSolrDoc.waitUntil(_.exists(_.isInstanceOf[PartialEntityDocument]))
+        _ <- handlers.makeGroupRemoved.take(1).compile.toList
 
-        _ <- provisioningFiber.cancel
-        _ <- groupDocsCollectorFiber.cancel
-        _ <- projectDocsCollectorFiber.cancel
+        projects <- initialState.loadPartialProjects(solrClient)
+        _ = assertEquals(projects.size, initialState.projects.size)
+        _ = assertEquals(projects.map(_.id), initialState.projects.map(_.id))
       yield ()
     }
 
   override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
+
+object GroupRemovedProcessSpec:
+
+  final case class DbState(group: GroupDocument, projects: Set[ProjectDocument]):
+    def setVersion(v: DocVersion): DbState =
+      copy(group.setVersion(v), projects.map(_.setVersion(v)))
+
+    def setup(solrClient: SearchSolrClient[IO]): IO[Unit] =
+      solrClient.upsertSuccess(Seq(group)) >> solrClient.upsertSuccess(projects.toList)
+
+    def loadByIds(solrClient: SearchSolrClient[IO]): IO[DbState] =
+      for
+        group <- solrClient.findById[EntityDocument](CompoundId.groupEntity(group.id))
+        pq = List(
+          SolrToken.kindIs(DocumentKind.FullEntity),
+          SolrToken.entityTypeIs(EntityType.Project),
+          projects.toList.map(p => SolrToken.idIs(p.id)).foldOr
+        ).foldAnd
+        projs <- solrClient.query[EntityDocument](
+          QueryData(QueryString(q = pq.value, limit = projects.size, offset = 0))
+        )
+      yield DbState(
+        group.get.asInstanceOf[GroupDocument],
+        projs.responseBody.docs.map(_.asInstanceOf[ProjectDocument]).toSet
+      )
+
+    def loadPartialProjects(
+        solrClient: SearchSolrClient[IO]
+    ): IO[Set[PartialEntityDocument.Project]] =
+      val pq = List(
+        SolrToken.kindIs(DocumentKind.PartialEntity),
+        SolrToken.entityTypeIs(EntityType.Project),
+        projects.toList.map(p => SolrToken.idIs(p.id)).foldOr
+      ).foldAnd
+      solrClient
+        .query[PartialEntityDocument](QueryData(QueryString(pq.value)))
+        .map(_.responseBody.docs.map(_.asInstanceOf[PartialEntityDocument.Project]).toSet)
+
+  object DbState:
+    def create: Gen[DbState] =
+      for
+        group <- SolrDocumentGenerators.groupDocumentGen
+        projects <- SolrDocumentGenerators.projectDocumentGen.asListOfN()
+      yield DbState(group, projects.toSet.map(_.copy(namespace = group.namespace.some)))

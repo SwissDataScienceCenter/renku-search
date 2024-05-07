@@ -16,20 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.schema
+package io.renku.search.cli
 
-import io.renku.solr.client.migration.SchemaMigration
+import cats.syntax.all.*
+import com.monovore.decline.Opts
+import io.renku.search.cli.perftests.PerfTestsConfig
 
-object Migrations {
+enum SubCommands:
+  case PerfTests(opts: PerfTestsConfig)
+  case Group(opts: GroupCmd.SubCmdOpts)
 
-  val all: Seq[SchemaMigration] = Seq(
-    SchemaMigration(version = 1L, EntityDocumentSchema.initialEntityDocumentAdd),
-    SchemaMigration(version = 2L, EntityDocumentSchema.copyContentField),
-    SchemaMigration(version = 3L, EntityDocumentSchema.userFields),
-    SchemaMigration(version = 4L, EntityDocumentSchema.projectMembersFields),
-    SchemaMigration(version = 5L, EntityDocumentSchema.keywordField),
-    SchemaMigration(version = 6L, EntityDocumentSchema.namespaceField),
-    SchemaMigration(version = 7L, EntityDocumentSchema.editorAndViewerRoles),
-    SchemaMigration(version = 8L, EntityDocumentSchema.groupRoles)
-  )
-}
+private object SubCommands:
+
+  private val perfTestOpts: Opts[PerfTestsConfig] =
+    Opts.subcommand("perf-tests", "Run perf tests")(PerfTestsConfig.configOpts)
+
+  private val groupOpts: Opts[GroupCmd.SubCmdOpts] =
+    Opts.subcommand("group", "Manage group events")(GroupCmd.opts)
+
+  val opts: Opts[SubCommands] =
+    perfTestOpts
+      .map(SubCommands.PerfTests.apply)
+      .orElse(groupOpts.map(SubCommands.Group.apply))

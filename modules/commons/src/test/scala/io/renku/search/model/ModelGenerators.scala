@@ -45,7 +45,7 @@ object ModelGenerators:
     alphaStringGen(max = 10).map(Namespace.apply)
 
   val memberRoleGen: Gen[MemberRole] =
-    Gen.oneOf(MemberRole.values.toList)
+    Gen.oneOf(MemberRole.valuesV2)
 
   val projectVisibilityGen: Gen[projects.Visibility] =
     Gen.oneOf(projects.Visibility.values.toList)

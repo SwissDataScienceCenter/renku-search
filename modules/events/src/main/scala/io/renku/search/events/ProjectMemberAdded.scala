@@ -22,10 +22,9 @@ import io.renku.events.{v1, v2}
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import org.apache.avro.Schema
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, MemberRole}
 import cats.data.NonEmptyList
 import cats.Show
-import io.renku.search.model.MemberRole
 
 sealed trait ProjectMemberAdded extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectAuthorizationAdded => A, fv2: v2.ProjectMemberAdded => A): A
@@ -35,6 +34,8 @@ sealed trait ProjectMemberAdded extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v1.ProjectAuthorizationAdded.SCHEMA$, _ => v2.ProjectMemberAdded.SCHEMA$)
+  def userId: Id = fold(a => Id(a.userId), b => Id(b.userId))
+  def role: MemberRole
 
 object ProjectMemberAdded:
   def apply(projectId: Id, userId: Id, role: MemberRole): ProjectMemberAdded =
@@ -55,6 +56,9 @@ object ProjectMemberAdded:
         fv1: v1.ProjectAuthorizationAdded => A,
         fv2: v2.ProjectMemberAdded => A
     ): A = fv1(event)
+    val role: MemberRole = event.role match
+      case v1.ProjectMemberRole.OWNER  => MemberRole.Owner
+      case v1.ProjectMemberRole.MEMBER => MemberRole.Member
 
   final case class V2(event: v2.ProjectMemberAdded) extends ProjectMemberAdded:
     lazy val id: Id = Id(event.projectId)
@@ -71,11 +75,16 @@ object ProjectMemberAdded:
         fv2: v2.ProjectMemberAdded => A
     ): A = fv2(event)
 
+    val role: MemberRole = event.role match
+      case v2.MemberRole.OWNER  => MemberRole.Owner
+      case v2.MemberRole.EDITOR => MemberRole.Editor
+      case v2.MemberRole.VIEWER => MemberRole.Viewer
+
   given AvroEncoder[ProjectMemberAdded] =
     val v1e = AvroEncoder[v1.ProjectAuthorizationAdded]
     val v2e = AvroEncoder[v2.ProjectMemberAdded]
-    AvroEncoder { (schema, v) =>
-      v.fold(a => v1e.encode(schema)(a), b => v2e.encode(schema)(b))
+    AvroEncoder.basic { v =>
+      v.fold(v1e.encode(v.schema), v2e.encode(v.schema))
     }
 
   given EventMessageDecoder[ProjectMemberAdded] =

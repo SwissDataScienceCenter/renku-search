@@ -16,25 +16,29 @@
  * limitations under the License.
  */
 
-package io.renku.search.cli
+package io.renku.search.cli.groups
 
-import cats.effect.{ExitCode, IO}
+import cats.effect.*
+import cats.syntax.all.*
 import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import io.renku.search.cli.perftests.PerfTestsRunner
+import io.renku.search.config.QueuesConfig
+import io.renku.search.cli.{CommonOpts, Services}
+import io.renku.search.model.*
+import io.renku.search.events.GroupMemberRemoved
 
-object SearchCli
-    extends CommandIOApp(
-      name = "search-cli",
-      header = "A set of tools to work with the search services",
-      version = "0.0.1"
-    ):
+object MemberRemoveCmd:
 
-  override def main: Opts[IO[ExitCode]] =
-    SubCommands.opts.map {
-      case SubCommands.PerfTests(opts) =>
-        PerfTestsRunner.run(opts).as(ExitCode.Success)
+  final case class Options(group: Id, user: Id):
+    def asPayload: GroupMemberRemoved = GroupMemberRemoved(group, user)
 
-      case SubCommands.Group(opts) =>
-        GroupCmd(opts)
+  val opts: Opts[Options] =
+    (CommonOpts.groupIdOpt, CommonOpts.userIdOpt).mapN(Options.apply)
+
+  def apply(cfg: Options): IO[ExitCode] =
+    Services.queueClient.use { queue =>
+      for
+        queuesCfg <- QueuesConfig.config.load[IO]
+        msg <- Services.createMessage(cfg.asPayload)
+        _ <- queue.enqueue(queuesCfg.groupMemberRemoved, msg)
+      yield ExitCode.Success
     }

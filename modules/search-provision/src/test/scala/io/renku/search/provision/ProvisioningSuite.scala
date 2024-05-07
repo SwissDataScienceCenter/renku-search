@@ -23,6 +23,7 @@ import cats.syntax.all.*
 import fs2.Stream
 import io.renku.queue.client.{QueueClient, QueueSpec}
 import io.renku.redis.client.{ClientId, QueueName}
+import io.renku.search.config.QueuesConfig
 import io.renku.search.model.{EntityType, Id}
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
@@ -42,7 +43,10 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
     userRemoved = QueueName("userRemoved"),
     groupAdded = QueueName("groupAdded"),
     groupUpdated = QueueName("groupUpdated"),
-    groupRemoved = QueueName("groupRemoved")
+    groupRemoved = QueueName("groupRemoved"),
+    groupMemberAdded = QueueName("groupMemberAdded"),
+    groupMemberUpdated = QueueName("groupMemberUpdated"),
+    groupMemberRemoved = QueueName("groupMemberRemoved")
   )
 
   def withMessageHandlers(

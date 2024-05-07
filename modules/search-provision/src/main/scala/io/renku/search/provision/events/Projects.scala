@@ -39,7 +39,7 @@ trait Projects:
         description = pd.description,
         keywords = pd.keywords
       )
-      .apply(pd.toEntityMembers)
+      .setMembers(pd.toEntityMembers)
 
   def fromProjectCreated(pc: v1.ProjectCreated, version: DocVersion): ProjectDocument =
     ProjectDocument(

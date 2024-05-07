@@ -27,13 +27,22 @@ import io.renku.search.events.EventMessage
 import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.FetchFromSolr.*
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.{CompoundId, EntityDocument, PartialEntityDocument}
+import io.renku.search.solr.documents.{
+  CompoundId,
+  EntityDocument,
+  Group => GroupDocument,
+  PartialEntityDocument
+}
 import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.{QueryData, QueryString}
+import io.renku.search.solr.documents.DocumentKind
 
 trait FetchFromSolr[F[_]]:
+  def fetchById[A: Decoder](id: CompoundId): Stream[F, A]
   def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId]
   def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.ProjectId]
+  def fetchProjectsByGroup[A]
+      : Pipe[F, EntityOrPartialMessage[A], EntityOrPartialMessage[A]]
   def fetchEntityOrPartial[A](using
       IdExtractor[A]
   ): Pipe[F, EventMessage[A], EntityOrPartialMessage[A]]
@@ -51,6 +60,28 @@ object FetchFromSolr:
   ): FetchFromSolr[F] =
     new FetchFromSolr[F] {
       val logger = scribe.cats.effect[F]
+
+      def fetchProjectsByGroup[A]
+          : Pipe[F, EntityOrPartialMessage[A], EntityOrPartialMessage[A]] =
+        _.evalMap { msg =>
+          val namespaces = msg.documents.values.collect { case g: GroupDocument =>
+            g.namespace
+          }.toSeq
+
+          val query = List(
+            SolrToken.entityTypeIs(EntityType.Project),
+            SolrToken.kindIs(DocumentKind.FullEntity),
+            namespaces.map(SolrToken.namespaceIs).foldOr
+          ).foldAnd
+          solrClient
+            .queryAll[EntityDocument](QueryData(QueryString(query.value)))
+            .compile
+            .toList
+            .map(msg.appendDocuments)
+        }
+
+      def fetchById[A: Decoder](id: CompoundId): Stream[F, A] =
+        Stream.eval(solrClient.findById(id)).unNone
 
       def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId] =
         val query = QueryString(

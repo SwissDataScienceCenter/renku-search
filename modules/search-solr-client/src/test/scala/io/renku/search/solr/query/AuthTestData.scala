@@ -89,14 +89,16 @@ final case class AuthTestData(
   private def setupRelations =
     // user1 is member of user2 private project
     modifyProject(user2.id -> Visibility.Private)(
-      _.addMember(
-        user1.id,
-        Gen.oneOf(MemberRole.values.toSet - MemberRole.Owner).generateOne
+      _.modifyEntityMembers(
+        _.addMember(
+          user1.id,
+          Gen.oneOf(MemberRole.values.toSet - MemberRole.Owner).generateOne
+        )
       )
     )
       // user2 is owner of user3 private project
       .modifyProject(user3.id -> Visibility.Private)(
-        _.addMember(user2.id, MemberRole.Owner)
+        _.modifyEntityMembers(_.addMember(user2.id, MemberRole.Owner))
       )
 
 object AuthTestData:

@@ -93,9 +93,9 @@ final class MessageHandlers[F[_]: Async](
       cfg.userRemoved,
       ps.reader
         .readEvents[UserRemoved]
-        .map(EntityOrPartialMessage.from(_))
-        .through(ps.deleteFromSolr.tryDeleteAll2)
-        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
+        .map(EntityOrPartialMessage.noDocuments)
+        .through(ps.deleteFromSolr.tryDeleteAll)
+        .through(ps.deleteFromSolr.whenSuccess { msg =>
           Stream
             .emit(msg.message.map(_.id))
             .through(ps.userUtils.removeFromProjects)
@@ -112,7 +112,7 @@ final class MessageHandlers[F[_]: Async](
     add(cfg.groupUpdated, makeUpsert[GroupUpdated](cfg.groupUpdated).drain)
 
   private[provision] val makeGroupRemoved
-      : Stream[F, DeleteFromSolr.DeleteResult2[GroupRemoved]] = {
+      : Stream[F, DeleteFromSolr.DeleteResult[GroupRemoved]] = {
     import io.renku.search.provision.events.syntax.*
     import io.renku.search.solr.documents.Project as ProjectDocument
 
@@ -135,8 +135,8 @@ final class MessageHandlers[F[_]: Async](
     ps.reader
       .readEvents[GroupRemoved]
       .through(ps.fetchFromSolr.fetchEntityOrPartial)
-      .through(ps.deleteFromSolr.tryDeleteAll2)
-      .through(ps.deleteFromSolr.whenSuccess2 { msg =>
+      .through(ps.deleteFromSolr.tryDeleteAll)
+      .through(ps.deleteFromSolr.whenSuccess { msg =>
         processMsg(msg, maxConflictRetries).compile.drain
       })
   }

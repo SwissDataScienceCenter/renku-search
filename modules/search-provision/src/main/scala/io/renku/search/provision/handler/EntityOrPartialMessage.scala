@@ -44,6 +44,10 @@ final case class EntityOrPartialMessage[A: IdExtractor](
       }
     )
 
+  def getIds: Set[Id] =
+    if (documents.isEmpty) message.payload.map(IdExtractor[A].getId).toSet
+    else documents.keySet
+
   def mapToMessage(
       f: EntityOrPartial => Option[EntityOrPartial]
   ): EventMessage[EntityOrPartial] =
@@ -79,5 +83,6 @@ final case class EntityOrPartialMessage[A: IdExtractor](
     }.toList
 
 object EntityOrPartialMessage:
-  def from[A](em: EventMessage[A])(using IdExtractor[A]): EntityOrPartialMessage[A] =
-    EntityOrPartialMessage(em, Map.empty)
+  def noDocuments[A](em: EventMessage[A])(using
+      IdExtractor[A]
+  ): EntityOrPartialMessage[A] = EntityOrPartialMessage(em, Map.empty)

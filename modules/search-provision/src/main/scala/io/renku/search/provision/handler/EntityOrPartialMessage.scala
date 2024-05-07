@@ -44,6 +44,9 @@ final case class EntityOrPartialMessage[A: IdExtractor](
       }
     )
 
+  def findPayloadById(id: Id): Option[A] =
+    message.payload.find(e => IdExtractor[A].getId(e) == id)
+
   def getIds: Set[Id] =
     if (documents.isEmpty) message.payload.map(IdExtractor[A].getId).toSet
     else documents.keySet

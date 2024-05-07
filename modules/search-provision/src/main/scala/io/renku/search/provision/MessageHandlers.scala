@@ -108,8 +108,51 @@ final class MessageHandlers[F[_]: Async](
   val groupAdded: Stream[F, Unit] =
     add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)
 
+  private[provision] def makeGroupUpdated(queue: QueueName): Stream[F, UpsertResponse] = {
+    val ps = steps(queue)
+    def processMsg(
+        msg: EntityOrPartialMessage[GroupUpdated],
+        retries: Int
+    ): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
+      Stream
+        .emit(msg)
+        .map { m =>
+          val merger = DocumentMerger[GroupUpdated]
+          m.merge(merger.create, merger.merge)
+        }
+        .through(ps.pushToSolr.push(onConflict = retry))
+
+    def updateProjects(
+        msg: EntityOrPartialMessage[GroupUpdated],
+        retries: Int
+    ): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(updateProjects(msg, retries - 1))
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchProjectsByGroup)
+        .map { m =>
+          val updatedProjects =
+            m.getGroups.flatMap { group =>
+              val newNs = m.findPayloadById(group.id).map(_.namespace)
+              m.getProjectsByGroup(group).map { project =>
+                project.copy(namespace = newNs)
+              }
+            }
+          m.setDocuments(updatedProjects).asMessage
+        }
+        .through(ps.pushToSolr.push(onConflict = retry))
+
+    ps.reader
+      .readEvents[GroupUpdated]
+      .through(ps.fetchFromSolr.fetchEntityOrPartial)
+      .flatMap(m =>
+        processMsg(m, maxConflictRetries) ++ updateProjects(m, maxConflictRetries)
+      )
+  }
+
   val groupUpdated: Stream[F, Unit] =
-    add(cfg.groupUpdated, makeUpsert[GroupUpdated](cfg.groupUpdated).drain)
+    add(cfg.groupUpdated, makeGroupUpdated(cfg.groupUpdated).drain)
 
   private[provision] val makeGroupRemoved
       : Stream[F, DeleteFromSolr.DeleteResult[GroupRemoved]] = {

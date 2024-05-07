@@ -52,8 +52,8 @@ class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
           )
 
           _ <- handlers
-            .makeUpsert[GroupUpdated](queueConfig.groupUpdated)
-            .take(1)
+            .makeGroupUpdated(queueConfig.groupUpdated)
+            .take(2)
             .compile
             .toList
 
@@ -111,8 +111,6 @@ object GroupUpdatedProvisioningSpec:
         case DbState.GroupWithProjects(_, initialProjects) =>
           initialProjects.size == projects.size &&
           projects.forall { case p: ProjectDocument =>
-            // TODO
-            println(s">>>> ${p.namespace} vs ${groupUpdated.namespace}")
             p.namespace == groupUpdated.namespace.some
           }
 

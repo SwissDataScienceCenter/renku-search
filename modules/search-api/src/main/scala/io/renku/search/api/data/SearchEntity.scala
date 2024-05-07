@@ -36,6 +36,7 @@ final case class Project(
     id: Id,
     name: Name,
     slug: projects.Slug,
+    namespace: Option[Namespace],
     repositories: Seq[projects.Repository],
     visibility: projects.Visibility,
     description: Option[projects.Description] = None,
@@ -48,6 +49,7 @@ final case class Project(
 object Project:
   private given Schema[Id] = Schema.string[Id]
   private given Schema[Name] = Schema.string[Name]
+  private given Schema[Namespace] = Schema.string[Namespace]
   private given Schema[projects.Slug] = Schema.string[projects.Slug]
   private given Schema[projects.Repository] = Schema.string[projects.Repository]
   private given Schema[projects.Visibility] =
@@ -62,6 +64,7 @@ object Project:
         Id("01HRA7AZ2Q234CDQWGA052F8MK"),
         Name("renku"),
         projects.Slug("renku"),
+        Some(Namespace("renku/renku")),
         Seq(projects.Repository("https://github.com/renku")),
         projects.Visibility.Public,
         Some(projects.Description("Renku project")),

@@ -93,14 +93,16 @@ final class MessageHandlers[F[_]: Async](
       cfg.userRemoved,
       ps.reader
         .readEvents[UserRemoved]
-        .through(ps.deleteFromSolr.tryDeleteAll)
-        .through(ps.deleteFromSolr.whenSuccess { msg =>
+        .map(EntityOrPartialMessage.from(_))
+        .through(ps.deleteFromSolr.tryDeleteAll2)
+        .through(ps.deleteFromSolr.whenSuccess2 { msg =>
           Stream
-            .emit(msg.map(_.id))
+            .emit(msg.message.map(_.id))
             .through(ps.userUtils.removeFromProjects)
             .compile
             .drain
         })
+        .drain
     )
 
   val groupAdded: Stream[F, Unit] =

@@ -77,3 +77,7 @@ final case class EntityOrPartialMessage[A: IdExtractor](
     documents.values.collect {
       case p: ProjectDocument if p.namespace == g.namespace.some => p
     }.toList
+
+object EntityOrPartialMessage:
+  def from[A](em: EventMessage[A])(using IdExtractor[A]): EntityOrPartialMessage[A] =
+    EntityOrPartialMessage(em, Map.empty)

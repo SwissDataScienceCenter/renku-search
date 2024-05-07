@@ -18,12 +18,12 @@
 
 package io.renku.search.events
 
+import java.time.Instant
+
 import io.renku.events.{v1, v2}
 import io.renku.search.model.*
 import io.renku.search.model.projects.*
 import io.renku.search.model.users.{FirstName, LastName}
-
-import java.time.Instant
 
 trait syntax:
   extension (self: v1.Visibility)

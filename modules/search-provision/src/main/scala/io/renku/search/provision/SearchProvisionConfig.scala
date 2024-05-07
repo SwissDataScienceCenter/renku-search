@@ -18,15 +18,16 @@
 
 package io.renku.search.provision
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.syntax.all.*
+
 import ciris.{ConfigValue, Effect}
 import com.comcast.ip4s.port
 import io.renku.redis.client.{ClientId, RedisConfig}
 import io.renku.search.config.{ConfigValues, QueuesConfig}
 import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.SolrConfig
-
-import scala.concurrent.duration.FiniteDuration
 
 final case class SearchProvisionConfig(
     redisConfig: RedisConfig,

@@ -18,11 +18,12 @@
 
 package io.renku.search.provision
 
-import cats.syntax.all.*
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.*
 import cats.effect.kernel.Fiber
 import cats.effect.kernel.Ref
-import scala.concurrent.duration.FiniteDuration
+import cats.syntax.all.*
 
 trait BackgroundProcessManage[F[_]]:
   def register(name: String, process: F[Unit]): F[Unit]

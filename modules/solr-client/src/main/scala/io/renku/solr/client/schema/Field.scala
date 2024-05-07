@@ -19,8 +19,8 @@
 package io.renku.solr.client.schema
 
 import io.bullet.borer.Encoder
-import io.bullet.borer.derivation.key
 import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
+import io.bullet.borer.derivation.key
 
 final case class Field(
     name: FieldName,

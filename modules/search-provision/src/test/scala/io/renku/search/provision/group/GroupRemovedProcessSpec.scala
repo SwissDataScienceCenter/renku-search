@@ -20,29 +20,27 @@ package io.renku.search.provision.group
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
-import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Id
-import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.{
-  CompoundId,
-  EntityDocument,
-  Group as GroupDocument,
-  PartialEntityDocument,
-  Project as ProjectDocument
-}
-import io.renku.solr.client.DocVersion
 
 import io.renku.events.EventsGenerators
-import org.scalacheck.Gen
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.GroupRemoved
-import io.renku.search.solr.client.SolrDocumentGenerators
+import io.renku.search.model.EntityType
+import io.renku.search.model.Id
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.client.SolrDocumentGenerators
+import io.renku.search.solr.client.SolrDocumentGenerators.*
+import io.renku.search.solr.documents.DocumentKind
+import io.renku.search.solr.documents.{
+  Group as GroupDocument,
+  Project as ProjectDocument,
+  *
+}
+import io.renku.search.solr.query.SolrToken
+import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData
 import io.renku.solr.client.QueryString
-import io.renku.search.solr.query.SolrToken
-import io.renku.search.solr.documents.DocumentKind
-import io.renku.search.model.EntityType
+import org.scalacheck.Gen
 
 class GroupRemovedProcessSpec extends ProvisioningSuite:
 

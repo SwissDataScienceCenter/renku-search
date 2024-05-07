@@ -24,9 +24,9 @@ import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.{ClientId, MessageId => _}
-import io.renku.search.events.*
+import io.renku.redis.client.{ClientId, MessageId as _}
 import io.renku.search.config.QueuesConfig
+import io.renku.search.events.*
 import scribe.Scribe
 
 trait PushToRedis[F[_]]:

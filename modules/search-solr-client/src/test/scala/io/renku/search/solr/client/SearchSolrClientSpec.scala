@@ -28,8 +28,8 @@ import io.renku.search.model.users
 import io.renku.search.query.Query
 import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.documents.*
+import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData

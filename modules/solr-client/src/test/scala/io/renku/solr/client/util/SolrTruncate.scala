@@ -20,6 +20,7 @@ package io.renku.solr.client.util
 
 import cats.effect.IO
 import cats.syntax.all.*
+
 import io.renku.search.http.ResponseLogging
 import io.renku.solr.client.schema.{FieldName, SchemaCommand, TypeName}
 import io.renku.solr.client.{QueryString, SolrClient}

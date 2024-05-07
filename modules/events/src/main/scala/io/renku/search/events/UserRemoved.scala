@@ -19,6 +19,7 @@
 package io.renku.search.events
 
 import cats.data.NonEmptyList
+
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}

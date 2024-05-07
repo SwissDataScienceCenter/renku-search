@@ -18,8 +18,8 @@
 
 package io.renku.search.model
 
-import io.bullet.borer.Encoder
 import io.bullet.borer.Decoder
+import io.bullet.borer.Encoder
 
 enum EntityType:
   case Project

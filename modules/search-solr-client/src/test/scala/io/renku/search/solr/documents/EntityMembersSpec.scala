@@ -18,11 +18,11 @@
 
 package io.renku.search.solr.documents
 
-import munit.*
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.MemberRole
 import io.renku.search.model.Id
+import io.renku.search.model.MemberRole
 import io.renku.search.model.ModelGenerators
+import munit.*
 
 class EntityMembersSpec extends FunSuite:
   val someId: Id = ModelGenerators.idGen.generateOne

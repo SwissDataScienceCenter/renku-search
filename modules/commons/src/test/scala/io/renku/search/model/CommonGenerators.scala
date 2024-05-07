@@ -19,6 +19,7 @@
 package io.renku.search.model
 
 import cats.data.NonEmptyList
+
 import org.scalacheck.Gen
 
 object CommonGenerators:

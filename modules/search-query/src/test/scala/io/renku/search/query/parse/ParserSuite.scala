@@ -19,8 +19,8 @@
 package io.renku.search.query.parse
 
 import cats.data.NonEmptyList
-import cats.syntax.all.*
 import cats.parse.Parser
+import cats.syntax.all.*
 
 trait ParserSuite {
 

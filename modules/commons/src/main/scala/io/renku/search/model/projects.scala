@@ -18,13 +18,14 @@
 
 package io.renku.search.model
 
+import java.time.Instant
+
 import cats.kernel.Order
+
 import io.bullet.borer.derivation.MapBasedCodecs.*
 import io.bullet.borer.{Codec, Decoder, Encoder}
 import io.github.arainko.ducktape.*
 import io.renku.search.borer.codecs.all.given
-
-import java.time.Instant
 
 object projects:
   opaque type Slug = String

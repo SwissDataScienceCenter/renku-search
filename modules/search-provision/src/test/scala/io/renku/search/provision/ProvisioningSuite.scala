@@ -21,21 +21,15 @@ package io.renku.search.provision
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
+
 import io.renku.queue.client.{QueueClient, QueueSpec}
 import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.config.QueuesConfig
 import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
+import io.renku.search.solr.documents.{Group as GroupDocument, User as UserDocument, *}
 import io.renku.search.solr.query.SolrToken
-import io.renku.search.solr.documents.{
-  CompoundId,
-  EntityDocument,
-  Group as GroupDocument,
-  PartialEntityDocument,
-  SolrDocument,
-  User as UserDocument
-}
 import io.renku.solr.client.{QueryData, QueryString}
 
 trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:

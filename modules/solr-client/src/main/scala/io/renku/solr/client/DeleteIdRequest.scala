@@ -18,8 +18,9 @@
 
 package io.renku.solr.client
 
-import io.bullet.borer.{Encoder, Writer}
 import cats.data.NonEmptyList
+
+import io.bullet.borer.{Encoder, Writer}
 
 final private[client] case class DeleteIdRequest(ids: NonEmptyList[String])
 

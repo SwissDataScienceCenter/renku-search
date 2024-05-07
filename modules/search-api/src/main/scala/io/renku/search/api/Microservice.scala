@@ -19,6 +19,7 @@
 package io.renku.search.api
 
 import cats.effect.{ExitCode, IO, IOApp}
+
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 

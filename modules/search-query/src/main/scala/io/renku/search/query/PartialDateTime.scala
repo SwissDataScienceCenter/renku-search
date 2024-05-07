@@ -18,13 +18,14 @@
 
 package io.renku.search.query
 
+import java.time.*
+import java.time.temporal.ChronoUnit
+
 import cats.syntax.all.*
+
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.query.PartialDateTime.prefixT
 import io.renku.search.query.parse.DateTimeParser
-
-import java.time.*
-import java.time.temporal.ChronoUnit
 
 final case class PartialDateTime(
     date: PartialDateTime.Date,

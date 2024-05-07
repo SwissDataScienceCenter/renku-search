@@ -19,6 +19,7 @@
 package io.renku.search.provision.handler
 
 import cats.syntax.all.*
+
 import io.renku.search.events.EventMessage
 import io.renku.search.model.Id
 import io.renku.search.solr.documents.Group as GroupDocument

@@ -18,13 +18,14 @@
 
 package io.renku.search.provision.metrics
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
+
 import io.renku.search.provision.metrics.SolrMetrics.*
 import io.renku.search.solr.client.SearchSolrClient
-
-import scala.concurrent.duration.FiniteDuration
 
 private object SolrMetricsCollectorsUpdater:
 

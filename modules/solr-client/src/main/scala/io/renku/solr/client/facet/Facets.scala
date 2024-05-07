@@ -18,9 +18,10 @@
 
 package io.renku.solr.client.facet
 
+import cats.Monoid
+
 import io.bullet.borer.Encoder
 import io.bullet.borer.Writer
-import cats.Monoid
 
 opaque type Facets = Seq[Facet]
 

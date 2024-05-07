@@ -18,11 +18,11 @@
 
 package io.renku.search.query.parse
 
+import java.time.temporal.ChronoUnit
+import java.time.{Instant, Period, ZoneOffset}
+
 import io.renku.search.query.{DateTimeCalc, PartialDateTime}
 import munit.FunSuite
-
-import java.time.{Instant, Period, ZoneOffset}
-import java.time.temporal.ChronoUnit
 
 class DateTimeParserSpec extends FunSuite with ParserSuite {
   val utc = ZoneOffset.UTC

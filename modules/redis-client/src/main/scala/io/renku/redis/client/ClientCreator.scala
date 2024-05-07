@@ -18,16 +18,17 @@
 
 package io.renku.redis.client
 
+import scala.collection.mutable
+import scala.jdk.CollectionConverters.given
+
 import cats.MonadThrow
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
+
 import dev.profunktor.redis4cats.connection.{RedisClient, RedisURI}
 import dev.profunktor.redis4cats.effect.Log
 import io.lettuce.core.RedisURI as JRedisURI
 import io.lettuce.core.sentinel.api.StatefulRedisSentinelConnection
-
-import scala.collection.mutable
-import scala.jdk.CollectionConverters.given
 
 sealed private trait ClientCreator[F[_]]:
   def makeClient: Resource[F, RedisClient]

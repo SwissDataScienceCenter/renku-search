@@ -19,10 +19,12 @@
 package io.renku.search.solr.query
 
 import java.time.Instant
+import java.time.ZoneId
+
+import cats.Applicative
 import cats.effect.{Clock, Sync}
 import cats.syntax.all.*
-import java.time.ZoneId
-import cats.Applicative
+
 import io.renku.search.solr.SearchRole
 
 trait Context[F[_]]:

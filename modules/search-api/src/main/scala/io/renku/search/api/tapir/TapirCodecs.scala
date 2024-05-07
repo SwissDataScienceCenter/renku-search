@@ -19,11 +19,12 @@
 package io.renku.search.api.tapir
 
 import cats.syntax.all.*
-import sttp.tapir.*
+
 import io.renku.search.api.data.*
-import io.renku.search.query.Query
-import io.renku.search.model.{EntityType, Id}
 import io.renku.search.jwt.JwtBorer
+import io.renku.search.model.{EntityType, Id}
+import io.renku.search.query.Query
+import sttp.tapir.*
 
 trait TapirCodecs:
   given Codec[String, Query, CodecFormat.TextPlain] =

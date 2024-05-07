@@ -18,12 +18,12 @@
 
 package io.renku.search.api.data
 
-import io.renku.search.model.EntityType
 import io.bullet.borer.Decoder
-import io.bullet.borer.derivation.MapBasedCodecs
-import sttp.tapir.Schema
 import io.bullet.borer.Encoder
+import io.bullet.borer.derivation.MapBasedCodecs
 import io.renku.search.api.tapir.SchemaSyntax.*
+import io.renku.search.model.EntityType
+import sttp.tapir.Schema
 
 final case class FacetData(
     entityType: Map[EntityType, Int]

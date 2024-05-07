@@ -18,8 +18,11 @@
 
 package io.renku.redis.client.util
 
+import scala.concurrent.duration.*
+
 import cats.effect.*
 import cats.syntax.all.*
+
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log.Stdout.instance
@@ -28,8 +31,6 @@ import dev.profunktor.redis4cats.{Redis, RedisCommands}
 import io.lettuce.core.RedisConnectionException
 import io.renku.redis.client.*
 import io.renku.servers.RedisServer
-
-import scala.concurrent.duration.*
 
 trait RedisSpec:
   self: munit.Suite =>

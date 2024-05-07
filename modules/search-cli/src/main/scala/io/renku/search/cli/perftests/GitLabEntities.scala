@@ -18,15 +18,16 @@
 
 package io.renku.search.cli.perftests
 
+import java.time.Instant
+
 import cats.syntax.all.*
+
 import io.bullet.borer.Decoder
 import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.key
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
+import io.bullet.borer.derivation.key
 import io.renku.search.borer.codecs.DateTimeDecoders
 import io.renku.search.model.projects
-
-import java.time.Instant
 
 final private case class GitLabProject(
     id: Int,

@@ -18,8 +18,9 @@
 
 package io.renku.solr.client.facet
 
-import io.renku.solr.client.schema.FieldName
 import cats.data.NonEmptyList
+
+import io.renku.solr.client.schema.FieldName
 
 enum Facet:
   // https://solr.apache.org/guide/solr/latest/query-guide/json-facet-api.html#terms-facet

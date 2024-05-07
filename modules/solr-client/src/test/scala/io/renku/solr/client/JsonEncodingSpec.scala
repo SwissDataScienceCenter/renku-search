@@ -18,12 +18,12 @@
 
 package io.renku.solr.client
 
-import io.bullet.borer._
+import io.bullet.borer.*
+import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
+import io.bullet.borer.derivation.key
 import io.renku.solr.client.JsonEncodingSpec.{Animal, Room}
 import munit.FunSuite
-import io.bullet.borer.derivation.key
-import io.bullet.borer.derivation.MapBasedCodecs
 
 class JsonEncodingSpec extends FunSuite {
 

@@ -19,15 +19,11 @@
 package io.renku.search.cli
 
 import cats.syntax.all.*
+
+import com.monovore.decline.Argument
 import com.monovore.decline.Opts
 import io.renku.search.model.*
-import io.renku.search.model.projects.{
-  Description as ProjectDescription,
-  Repository,
-  Slug,
-  Visibility
-}
-import com.monovore.decline.Argument
+import io.renku.search.model.projects.{Description as ProjectDescription, *}
 
 trait CommonOpts:
 

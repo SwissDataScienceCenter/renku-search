@@ -21,10 +21,11 @@ package io.renku.search.cli.perftests
 import cats.effect.{Async, Ref, Resource}
 import cats.syntax.all.*
 import fs2.Pipe
+
 import io.renku.avro.codec.AvroEncoder
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.QueueName
 import io.renku.redis.client.ClientId
+import io.renku.redis.client.QueueName
 
 private trait Enqueuer[F[_]]:
   def enqueue: Pipe[F, QueueDelivery, Unit]

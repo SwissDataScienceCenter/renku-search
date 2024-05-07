@@ -19,10 +19,11 @@
 package io.renku.search.api.tapir
 
 import cats.syntax.all.*
-import sttp.tapir.{query as queryParam, *}
+
 import io.renku.search.api.data.*
-import io.renku.search.query.Query
 import io.renku.search.http.borer.TapirBorerJson
+import io.renku.search.query.Query
+import sttp.tapir.{query as queryParam, *}
 
 object Params extends TapirCodecs with TapirBorerJson {
 

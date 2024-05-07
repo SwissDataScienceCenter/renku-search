@@ -18,9 +18,9 @@
 
 package io.renku.search.borer.codecs
 
-import io.bullet.borer.Encoder
-
 import java.time.Instant
+
+import io.bullet.borer.Encoder
 
 trait DateTimeEncoders:
   given Encoder[Instant] = DateTimeEncoders.forInstant

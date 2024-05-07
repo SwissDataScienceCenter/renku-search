@@ -18,11 +18,12 @@
 
 package io.renku.search.solr.query
 
+import cats.data.NonEmptyList
+
 import io.renku.search.query.{Order, SortableField}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
-import io.renku.solr.client.schema.FieldName
 import io.renku.solr.client.SolrSort
-import cats.data.NonEmptyList
+import io.renku.solr.client.schema.FieldName
 
 private object SolrSortCreate:
   private def fromField(field: SortableField): FieldName =

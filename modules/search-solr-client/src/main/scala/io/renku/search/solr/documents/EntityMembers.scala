@@ -18,9 +18,10 @@
 
 package io.renku.search.solr.documents
 
+import cats.kernel.Monoid
+
 import io.renku.search.model.MemberRole.*
 import io.renku.search.model.{Id, MemberRole}
-import cats.kernel.Monoid
 
 /** Set of properties representing user-role relationship for an entity. Each property
   * corresponds to a [[MemberRole]]. A user id can only be in one such set, since roles

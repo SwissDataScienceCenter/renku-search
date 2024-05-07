@@ -18,9 +18,9 @@
 
 package io.renku.search.api.data
 
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.Encoder
 import io.bullet.borer.Decoder
+import io.bullet.borer.Encoder
+import io.bullet.borer.derivation.MapBasedCodecs
 import sttp.tapir.Schema
 
 final case class SearchResult(

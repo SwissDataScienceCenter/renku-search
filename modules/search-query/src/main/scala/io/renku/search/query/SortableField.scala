@@ -18,8 +18,9 @@
 
 package io.renku.search.query
 
-import io.bullet.borer.{Decoder, Encoder}
 import cats.kernel.Order
+
+import io.bullet.borer.{Decoder, Encoder}
 
 enum SortableField:
   case Name

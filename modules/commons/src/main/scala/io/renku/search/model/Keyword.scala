@@ -19,8 +19,9 @@
 package io.renku.search.model
 
 import cats.{Eq, Order}
-import io.bullet.borer.Encoder
+
 import io.bullet.borer.Decoder
+import io.bullet.borer.Encoder
 
 opaque type Keyword = String
 

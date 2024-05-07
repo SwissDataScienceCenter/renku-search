@@ -20,6 +20,7 @@ package io.renku.search.query.parse
 
 import cats.data.NonEmptyList
 import cats.parse.{Parser as P, Parser0 as P0}
+
 import io.renku.search.model.projects.Visibility
 import io.renku.search.model.{EntityType, Keyword, MemberRole}
 import io.renku.search.query.*

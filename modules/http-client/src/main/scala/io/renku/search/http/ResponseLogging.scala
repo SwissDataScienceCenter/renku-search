@@ -20,6 +20,7 @@ package io.renku.search.http
 
 import cats.effect.Sync
 import cats.syntax.all.*
+
 import org.http4s.client.UnexpectedStatus
 import org.http4s.{Request, Response}
 import scribe.mdc.MDC

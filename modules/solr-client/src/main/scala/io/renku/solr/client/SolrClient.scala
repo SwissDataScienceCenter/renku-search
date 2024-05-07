@@ -18,14 +18,15 @@
 
 package io.renku.solr.client
 
+import cats.data.NonEmptyList
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
+
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.http.{ClientBuilder, ResponseLogging, RetryConfig}
 import io.renku.solr.client.schema.SchemaCommand
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.client.EmberClientBuilder.default
-import cats.data.NonEmptyList
 
 trait SolrClient[F[_]]:
   def modifySchema(

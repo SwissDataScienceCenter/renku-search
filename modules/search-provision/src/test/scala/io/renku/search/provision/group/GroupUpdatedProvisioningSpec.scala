@@ -20,19 +20,18 @@ package io.renku.search.provision.group
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
+
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.GroupUpdated
 import io.renku.search.model.Id
-import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
 import io.renku.search.solr.documents.{
-  EntityDocument,
   Group as GroupDocument,
-  PartialEntityDocument,
   Project as ProjectDocument,
-  SolrDocument
+  *
 }
 import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.{DocVersion, QueryData, QueryString}

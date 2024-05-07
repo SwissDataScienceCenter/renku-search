@@ -22,20 +22,21 @@ import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.io.net.Network
+
 import io.bullet.borer.Decoder
 import io.github.arainko.ducktape.*
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.{Id, Keyword, Name, projects, users}
+import io.renku.search.model.*
+import io.renku.search.model.Namespace
 import io.renku.search.solr.documents.{Project, User}
+import io.renku.solr.client.DocVersion
+import org.http4s.*
 import org.http4s.MediaType.application
 import org.http4s.Method.GET
 import org.http4s.client.Client
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.headers.Accept
-import org.http4s.{Header, MediaType, Method, Uri}
-import io.renku.solr.client.DocVersion
-import io.renku.search.model.Namespace
 
 private object GitLabDocsCreator:
   def make[F[_]: Async: Network: ModelTypesGenerators](

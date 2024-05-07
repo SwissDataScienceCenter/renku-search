@@ -20,8 +20,8 @@ package io.renku.solr.client
 
 import io.bullet.borer.Encoder
 import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
-import io.renku.solr.client.schema.FieldName
 import io.renku.solr.client.facet.Facets
+import io.renku.solr.client.schema.FieldName
 
 final case class QueryData(
     query: String,

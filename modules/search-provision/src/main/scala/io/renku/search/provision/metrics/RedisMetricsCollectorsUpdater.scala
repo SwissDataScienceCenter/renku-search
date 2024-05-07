@@ -18,13 +18,14 @@
 
 package io.renku.search.provision.metrics
 
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
+
 import io.renku.queue.client.QueueClient
 import io.renku.search.config.QueuesConfig
-
-import scala.concurrent.duration.FiniteDuration
 
 private object RedisMetricsCollectorsUpdater:
 

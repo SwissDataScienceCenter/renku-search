@@ -19,9 +19,10 @@
 package io.renku.queue.client
 
 import cats.effect.{IO, Resource}
+
 import dev.profunktor.redis4cats.connection.RedisClient
-import io.renku.redis.client.util.RedisSpec
 import io.renku.redis.client.ClientId
+import io.renku.redis.client.util.RedisSpec
 
 trait QueueSpec extends RedisSpec:
   self: munit.Suite =>

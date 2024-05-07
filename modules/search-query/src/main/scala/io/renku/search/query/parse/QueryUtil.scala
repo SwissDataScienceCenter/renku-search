@@ -19,6 +19,7 @@
 package io.renku.search.query.parse
 
 import cats.syntax.all.*
+
 import io.renku.search.query.Query
 import io.renku.search.query.Query.Segment
 

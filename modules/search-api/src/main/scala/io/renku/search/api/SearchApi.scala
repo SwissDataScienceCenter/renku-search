@@ -20,9 +20,10 @@ package io.renku.search.api
 
 import cats.effect.{Async, Resource}
 import fs2.io.net.Network
+
+import io.renku.search.api.data.*
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.solr.client.SolrConfig
-import io.renku.search.api.data.*
 
 trait SearchApi[F[_]]:
   def query(auth: AuthContext)(query: QueryInput): F[Either[String, SearchResult]]

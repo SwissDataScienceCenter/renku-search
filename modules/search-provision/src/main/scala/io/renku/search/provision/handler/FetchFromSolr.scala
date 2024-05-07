@@ -21,21 +21,17 @@ package io.renku.search.provision.handler
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Pipe, Stream}
+
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.renku.search.events.EventMessage
 import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.FetchFromSolr.*
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.{
-  CompoundId,
-  EntityDocument,
-  Group => GroupDocument,
-  PartialEntityDocument
-}
+import io.renku.search.solr.documents.DocumentKind
+import io.renku.search.solr.documents.{Group as GroupDocument, *}
 import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.{QueryData, QueryString}
-import io.renku.search.solr.documents.DocumentKind
 
 trait FetchFromSolr[F[_]]:
   def fetchById[A: Decoder](id: CompoundId): Stream[F, A]

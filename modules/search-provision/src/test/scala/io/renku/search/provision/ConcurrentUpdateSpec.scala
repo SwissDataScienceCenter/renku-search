@@ -18,12 +18,16 @@
 
 package io.renku.search.provision
 
+import scala.concurrent.duration.*
+
 import cats.effect.std.CountDownLatch
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
+
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
+import io.renku.search.events.ProjectMemberAdded
 import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.ConcurrentUpdateSpec.testCases
 import io.renku.search.provision.handler.DocumentMerger
@@ -33,10 +37,7 @@ import io.renku.search.solr.documents.{
   Project as ProjectDocument,
   SolrDocument
 }
-
-import scala.concurrent.duration.*
 import org.scalacheck.Gen
-import io.renku.search.events.ProjectMemberAdded
 
 class ConcurrentUpdateSpec extends ProvisioningSuite:
   testCases.foreach { tc =>

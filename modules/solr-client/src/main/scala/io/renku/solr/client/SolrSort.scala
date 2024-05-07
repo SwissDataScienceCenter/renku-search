@@ -19,8 +19,9 @@
 package io.renku.solr.client
 
 import cats.kernel.Monoid
-import io.renku.solr.client.schema.FieldName
+
 import io.bullet.borer.Encoder
+import io.renku.solr.client.schema.FieldName
 
 opaque type SolrSort = Seq[(FieldName, SolrSort.Direction)]
 

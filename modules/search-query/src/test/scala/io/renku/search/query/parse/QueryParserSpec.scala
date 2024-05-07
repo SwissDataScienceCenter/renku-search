@@ -19,12 +19,13 @@
 package io.renku.search.query.parse
 
 import cats.data.NonEmptyList as Nel
+
+import io.renku.search.model.EntityType
 import io.renku.search.query.*
-import io.renku.search.query.Query.Segment
 import io.renku.search.query.Comparison.{GreaterThan, LowerThan}
+import io.renku.search.query.Query.Segment
 import munit.{FunSuite, ScalaCheckSuite}
 import org.scalacheck.Prop
-import io.renku.search.model.EntityType
 
 class QueryParserSpec extends ScalaCheckSuite with ParserSuite {
 

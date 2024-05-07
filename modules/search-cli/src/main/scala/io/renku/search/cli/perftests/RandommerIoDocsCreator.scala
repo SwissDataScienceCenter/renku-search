@@ -22,20 +22,21 @@ import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.io.net.Network
+
 import io.bullet.borer.Decoder
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
-import io.renku.search.model.{Keyword, Name, projects, users}
+import io.renku.search.model.*
 import io.renku.search.solr.documents.{Project, User}
+import io.renku.solr.client.DocVersion
+import org.http4s.*
 import org.http4s.MediaType.application
 import org.http4s.Method.{GET, POST}
 import org.http4s.client.Client
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.headers.Accept
 import org.http4s.implicits.*
-import org.http4s.{Header, MediaType, Method, Uri}
 import org.typelevel.ci.*
-import io.renku.solr.client.DocVersion
 
 /** For the API go here: https://randommer.io/api/swagger-docs/index.html */
 object RandommerIoDocsCreator:

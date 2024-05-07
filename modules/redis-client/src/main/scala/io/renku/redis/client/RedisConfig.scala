@@ -18,10 +18,10 @@
 
 package io.renku.redis.client
 
+import scala.concurrent.duration.FiniteDuration
+
 import dev.profunktor.redis4cats.connection.RedisURI
 import io.lettuce.core.RedisURI as JRedisURI
-
-import scala.concurrent.duration.FiniteDuration
 
 final case class RedisConfig(
     host: RedisHost,

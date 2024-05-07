@@ -22,10 +22,11 @@ import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.{Chunk, Pipe, Stream}
-import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
-import io.renku.search.solr.client.SearchSolrClient
+
 import io.renku.search.events.EventMessage
 import io.renku.search.model.Id
+import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
+import io.renku.search.solr.client.SearchSolrClient
 
 trait DeleteFromSolr[F[_]]:
   def tryDeleteAll[A]: Pipe[F, EntityOrPartialMessage[A], DeleteResult[A]]

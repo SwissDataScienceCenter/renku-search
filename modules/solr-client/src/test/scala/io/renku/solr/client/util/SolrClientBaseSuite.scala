@@ -18,8 +18,8 @@
 
 package io.renku.solr.client.util
 
-import munit.CatsEffectSuite
 import io.renku.search.LoggingConfigure
+import munit.CatsEffectSuite
 
 abstract class SolrClientBaseSuite
     extends CatsEffectSuite

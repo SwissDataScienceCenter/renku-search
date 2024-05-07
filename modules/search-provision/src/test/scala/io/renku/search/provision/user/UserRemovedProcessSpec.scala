@@ -19,19 +19,21 @@
 package io.renku.search.provision.user
 
 import scala.concurrent.duration.*
+
 import cats.effect.{IO, Resource}
 import fs2.Stream
 import fs2.concurrent.SignallingRef
+
+import io.renku.events.EventsGenerators
 import io.renku.events.EventsGenerators.*
-import io.renku.search.events.*
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.*
 import io.renku.search.model.ModelGenerators.memberRoleGen
-import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.ProvisioningSuite
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import io.renku.solr.client.DocVersion
-import io.renku.events.EventsGenerators
 import org.scalacheck.Gen
 
 class UserRemovedProcessSpec extends ProvisioningSuite:

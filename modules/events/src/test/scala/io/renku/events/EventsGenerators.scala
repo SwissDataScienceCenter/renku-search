@@ -26,10 +26,10 @@ import io.renku.search.events.*
 import io.renku.search.model.Id
 import io.renku.search.model.MemberRole
 import io.renku.search.model.ModelGenerators
+import io.renku.search.model.users.FirstName
 import org.apache.avro.Schema
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaChar, alphaNumChar}
-import io.renku.search.model.users.FirstName
 
 object EventsGenerators:
 

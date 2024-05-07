@@ -18,8 +18,8 @@
 
 package io.renku.solr.client.migration
 
-import io.bullet.borer.{Decoder, Encoder}
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveDecoder, deriveEncoder}
+import io.bullet.borer.{Decoder, Encoder}
 
 final private[client] case class VersionDocument(id: String, currentSchemaVersion: Long)
 

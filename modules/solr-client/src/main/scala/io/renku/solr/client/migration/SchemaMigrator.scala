@@ -22,7 +22,8 @@ import cats.effect.kernel.Resource
 import cats.effect.{Async, Sync}
 import cats.syntax.all.*
 import fs2.io.net.Network
-import io.renku.solr.client.schema.{Field, FieldName, SchemaCommand, TypeName}
+
+import io.renku.solr.client.schema.*
 import io.renku.solr.client.{QueryString, SolrClient, SolrConfig}
 
 trait SchemaMigrator[F[_]] {

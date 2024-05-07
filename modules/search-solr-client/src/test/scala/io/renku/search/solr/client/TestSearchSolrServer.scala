@@ -19,6 +19,7 @@
 package io.renku.search.solr.client
 
 import cats.effect.{ExitCode, IO, IOApp}
+
 import io.renku.servers.SolrServer
 
 /** This is a utility to start a Solr server for manual testing */

@@ -19,6 +19,7 @@
 package io.renku.search.solr.client
 
 import cats.syntax.all.*
+
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.*
 import io.renku.search.model.ModelGenerators.*

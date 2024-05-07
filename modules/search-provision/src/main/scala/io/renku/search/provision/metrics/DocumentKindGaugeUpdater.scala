@@ -20,6 +20,7 @@ package io.renku.search.provision.metrics
 
 import cats.MonadThrow
 import cats.syntax.all.*
+
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.query.SolrToken

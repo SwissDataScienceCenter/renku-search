@@ -20,11 +20,12 @@ package io.renku.search.cli.groups
 
 import cats.effect.*
 import cats.syntax.all.*
+
 import com.monovore.decline.Opts
-import io.renku.search.config.QueuesConfig
 import io.renku.search.cli.{CommonOpts, Services}
-import io.renku.search.model.*
+import io.renku.search.config.QueuesConfig
 import io.renku.search.events.GroupRemoved
+import io.renku.search.model.*
 
 object RemoveCmd:
 

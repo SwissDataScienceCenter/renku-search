@@ -19,11 +19,12 @@
 package io.renku.search.provision.events
 
 import cats.syntax.all.*
+
 import io.renku.events.{v1, v2}
-import io.renku.search.solr.documents.Project as ProjectDocument
-import io.renku.solr.client.DocVersion
 import io.renku.search.events.syntax.*
 import io.renku.search.solr.documents.PartialEntityDocument
+import io.renku.search.solr.documents.Project as ProjectDocument
+import io.renku.solr.client.DocVersion
 
 trait Projects:
 

@@ -19,8 +19,9 @@
 package io.renku.search.cli
 
 import cats.effect.*
-import io.renku.search.cli.groups.*
+
 import com.monovore.decline.Opts
+import io.renku.search.cli.groups.*
 
 object GroupCmd:
 

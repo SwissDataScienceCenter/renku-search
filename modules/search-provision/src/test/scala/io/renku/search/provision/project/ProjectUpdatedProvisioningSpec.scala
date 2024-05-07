@@ -20,6 +20,7 @@ package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
+
 import io.renku.events.EventsGenerators
 import io.renku.events.EventsGenerators.*
 import io.renku.search.GeneratorSyntax.*

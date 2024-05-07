@@ -19,6 +19,7 @@
 package io.renku.search.cli
 
 import cats.effect.{ExitCode, IO}
+
 import com.monovore.decline.Opts
 import com.monovore.decline.effect.CommandIOApp
 import io.renku.search.cli.perftests.PerfTestsRunner

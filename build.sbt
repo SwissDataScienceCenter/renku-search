@@ -31,9 +31,12 @@ releaseTagName := (ThisBuild / version).value
 addCommandAlias("ci", "; lint; compile; Test/compile; dbTests; publishLocal")
 addCommandAlias(
   "lint",
-  "; scalafmtSbtCheck; scalafmtCheckAll;" // Compile/scalafix --check; Test/scalafix --check
+  "; scalafmtSbtCheck; scalafmtCheckAll; scalafixAll --check"
 )
-addCommandAlias("fix", "; scalafmtSbt; scalafmtAll") // ; Compile/scalafix; Test/scalafix
+addCommandAlias(
+  "fix",
+  "; scalafmtSbt; scalafmtAll; scalafixAll"
+)
 
 val writeVersion = taskKey[Unit]("Write version into a file for CI to pick up")
 

@@ -18,11 +18,12 @@
 
 package io.renku.search.solr.query
 
-import cats.{Applicative, Monad}
-import cats.syntax.all.*
-import scala.deriving.*
 import scala.collection.AbstractIterable
+import scala.deriving.*
+
 import cats.Functor
+import cats.syntax.all.*
+import cats.{Applicative, Monad}
 
 trait SolrTokenEncoder[F[_], A]:
   def encode(ctx: Context[F], value: A): F[SolrQuery]

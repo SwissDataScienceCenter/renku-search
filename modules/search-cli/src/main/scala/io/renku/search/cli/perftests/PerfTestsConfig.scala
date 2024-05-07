@@ -18,12 +18,13 @@
 
 package io.renku.search.cli.perftests
 
+import scala.concurrent.duration.*
+
 import cats.syntax.all.*
+
 import com.monovore.decline.Opts
 import io.renku.redis.client.*
 import org.http4s.Uri
-
-import scala.concurrent.duration.*
 
 final case class PerfTestsConfig(
     itemsToGenerate: Int,

@@ -18,12 +18,13 @@
 
 package io.renku.search.borer.codecs
 
-import cats.syntax.all.*
-import io.bullet.borer.Decoder
-import io.bullet.borer.Decoder.*
-
 import java.time.Instant
 import java.time.format.DateTimeParseException
+
+import cats.syntax.all.*
+
+import io.bullet.borer.Decoder
+import io.bullet.borer.Decoder.*
 
 trait DateTimeDecoders:
   given Decoder[Instant] = DateTimeDecoders.forInstant

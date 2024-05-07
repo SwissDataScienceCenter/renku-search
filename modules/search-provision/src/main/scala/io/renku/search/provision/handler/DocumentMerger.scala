@@ -19,13 +19,14 @@
 package io.renku.search.provision.handler
 
 import cats.syntax.all.*
+
+import io.renku.search.events.*
+import io.renku.search.provision.events.syntax.*
+import io.renku.search.solr.documents.Group as GroupDocument
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 import io.renku.search.solr.documents.User as UserDocument
-import io.renku.search.solr.documents.Group as GroupDocument
-import io.renku.search.provision.events.syntax.*
 import io.renku.solr.client.DocVersion
-import io.renku.search.events.*
 
 trait DocumentMerger[A]:
   def create(value: A): Option[EntityOrPartial]

@@ -19,6 +19,7 @@
 package io.renku.solr.client.util
 
 import cats.effect.*
+
 import io.renku.servers.SolrServer
 import io.renku.solr.client.{SolrClient, SolrConfig}
 import org.http4s.Uri

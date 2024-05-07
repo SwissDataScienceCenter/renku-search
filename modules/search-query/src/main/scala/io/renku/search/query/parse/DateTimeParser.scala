@@ -18,10 +18,11 @@
 
 package io.renku.search.query.parse
 
-import cats.parse.{Numbers, Parser as P}
-import io.renku.search.query.{DateTimeCalc, DateTimeRef, PartialDateTime, RelativeDate}
-
 import java.time.*
+
+import cats.parse.{Numbers, Parser as P}
+
+import io.renku.search.query.*
 
 /** Allows parsing partial date-time strings, allowing to fill missing parts with either
   * lowest or highest possible values.

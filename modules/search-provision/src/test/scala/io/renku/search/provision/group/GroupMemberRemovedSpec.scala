@@ -19,21 +19,22 @@
 package io.renku.search.provision.group
 
 import cats.effect.*
-import io.renku.search.GeneratorSyntax.*
-import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.solr.documents.{Group as GroupDocument, Project as ProjectDocument}
-import io.renku.search.solr.client.SolrDocumentGenerators
-import org.scalacheck.Gen
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.provision.group.GroupMemberRemovedSpec.DbState
-import io.renku.search.model.{Id, MemberRole, ModelGenerators}
+
 import io.renku.events.EventsGenerators
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.GroupMemberRemoved
+import io.renku.search.model.{Id, MemberRole, ModelGenerators}
+import io.renku.search.provision.ProvisioningSuite
+import io.renku.search.provision.group.GroupMemberRemovedSpec.DbState
+import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.CompoundId
 import io.renku.search.solr.documents.EntityDocument
+import io.renku.search.solr.documents.{Group as GroupDocument, Project as ProjectDocument}
+import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.QueryData
 import io.renku.solr.client.QueryString
-import io.renku.search.solr.query.SolrToken
+import org.scalacheck.Gen
 
 class GroupMemberRemovedSpec extends ProvisioningSuite:
   override def munitFixtures: Seq[Fixture[?]] =

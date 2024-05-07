@@ -18,12 +18,13 @@
 
 package io.renku.search.events
 
-import cats.syntax.all.*
 import cats.effect.Sync
-import org.apache.avro.Schema
+import cats.syntax.all.*
+
 import io.renku.avro.codec.AvroEncoder
-import scodec.bits.ByteVector
 import io.renku.avro.codec.AvroWriter
+import org.apache.avro.Schema
+import scodec.bits.ByteVector
 
 final case class EventMessage[P](
     id: MessageId,

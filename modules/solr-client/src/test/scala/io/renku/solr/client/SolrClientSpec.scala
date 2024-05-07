@@ -18,8 +18,13 @@
 
 package io.renku.solr.client
 
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
 import cats.data.NonEmptyList
 import cats.effect.IO
+
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.search.GeneratorSyntax.*
@@ -30,9 +35,6 @@ import io.renku.solr.client.util.SolrClientBaseSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
-
-import java.util.UUID
-import scala.concurrent.duration.*
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
   override def defaultVerbosity: Int = 2

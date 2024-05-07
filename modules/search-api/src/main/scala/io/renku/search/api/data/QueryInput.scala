@@ -18,8 +18,9 @@
 
 package io.renku.search.api.data
 
-import io.renku.search.query.Query
 import cats.Show
+
+import io.renku.search.query.Query
 
 final case class QueryInput(
     query: Query,

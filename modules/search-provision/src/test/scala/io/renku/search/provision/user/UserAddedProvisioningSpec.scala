@@ -21,17 +21,17 @@ package io.renku.search.provision.user
 import cats.data.NonEmptyList
 import cats.effect.{IO, Resource}
 
+import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Id
-import io.renku.search.model.users.FirstName
 import io.renku.search.events.UserAdded
-import io.renku.search.provision.events.syntax.*
+import io.renku.search.model.Id
+import io.renku.search.model.ModelGenerators
+import io.renku.search.model.users.FirstName
 import io.renku.search.provision.ProvisioningSuite
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument, User as UserDocument}
 import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
-import io.renku.search.model.ModelGenerators
-import io.renku.events.EventsGenerators
 
 class UserAddedProvisioningSpec extends ProvisioningSuite:
   test("overwrite data for duplicate events"):

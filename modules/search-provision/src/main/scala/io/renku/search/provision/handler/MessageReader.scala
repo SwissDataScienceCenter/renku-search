@@ -21,12 +21,12 @@ package io.renku.search.provision.handler
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
+
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.QueueName
 import io.renku.search.events.*
-import scribe.Scribe
-
 import io.renku.search.events.EventMessage
+import scribe.Scribe
 
 trait MessageReader[F[_]]:
   def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]]

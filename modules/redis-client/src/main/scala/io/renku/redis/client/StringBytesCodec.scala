@@ -18,11 +18,11 @@
 
 package io.renku.redis.client
 
+import java.nio.ByteBuffer
+
 import dev.profunktor.redis4cats.data.RedisCodec
 import io.lettuce.core.codec.{ByteArrayCodec, RedisCodec as JRedisCodec, StringCodec}
 import scodec.bits.ByteVector
-
-import java.nio.ByteBuffer
 
 object StringBytesCodec:
 

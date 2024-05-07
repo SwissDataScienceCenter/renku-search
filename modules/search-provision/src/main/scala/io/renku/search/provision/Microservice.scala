@@ -18,16 +18,17 @@
 
 package io.renku.search.provision
 
+import scala.concurrent.duration.Duration
+
 import cats.effect.*
 import cats.syntax.all.*
+
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.metrics.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
-
-import scala.concurrent.duration.Duration
 
 object Microservice extends IOApp:
 

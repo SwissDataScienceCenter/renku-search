@@ -19,6 +19,7 @@
 package io.renku.search.cli
 
 import cats.syntax.all.*
+
 import com.monovore.decline.Opts
 import io.renku.search.cli.perftests.PerfTestsConfig
 

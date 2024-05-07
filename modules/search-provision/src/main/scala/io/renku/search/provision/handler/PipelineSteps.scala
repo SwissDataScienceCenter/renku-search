@@ -20,6 +20,7 @@ package io.renku.search.provision.handler
 
 import cats.effect.Async
 import fs2.Stream
+
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.config.QueuesConfig

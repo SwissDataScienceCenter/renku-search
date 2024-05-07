@@ -19,6 +19,7 @@
 package io.renku.search.provision.metrics
 
 import cats.Monad
+
 import io.renku.queue.client.QueueClient
 
 object RedisMetrics:

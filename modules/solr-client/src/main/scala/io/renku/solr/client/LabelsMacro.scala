@@ -18,7 +18,8 @@
 
 package io.renku.solr.client
 
-import scala.quoted.{Expr, Quotes, Type, Varargs}
+import scala.quoted.*
+
 import io.bullet.borer.derivation.key
 
 private object LabelsMacro:

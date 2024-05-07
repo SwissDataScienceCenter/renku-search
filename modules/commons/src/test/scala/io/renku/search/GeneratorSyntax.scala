@@ -21,6 +21,7 @@ package io.renku.search
 import cats.arrow.FunctionK
 import cats.effect.IO
 import fs2.Stream
+
 import org.scalacheck.Gen
 
 trait GeneratorSyntax:

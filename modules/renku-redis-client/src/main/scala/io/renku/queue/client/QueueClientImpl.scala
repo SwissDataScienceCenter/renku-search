@@ -21,10 +21,10 @@ package io.renku.queue.client
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
-import io.renku.avro.codec.AvroEncoder
-import io.renku.search.events.*
-import io.renku.redis.client.{MessageId => _, *}
 
+import io.renku.avro.codec.AvroEncoder
+import io.renku.redis.client.{MessageId as _, *}
+import io.renku.search.events.*
 import scribe.Scribe
 
 private class QueueClientImpl[F[_]: Async](

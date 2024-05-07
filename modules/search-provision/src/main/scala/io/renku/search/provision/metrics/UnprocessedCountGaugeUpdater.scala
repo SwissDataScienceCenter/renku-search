@@ -20,6 +20,7 @@ package io.renku.search.provision.metrics
 
 import cats.Monad
 import cats.syntax.all.*
+
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.QueueName
 

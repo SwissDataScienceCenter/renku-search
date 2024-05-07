@@ -18,15 +18,15 @@
 
 package io.renku.search.provision.events
 
+import io.renku.events.{v1, v2}
 import io.renku.search.events.*
 import io.renku.search.solr.documents.PartialEntityDocument
-import io.renku.solr.client.DocVersion
 import io.renku.search.solr.documents.{
   Group as GroupDocument,
   Project as ProjectDocument,
   User as UserDocument
 }
-import io.renku.events.{v1, v2}
+import io.renku.solr.client.DocVersion
 
 trait syntax extends io.renku.search.events.syntax:
   extension (self: ProjectDocument)

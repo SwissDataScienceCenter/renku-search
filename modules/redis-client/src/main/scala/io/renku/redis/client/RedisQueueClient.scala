@@ -20,6 +20,8 @@ package io.renku.redis.client
 
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
+import fs2.Stream
+
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.FutureLift.*
@@ -28,7 +30,6 @@ import dev.profunktor.redis4cats.effects.ScriptOutputType
 import dev.profunktor.redis4cats.streams.data.{StreamingOffset, XAddMessage, XReadMessage}
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import dev.profunktor.redis4cats.{Redis, RedisCommands}
-import fs2.Stream
 import io.lettuce.core.api.StatefulRedisConnection
 import scodec.bits.ByteVector
 import scribe.Scribe

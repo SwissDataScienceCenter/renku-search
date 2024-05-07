@@ -21,6 +21,7 @@ package io.renku.search.provision
 import cats.effect.kernel.{Async, Resource}
 import fs2.Stream
 import fs2.io.net.Network
+
 import io.renku.queue.client.QueueClient
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.SearchSolrClient

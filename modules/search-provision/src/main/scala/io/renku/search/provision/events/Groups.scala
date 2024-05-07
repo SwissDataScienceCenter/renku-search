@@ -19,11 +19,11 @@
 package io.renku.search.provision.events
 
 import io.renku.events.v2
+import io.renku.events.v2.GroupMemberAdded
+import io.renku.events.v2.GroupMemberUpdated
 import io.renku.search.events.syntax.*
 import io.renku.search.solr.documents.{Group as GroupDocument, PartialEntityDocument}
 import io.renku.solr.client.DocVersion
-import io.renku.events.v2.GroupMemberAdded
-import io.renku.events.v2.GroupMemberUpdated
 
 trait Groups:
 

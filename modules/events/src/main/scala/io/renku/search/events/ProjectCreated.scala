@@ -18,15 +18,16 @@
 
 package io.renku.search.events
 
-import io.renku.events.{v1, v2}
+import cats.Show
+import cats.data.NonEmptyList
+
+import io.renku.avro.codec.AvroDecoder
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
-import org.apache.avro.Schema
-import io.renku.search.model.{Id, Keyword, Name, Namespace, Timestamp, projects}
-import cats.data.NonEmptyList
-import io.renku.avro.codec.AvroDecoder
-import cats.Show
+import io.renku.events.{v1, v2}
+import io.renku.search.model.*
 import io.renku.search.model.projects.Visibility
+import org.apache.avro.Schema
 
 sealed trait ProjectCreated extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A

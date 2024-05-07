@@ -20,6 +20,7 @@ package io.renku.search.api.routes
 
 import cats.effect.Async
 import cats.syntax.all.*
+
 import io.circe.syntax.given
 import io.renku.search.BuildInfo
 import org.http4s.HttpRoutes

@@ -18,9 +18,9 @@
 
 package io.renku.search.query
 
-import munit.FunSuite
-
 import java.time.{Instant, ZoneOffset}
+
+import munit.FunSuite
 
 class PartialDateTimeSpec extends FunSuite {
   val utc = ZoneOffset.UTC

@@ -18,11 +18,12 @@
 
 package io.renku.search.model
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+
 import cats.Functor
 import cats.effect.Clock
 import cats.syntax.all.*
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 
 opaque type Timestamp = Instant
 

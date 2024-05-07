@@ -20,8 +20,9 @@ package io.renku.search.cli.perftests
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import io.renku.search.events.*
+
 import io.renku.redis.client.QueueName
+import io.renku.search.events.*
 
 final private case class NewProjectEvents(
     projectCreated: ProjectCreated,

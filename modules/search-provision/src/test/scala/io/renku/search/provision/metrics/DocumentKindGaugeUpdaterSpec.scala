@@ -19,6 +19,7 @@
 package io.renku.search.provision.metrics
 
 import cats.effect.IO
+
 import io.prometheus.client.Collector
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.EntityType

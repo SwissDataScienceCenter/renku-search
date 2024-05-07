@@ -18,8 +18,9 @@
 
 package io.renku.search.events
 
-import io.renku.search.model.Id
 import cats.data.NonEmptyList
+
+import io.renku.search.model.Id
 import org.apache.avro.Schema
 
 trait RenkuEventPayload:

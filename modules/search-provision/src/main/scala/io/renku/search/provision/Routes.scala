@@ -21,6 +21,7 @@ package io.renku.search.provision
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
+
 import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder

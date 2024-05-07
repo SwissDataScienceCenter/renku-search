@@ -20,7 +20,10 @@ package io.renku.search.provision
 package project
 
 import cats.effect.{IO, Resource}
+
+import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.ProjectMemberUpdated
 import io.renku.search.model.{Id, MemberRole, ModelGenerators}
 import io.renku.search.provision.project.AuthorizationUpdatedProvisioningSpec.testCases
 import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
@@ -30,8 +33,6 @@ import io.renku.search.solr.documents.{
   SolrDocument
 }
 import io.renku.solr.client.DocVersion
-import io.renku.events.EventsGenerators
-import io.renku.search.events.ProjectMemberUpdated
 import org.scalacheck.Gen
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:

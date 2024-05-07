@@ -19,6 +19,7 @@
 package io.renku.solr.client.migration
 
 import cats.effect.IO
+
 import io.renku.solr.client.SolrClient
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.schema.SchemaCommand.Add

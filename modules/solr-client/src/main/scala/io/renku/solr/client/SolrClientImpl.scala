@@ -21,13 +21,14 @@ package io.renku.solr.client
 import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
+
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.http.borer.BorerEntityJsonCodec
 import io.renku.search.http.{HttpClientDsl, ResponseLogging}
 import io.renku.solr.client.schema.{SchemaCommand, SchemaJsonCodec}
+import org.http4s.Status
 import org.http4s.client.Client
 import org.http4s.{BasicCredentials, Method, Uri}
-import org.http4s.Status
 
 private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]

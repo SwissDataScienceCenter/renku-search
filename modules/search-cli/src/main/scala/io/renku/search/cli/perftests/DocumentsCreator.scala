@@ -21,6 +21,7 @@ package io.renku.search.cli.perftests
 import cats.effect.{Async, Resource}
 import fs2.Stream
 import fs2.io.net.Network
+
 import io.renku.search.solr.documents.{Project, User}
 
 private trait DocumentsCreator[F[_]]:

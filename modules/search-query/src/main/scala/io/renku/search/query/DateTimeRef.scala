@@ -18,11 +18,13 @@
 
 package io.renku.search.query
 
-import cats.syntax.all.*
-import io.bullet.borer.{Decoder, Encoder}
-import io.renku.search.query.parse.DateTimeParser
 import java.time.Instant
 import java.time.ZoneId
+
+import cats.syntax.all.*
+
+import io.bullet.borer.{Decoder, Encoder}
+import io.renku.search.query.parse.DateTimeParser
 
 enum DateTimeRef:
   case Literal(ref: PartialDateTime)

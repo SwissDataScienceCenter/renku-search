@@ -19,6 +19,7 @@
 package io.renku.search.api
 
 import cats.syntax.all.*
+
 import ciris.{ConfigValue, Effect}
 import com.comcast.ip4s.port
 import io.renku.search.config.ConfigValues

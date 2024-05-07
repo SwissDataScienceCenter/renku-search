@@ -18,14 +18,14 @@
 
 package io.renku.search.events
 
+import cats.effect.Sync
 import cats.syntax.all.*
 
-import io.renku.avro.codec._
+import io.renku.avro.codec.*
 import io.renku.avro.codec.all.given
 import io.renku.events.Header
 import io.renku.search.model.Timestamp
 import scodec.bits.ByteVector
-import cats.effect.Sync
 
 final case class MessageHeader(
     source: MessageSource,

@@ -19,6 +19,7 @@
 package io.renku.search.model
 
 import cats.Show
+
 import io.bullet.borer.Codec
 import io.github.arainko.ducktape.Transformer
 

@@ -21,15 +21,15 @@ package io.renku.search.provision.user
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
+import io.renku.events.EventsGenerators
 import io.renku.events.{v1, v2}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
-import io.renku.search.provision.events.syntax.*
+import io.renku.search.provision.BackgroundCollector
 import io.renku.search.provision.ProvisioningSuite
+import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
 import io.renku.solr.client.DocVersion
-import io.renku.search.provision.BackgroundCollector
-import io.renku.events.EventsGenerators
 import org.scalacheck.Gen
 
 class UserUpdatedProvisioningSpec extends ProvisioningSuite:

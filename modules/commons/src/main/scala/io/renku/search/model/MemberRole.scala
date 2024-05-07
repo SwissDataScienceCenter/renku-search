@@ -19,6 +19,7 @@
 package io.renku.search.model
 
 import cats.kernel.Order
+
 import io.bullet.borer.derivation.MapBasedCodecs.*
 import io.bullet.borer.{Decoder, Encoder}
 

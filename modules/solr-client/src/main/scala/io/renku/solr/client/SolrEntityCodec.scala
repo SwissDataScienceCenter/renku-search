@@ -19,6 +19,7 @@
 package io.renku.solr.client
 
 import cats.effect.Concurrent
+
 import org.http4s.EntityDecoder
 
 trait SolrEntityCodec {

@@ -20,9 +20,10 @@ package io.renku.queue.client
 
 import cats.effect.{Async, Resource}
 import fs2.Stream
+
 import io.renku.avro.codec.AvroEncoder
+import io.renku.redis.client.{MessageId as _, *}
 import io.renku.search.events.*
-import io.renku.redis.client.{MessageId => _, *}
 
 trait QueueClient[F[_]]:
 

@@ -18,10 +18,11 @@
 
 package io.renku.solr.client.facet
 
-import munit.FunSuite
+import cats.data.NonEmptyList
+
 import io.bullet.borer.Json
 import io.renku.solr.client.schema.FieldName
-import cats.data.NonEmptyList
+import munit.FunSuite
 
 class FacetsSpec extends FunSuite:
 

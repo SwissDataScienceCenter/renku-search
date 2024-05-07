@@ -19,6 +19,7 @@
 package io.renku.redis.client.util
 
 import cats.effect.{ExitCode, IO, IOApp}
+
 import io.renku.servers.RedisServer
 
 /** This is a utility to start a Redis server for manual testing */

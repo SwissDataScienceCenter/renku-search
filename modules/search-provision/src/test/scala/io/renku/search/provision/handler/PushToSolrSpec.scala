@@ -25,10 +25,11 @@ import cats.effect.IO
 import cats.effect.Ref
 import fs2.Stream
 
-import io.renku.search.events.*
+import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Namespace
+import io.renku.search.events.*
 import io.renku.search.model.ModelGenerators.idGen
+import io.renku.search.model.Namespace
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.documents.User as UserDocument
@@ -36,7 +37,6 @@ import io.renku.solr.client.DocVersion
 import io.renku.solr.client.UpsertResponse
 import org.scalacheck.Gen
 import scribe.Scribe
-import io.renku.events.EventsGenerators
 
 class PushToSolrSpec extends SearchSolrSuite:
 

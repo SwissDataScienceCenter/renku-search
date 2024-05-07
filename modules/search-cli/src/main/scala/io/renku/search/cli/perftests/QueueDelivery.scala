@@ -19,6 +19,7 @@
 package io.renku.search.cli.perftests
 
 import cats.Show
+
 import io.renku.avro.codec.AvroEncoder
 import io.renku.redis.client.QueueName
 import io.renku.search.events.*

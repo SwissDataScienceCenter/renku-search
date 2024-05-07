@@ -19,8 +19,9 @@
 package io.renku.search.cli
 
 import cats.effect.*
-import io.renku.search.cli.projects.*
+
 import com.monovore.decline.Opts
+import io.renku.search.cli.projects.*
 
 object ProjectCmd:
 

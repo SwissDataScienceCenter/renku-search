@@ -19,6 +19,7 @@
 package io.renku.search.query
 
 import cats.data.NonEmptyList
+
 import io.renku.search.model.projects.Visibility
 import io.renku.search.model.{EntityType, Keyword, MemberRole}
 

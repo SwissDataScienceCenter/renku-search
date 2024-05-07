@@ -19,10 +19,11 @@
 package io.renku.search.solr.client
 
 import cats.effect.{IO, Resource}
+
 import io.renku.search.solr.schema.Migrations
+import io.renku.solr.client.SolrClient
 import io.renku.solr.client.migration.SchemaMigrator
 import io.renku.solr.client.util.SolrClientBaseSuite
-import io.renku.solr.client.SolrClient
 
 abstract class SearchSolrSuite extends SolrClientBaseSuite:
 

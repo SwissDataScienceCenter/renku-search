@@ -20,19 +20,19 @@ package io.renku.search.provision.project
 
 import cats.effect.{IO, Resource}
 
+import io.renku.events.EventsGenerators
 import io.renku.events.EventsGenerators.projectCreatedGen
-import io.renku.search.events.*
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.*
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
 import io.renku.search.provision.events.syntax.*
+import io.renku.search.provision.handler.DocumentMerger
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
-import io.renku.search.provision.handler.DocumentMerger
 import io.renku.solr.client.DocVersion
-import io.renku.events.EventsGenerators
 import org.scalacheck.Gen
 
 class ProjectCreatedProvisioningSpec extends ProvisioningSuite:

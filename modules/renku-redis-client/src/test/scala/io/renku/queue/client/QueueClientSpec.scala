@@ -20,12 +20,13 @@ package io.renku.queue.client
 
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
+
 import io.renku.events.EventsGenerators
-import io.renku.search.events.*
 import io.renku.redis.client.RedisClientGenerators
 import io.renku.search.GeneratorSyntax.*
-import munit.CatsEffectSuite
+import io.renku.search.events.*
 import io.renku.search.events.EventMessage
+import munit.CatsEffectSuite
 
 class QueueClientSpec extends CatsEffectSuite with QueueSpec:
 

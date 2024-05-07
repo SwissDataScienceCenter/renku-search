@@ -20,13 +20,13 @@ package io.renku.search.api.data
 
 import java.time.Instant
 
-import io.bullet.borer.NullOptions.given
 import io.bullet.borer.*
+import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
 import io.renku.search.api.tapir.SchemaSyntax.*
 import io.renku.search.model.*
 import sttp.tapir.Schema.SName
-import sttp.tapir.SchemaType._
+import sttp.tapir.SchemaType.*
 import sttp.tapir.generic.Configuration
 import sttp.tapir.{FieldName, Schema, SchemaType}
 

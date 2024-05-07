@@ -30,7 +30,7 @@ import io.renku.search.solr.SearchRole
 import io.renku.search.solr.documents.*
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.search.solr.schema.EntityDocumentSchema
-import io.renku.solr.client._
+import io.renku.solr.client.*
 import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.FieldName
 

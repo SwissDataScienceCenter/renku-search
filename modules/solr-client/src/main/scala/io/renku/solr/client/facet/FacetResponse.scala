@@ -18,13 +18,12 @@
 
 package io.renku.solr.client.facet
 
-import io.renku.solr.client.schema.FieldName
-import io.bullet.borer.derivation.key
 import io.bullet.borer.Decoder
-import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.Reader
-
-import FacetResponse.Values
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.derivation.key
+import io.renku.solr.client.facet.FacetResponse.Values
+import io.renku.solr.client.schema.FieldName
 
 final case class FacetResponse(
     count: Int,

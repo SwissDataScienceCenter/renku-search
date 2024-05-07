@@ -19,8 +19,8 @@
 package io.renku.logging
 
 import scribe.Level
-import scribe.writer.SystemOutWriter
 import scribe.format.Formatter
+import scribe.writer.SystemOutWriter
 
 object LoggingSetup:
 

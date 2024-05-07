@@ -18,12 +18,13 @@
 
 package io.renku.search.events
 
+import cats.Show
 import cats.data.NonEmptyList
+
+import io.renku.avro.codec.AvroEncoder
+import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}
 import io.renku.search.model.Id
-import io.renku.avro.codec.all.given
-import io.renku.avro.codec.AvroEncoder
-import cats.Show
 import org.apache.avro.Schema
 
 final case class ProjectRemoved(id: Id) extends RenkuEventPayload:

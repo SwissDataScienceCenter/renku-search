@@ -18,9 +18,10 @@
 
 package io.renku.search.events
 
-import cats.syntax.all.*
-import cats.effect.Sync
 import java.util.UUID
+
+import cats.effect.Sync
+import cats.syntax.all.*
 
 opaque type MessageId = String
 

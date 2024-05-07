@@ -18,11 +18,13 @@
 
 package io.renku.search.query
 
-import cats.syntax.all.*
-import munit.FunSuite
 import java.time.Instant
-import java.time.ZoneId
 import java.time.Period
+import java.time.ZoneId
+
+import cats.syntax.all.*
+
+import munit.FunSuite
 
 class DateTimeRefSpec extends FunSuite:
 

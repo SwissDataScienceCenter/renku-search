@@ -18,17 +18,18 @@
 
 package io.renku.search.cli.perftests
 
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.time.temporal.ChronoUnit.DAYS
+
 import cats.Monad
 import cats.effect.IO
 import cats.effect.std.{Random, UUIDGen}
 import cats.syntax.all.*
-import io.renku.search.events.*
-import io.renku.search.model.{Id, projects}
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-import java.time.temporal.ChronoUnit.DAYS
+import io.renku.search.events.*
 import io.renku.search.model.MemberRole
+import io.renku.search.model.{Id, projects}
 
 private object ModelTypesGenerators:
 

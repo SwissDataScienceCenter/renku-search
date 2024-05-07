@@ -19,9 +19,10 @@
 package io.renku.search.cli
 
 import cats.effect.*
+
 import io.renku.queue.client.QueueClient
-import io.renku.search.config.ConfigValues
 import io.renku.redis.client.ClientId
+import io.renku.search.config.ConfigValues
 import io.renku.search.events.*
 
 object Services:

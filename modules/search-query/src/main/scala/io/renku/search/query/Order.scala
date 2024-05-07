@@ -20,6 +20,7 @@ package io.renku.search.query
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
+
 import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.query.parse.QueryParser
 

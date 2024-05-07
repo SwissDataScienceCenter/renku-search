@@ -21,7 +21,9 @@ package project
 
 import cats.effect.IO
 
+import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.events.ProjectMemberRemoved
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
 import io.renku.search.provision.project.AuthorizationRemovedProvisioningSpec.testCases
@@ -30,8 +32,6 @@ import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.search.solr.documents.{Project as ProjectDocument, *}
 import io.renku.solr.client.DocVersion
-import io.renku.search.events.ProjectMemberRemoved
-import io.renku.events.EventsGenerators
 import org.scalacheck.Gen
 
 class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:

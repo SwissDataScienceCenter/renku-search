@@ -20,11 +20,12 @@ package io.renku.redis.client
 
 import cats.effect.IO
 import cats.syntax.all.*
+import fs2.*
+import fs2.concurrent.SignallingRef
+
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.streams.data.XAddMessage
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
-import fs2.*
-import fs2.concurrent.SignallingRef
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisSpec
 import io.renku.search.GeneratorSyntax.*

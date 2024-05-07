@@ -21,7 +21,6 @@ package io.renku.search.provision.handler
 import io.renku.search.events.*
 import io.renku.search.model.Id
 
-//TODO probably now obsolete
 trait IdExtractor[A]:
   def getId(a: A): Id
 

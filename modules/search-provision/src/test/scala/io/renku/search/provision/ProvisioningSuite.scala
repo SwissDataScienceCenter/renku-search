@@ -24,10 +24,19 @@ import fs2.Stream
 import io.renku.queue.client.{QueueClient, QueueSpec}
 import io.renku.redis.client.{ClientId, QueueName}
 import io.renku.search.config.QueuesConfig
-import io.renku.search.model.{EntityType, Id}
+import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
-import io.renku.search.solr.documents.*
+import io.renku.search.solr.query.SolrToken
+import io.renku.search.solr.documents.{
+  CompoundId,
+  EntityDocument,
+  Group as GroupDocument,
+  PartialEntityDocument,
+  SolrDocument,
+  User as UserDocument
+}
+import io.renku.solr.client.{QueryData, QueryString}
 
 trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
 
@@ -65,6 +74,32 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
       val handlers = MessageHandlers[IO](steps, queueConfig)
       (handlers, queueClient, solrClient)
     }
+
+  def loadProjectsByNs(solrClient: SearchSolrClient[IO])(
+      ns: Namespace
+  ): IO[List[EntityDocument]] =
+    val qd = QueryData(
+      QueryString(
+        List(
+          SolrToken.namespaceIs(ns),
+          SolrToken.entityTypeIs(EntityType.Project)
+        ).foldAnd.value
+      )
+    )
+    solrClient.queryAll[EntityDocument](qd).compile.toList
+
+  def loadProjectsFor(solrClient: SearchSolrClient[IO])(
+      doc: SolrDocument
+  ): IO[List[EntityDocument]] =
+    getNamespace(doc) match
+      case Some(ns) => loadProjectsByNs(solrClient)(ns)
+      case None     => IO(Nil)
+
+  private def getNamespace(doc: SolrDocument): Option[Namespace] = doc match
+    case u: UserDocument                => u.namespace
+    case g: GroupDocument               => g.namespace.some
+    case g: PartialEntityDocument.Group => g.namespace
+    case _                              => None
 
   def loadProjectPartialOrEntity(
       solrClient: SearchSolrClient[IO],

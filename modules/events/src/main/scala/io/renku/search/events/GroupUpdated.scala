@@ -33,6 +33,7 @@ sealed trait GroupUpdated extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V2))
   lazy val schema: Schema =
     fold(_ => v2.GroupUpdated.SCHEMA$)
+  def namespace: Namespace
 
 object GroupUpdated:
   def apply(
@@ -49,6 +50,7 @@ object GroupUpdated:
     val id: Id = Id(event.id)
     def withId(id: Id): GroupUpdated = V2(event.copy(id = id.value))
     def fold[A](fv2: v2.GroupUpdated => A): A = fv2(event)
+    val namespace: Namespace = Namespace(event.namespace)
 
   given AvroEncoder[GroupUpdated] =
     val v2e = AvroEncoder[v2.GroupUpdated]

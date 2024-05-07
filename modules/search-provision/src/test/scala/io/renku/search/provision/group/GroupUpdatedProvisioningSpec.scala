@@ -25,14 +25,17 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.GroupUpdated
 import io.renku.search.model.Id
 import io.renku.search.provision.events.syntax.*
-import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
 import io.renku.search.solr.documents.{
+  EntityDocument,
   Group as GroupDocument,
   PartialEntityDocument,
+  Project as ProjectDocument,
   SolrDocument
 }
-import io.renku.solr.client.DocVersion
+import io.renku.search.solr.query.SolrToken
+import io.renku.solr.client.{DocVersion, QueryData, QueryString}
 import org.scalacheck.Gen
 
 class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
@@ -43,21 +46,25 @@ class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
         for
           _ <- tc.dbState.create(solrClient)
 
-          collector <- BackgroundCollector[SolrDocument](
-            loadGroupPartialOrEntity(solrClient, tc.groupId)
-          )
-          _ <- collector.start
-
-          provisioningFiber <- handlers.groupUpdated.compile.drain.start
-
           _ <- queueClient.enqueue(
             queueConfig.groupUpdated,
             EventsGenerators.eventMessageGen(Gen.const(tc.groupUpdated)).generateOne
           )
 
-          _ <- collector.waitUntil(docs => docs.exists(tc.checkExpected))
+          _ <- handlers
+            .makeUpsert[GroupUpdated](queueConfig.groupUpdated)
+            .take(1)
+            .compile
+            .toList
 
-          _ <- provisioningFiber.cancel
+          group <- loadGroupPartialOrEntity(solrClient, tc.groupId)
+          _ = assertEquals(group.size, 1)
+          _ = assert(tc.checkExpectedGroup(group.head))
+
+          projects <- tc.projectQuery
+            .map(q => solrClient.queryAll[EntityDocument](q).compile.toList)
+            .getOrElse(IO(Nil))
+          _ = assert(tc.checkExpectedProjects(group.head, projects))
         yield ()
       }
   }
@@ -70,21 +77,46 @@ object GroupUpdatedProvisioningSpec:
     case Empty
     case Group(group: GroupDocument)
     case PartialGroup(group: PartialEntityDocument.Group)
+    case GroupWithProjects(group: GroupDocument, projects: List[ProjectDocument])
 
     def groupId: Option[Id] = this match
-      case Empty           => None
-      case Group(g)        => g.id.some
-      case PartialGroup(g) => g.id.some
+      case Empty                   => None
+      case Group(g)                => g.id.some
+      case PartialGroup(g)         => g.id.some
+      case GroupWithProjects(g, _) => g.id.some
 
     def create(solrClient: SearchSolrClient[IO]) = this match
       case DbState.Empty           => IO.unit
       case DbState.Group(g)        => solrClient.upsertSuccess(Seq(g))
       case DbState.PartialGroup(g) => solrClient.upsertSuccess(Seq(g))
+      case DbState.GroupWithProjects(g, ps) =>
+        solrClient.upsertSuccess(Seq(g)) >> solrClient.upsertSuccess(ps)
 
   case class TestCase(dbState: DbState, groupUpdated: GroupUpdated):
     def groupId: Id = groupUpdated.id
 
-    def checkExpected(d: SolrDocument): Boolean =
+    def projectQuery: Option[QueryData] = dbState match
+      case DbState.GroupWithProjects(_, projects) =>
+        QueryData(QueryString(projects.map(p => SolrToken.idIs(p.id)).foldOr.value)).some
+      case _ => None
+
+    def checkExpectedProjects(
+        group: SolrDocument,
+        projects: List[SolrDocument]
+    ): Boolean =
+      dbState match
+        case DbState.Empty           => projects.isEmpty
+        case DbState.Group(_)        => projects.isEmpty
+        case DbState.PartialGroup(_) => projects.isEmpty
+        case DbState.GroupWithProjects(_, initialProjects) =>
+          initialProjects.size == projects.size &&
+          projects.forall { case p: ProjectDocument =>
+            // TODO
+            println(s">>>> ${p.namespace} vs ${groupUpdated.namespace}")
+            p.namespace == groupUpdated.namespace.some
+          }
+
+    def checkExpectedGroup(d: SolrDocument): Boolean =
       dbState match
         case DbState.Empty =>
           d match
@@ -106,15 +138,31 @@ object GroupUpdatedProvisioningSpec:
                 n.setVersion(DocVersion.Off)
             case _ => false
 
+        case DbState.GroupWithProjects(g, ps) =>
+          d match
+            case n: GroupDocument =>
+              groupUpdated.toModel(g).setVersion(DocVersion.Off) ==
+                n.setVersion(DocVersion.Off)
+            case _ => false
+
   val testCases =
-    val group = SolrDocumentGenerators.groupDocumentGen.generateOne
+    val group1 = SolrDocumentGenerators.groupDocumentGen.generateOne
     val pgroup = SolrDocumentGenerators.partialGroupGen.generateOne
     val upd = EventsGenerators.groupUpdatedGen("group-update").generateOne
+    val group2 = SolrDocumentGenerators.groupDocumentGen.generateOne
+    val projects = SolrDocumentGenerators.projectDocumentGen
+      .asListOfN(1, 6)
+      .map(
+        _.map(_.copy(namespace = Some(group2.namespace), version = DocVersion.NotExists))
+      )
+      .generateOne
+
     for
       dbState <- List(
         DbState.Empty,
-        DbState.Group(group),
-        DbState.PartialGroup(pgroup)
+        DbState.Group(group1),
+        DbState.PartialGroup(pgroup),
+        DbState.GroupWithProjects(group2, projects)
       )
       event = upd.withId(dbState.groupId.getOrElse(upd.id))
     yield TestCase(dbState, event)

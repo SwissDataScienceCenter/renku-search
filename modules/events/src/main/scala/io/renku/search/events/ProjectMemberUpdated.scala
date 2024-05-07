@@ -32,6 +32,7 @@ sealed trait ProjectMemberUpdated extends RenkuEventPayload:
       fv2: v2.ProjectMemberUpdated => A
   ): A
   def withId(id: Id): ProjectMemberUpdated
+  def withRole(role: MemberRole): ProjectMemberUpdated
   def version: NonEmptyList[SchemaVersion] =
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
@@ -43,10 +44,20 @@ sealed trait ProjectMemberUpdated extends RenkuEventPayload:
   def role: MemberRole
 
 object ProjectMemberUpdated:
+  def apply(projectId: Id, userId: Id, role: MemberRole): ProjectMemberUpdated =
+    V2(v2.ProjectMemberUpdated(projectId.value, userId.value, v2.MemberRole.VIEWER))
+      .withRole(role)
 
   final case class V1(event: v1.ProjectAuthorizationUpdated) extends ProjectMemberUpdated:
     lazy val id: Id = Id(event.projectId)
     def withId(id: Id): ProjectMemberUpdated = V1(event.copy(projectId = id.value))
+    def withRole(role: MemberRole): ProjectMemberUpdated =
+      role match
+        case MemberRole.Member => V1(event.copy(role = v1.ProjectMemberRole.MEMBER))
+        case MemberRole.Viewer => V1(event.copy(role = v1.ProjectMemberRole.MEMBER))
+        case MemberRole.Editor => V1(event.copy(role = v1.ProjectMemberRole.MEMBER))
+        case MemberRole.Owner  => V1(event.copy(role = v1.ProjectMemberRole.OWNER))
+
     def fold[A](
         fv1: v1.ProjectAuthorizationUpdated => A,
         fv2: v2.ProjectMemberUpdated => A
@@ -58,6 +69,13 @@ object ProjectMemberUpdated:
   final case class V2(event: v2.ProjectMemberUpdated) extends ProjectMemberUpdated:
     lazy val id: Id = Id(event.projectId)
     def withId(id: Id): ProjectMemberUpdated = V2(event.copy(projectId = id.value))
+    def withRole(role: MemberRole): ProjectMemberUpdated =
+      role match
+        case MemberRole.Member => V2(event.copy(role = v2.MemberRole.VIEWER))
+        case MemberRole.Viewer => V2(event.copy(role = v2.MemberRole.VIEWER))
+        case MemberRole.Editor => V2(event.copy(role = v2.MemberRole.EDITOR))
+        case MemberRole.Owner  => V2(event.copy(role = v2.MemberRole.OWNER))
+
     def fold[A](
         fv1: v1.ProjectAuthorizationUpdated => A,
         fv2: v2.ProjectMemberUpdated => A

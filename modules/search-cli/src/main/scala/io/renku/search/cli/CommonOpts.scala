@@ -21,6 +21,12 @@ package io.renku.search.cli
 import cats.syntax.all.*
 import com.monovore.decline.Opts
 import io.renku.search.model.*
+import io.renku.search.model.projects.{
+  Description as ProjectDescription,
+  Repository,
+  Slug,
+  Visibility
+}
 import com.monovore.decline.Argument
 
 trait CommonOpts:
@@ -39,6 +45,23 @@ trait CommonOpts:
       MemberRole.fromString(str).toValidatedNel
     }
 
+  given Argument[Slug] =
+    Argument.readString.map(Slug(_))
+
+  given Argument[Visibility] =
+    Argument.from("visibility") { str =>
+      Visibility.fromString(str).toValidatedNel
+    }
+
+  given Argument[Repository] =
+    Argument.readString.map(Repository(_))
+
+  given Argument[ProjectDescription] =
+    Argument.readString.map(ProjectDescription(_))
+
+  given Argument[Keyword] =
+    Argument.readString.map(Keyword(_))
+
   val nameOpt: Opts[Name] =
     Opts.option[Name]("name", "The name of the entity")
 
@@ -54,7 +77,36 @@ trait CommonOpts:
   val groupIdOpt: Opts[Id] =
     Opts.option[Id]("group-id", "The group id")
 
+  val projectIdOpt: Opts[Id] =
+    Opts.option("project-id", "The project id")
+
   val roleOpt: Opts[MemberRole] =
     Opts.option[MemberRole]("role", "The role name")
+
+  val projectSlug: Opts[Slug] =
+    Opts.option[Slug]("slug", "A project slug")
+
+  val projectVisibility: Opts[Visibility] =
+    Opts
+      .option[Visibility]("visibility", "Project visibility")
+      .withDefault(Visibility.Public)
+
+  val currentTime: Opts[Timestamp] =
+    Opts(Timestamp(java.time.Instant.now()))
+
+  val repositories: Opts[Seq[Repository]] =
+    Opts
+      .options[Repository]("repo", "project repositories")
+      .map(_.toList)
+      .withDefault(Nil)
+
+  val keywords: Opts[Seq[Keyword]] =
+    Opts
+      .options[Keyword]("keyword", "list of keywords")
+      .map(_.toList)
+      .withDefault(Nil)
+
+  val projectDescription: Opts[Option[ProjectDescription]] =
+    Opts.option[ProjectDescription]("description", "The project description").orNone
 
 object CommonOpts extends CommonOpts

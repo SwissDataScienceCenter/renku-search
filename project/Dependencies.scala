@@ -12,7 +12,7 @@ object Dependencies {
     val catsEffectMunit = "1.0.7"
     val catsParse = "1.0.0"
     val catsScalaCheck = "0.3.2"
-    val ciris = "3.5.0"
+    val ciris = "3.6.0"
     val decline = "2.4.1"
     val ducktape = "0.2.0"
     val fs2 = "3.10.2"

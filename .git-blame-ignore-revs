@@ -3,3 +3,6 @@
 
 # Scala Steward: Reformat with scalafmt 3.8.1
 0d4c0197766486922e32a707d5d2fc9760d9f528
+
+# eikek: Run scalafix to organize imports
+57e3d43ba8025acd521d2e65de80ba9c13fbdb13

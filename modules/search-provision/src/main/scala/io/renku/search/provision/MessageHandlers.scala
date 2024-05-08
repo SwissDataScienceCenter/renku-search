@@ -27,6 +27,8 @@ import io.renku.redis.client.QueueName
 import io.renku.search.config.QueuesConfig
 import io.renku.search.events.*
 import io.renku.search.provision.handler.*
+import io.renku.search.solr.documents.EntityMembers
+import io.renku.search.solr.documents.PartialEntityDocument
 import io.renku.solr.client.UpsertResponse
 
 /** The entry point for defining all message handlers.
@@ -53,13 +55,61 @@ final class MessageHandlers[F[_]: Async](
   def getAll: Map[String, F[Unit]] = tasks
 
   val projectCreated: Stream[F, Unit] =
-    add(cfg.projectCreated, makeUpsert[ProjectCreated](cfg.projectCreated).drain)
+    add(cfg.projectCreated, makeProjectUpsert[ProjectCreated](cfg.projectCreated).drain)
 
   val projectUpdated: Stream[F, Unit] =
     add(
       cfg.projectUpdated,
-      makeUpsert[ProjectUpdated](cfg.projectUpdated).drain
+      makeProjectUpsert[ProjectUpdated](cfg.projectUpdated).drain
     )
+
+  private[provision] def makeProjectUpsert[A](queue: QueueName)(using
+      EventMessageDecoder[A],
+      DocumentMerger[A],
+      IdExtractor[A],
+      Show[A]
+  ): Stream[F, UpsertResponse] = {
+    import io.renku.search.solr.documents.Project as ProjectDocument
+
+    val ps = steps(queue)
+    def processMsg(
+        msg: EventMessage[A],
+        retries: Int
+    ): Stream[F, UpsertResponse] =
+      lazy val retry = OptionT.when(retries > 0)(processMsg(msg, retries - 1))
+      Stream
+        .emit(msg)
+        .through(ps.fetchFromSolr.fetchEntityOrPartial)
+        .map { m =>
+          val merger = DocumentMerger[A]
+          m.merge(merger.create, merger.merge)
+        }
+        .through(ps.fetchFromSolr.fetchProjectGroups)
+        .map { m =>
+          val updatedProjects: Seq[EntityOrPartial] =
+            m.message.payload.map {
+              case p: ProjectDocument =>
+                p.namespace.flatMap(m.findGroupByNs) match
+                  case Some(group) =>
+                    p.setGroupMembers(group.toEntityMembers)
+                  case None =>
+                    p.setGroupMembers(EntityMembers.empty)
+              case p: PartialEntityDocument.Project =>
+                p.namespace.flatMap(m.findGroupByNs) match
+                  case Some(group) =>
+                    p.setGroupMembers(group.toEntityMembers)
+                  case None =>
+                    p.setGroupMembers(EntityMembers.empty)
+              case e => e
+            }
+          m.setDocuments(updatedProjects.toList).asMessage
+        }
+        .through(ps.pushToSolr.push(onConflict = retry))
+
+    ps.reader
+      .readEvents[A]
+      .flatMap(processMsg(_, maxConflictRetries))
+  }
 
   val projectRemoved: Stream[F, Unit] =
     add(cfg.projectRemoved, makeRemovedSimple[ProjectRemoved](cfg.projectRemoved))

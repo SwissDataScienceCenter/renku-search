@@ -21,7 +21,7 @@ package io.renku.search.provision.handler
 import cats.syntax.all.*
 
 import io.renku.search.events.EventMessage
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, Namespace}
 import io.renku.search.solr.documents.Group as GroupDocument
 import io.renku.search.solr.documents.Project as ProjectDocument
 
@@ -47,6 +47,11 @@ final case class EntityOrPartialMessage[A: IdExtractor](
 
   def findPayloadById(id: Id): Option[A] =
     message.payload.find(e => IdExtractor[A].getId(e) == id)
+
+  def findGroupByNs(ns: Namespace): Option[GroupDocument] =
+    documents.values.collect {
+      case g: GroupDocument if g.namespace == ns => g
+    }.headOption
 
   def getIds: Set[Id] =
     if (documents.isEmpty) message.payload.map(IdExtractor[A].getId).toSet

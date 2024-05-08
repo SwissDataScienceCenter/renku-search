@@ -31,7 +31,11 @@ import io.renku.search.provision.handler.DocumentMerger
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
-import io.renku.search.solr.documents.{Project as ProjectDocument, *}
+import io.renku.search.solr.documents.{
+  Group as GroupDocument,
+  Project as ProjectDocument,
+  *
+}
 import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
 
@@ -42,13 +46,6 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
         for {
           _ <- tc.dbState.create(solrClient)
 
-          collector <- BackgroundCollector[SolrDocument](
-            loadProjectPartialOrEntity(solrClient, tc.projectId)
-          )
-          _ <- collector.start
-
-          provisioningFiber <- handlers.projectCreated.compile.drain.start
-
           _ <- queueClient.enqueue(
             queueConfig.projectCreated,
             EventsGenerators
@@ -56,12 +53,18 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
               .map(_.modifyHeader(_.withContentType(DataContentType.Binary)))
               .generateOne
           )
-          _ <- collector.waitUntil(docs =>
-            scribe.info(s"Check for ${tc.expectedProject}")
-            docs.exists(tc.checkExpected)
-          )
 
-          _ <- provisioningFiber.cancel
+          _ <- handlers
+            .makeProjectUpsert[ProjectCreated](queueConfig.projectCreated)
+            .take(1)
+            .compile
+            .toList
+
+          doc <- loadProjectPartialOrEntity(solrClient, tc.projectId)
+          _ = assertEquals(
+            doc.head.setVersion(DocVersion.Off),
+            tc.expectedProject.setVersion(DocVersion.Off)
+          )
         } yield ()
       }
   }
@@ -128,24 +131,40 @@ object ProjectCreatedProvisioningSpec:
     case Empty
     case Project(project: ProjectDocument)
     case PartialProject(project: PartialEntityDocument.Project)
+    case Group(group: GroupDocument)
 
     def create(solrClient: SearchSolrClient[IO]) = this match
       case DbState.Empty             => IO.unit
       case DbState.Project(p)        => solrClient.upsertSuccess(Seq(p))
       case DbState.PartialProject(p) => solrClient.upsertSuccess(Seq(p))
+      case DbState.Group(g)          => solrClient.upsertSuccess(Seq(g))
 
   case class TestCase(dbState: DbState):
     val projectId = dbState match
       case DbState.Empty             => ModelGenerators.idGen.generateOne
       case DbState.Project(p)        => p.id
       case DbState.PartialProject(p) => p.id
+      case DbState.Group(_)          => ModelGenerators.idGen.generateOne
 
     val projectCreated: ProjectCreated =
-      projectCreatedGen("test-").generateOne.withId(projectId)
+      dbState match
+        case DbState.Group(g) =>
+          projectCreatedGen("test-").generateOne
+            .withId(projectId)
+            .withNamespace(g.namespace)
+        case _ =>
+          projectCreatedGen("test-").generateOne.withId(projectId)
 
     val expectedProject: SolrDocument = dbState match
       case DbState.Empty =>
         DocumentMerger[ProjectCreated].create(projectCreated).get
+
+      case DbState.Group(g) =>
+        DocumentMerger[ProjectCreated]
+          .create(projectCreated)
+          .get
+          .asInstanceOf[ProjectDocument]
+          .setGroupMembers(g.toEntityMembers)
 
       case DbState.Project(p) =>
         val np = DocumentMerger[ProjectCreated]
@@ -174,6 +193,14 @@ object ProjectCreatedProvisioningSpec:
   val testCases =
     val proj = SolrDocumentGenerators.projectDocumentGen.generateOne
     val pproj = SolrDocumentGenerators.partialProjectGen.generateOne
+    val group = SolrDocumentGenerators.entityMembersGen
+      .flatMap(em => SolrDocumentGenerators.groupDocumentGen.map(g => g.setMembers(em)))
+      .generateOne
     val dbState =
-      List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
+      List(
+        DbState.Empty,
+        DbState.Project(proj),
+        DbState.PartialProject(pproj),
+        DbState.Group(group)
+      )
     dbState.map(TestCase.apply)

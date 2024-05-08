@@ -22,8 +22,7 @@ import cats.effect.Async
 import fs2.Stream
 
 import io.renku.queue.client.QueueClient
-import io.renku.redis.client.{ClientId, QueueName}
-import io.renku.search.config.QueuesConfig
+import io.renku.redis.client.QueueName
 import io.renku.search.solr.client.SearchSolrClient
 
 trait PipelineSteps[F[_]]:
@@ -31,16 +30,13 @@ trait PipelineSteps[F[_]]:
   def pushToSolr: PushToSolr[F]
   def fetchFromSolr: FetchFromSolr[F]
   def deleteFromSolr: DeleteFromSolr[F]
-  def pushToRedis: PushToRedis[F]
   def userUtils: UserUtils[F]
 
 object PipelineSteps:
   def apply[F[_]: Async](
       solrClient: SearchSolrClient[F],
       queueClient: Stream[F, QueueClient[F]],
-      queueConfig: QueuesConfig,
-      inChunkSize: Int,
-      clientId: ClientId
+      inChunkSize: Int
   )(
       queue: QueueName
   ): PipelineSteps[F] =
@@ -53,9 +49,6 @@ object PipelineSteps:
         FetchFromSolr[F](solrClient)
       val deleteFromSolr: DeleteFromSolr[F] =
         DeleteFromSolr[F](solrClient, reader)
-      val pushToRedis: PushToRedis[F] =
-        PushToRedis[F](queueClient, clientId, queueConfig)
-
       val userUtils: UserUtils[F] =
-        UserUtils[F](fetchFromSolr, pushToRedis)
+        UserUtils[F](fetchFromSolr, pushToSolr, reader, 200)
     }

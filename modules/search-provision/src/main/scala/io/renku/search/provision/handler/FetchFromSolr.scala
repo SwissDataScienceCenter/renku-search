@@ -35,12 +35,13 @@ import io.renku.search.solr.documents.{
   *
 }
 import io.renku.search.solr.query.SolrToken
+import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.{QueryData, QueryString}
 
 trait FetchFromSolr[F[_]]:
   def fetchById[A: Decoder](id: CompoundId): Stream[F, A]
-  def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId]
-  def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.ProjectId]
+  def fetchEntityForUser(userId: Id): Stream[F, EntityId]
+  def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.EntityId]
   def fetchProjectsByGroup[A]
       : Pipe[F, EntityOrPartialMessage[A], EntityOrPartialMessage[A]]
   def fetchEntityOrPartial[A](using
@@ -52,10 +53,10 @@ trait FetchFromSolr[F[_]]:
   def fetchEntityOrPartialById[A](v: A)(using IdExtractor[A]): F[Option[EntityOrPartial]]
 
 object FetchFromSolr:
-  final case class ProjectId(id: Id)
-  object ProjectId:
-    given Decoder[ProjectId] = MapBasedCodecs.deriveDecoder
-    given IdExtractor[ProjectId] = _.id
+  final case class EntityId(id: Id)
+  object EntityId:
+    given Decoder[EntityId] = MapBasedCodecs.deriveDecoder
+    given IdExtractor[EntityId] = _.id
 
   def apply[F[_]: Sync](
       solrClient: SearchSolrClient[F]
@@ -109,23 +110,22 @@ object FetchFromSolr:
       def fetchById[A: Decoder](id: CompoundId): Stream[F, A] =
         Stream.eval(solrClient.findById(id)).unNone
 
-      def fetchProjectForUser(userId: Id): Stream[F, FetchFromSolr.ProjectId] =
-        val query = QueryString(
-          List(
-            SolrToken.entityTypeIs(EntityType.Project),
-            SolrToken.anyMemberIs(userId)
-          ).foldAnd.value
+      def fetchEntityForUser(userId: Id): Stream[F, EntityId] =
+        val query = QueryString(SolrToken.anyMemberIs(userId).value)
+        solrClient.queryAll[EntityId](
+          QueryData(query).withFields(EntityDocumentSchema.Fields.id)
         )
-        solrClient.queryAll[ProjectId](QueryData(query))
 
-      def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.ProjectId] =
+      def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.EntityId] =
         val query = QueryString(
           List(
             SolrToken.entityTypeIs(EntityType.Project),
             SolrToken.namespaceIs(ns)
           ).foldAnd.value
         )
-        solrClient.queryAll[ProjectId](QueryData(query))
+        solrClient.queryAll[EntityId](
+          QueryData(query).withFields(EntityDocumentSchema.Fields.id)
+        )
 
       def fetchEntityOrPartial[A](using
           IdExtractor[A]

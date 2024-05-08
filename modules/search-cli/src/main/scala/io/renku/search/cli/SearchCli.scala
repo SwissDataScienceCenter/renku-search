@@ -41,4 +41,7 @@ object SearchCli
 
       case SubCommands.Project(opts) =>
         ProjectCmd(opts)
+
+      case SubCommands.User(opts) =>
+        UserCmd(opts)
     }

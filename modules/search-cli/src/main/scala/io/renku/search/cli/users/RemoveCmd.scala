@@ -16,28 +16,30 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.handler
+package io.renku.search.cli.users
 
-import io.renku.search.events.*
-import io.renku.search.model.Id
+import cats.effect.*
+import cats.syntax.all.*
 
-trait IdExtractor[A]:
-  def getId(a: A): Id
+import com.monovore.decline.Opts
+import io.renku.search.cli.{CommonOpts, Services}
+import io.renku.search.config.QueuesConfig
+import io.renku.search.events.UserRemoved
+import io.renku.search.model.*
 
-object IdExtractor:
-  def apply[A](using e: IdExtractor[A]): IdExtractor[A] = e
+object RemoveCmd:
 
-  def create[A](f: A => Id): IdExtractor[A] =
-    (a: A) => f(a)
+  final case class Options(id: Id):
+    def asPayload: UserRemoved = UserRemoved(id)
 
-  def createStr[A](f: A => String): IdExtractor[A] =
-    (a: A) => Id(f(a))
+  val opts: Opts[Options] =
+    CommonOpts.idOpt.map(Options.apply)
 
-  given [A <: RenkuEventPayload]: IdExtractor[A] =
-    create(_.id)
-
-  given IdExtractor[EntityOrPartial] =
-    create(_.id)
-
-  given IdExtractor[Id] =
-    create(identity)
+  def apply(cfg: Options): IO[ExitCode] =
+    Services.queueClient.use { queue =>
+      for
+        queuesCfg <- QueuesConfig.config.load[IO]
+        msg <- Services.createMessage(cfg.asPayload)
+        _ <- queue.enqueue(queuesCfg.userRemoved, msg)
+      yield ExitCode.Success
+    }

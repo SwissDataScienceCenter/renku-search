@@ -18,36 +18,70 @@
 
 package io.renku.search.provision.handler
 
+import cats.data.OptionT
 import cats.effect.Sync
+import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 
 import io.renku.search.events.*
 import io.renku.search.model.Id
+import io.renku.search.solr.documents.{
+  Group as GroupDocument,
+  PartialEntityDocument,
+  Project as ProjectDocument
+}
+import io.renku.solr.client.UpsertResponse
 
 trait UserUtils[F[_]]:
-  def removeFromProjects: Pipe[F, EventMessage[Id], Unit]
+  def removeFromMembers: Pipe[F, EventMessage[Id], FetchFromSolr.EntityId]
 
 object UserUtils:
   def apply[F[_]: Sync](
       fetchFromSolr: FetchFromSolr[F],
-      pushToRedis: PushToRedis[F]
+      pushToSolr: PushToSolr[F],
+      reader: MessageReader[F],
+      maxConflictRetries: Int
   ): UserUtils[F] =
     new UserUtils[F] {
       val logger = scribe.cats.effect[F]
-      def removeFromProjects: Pipe[F, EventMessage[Id], Unit] =
-        _.evalMap { msg =>
-          (Stream.eval(
-            logger.debug(s"Send authRemove events for user ids: ${msg.payload}")
-          ) ++
-            Stream
-              .emits(msg.payload)
-              .flatMap(id => fetchFromSolr.fetchProjectForUser(id).map(_ -> id))
-              .map { case (projectId, userId) =>
-                ProjectMemberRemoved(projectId.id, userId)
-              }
-              .evalTap(data => logger.info(s"Sending to redis: $data"))
-              .through(
-                pushToRedis.pushAuthorizationRemoved(msg.header.requestId)
-              )).compile.drain
+
+      private def updateEntity(
+          id: Id,
+          modify: EntityOrPartial => Option[EntityOrPartial],
+          retries: Int = maxConflictRetries
+      ): Stream[F, UpsertResponse] =
+        val retry = OptionT.when(retries > 0)(updateEntity(id, modify, retries - 1))
+        Stream
+          .eval(fetchFromSolr.fetchEntityOrPartialById(id))
+          .unNone
+          .map(modify)
+          .unNone
+          .through(pushToSolr.push1(onConflict = retry))
+
+      def removeFromMembers: Pipe[F, EventMessage[Id], FetchFromSolr.EntityId] =
+        _.flatMap { msg =>
+          Stream
+            .emits(msg.payload)
+            .flatMap(fetchFromSolr.fetchEntityForUser)
+            .evalTap { entityId =>
+              updateEntity(
+                entityId.id,
+                {
+                  case p: ProjectDocument =>
+                    p.modifyEntityMembers(_.removeMembers(msg.payload))
+                      .modifyGroupMembers(_.removeMembers(msg.payload))
+                      .some
+                  case p: PartialEntityDocument.Project =>
+                    p.modifyEntityMembers(_.removeMembers(msg.payload))
+                      .modifyGroupMembers(_.removeMembers(msg.payload))
+                      .some
+                  case g: GroupDocument =>
+                    g.modifyEntityMembers(_.removeMembers(msg.payload)).some
+
+                  case _ => None
+                }
+              ).compile.drain
+            }
+            .through(reader.markMessageOnDone(msg.id)(using logger))
         }
     }

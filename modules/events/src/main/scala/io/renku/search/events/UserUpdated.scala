@@ -24,7 +24,7 @@ import cats.data.NonEmptyList
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}
-import io.renku.search.model.{Id, Namespace}
+import io.renku.search.model.{Id, Namespace, users}
 import org.apache.avro.Schema
 
 sealed trait UserUpdated extends RenkuEventPayload:
@@ -36,6 +36,23 @@ sealed trait UserUpdated extends RenkuEventPayload:
     fold(_ => v1.UserUpdated.SCHEMA$, _ => v2.UserUpdated.SCHEMA$)
 
 object UserUpdated:
+  def apply(
+      id: Id,
+      namespace: Namespace,
+      firstName: Option[users.FirstName],
+      lastName: Option[users.LastName],
+      email: Option[users.Email]
+  ): UserUpdated =
+    V2(
+      v2.UserUpdated(
+        id.value,
+        firstName.map(_.value),
+        lastName.map(_.value),
+        email.map(_.value),
+        namespace.value
+      )
+    )
+
   final case class V1(event: v1.UserUpdated) extends UserUpdated:
     val id: Id = Id(event.id)
     def withId(id: Id): UserUpdated = V1(event.copy(id = id.value))

@@ -58,6 +58,15 @@ trait CommonOpts:
   given Argument[Keyword] =
     Argument.readString.map(Keyword(_))
 
+  given Argument[users.FirstName] =
+    Argument.readString.map(users.FirstName(_))
+
+  given Argument[users.LastName] =
+    Argument.readString.map(users.LastName(_))
+
+  given Argument[users.Email] =
+    Argument.readString.map(users.Email(_))
+
   val nameOpt: Opts[Name] =
     Opts.option[Name]("name", "The name of the entity")
 
@@ -104,5 +113,14 @@ trait CommonOpts:
 
   val projectDescription: Opts[Option[ProjectDescription]] =
     Opts.option[ProjectDescription]("description", "The project description").orNone
+
+  val firstName: Opts[Option[users.FirstName]] =
+    Opts.option[users.FirstName]("first-name", "The first name").orNone
+
+  val lastName: Opts[Option[users.LastName]] =
+    Opts.option[users.LastName]("last-name", "The last name").orNone
+
+  val email: Opts[Option[users.Email]] =
+    Opts.option[users.Email]("email", "The email address").orNone
 
 object CommonOpts extends CommonOpts

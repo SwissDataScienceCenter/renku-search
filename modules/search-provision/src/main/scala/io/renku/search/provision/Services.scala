@@ -46,9 +46,7 @@ object Services:
       steps = PipelineSteps[F](
         solr,
         redis,
-        cfg.queuesConfig,
-        inChunkSize = 1,
-        cfg.clientId
+        inChunkSize = 1
       )
       handlers = MessageHandlers[F](steps, cfg.queuesConfig)
     } yield Services(cfg, solr, redis, handlers)

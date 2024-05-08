@@ -36,6 +36,11 @@ import io.renku.solr.client.ResponseHeader
 import io.renku.solr.client.UpsertResponse
 
 trait PushToSolr[F[_]]:
+  def push1(
+      onConflict: => OptionT[F, Stream[F, UpsertResponse]],
+      maxWait: FiniteDuration = 100.millis
+  ): Pipe[F, EntityOrPartial, UpsertResponse]
+
   def push(
       onConflict: => OptionT[F, Stream[F, UpsertResponse]],
       maxWait: FiniteDuration = 100.millis
@@ -66,35 +71,48 @@ object PushToSolr:
               Async[F].pure(r)
         }
 
+      def push1(
+          onConflict: => OptionT[F, Stream[F, UpsertResponse]],
+          maxWait: FiniteDuration = 100.millis
+      ): Pipe[F, EntityOrPartial, UpsertResponse] =
+        _.evalMap(doc => solrClient.upsert(Seq(doc)))
+          .through(runOnConflict(onConflict, maxWait))
+
       override def push(
           onConflict: => OptionT[F, Stream[F, UpsertResponse]],
           maxWait: FiniteDuration
       ): Pipe[F, EventMessage[EntityOrPartial], UpsertResponse] =
         _.flatMap { msg =>
-          Stream.emit(msg).map(Chunk.apply(_)).through(pushChunk).flatMap {
-            case r @ UpsertResponse.Success(_) =>
-              Stream.eval(reader.markProcessed(msg.id)).as(r)
-            case r @ UpsertResponse.VersionConflict =>
-              Stream.eval(onConflict.value).flatMap {
-                case None =>
-                  Stream
-                    .eval(
-                      logger
-                        .warn(s"Retries on version conflict exceeded for message: $msg")
-                    )
-                    .evalMap(_ => reader.markProcessed(msg.id))
-                    .as(r)
-                case Some(run) =>
-                  Stream
-                    .eval(Random.scalaUtilRandom[F])
-                    .evalMap(_.betweenLong(5, math.max(maxWait.toMillis, 10)))
-                    .map(FiniteDuration(_, TimeUnit.MILLISECONDS))
-                    .evalTap(n =>
-                      logger.debug(s"Version conflict updating solr, retry in $n")
-                    )
-                    .flatMap(Stream.sleep)
-                    .evalMap(_ => run.compile.lastOrError)
-              }
-          }
+          Stream
+            .emit(msg)
+            .map(Chunk.apply(_))
+            .through(pushChunk)
+            .through(runOnConflict(onConflict, maxWait))
+            .through(reader.markMessageOnDone(msg.id)(using logger))
+        }
+
+      private def runOnConflict(
+          action: => OptionT[F, Stream[F, UpsertResponse]],
+          maxWait: FiniteDuration
+      ): Pipe[F, UpsertResponse, UpsertResponse] =
+        _.flatMap {
+          case r @ UpsertResponse.Success(_) => Stream.emit(r)
+          case r @ UpsertResponse.VersionConflict =>
+            Stream.eval(action.value).flatMap {
+              case None =>
+                Stream
+                  .eval(logger.warn(s"Retries on version conflict exceeded"))
+                  .as(r)
+              case Some(run) =>
+                Stream
+                  .eval(Random.scalaUtilRandom[F])
+                  .evalMap(_.betweenLong(5, math.max(maxWait.toMillis, 10)))
+                  .map(FiniteDuration(_, TimeUnit.MILLISECONDS))
+                  .evalTap(n =>
+                    logger.debug(s"Version conflict updating solr, retry in $n")
+                  )
+                  .flatMap(Stream.sleep)
+                  .evalMap(_ => run.compile.lastOrError)
+            }
         }
     }

@@ -27,6 +27,7 @@ enum SubCommands:
   case PerfTests(opts: PerfTestsConfig)
   case Group(opts: GroupCmd.SubCmdOpts)
   case Project(opts: ProjectCmd.SubCmdOpts)
+  case User(opts: UserCmd.SubCmdOpts)
 
 private object SubCommands:
 
@@ -39,8 +40,12 @@ private object SubCommands:
   private val projectOpts: Opts[ProjectCmd.SubCmdOpts] =
     Opts.subcommand("project", "Manage project events")(ProjectCmd.opts)
 
+  private val userOpts: Opts[UserCmd.SubCmdOpts] =
+    Opts.subcommand("user", "Manage user events")(UserCmd.opts)
+
   val opts: Opts[SubCommands] =
     perfTestOpts
       .map(SubCommands.PerfTests.apply)
       .orElse(groupOpts.map(SubCommands.Group.apply))
       .orElse(projectOpts.map(SubCommands.Project.apply))
+      .orElse(userOpts.map(SubCommands.User.apply))

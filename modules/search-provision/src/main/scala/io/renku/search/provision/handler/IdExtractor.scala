@@ -35,3 +35,6 @@ object IdExtractor:
 
   given [A <: RenkuEventPayload]: IdExtractor[A] =
     create(_.id)
+
+  given IdExtractor[EntityOrPartial] =
+    create(_.id)

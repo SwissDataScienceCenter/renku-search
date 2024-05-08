@@ -31,6 +31,8 @@ import org.apache.avro.Schema
 sealed trait ProjectUpdated extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A
   def withId(id: Id): ProjectUpdated
+  def withNamespace(ns: Namespace): ProjectUpdated
+  def namespace: Option[Namespace]
   def version: NonEmptyList[SchemaVersion] =
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
@@ -65,11 +67,28 @@ object ProjectUpdated:
   final case class V1(event: v1.ProjectUpdated) extends ProjectUpdated:
     val id: Id = Id(event.id)
     def withId(id: Id): ProjectUpdated = V1(event.copy(id = id.value))
+    val namespace: Option[Namespace] = None
+    def withNamespace(ns: Namespace): ProjectUpdated = V2(
+      v2.ProjectUpdated(
+        event.id,
+        event.name,
+        ns.value,
+        event.slug,
+        event.repositories,
+        v2.Visibility.valueOf(event.visibility.name),
+        event.description,
+        event.keywords
+      )
+    )
     def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A = fv1(event)
 
   final case class V2(event: v2.ProjectUpdated) extends ProjectUpdated:
     val id: Id = Id(event.id)
     def withId(id: Id): ProjectUpdated = V2(event.copy(id = id.value))
+    def withNamespace(ns: Namespace): ProjectUpdated = V2(
+      event.copy(namespace = ns.value)
+    )
+    val namespace: Option[Namespace] = Some(Namespace(event.namespace))
     def fold[A](fv1: v1.ProjectUpdated => A, fv2: v2.ProjectUpdated => A): A = fv2(event)
 
   given AvroEncoder[ProjectUpdated] =

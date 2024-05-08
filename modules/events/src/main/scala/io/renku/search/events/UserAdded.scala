@@ -57,11 +57,13 @@ object UserAdded:
     val id: Id = Id(event.id)
     def withId(id: Id): UserAdded = V1(event.copy(id = id.value))
     def fold[A](fv1: v1.UserAdded => A, fv2: v2.UserAdded => A): A = fv1(event)
+    val namespace: Option[Namespace] = None
 
   final case class V2(event: v2.UserAdded) extends UserAdded:
     val id: Id = Id(event.id)
     def withId(id: Id): UserAdded = V2(event.copy(id = id.value))
     def fold[A](fv1: v1.UserAdded => A, fv2: v2.UserAdded => A): A = fv2(event)
+    val namespace: Option[Namespace] = Some(Namespace(event.namespace))
 
   given AvroEncoder[UserAdded] =
     val v1e = AvroEncoder[v1.UserAdded]

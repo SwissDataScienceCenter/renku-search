@@ -55,7 +55,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
           )
 
           _ <- handlers
-            .makeUpsert[ProjectCreated](queueConfig.projectCreated)
+            .makeProjectUpsert[ProjectCreated](queueConfig.projectCreated)
             .take(1)
             .compile
             .toList

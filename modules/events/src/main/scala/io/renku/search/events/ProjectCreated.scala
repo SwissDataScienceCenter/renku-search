@@ -33,6 +33,7 @@ sealed trait ProjectCreated extends RenkuEventPayload:
   def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A
   def withId(id: Id): ProjectCreated
   def withNamespace(ns: Namespace): ProjectCreated
+  def namespace: Option[Namespace]
   def version: NonEmptyList[SchemaVersion] =
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
@@ -71,6 +72,7 @@ object ProjectCreated:
   final case class V1(event: v1.ProjectCreated) extends ProjectCreated:
     val id: Id = Id(event.id)
     def withId(id: Id): ProjectCreated = V1(event.copy(id = id.value))
+    val namespace: Option[Namespace] = None
     def withNamespace(ns: Namespace): ProjectCreated = V2(
       v2.ProjectCreated(
         event.id,
@@ -93,6 +95,7 @@ object ProjectCreated:
     def withNamespace(ns: Namespace): ProjectCreated = V2(
       event.copy(namespace = ns.value)
     )
+    val namespace: Option[Namespace] = Some(Namespace(event.namespace))
     def fold[A](fv1: v1.ProjectCreated => A, fv2: v2.ProjectCreated => A): A = fv2(event)
 
   given AvroEncoder[ProjectCreated] =

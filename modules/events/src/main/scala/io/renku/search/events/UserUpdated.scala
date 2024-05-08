@@ -24,7 +24,7 @@ import cats.data.NonEmptyList
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}
-import io.renku.search.model.Id
+import io.renku.search.model.{Id, Namespace}
 import org.apache.avro.Schema
 
 sealed trait UserUpdated extends RenkuEventPayload:
@@ -40,11 +40,13 @@ object UserUpdated:
     val id: Id = Id(event.id)
     def withId(id: Id): UserUpdated = V1(event.copy(id = id.value))
     def fold[A](fv1: v1.UserUpdated => A, fv2: v2.UserUpdated => A): A = fv1(event)
+    val namespace: Option[Namespace] = None
 
   final case class V2(event: v2.UserUpdated) extends UserUpdated:
     val id: Id = Id(event.id)
     def withId(id: Id): UserUpdated = V2(event.copy(id = id.value))
     def fold[A](fv1: v1.UserUpdated => A, fv2: v2.UserUpdated => A): A = fv2(event)
+    val namespace: Option[Namespace] = Some(Namespace(event.namespace))
 
   given AvroEncoder[UserUpdated] =
     val v1e = AvroEncoder[v1.UserUpdated]

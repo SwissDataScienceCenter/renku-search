@@ -55,12 +55,18 @@ object PartialEntityDocument:
       owners: Set[Id] = Set.empty,
       editors: Set[Id] = Set.empty,
       viewers: Set[Id] = Set.empty,
+      groupOwners: Set[Id] = Set.empty,
+      groupEditors: Set[Id] = Set.empty,
+      groupViewers: Set[Id] = Set.empty,
       members: Set[Id] = Set.empty
   ) extends PartialEntityDocument:
     def setVersion(v: DocVersion): Project = copy(version = v)
 
-    private def toEntityMembers: EntityMembers =
+    def toEntityMembers: EntityMembers =
       EntityMembers(owners, editors, viewers, members)
+
+    def toGroupMembers: EntityMembers =
+      EntityMembers(groupOwners, groupEditors, groupViewers, Set.empty)
 
     def setMembers(em: EntityMembers): Project =
       copy(
@@ -70,8 +76,14 @@ object PartialEntityDocument:
         members = em.members
       )
 
+    def setGroupMembers(em: EntityMembers): Project =
+      copy(groupOwners = em.owners, groupEditors = em.editors, groupViewers = em.viewers)
+
     def modifyEntityMembers(f: EntityMembers => EntityMembers): Project =
       setMembers(f(toEntityMembers))
+
+    def modifyGroupMembers(f: EntityMembers => EntityMembers): Project =
+      setGroupMembers(f(toGroupMembers))
 
     def applyTo(e: EntityDocument): EntityDocument =
       e match

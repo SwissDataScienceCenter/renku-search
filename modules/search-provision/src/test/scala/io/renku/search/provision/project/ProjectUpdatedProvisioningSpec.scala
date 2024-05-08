@@ -26,9 +26,10 @@ import io.renku.events.EventsGenerators.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.model.Id
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
-import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
+import io.renku.search.solr.documents.EntityMembers
 import io.renku.search.solr.documents.{
   PartialEntityDocument,
   Project as ProjectDocument,
@@ -44,22 +45,22 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
       withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
         for
           _ <- tc.dbState.create(solrClient)
-
-          collector <- BackgroundCollector[SolrDocument](
-            loadProjectPartialOrEntity(solrClient, tc.projectId)
-          )
-          _ <- collector.start
-
-          provisioningFiber <- handlers.projectUpdated.compile.drain.start
-
           _ <- queueClient.enqueue(
             queueConfig.projectUpdated,
             EventsGenerators.eventMessageGen(Gen.const(tc.projectUpdated)).generateOne
           )
 
-          _ <- collector.waitUntil(docs => docs.exists(tc.checkExpected))
+          _ <- handlers
+            .makeProjectUpsert[ProjectUpdated](queueConfig.projectUpdated)
+            .take(1)
+            .compile
+            .toList
 
-          _ <- provisioningFiber.cancel
+          docs <- loadProjectPartialOrEntity(solrClient, tc.projectId)
+          _ = docs.headOption match
+            case Some(doc) =>
+              assertEquals(doc.setVersion(DocVersion.Off), tc.expectedProject)
+            case None => fail("no project document found")
         yield ()
       }
   }
@@ -86,34 +87,29 @@ object ProjectUpdatedProvisioningSpec:
   case class TestCase(dbState: DbState, projectUpdated: ProjectUpdated):
     def projectId: Id = projectUpdated.id
 
-    def checkExpected(d: SolrDocument): Boolean =
-      dbState match
-        case DbState.Empty =>
-          d match
-            case n: ProjectDocument => false
-            case n: PartialEntityDocument.Project =>
-              n.setVersion(DocVersion.Off) == projectUpdated.toModel(DocVersion.Off)
-
+    def expectedProject: SolrDocument =
+      dbState match {
+        case DbState.Empty => projectUpdated.toModel(DocVersion.Off)
         case DbState.Project(p) =>
-          d match
-            case n: ProjectDocument =>
-              projectUpdated.toModel(p).setVersion(DocVersion.Off) == n.setVersion(
-                DocVersion.Off
-              )
-            case _ => false
-
+          projectUpdated
+            .toModel(p)
+            .setVersion(DocVersion.Off)
+            .setGroupMembers(EntityMembers.empty)
         case DbState.PartialProject(p) =>
-          d match
-            case n: PartialEntityDocument.Project =>
-              projectUpdated.toModel(p).setVersion(DocVersion.Off) == n.setVersion(
-                DocVersion.Off
-              )
-
-            case _ => false
+          projectUpdated
+            .toModel(p)
+            .setVersion(DocVersion.Off)
+            .setGroupMembers(EntityMembers.empty)
+      }
 
   val testCases =
-    val proj = SolrDocumentGenerators.projectDocumentGen.generateOne
-    val pproj = SolrDocumentGenerators.partialProjectGen.generateOne
+    val em = SolrDocumentGenerators.entityMembersGen
+    val proj = em
+      .flatMap(gm => SolrDocumentGenerators.projectDocumentGen.map(_.setGroupMembers(gm)))
+      .generateOne
+    val pproj = em
+      .flatMap(gm => SolrDocumentGenerators.partialProjectGen.map(_.setGroupMembers(gm)))
+      .generateOne
     val upd = EventsGenerators.projectUpdatedGen("proj-update").generateOne
     for
       dbState <- List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))

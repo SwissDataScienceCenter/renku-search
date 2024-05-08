@@ -29,7 +29,11 @@ import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.FetchFromSolr.*
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.DocumentKind
-import io.renku.search.solr.documents.{Group as GroupDocument, *}
+import io.renku.search.solr.documents.{
+  Group as GroupDocument,
+  Project as ProjectDocument,
+  *
+}
 import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.{QueryData, QueryString}
 
@@ -42,6 +46,8 @@ trait FetchFromSolr[F[_]]:
   def fetchEntityOrPartial[A](using
       IdExtractor[A]
   ): Pipe[F, EventMessage[A], EntityOrPartialMessage[A]]
+  def fetchProjectGroups
+      : Pipe[F, EventMessage[EntityOrPartial], EntityOrPartialMessage[EntityOrPartial]]
 
   def fetchEntityOrPartialById[A](v: A)(using IdExtractor[A]): F[Option[EntityOrPartial]]
 
@@ -56,6 +62,30 @@ object FetchFromSolr:
   ): FetchFromSolr[F] =
     new FetchFromSolr[F] {
       val logger = scribe.cats.effect[F]
+
+      def fetchProjectGroups: Pipe[F, EventMessage[
+        EntityOrPartial
+      ], EntityOrPartialMessage[EntityOrPartial]] =
+        _.evalMap { m =>
+          val namespaces =
+            m.payload.flatMap {
+              case p: ProjectDocument => p.namespace
+              case _                  => None
+            }
+          val query = List(
+            SolrToken.entityTypeIs(EntityType.Group),
+            SolrToken.kindIs(DocumentKind.FullEntity),
+            namespaces.map(SolrToken.namespaceIs).foldOr
+          ).foldAnd
+
+          solrClient
+            .queryAll[EntityDocument](QueryData(QueryString(query.value)))
+            .compile
+            .toList
+            .map(groups =>
+              EntityOrPartialMessage(m, (m.payload ++ groups).map(e => e.id -> e).toMap)
+            )
+        }
 
       def fetchProjectsByGroup[A]
           : Pipe[F, EntityOrPartialMessage[A], EntityOrPartialMessage[A]] =

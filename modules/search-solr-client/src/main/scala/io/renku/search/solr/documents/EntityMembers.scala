@@ -75,12 +75,19 @@ final case class EntityMembers(
         )
 
   def removeMember(userId: Id): EntityMembers =
+    removeMembers(Seq(userId))
+
+  def removeMembers(userIds: Seq[Id]): EntityMembers =
     copy(
-      owners = owners - userId,
-      editors = editors - userId,
-      viewers = viewers - userId,
-      members = members - userId
+      owners = owners -- userIds,
+      editors = editors -- userIds,
+      viewers = viewers -- userIds,
+      members = members -- userIds
     )
+
+  def contains(id: Id): Boolean =
+    owners.contains(id) || editors.contains(id) ||
+      viewers.contains(id) || members.contains(id)
 
   def ++(other: EntityMembers): EntityMembers =
     MemberRole.valuesLowerFirst.foldLeft(this) { (acc, role) =>

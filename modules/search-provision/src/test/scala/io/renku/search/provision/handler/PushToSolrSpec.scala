@@ -21,8 +21,7 @@ package io.renku.search.provision.handler
 import scala.concurrent.duration.*
 
 import cats.data.OptionT
-import cats.effect.IO
-import cats.effect.Ref
+import cats.effect.{IO, Ref}
 import fs2.Stream
 
 import io.renku.events.EventsGenerators

@@ -137,23 +137,22 @@ final class MessageHandlers[F[_]: Async](
   val userUpdated: Stream[F, Unit] =
     add(cfg.userUpdated, makeUpsert[UserUpdated](cfg.userUpdated).drain)
 
-  val userRemoved: Stream[F, Unit] =
+  private[provision] def makeUserRemoved =
     val ps = steps(cfg.userRemoved)
-    add(
-      cfg.userRemoved,
-      ps.reader
-        .readEvents[UserRemoved]
-        .map(EntityOrPartialMessage.noDocuments)
-        .through(ps.deleteFromSolr.tryDeleteAll)
-        .through(ps.deleteFromSolr.whenSuccess { msg =>
-          Stream
-            .emit(msg.message.map(_.id))
-            .through(ps.userUtils.removeFromProjects)
-            .compile
-            .drain
-        })
-        .drain
-    )
+    ps.reader
+      .readEvents[UserRemoved]
+      .map(EntityOrPartialMessage.noDocuments)
+      .through(ps.deleteFromSolr.tryDeleteAll)
+      .through(ps.deleteFromSolr.whenSuccess { msg =>
+        Stream
+          .emit(msg.message.map(_.id))
+          .through(ps.userUtils.removeFromMembers)
+          .compile
+          .drain
+      })
+
+  val userRemoved: Stream[F, Unit] =
+    add(cfg.userRemoved, makeUserRemoved.drain)
 
   val groupAdded: Stream[F, Unit] =
     add(cfg.groupAdded, makeUpsert[GroupAdded](cfg.groupAdded).drain)

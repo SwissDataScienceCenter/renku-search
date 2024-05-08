@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import fs2.Stream
 
 import io.renku.queue.client.{QueueClient, QueueSpec}
-import io.renku.redis.client.{ClientId, QueueName}
+import io.renku.redis.client.QueueName
 import io.renku.search.config.QueuesConfig
 import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.PipelineSteps
@@ -55,15 +55,12 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
   def withMessageHandlers(
       cfg: QueuesConfig = queueConfig
   ): Resource[IO, (MessageHandlers[IO], QueueClient[IO], SearchSolrClient[IO])] =
-    val clientId = ClientId("provision-test-client")
     (withSearchSolrClient(), withQueueClient()).mapN { (solrClient, queueClient) =>
       val steps =
         PipelineSteps[IO](
           solrClient,
           Stream[IO, QueueClient[IO]](queueClient),
-          queueConfig,
-          inChunkSize = 1,
-          clientId
+          inChunkSize = 1
         )
       val handlers = MessageHandlers[IO](steps, queueConfig)
       (handlers, queueClient, solrClient)
@@ -81,13 +78,6 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
       )
     )
     solrClient.queryAll[EntityDocument](qd).compile.toList
-
-  def loadProjectsFor(solrClient: SearchSolrClient[IO])(
-      doc: SolrDocument
-  ): IO[List[EntityDocument]] =
-    getNamespace(doc) match
-      case Some(ns) => loadProjectsByNs(solrClient)(ns)
-      case None     => IO(Nil)
 
   private def getNamespace(doc: SolrDocument): Option[Namespace] = doc match
     case u: UserDocument                => u.namespace

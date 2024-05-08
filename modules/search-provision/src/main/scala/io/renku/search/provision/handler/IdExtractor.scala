@@ -38,3 +38,6 @@ object IdExtractor:
 
   given IdExtractor[EntityOrPartial] =
     create(_.id)
+
+  given IdExtractor[Id] =
+    create(identity)

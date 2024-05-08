@@ -29,8 +29,18 @@ import io.renku.search.events.EventMessage
 import munit.CatsEffectSuite
 
 class QueueClientSpec extends CatsEffectSuite with QueueSpec:
+  test("can enqueue and dequeue project-member-add events"):
+    withQueueClient().use { queue =>
+      val qname = RedisClientGenerators.queueNameGen.generateOne
+      val msg = EventsGenerators.eventMessageGen(EventsGenerators.projectMemberAddedGen).generateOne
+      for
+        msgId <- queue.enqueue(qname, msg)
+        res <- queue.acquireMessageStream[ProjectMemberAdded](qname, 1, None).take(1).compile.toList
+        _ = assertEquals(res.head, msg.copy(id = msgId))
+      yield ()
+    }
 
-  test("can enqueue and dequeue events"):
+  test("can enqueue and dequeue project-created events"):
     withQueueClient().use { queueClient =>
       val queue = RedisClientGenerators.queueNameGen.generateOne
       for

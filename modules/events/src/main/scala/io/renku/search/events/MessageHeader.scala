@@ -48,7 +48,9 @@ final case class MessageHeader(
         time.toInstant,
         requestId.value
       )
-    AvroWriter(Header.SCHEMA$).write(Seq(h))
+    dataContentType match
+      case DataContentType.Binary => AvroWriter(Header.SCHEMA$).write(Seq(h))
+      case DataContentType.Json   => AvroWriter(Header.SCHEMA$).writeJson(Seq(h))
 
 object MessageHeader:
   def create[F[_]: Sync](
@@ -59,31 +61,47 @@ object MessageHeader:
   ): F[MessageHeader] =
     Timestamp.now[F].map(ts => MessageHeader(src, ct, sv, ts, reqId))
 
-  private def readBinaryOrJson(bv: ByteVector): Either[DecodeFailure, Seq[Header]] =
+  private def readBinaryOrJson(
+      bv: ByteVector
+  ): Either[DecodeFailure, (DataContentType, List[Header])] =
     val reader = AvroReader(Header.SCHEMA$)
     Either.catchNonFatal(reader.read[Header](bv)) match
-      case Right(r) => Right(r)
+      case Right(r) => Right(DataContentType.Binary -> r.distinct.toList)
       case Left(exb) =>
-        Either.catchNonFatal(reader.readJson[Header](bv)).leftMap { exj =>
-          DecodeFailure.HeaderReadError(bv, exb, exj)
-        }
+        Either
+          .catchNonFatal(reader.readJson[Header](bv))
+          .map(r => DataContentType.Json -> r.distinct.toList)
+          .leftMap { exj =>
+            DecodeFailure.HeaderReadError(bv, exb, exj)
+          }
+
+  private def logWrongDataContentType(
+      headerCt: DataContentType,
+      decoded: DataContentType
+  ): DataContentType =
+    if (headerCt != decoded) {
+      scribe.warn(
+        s"ContentType ($headerCt) used for decoding the header is not same as advertised in the header ($decoded)! Choose the one used for decoding the header to continue ($headerCt)."
+      )
+    }
+    headerCt
 
   def fromByteVector(bv: ByteVector): Either[DecodeFailure, MessageHeader] =
     readBinaryOrJson(bv)
-      .map(_.distinct.toList)
       .flatMap {
-        case h :: Nil => Right(h)
-        case Nil      => Left(DecodeFailure.NoHeaderRecord(bv))
-        case hs =>
+        case (ct, h :: Nil) => Right(ct -> h)
+        case (_, Nil)       => Left(DecodeFailure.NoHeaderRecord(bv))
+        case (ct, hs) =>
           Left(DecodeFailure.MultipleHeaderRecords(bv, NonEmptyList.fromListUnsafe(hs)))
       }
-      .flatMap { h =>
+      .flatMap { case (headerCt, h) =>
         for
           ct <- DataContentType
             .fromMimeType(h.dataContentType)
             .leftMap(err =>
               DecodeFailure.FieldReadError("dataContentType", h.dataContentType, err)
             )
+          ctReal = logWrongDataContentType(headerCt, ct)
           v <- SchemaVersion
             .fromString(h.schemaVersion)
             .leftMap(err =>
@@ -92,5 +110,5 @@ object MessageHeader:
           src = MessageSource(h.source)
           ts = Timestamp(h.time)
           rid = RequestId(h.requestId)
-        yield MessageHeader(src, ct, v, ts, rid)
+        yield MessageHeader(src, ctReal, v, ts, rid)
       }

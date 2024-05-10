@@ -69,11 +69,11 @@ private class QueueClientImpl[F[_]: Async](
   )(using d: EventMessageDecoder[T]): Stream[F, EventMessage[T]] =
     acquireHeaderEventsStream(queueName, chunkSize, maybeOffset).evalMap { m =>
       d.decode(m) match
-        case Right(m) =>
-          Scribe[F].trace(s"Got message: $m").as(Some(m))
+        case Right(em) =>
+          Scribe[F].trace(s"Got message: $em").as(Some(em))
         case Left(err) =>
           Scribe[F]
-            .warn(s"Error decoding redis message: $err")
+            .warn(s"Error decoding redis payload in $m: $err")
             .as(None)
             .flatTap(_ => markProcessed(queueName, MessageId(m.id.value)))
 

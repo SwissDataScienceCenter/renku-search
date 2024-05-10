@@ -16,28 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.search.events
+package io.renku.events
 
-import cats.data.NonEmptyList
+import io.renku.search.events.SchemaVersion
+import munit.FunSuite
 
-enum SchemaVersion:
-  case V1
-  case V2
+class SchemaVersionSpec extends FunSuite:
 
-  lazy val name: String = productPrefix
+  test("parse values successfully"):
+    val v1Values = List("v1", "V1", "1")
+    v1Values.foreach { str =>
+      assertEquals(SchemaVersion.fromString(str), Right(SchemaVersion.V1))
+    }
 
-object SchemaVersion:
-  val all: NonEmptyList[SchemaVersion] =
-    NonEmptyList.fromListUnsafe(SchemaVersion.values.toList)
-
-  // the avro schema defines the version to be a string, not an enum
-  // we try a few values that would make sense here
-  private val candidateValues = all.toList.map { v =>
-    v -> Set(v.name, v.name.toLowerCase(), v.name.drop(1))
-  }.toMap
-
-  def fromString(s: String): Either[String, SchemaVersion] =
-    candidateValues
-      .find(_._2.contains(s))
-      .map(_._1)
-      .toRight(s"Invalid schema version: $s")
+    val v2Values = List("v2", "V2", "2")
+    v2Values.foreach { str =>
+      assertEquals(SchemaVersion.fromString(str), Right(SchemaVersion.V2))
+    }

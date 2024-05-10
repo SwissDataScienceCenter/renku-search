@@ -32,10 +32,16 @@ class QueueClientSpec extends CatsEffectSuite with QueueSpec:
   test("can enqueue and dequeue project-member-add events"):
     withQueueClient().use { queue =>
       val qname = RedisClientGenerators.queueNameGen.generateOne
-      val msg = EventsGenerators.eventMessageGen(EventsGenerators.projectMemberAddedGen).generateOne
+      val msg = EventsGenerators
+        .eventMessageGen(EventsGenerators.projectMemberAddedGen)
+        .generateOne
       for
         msgId <- queue.enqueue(qname, msg)
-        res <- queue.acquireMessageStream[ProjectMemberAdded](qname, 1, None).take(1).compile.toList
+        res <- queue
+          .acquireMessageStream[ProjectMemberAdded](qname, 1, None)
+          .take(1)
+          .compile
+          .toList
         _ = assertEquals(res.head, msg.copy(id = msgId))
       yield ()
     }

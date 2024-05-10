@@ -18,6 +18,7 @@
 
 package io.renku.search.events
 
+import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.syntax.all.*
 
@@ -58,20 +59,36 @@ object MessageHeader:
   ): F[MessageHeader] =
     Timestamp.now[F].map(ts => MessageHeader(src, ct, sv, ts, reqId))
 
-  def fromByteVector(bv: ByteVector): Either[String, MessageHeader] =
-    Either
-      .catchNonFatal(AvroReader(Header.SCHEMA$).read[Header](bv))
-      .leftMap(_.getMessage)
+  private def readBinaryOrJson(bv: ByteVector): Either[DecodeFailure, Seq[Header]] =
+    val reader = AvroReader(Header.SCHEMA$)
+    Either.catchNonFatal(reader.read[Header](bv)) match
+      case Right(r) => Right(r)
+      case Left(exb) =>
+        Either.catchNonFatal(reader.readJson[Header](bv)).leftMap { exj =>
+          DecodeFailure.HeaderReadError(bv, exb, exj)
+        }
+
+  def fromByteVector(bv: ByteVector): Either[DecodeFailure, MessageHeader] =
+    readBinaryOrJson(bv)
       .map(_.distinct.toList)
       .flatMap {
         case h :: Nil => Right(h)
-        case Nil      => Left(s"No header record found in byte vector: $bv")
-        case hs       => Left(s"More than one (${hs.size}) headers in: $bv")
+        case Nil      => Left(DecodeFailure.NoHeaderRecord(bv))
+        case hs =>
+          Left(DecodeFailure.MultipleHeaderRecords(bv, NonEmptyList.fromListUnsafe(hs)))
       }
       .flatMap { h =>
         for
-          ct <- DataContentType.fromMimeType(h.dataContentType)
-          v <- SchemaVersion.fromString(h.schemaVersion)
+          ct <- DataContentType
+            .fromMimeType(h.dataContentType)
+            .leftMap(err =>
+              DecodeFailure.FieldReadError("dataContentType", h.dataContentType, err)
+            )
+          v <- SchemaVersion
+            .fromString(h.schemaVersion)
+            .leftMap(err =>
+              DecodeFailure.FieldReadError("schemaVersion", h.schemaVersion, err)
+            )
           src = MessageSource(h.source)
           ts = Timestamp(h.time)
           rid = RequestId(h.requestId)

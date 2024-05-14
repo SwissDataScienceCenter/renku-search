@@ -23,7 +23,7 @@ object Dependencies {
     val scala = "3.4.1"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"
-    val scodecBits = "1.1.38"
+    val scodecBits = "1.2.0"
     val scribe = "3.13.5"
     val sttpApiSpec = "0.9.0"
     val tapir = "1.10.5"

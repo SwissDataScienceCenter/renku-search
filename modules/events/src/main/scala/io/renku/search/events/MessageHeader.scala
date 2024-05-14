@@ -61,33 +61,33 @@ object MessageHeader:
   ): F[MessageHeader] =
     Timestamp.now[F].map(ts => MessageHeader(src, ct, sv, ts, reqId))
 
-  private def readBinaryOrJson(
+  private def readJsonOrBinary(
       bv: ByteVector
   ): Either[DecodeFailure, (DataContentType, List[Header])] =
     val reader = AvroReader(Header.SCHEMA$)
-    Either.catchNonFatal(reader.read[Header](bv)) match
-      case Right(r) => Right(DataContentType.Binary -> r.distinct.toList)
+    Either.catchNonFatal(reader.readJson[Header](bv)) match
+      case Right(r) => Right(DataContentType.Json -> r.distinct.toList)
       case Left(exb) =>
         Either
-          .catchNonFatal(reader.readJson[Header](bv))
-          .map(r => DataContentType.Json -> r.distinct.toList)
+          .catchNonFatal(reader.read[Header](bv))
+          .map(r => DataContentType.Binary -> r.distinct.toList)
           .leftMap { exj =>
             DecodeFailure.HeaderReadError(bv, exb, exj)
           }
 
-  private def logWrongDataContentType(
+  private def logDataContentType(
       headerCt: DataContentType,
       decoded: DataContentType
   ): DataContentType =
     if (headerCt != decoded) {
-      scribe.warn(
+      scribe.debug(
         s"ContentType ($headerCt) used for decoding the header is not same as advertised in the header ($decoded)! Choose the advertised format in the header to continue ($decoded)."
       )
     }
     decoded
 
   def fromByteVector(bv: ByteVector): Either[DecodeFailure, MessageHeader] =
-    readBinaryOrJson(bv)
+    readJsonOrBinary(bv)
       .flatMap {
         case (ct, h :: Nil) => Right(ct -> h)
         case (_, Nil)       => Left(DecodeFailure.NoHeaderRecord(bv))
@@ -101,7 +101,7 @@ object MessageHeader:
             .leftMap(err =>
               DecodeFailure.FieldReadError("dataContentType", h.dataContentType, err)
             )
-          ctReal = logWrongDataContentType(headerCt, ct)
+          ctReal = logDataContentType(headerCt, ct)
           v <- SchemaVersion
             .fromString(h.schemaVersion)
             .leftMap(err =>

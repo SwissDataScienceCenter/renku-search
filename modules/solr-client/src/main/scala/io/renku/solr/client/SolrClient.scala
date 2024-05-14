@@ -29,6 +29,7 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.client.EmberClientBuilder.default
 
 trait SolrClient[F[_]]:
+  def config: SolrConfig
   def modifySchema(
       cmds: Seq[SchemaCommand],
       onErrorLog: ResponseLogging = ResponseLogging.Error

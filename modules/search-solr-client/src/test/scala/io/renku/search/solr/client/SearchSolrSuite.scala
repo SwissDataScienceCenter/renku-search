@@ -18,7 +18,8 @@
 
 package io.renku.search.solr.client
 
-import cats.effect.{IO, Resource}
+import cats.effect.*
+import cats.effect.std.CountDownLatch
 
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.SolrClient
@@ -34,7 +35,7 @@ abstract class SearchSolrSuite extends SolrClientBaseSuite:
 
     def apply(): Resource[IO, SearchSolrClient[IO]] =
       SolrClient[IO](solrConfig.copy(core = server.searchCoreName))
-        .evalTap(SchemaMigrator[IO](_).migrate(Migrations.all).attempt.void)
+        .evalTap(SearchSolrSuite.setupSchema(server.searchCoreName, _))
         .map(new SearchSolrClientImpl[IO](_))
 
     override def beforeAll(): Unit =
@@ -45,3 +46,30 @@ abstract class SearchSolrSuite extends SolrClientBaseSuite:
 
   override def munitFixtures: Seq[Fixture[?]] =
     List(withSearchSolrClient)
+
+object SearchSolrSuite:
+  private val logger = scribe.cats.io
+  private case class MigrateState(tasks: Map[String, IO[Unit]] = Map.empty):
+    def add(name: String, task: IO[Unit]): MigrateState = copy(tasks.updated(name, task))
+  private val currentState: Ref[IO, MigrateState] =
+    Ref.unsafe(MigrateState())
+
+  private def setupSchema(coreName: String, client: SolrClient[IO]): IO[Unit] =
+    CountDownLatch[IO](1).flatMap { latch =>
+      currentState.flatModify { state =>
+        state.tasks.get(coreName) match
+          case Some(t) =>
+            (
+              state,
+              logger
+                .info(s"Waiting for migrations to finish for core $coreName")
+                .flatMap(_ => t)
+            )
+          case None =>
+            val task = SchemaMigrator[IO](client)
+              .migrate(Migrations.all)
+              .flatTap(_ => latch.release)
+            val wait = latch.await
+            (state.add(coreName, wait), task)
+      }
+    }

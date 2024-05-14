@@ -18,6 +18,8 @@
 
 package io.renku.search.provision
 
+import scala.concurrent.duration.Duration
+
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -33,6 +35,7 @@ import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.{QueryData, QueryString}
 
 trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
+  override val munitTimeout = Duration(1, "min")
 
   val queueConfig: QueuesConfig = QueuesConfig(
     projectCreated = QueueName("projectCreated"),

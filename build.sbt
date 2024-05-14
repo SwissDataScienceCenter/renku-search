@@ -342,7 +342,8 @@ lazy val searchProvision = project
   .settings(commonSettings)
   .settings(
     name := "search-provision",
-    libraryDependencies ++= Dependencies.ciris
+    libraryDependencies ++= Dependencies.ciris,
+    Test / parallelExecution := false
   )
   .dependsOn(
     commons % "compile->compile;test->test",
@@ -425,6 +426,7 @@ lazy val commonSettings = Seq(
   ),
   Compile / console / scalacOptions := (Compile / scalacOptions).value.filterNot(_ == "-Xfatal-warnings"),
   Test / console / scalacOptions := (Compile / console / scalacOptions).value,
+  Test / parallelExecution := false,
   semanticdbEnabled := true, // enable SemanticDB
   semanticdbVersion := scalafixSemanticdb.revision,
   libraryDependencies ++=

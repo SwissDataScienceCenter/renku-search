@@ -40,6 +40,8 @@ class GroupMemberUpdatedSpec extends ProvisioningSuite:
   override def munitFixtures: Seq[Fixture[?]] =
     List(withRedisClient, withQueueClient, withSearchSolrClient)
 
+  override def defaultVerbosity: Int = 2
+
   test("updating member to group and related projects"):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       val initialState = DbState.groupWithProjectsGen.generateOne

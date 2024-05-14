@@ -54,18 +54,24 @@ object SchemaMigrator:
 
     override def migrate(migrations: Seq[SchemaMigration]): F[Unit] = for {
       current <- currentVersion
-      _ <- logger.info(s"Found current schema version '$current' using id $versionDocId")
+      _ <- logger.info(
+        s"core ${client.config.core}: Found current schema version '$current' using id $versionDocId"
+      )
       _ <- current.fold(initVersionDocument)(_ => ().pure[F])
       remain = migrations.sortBy(_.version).dropWhile(m => current.exists(_ >= m.version))
-      _ <- logger.info(s"There are ${remain.size} migrations to run")
+      _ <- logger.info(
+        s"core ${client.config.core}: There are ${remain.size} migrations to run"
+      )
       _ <- remain.traverse_(m =>
-        logger.info(s"Run migration ${m.version}") >>
+        logger.info(s"core ${client.config.core}: Run migration ${m.version}") >>
           client.modifySchema(m.commands) >> upsertVersion(m.version)
       )
     } yield ()
 
     private def initVersionDocument: F[Unit] =
-      logger.info("Initialize schema migration version document") >>
+      logger.info(
+        s"core ${client.config.core}: Initialize schema migration version document"
+      ) >>
         client.modifySchema(
           Seq(
             SchemaCommand.Add(
@@ -80,6 +86,6 @@ object SchemaMigrator:
     private def version(n: Long): VersionDocument = VersionDocument(versionDocId, n)
 
     private def upsertVersion(n: Long) =
-      logger.info(s"Set schema migration version to $n") >>
+      logger.info(s"core ${client.config.core}: Set schema migration version to $n") >>
         client.upsert(Seq(version(n)))
   }

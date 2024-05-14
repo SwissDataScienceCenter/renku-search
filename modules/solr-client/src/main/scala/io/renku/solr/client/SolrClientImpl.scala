@@ -30,7 +30,7 @@ import org.http4s.Status
 import org.http4s.client.Client
 import org.http4s.{BasicCredentials, Method, Uri}
 
-private class SolrClientImpl[F[_]: Async](config: SolrConfig, underlying: Client[F])
+private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]
     with HttpClientDsl[F]
     with SchemaJsonCodec

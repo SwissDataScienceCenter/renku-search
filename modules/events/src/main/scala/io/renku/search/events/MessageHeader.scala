@@ -81,10 +81,10 @@ object MessageHeader:
   ): DataContentType =
     if (headerCt != decoded) {
       scribe.warn(
-        s"ContentType ($headerCt) used for decoding the header is not same as advertised in the header ($decoded)! Choose the one used for decoding the header to continue ($headerCt)."
+        s"ContentType ($headerCt) used for decoding the header is not same as advertised in the header ($decoded)! Choose the advertised format in the header to continue ($decoded)."
       )
     }
-    headerCt
+    decoded
 
   def fromByteVector(bv: ByteVector): Either[DecodeFailure, MessageHeader] =
     readBinaryOrJson(bv)

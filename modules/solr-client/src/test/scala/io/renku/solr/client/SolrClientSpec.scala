@@ -37,8 +37,6 @@ import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
-  override def defaultVerbosity: Int = 2
-
   test("optimistic locking: fail if exists"):
     withSolrClient().use { client =>
       val c0 = Course("c1", "fp in scala", DocVersion.NotExists)

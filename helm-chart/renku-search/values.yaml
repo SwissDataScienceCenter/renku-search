@@ -1,0 +1,9 @@
+search:
+  searchApi:
+    image:
+      repository: renku/search-api
+      tag: 'latest'
+  searchProvision:
+    image:
+      repository: renku/search-provision
+      tag: 'latest'

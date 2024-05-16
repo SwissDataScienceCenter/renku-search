@@ -35,6 +35,7 @@ import io.renku.solr.client.util.SolrClientBaseSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
+import io.bullet.borer.derivation.key
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
   test("optimistic locking: fail if exists"):
@@ -48,11 +49,11 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
         rs <- client.findById[Course](c0.id)
         fetched = rs.responseBody.docs.head
         _ = assert(
-          fetched.`_version_`.asLong > 0,
+          fetched.version.asLong > 0,
           clue = "stored entity version must be > 0"
         )
         _ = assert(
-          fetched.copy(`_version_` = c0.`_version_`) == c0,
+          fetched.copy(version = c0.version) == c0,
           clue = "stored entity not as expected"
         )
 
@@ -161,7 +162,7 @@ object SolrClientSpec:
   case class Course(
       id: String,
       name_s: String,
-      `_version_`: DocVersion = DocVersion.NotExists
+      @key("_version_") version: DocVersion = DocVersion.NotExists
   )
   object Course:
     given Decoder[Course] = MapBasedCodecs.deriveDecoder

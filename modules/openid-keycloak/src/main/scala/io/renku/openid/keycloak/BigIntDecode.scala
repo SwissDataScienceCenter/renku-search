@@ -16,13 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search.http.borer
+package io.renku.openid.keycloak
 
-import io.bullet.borer.*
-import org.http4s.*
+import scodec.bits.ByteVector
+import scodec.bits.Bases.Alphabets
 
-trait Http4sJsonCodec:
-  given Encoder[Uri] = Encoder.forString.contramap(_.renderString)
-  given Decoder[Uri] = Decoder.forString.mapEither(s => Uri.fromString(s).left.map(_.getMessage))
+private object BigIntDecode:
 
-object Http4sJsonCodec extends Http4sJsonCodec
+  def apply(num: String): Either[String, BigInt] =
+    ByteVector
+      .fromBase64Descriptive(num, Alphabets.Base64UrlNoPad)
+      .map(bv => BigInt(1, bv.toArray))
+
+  def decode(num: String): Either[JwtError, BigInt] =
+    apply(num).left.map(msg => JwtError.BigIntDecodeError(num, msg))

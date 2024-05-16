@@ -16,13 +16,9 @@
  * limitations under the License.
  */
 
-package io.renku.search.http.borer
+package io.renku.openid.keycloak
 
-import io.bullet.borer.*
-import org.http4s.*
+import pdi.jwt.JwtClaim
 
-trait Http4sJsonCodec:
-  given Encoder[Uri] = Encoder.forString.contramap(_.renderString)
-  given Decoder[Uri] = Decoder.forString.mapEither(s => Uri.fromString(s).left.map(_.getMessage))
-
-object Http4sJsonCodec extends Http4sJsonCodec
+trait JwtVerify[F[_]]:
+  def verify(token: String): F[Either[JwtError, JwtClaim]]

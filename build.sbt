@@ -149,6 +149,21 @@ lazy val httpClient = project
     http4sBorer % "compile->compile;test->test"
   )
 
+lazy val openidKeycloak = project
+  .in(file("modules/openid-keycloak"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "openid-keycloak",
+    description := "OpenID configuration with keycloak",
+  )
+  .dependsOn(
+    http4sBorer % "compile->compile;test->test",
+    httpClient % "compile->compile;test->test",
+    jwt % "compile->compile;test->test"
+  )
+
 lazy val http4sMetrics = project
   .in(file("modules/http4s-metrics"))
   .enablePlugins(AutomateHeaderPlugin)

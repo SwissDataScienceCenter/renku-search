@@ -16,13 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search.http.borer
+package io.renku.openid.keycloak
 
-import io.bullet.borer.*
-import org.http4s.*
+import io.bullet.borer.{Encoder, Decoder}
 
-trait Http4sJsonCodec:
-  given Encoder[Uri] = Encoder.forString.contramap(_.renderString)
-  given Decoder[Uri] = Decoder.forString.mapEither(s => Uri.fromString(s).left.map(_.getMessage))
+opaque type KeyId = String
 
-object Http4sJsonCodec extends Http4sJsonCodec
+object KeyId:
+  def apply(id: String): KeyId = id
+
+  given Decoder[KeyId] = Decoder.forString
+  given Encoder[KeyId] = Encoder.forString
+
+  extension (self: KeyId)
+    def value: String = self

@@ -16,13 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.http.borer
+package io.renku.openid.keycloak
 
-import io.bullet.borer.*
-import org.http4s.*
+import io.bullet.borer.Decoder
+import io.bullet.borer.Encoder
 
-trait Http4sJsonCodec:
-  given Encoder[Uri] = Encoder.forString.contramap(_.renderString)
-  given Decoder[Uri] = Decoder.forString.mapEither(s => Uri.fromString(s).left.map(_.getMessage))
+enum KeyUse(val name: String):
+  case Sign extends KeyUse("sig")
+  case Encrypt extends KeyUse("enc")
 
-object Http4sJsonCodec extends Http4sJsonCodec
+object KeyUse:
+  def fromString(s: String): Either[String, KeyUse] =
+    KeyUse.values.find(_.name.equalsIgnoreCase(s)).toRight(s"Invalid key use: $s")
+
+  given Decoder[KeyUse] = Decoder.forString.mapEither(fromString)
+  given Encoder[KeyUse] = Encoder.forString.contramap(_.name)

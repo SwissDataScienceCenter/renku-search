@@ -49,3 +49,10 @@ class JwtBorer(override val clock: Clock)
 
 object JwtBorer extends JwtBorer(Clock.systemUTC()):
   def apply(clock: Clock): JwtBorer = new JwtBorer(clock)
+
+  def readHeader(token: String): Either[Throwable, JwtHeader] =
+    val h64 = token.takeWhile(_ != '.')
+    Json
+      .decode(JwtBase64.decode(h64))
+      .to[JwtHeader]
+      .valueEither

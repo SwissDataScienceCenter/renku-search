@@ -16,22 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.openid.keycloak
 
-import cats.effect.{ExitCode, IO, IOApp}
+import io.bullet.borer.Decoder
+import io.bullet.borer.Encoder
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+enum KeyUse(val name: String):
+  case Sign extends KeyUse("sig")
+  case Encrypt extends KeyUse("enc")
 
-object Microservice extends IOApp:
+object KeyUse:
+  def fromString(s: String): Either[String, KeyUse] =
+    KeyUse.values.find(_.name.equalsIgnoreCase(s)).toRight(s"Invalid key use: $s")
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  given Decoder[KeyUse] = Decoder.forString.mapEither(fromString)
+  given Encoder[KeyUse] = Encoder.forString.contramap(_.name)

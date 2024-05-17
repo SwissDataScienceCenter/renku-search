@@ -16,22 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.openid.keycloak
 
-import cats.effect.{ExitCode, IO, IOApp}
+import scodec.bits.Bases.Alphabets
+import scodec.bits.ByteVector
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+private object BigIntDecode:
 
-object Microservice extends IOApp:
+  def apply(num: String): Either[String, BigInt] =
+    ByteVector
+      .fromBase64Descriptive(num, Alphabets.Base64UrlNoPad)
+      .map(bv => BigInt(1, bv.toArray))
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  def decode(num: String): Either[JwtError, BigInt] =
+    apply(num).left.map(msg => JwtError.BigIntDecodeError(num, msg))

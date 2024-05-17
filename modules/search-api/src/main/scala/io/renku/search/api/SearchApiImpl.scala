@@ -42,7 +42,7 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
   override def query(
       auth: AuthContext
   )(query: QueryInput): F[Either[String, SearchResult]] =
-    logger.debug(show"Running query '$query' as '$auth'") >>
+    logger.info(show"Running query '$query' as '$auth'") >>
       solrClient
         .queryEntity(
           auth.searchRole,

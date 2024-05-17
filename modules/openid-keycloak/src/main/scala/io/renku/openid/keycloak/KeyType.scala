@@ -16,22 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.openid.keycloak
 
-import cats.effect.{ExitCode, IO, IOApp}
+import io.bullet.borer.{Decoder, Encoder}
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+enum KeyType:
+  case EC
+  case RSA
+  case OKP
 
-object Microservice extends IOApp:
+  def name: String = productPrefix.toUpperCase
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
+object KeyType:
+  def fromString(s: String): Either[String, KeyType] =
+    KeyType.values.find(_.name.equalsIgnoreCase(s)).toRight(s"Invalid key type: $s")
 
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  given Decoder[KeyType] = Decoder.forString.mapEither(fromString)
+  given Encoder[KeyType] = Encoder.forString.contramap(_.name)

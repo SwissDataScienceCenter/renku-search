@@ -16,22 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.openid.keycloak
 
-import cats.effect.{ExitCode, IO, IOApp}
+import io.bullet.borer.{Decoder, Encoder}
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+enum Curve(val nameShort: String, val name: String):
+  case P256 extends Curve("P-256", "secp256r1")
+  case P384 extends Curve("P-384", "secp384r1")
+  case P521 extends Curve("P-521", "secp521r1")
 
-object Microservice extends IOApp:
+object Curve:
+  def fromString(s: String): Either[String, Curve] =
+    Curve.values.find(_.name.equalsIgnoreCase(s)).toRight(s"Unsupported curve: $s")
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  given Decoder[Curve] = Decoder.forString.mapEither(fromString)
+  given Encoder[Curve] = Encoder.forString.contramap(_.name)

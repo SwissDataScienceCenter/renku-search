@@ -49,3 +49,20 @@ class JwtBorer(override val clock: Clock)
 
 object JwtBorer extends JwtBorer(Clock.systemUTC()):
   def apply(clock: Clock): JwtBorer = new JwtBorer(clock)
+
+  def create[F[_]: cats.effect.Clock]: F[JwtBorer] =
+    val c = cats.effect.Clock[F]
+    c.applicative.map(c.realTimeInstant) { rt =>
+      new JwtBorer(new Clock {
+        def instant(): java.time.Instant = rt
+        def getZone(): java.time.ZoneId = java.time.ZoneId.of("UTC")
+        override def withZone(zone: java.time.ZoneId): Clock = this
+      })
+    }
+
+  def readHeader(token: String): Either[Throwable, JwtHeader] =
+    val h64 = token.takeWhile(_ != '.')
+    Json
+      .decode(JwtBase64.decode(h64))
+      .to[JwtHeader]
+      .valueEither

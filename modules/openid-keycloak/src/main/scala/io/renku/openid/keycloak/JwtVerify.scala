@@ -16,22 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.openid.keycloak
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.*
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+import org.http4s.client.Client
+import pdi.jwt.JwtClaim
 
-object Microservice extends IOApp:
+trait JwtVerify[F[_]]:
+  def verify(token: String): F[Either[JwtError, JwtClaim]]
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+object JwtVerify:
+  def apply[F[_]: Async](client: Client[F], config: JwtVerifyConfig): F[JwtVerify[F]] =
+    val clock = Clock[F]
+    DefaultJwtVerify[F](client, clock, config)

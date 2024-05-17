@@ -16,13 +16,26 @@
  * limitations under the License.
  */
 
-package io.renku.search.http.borer
+package io.renku.openid.keycloak
 
-import io.bullet.borer.*
-import org.http4s.*
+import io.bullet.borer.Json
+import munit.FunSuite
+import org.http4s.implicits.*
 
-trait Http4sJsonCodec:
-  given Encoder[Uri] = Encoder.forString.contramap(_.renderString)
-  given Decoder[Uri] = Decoder.forString.mapEither(s => Uri.fromString(s).left.map(_.getMessage))
+class OpenIdConfigSpec extends FunSuite with JwtResources:
 
-object Http4sJsonCodec extends Http4sJsonCodec
+  test("parse json"):
+    val decoded = Json.decode(configEndpointData.getBytes()).to[OpenIdConfig].value
+    assertEquals(
+      decoded.authorizationEndpoint,
+      uri"https://ci-renku-3622.dev.renku.ch/auth/realms/Renku/protocol/openid-connect/auth"
+    )
+    assertEquals(
+      decoded.issuer,
+      uri"https://ci-renku-3622.dev.renku.ch/auth/realms/Renku"
+    )
+    assertEquals(
+      decoded.jwksUri,
+      uri"https://ci-renku-3622.dev.renku.ch/auth/realms/Renku/protocol/openid-connect/certs"
+    )
+    assert(decoded.authorizationSigningAlgSupported.contains("RS512"))

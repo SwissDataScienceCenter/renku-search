@@ -62,7 +62,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   ): F[QueryResponse[EntityDocument]] =
     for {
       solrQuery <- interpreter(role).run(query)
-      _ <- logger.debug(s"Query: ${query.render} ->Solr: $solrQuery")
+      _ <- logger.info(s"Query: '${query.render}' -> Solr: '$solrQuery'")
       res <- solrClient
         .query[EntityDocument](
           QueryData(QueryString(solrQuery.query.value, limit, offset))

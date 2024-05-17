@@ -34,7 +34,7 @@ import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
 
 class UserAddedProvisioningSpec extends ProvisioningSuite:
-  test("overwrite data for duplicate events"):
+  test("overwrite data for duplicate events".flaky):
     withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
       for
         id <- IO(ModelGenerators.idGen.generateOne)

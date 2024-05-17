@@ -22,31 +22,49 @@ import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.io.net.Network
 
+import io.renku.openid.keycloak.{JwtVerify, JwtVerifyConfig}
 import io.renku.search.api.routes.*
+import io.renku.search.http.ClientBuilder
+import io.renku.search.http.RetryConfig
 import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.solr.client.SolrConfig
 import org.http4s.HttpRoutes
+import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.server.Router
 
-private object Routes:
-
-  def apply[F[_]: Async: Network](solrConfig: SolrConfig): Routes[F] =
+object Routes:
+  def apply[F[_]: Async: Network](
+      solrConfig: SolrConfig,
+      jwtVerifyConfig: JwtVerifyConfig
+  ): Routes[F] =
     new Routes[F](
       MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics),
-      solrConfig
+      solrConfig,
+      jwtVerifyConfig
     )
 
-final private class Routes[F[_]: Async: Network](
+final class Routes[F[_]: Async: Network](
     metricsRoutes: MetricsRoutes[F],
-    solrConfig: SolrConfig
+    solrConfig: SolrConfig,
+    jwtVerifyConfig: JwtVerifyConfig
 ):
 
   private val prefix = "/search"
 
-  private lazy val makeSearchRoutes =
-    SearchApi[F](solrConfig).map(api => SearchRoutes[F](api))
+  private val makeJwtVerify =
+    ClientBuilder(EmberClientBuilder.default[F])
+      .withDefaultRetry(RetryConfig.default)
+      .withLogging(logBody = false, scribe.cats.effect[F])
+      .build
+      .evalMap(JwtVerify(_, jwtVerifyConfig))
+
+  private val makeSearchRoutes =
+    for
+      jwtVerify <- makeJwtVerify
+      api <- SearchApi[F](solrConfig)
+    yield SearchRoutes[F](api, jwtVerify)
 
   private def searchHttpRoutes(searchRoutes: SearchRoutes[F]) =
     Router[F](

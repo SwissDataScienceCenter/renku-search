@@ -16,22 +16,16 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.openid.keycloak
 
-import cats.effect.{ExitCode, IO, IOApp}
+import io.bullet.borer.{Decoder, Encoder}
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+opaque type KeyId = String
 
-object Microservice extends IOApp:
+object KeyId:
+  def apply(id: String): KeyId = id
 
-  private val loadConfig = SearchApiConfig.config.load[IO]
+  given Decoder[KeyId] = Decoder.forString
+  given Encoder[KeyId] = Encoder.forString
 
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
-    } yield ExitCode.Success
+  extension (self: KeyId) def value: String = self

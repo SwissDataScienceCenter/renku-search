@@ -64,6 +64,9 @@ object SolrToken:
       case Comparison.GreaterThan => ">"
       case Comparison.LowerThan   => "<"
 
+  def fromNamespace(ns: Namespace): SolrToken =
+    fromString(ns.value)
+
   def contentAll(text: String): SolrToken =
     val terms: Seq[SolrToken] = text.split("\\s+").map(_.trim).toSeq
     s"${SolrField.contentAll.name}:${terms.fuzzy}"
@@ -72,7 +75,7 @@ object SolrToken:
     values.map(fieldIs(field, _)).toList.foldOr
 
   def namespaceIs(ns: Namespace): SolrToken =
-    fieldIs(SolrField.namespace, fromString(ns.value))
+    fieldIs(SolrField.namespace, fromNamespace(ns))
 
   def createdDateIs(date: Instant): SolrToken =
     fieldIs(SolrField.creationDate, fromInstant(date))

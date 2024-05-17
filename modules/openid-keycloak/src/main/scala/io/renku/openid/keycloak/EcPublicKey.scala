@@ -18,15 +18,16 @@
 
 package io.renku.openid.keycloak
 
-import cats.syntax.all.*
-import java.security.PublicKey
-import java.security.spec.ECPoint
-import java.security.spec.ECParameterSpec
 import java.security.AlgorithmParameters
-import java.security.spec.ECGenParameterSpec
-import java.security.spec.ECPublicKeySpec
 import java.security.KeyFactory
+import java.security.PublicKey
+import java.security.spec.ECGenParameterSpec
+import java.security.spec.ECParameterSpec
+import java.security.spec.ECPoint
+import java.security.spec.ECPublicKeySpec
+
 import cats.MonadThrow
+import cats.syntax.all.*
 
 private object EcPublicKey:
 

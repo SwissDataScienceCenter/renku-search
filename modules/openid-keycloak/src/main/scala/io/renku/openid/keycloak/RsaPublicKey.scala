@@ -18,11 +18,12 @@
 
 package io.renku.openid.keycloak
 
-import cats.syntax.all.*
-import java.security.PublicKey
 import java.security.KeyFactory
+import java.security.PublicKey
 import java.security.spec.RSAPublicKeySpec
+
 import cats.MonadThrow
+import cats.syntax.all.*
 
 private object RsaPublicKey:
 

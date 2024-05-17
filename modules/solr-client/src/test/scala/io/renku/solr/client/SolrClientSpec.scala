@@ -26,6 +26,7 @@ import cats.data.NonEmptyList
 import cats.effect.IO
 
 import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.derivation.key
 import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.solr.client.SolrClientSpec.{Course, Room}
@@ -35,7 +36,6 @@ import io.renku.solr.client.util.SolrClientBaseSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
-import io.bullet.borer.derivation.key
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
   test("optimistic locking: fail if exists"):

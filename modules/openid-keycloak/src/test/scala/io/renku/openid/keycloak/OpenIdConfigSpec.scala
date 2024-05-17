@@ -18,14 +18,11 @@
 
 package io.renku.openid.keycloak
 
-import munit.FunSuite
-import scala.io.Source
 import io.bullet.borer.Json
+import munit.FunSuite
 import org.http4s.implicits.*
 
-class OpenIdConfigSpec extends FunSuite:
-
-  val configEndpointData = Source.fromResource("openid-configuration.json").mkString
+class OpenIdConfigSpec extends FunSuite with JwtResources:
 
   test("parse json"):
     val decoded = Json.decode(configEndpointData.getBytes()).to[OpenIdConfig].value

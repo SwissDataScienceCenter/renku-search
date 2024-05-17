@@ -59,6 +59,7 @@ lazy val root = project
   .aggregate(
     commons,
     jwt,
+    openidKeycloak,
     httpClient,
     events,
     redisClient,
@@ -157,11 +158,13 @@ lazy val openidKeycloak = project
   .settings(
     name := "openid-keycloak",
     description := "OpenID configuration with keycloak",
+    libraryDependencies ++= Dependencies.http4sDsl.map(_ % Test)
   )
   .dependsOn(
     http4sBorer % "compile->compile;test->test",
     httpClient % "compile->compile;test->test",
-    jwt % "compile->compile;test->test"
+    jwt % "compile->compile;test->test",
+    commons % "test->test"
   )
 
 lazy val http4sMetrics = project
@@ -322,7 +325,8 @@ lazy val configValues = project
     events % "compile->compile;test->test",
     http4sCommons % "compile->compile;test->test",
     renkuRedisClient % "compile->compile;test->test",
-    searchSolrClient % "compile->compile;test->test"
+    searchSolrClient % "compile->compile;test->test",
+    openidKeycloak % "compile->compile;test->test"
   )
 
 lazy val searchQuery = project
@@ -389,7 +393,8 @@ lazy val searchApi = project
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test",
     searchQueryDocs % "compile->compile;test->test",
-    jwt % "compile->compile;test->test"
+    jwt % "compile->compile;test->test",
+    openidKeycloak % "compile->compile;test->test"
   )
   .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
 

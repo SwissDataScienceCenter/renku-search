@@ -18,8 +18,8 @@
 
 package io.renku.openid.keycloak
 
-import scodec.bits.ByteVector
 import scodec.bits.Bases.Alphabets
+import scodec.bits.ByteVector
 
 private object BigIntDecode:
 

@@ -31,7 +31,7 @@ object Microservice extends IOApp:
     for {
       config <- loadConfig
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig).makeRoutes
+      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
         .flatMap(HttpServer.build(_, config.httpServerConfig))
         .use(_ => IO.never)
     } yield ExitCode.Success

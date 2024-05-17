@@ -18,8 +18,8 @@
 
 package io.renku.openid.keycloak
 
-import munit.FunSuite
 import io.bullet.borer.Json
+import munit.FunSuite
 
 class JsonWebKeySpec extends FunSuite:
 

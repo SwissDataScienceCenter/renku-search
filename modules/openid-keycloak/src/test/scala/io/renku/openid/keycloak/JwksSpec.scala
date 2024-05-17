@@ -18,28 +18,11 @@
 
 package io.renku.openid.keycloak
 
-import munit.FunSuite
-import scala.io.Source
-import io.bullet.borer.Json
+import io.renku.search.TestClock
 import io.renku.search.jwt.JwtBorer
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
+import munit.FunSuite
 
-class JwksSpec extends FunSuite:
-
-  val jwksJson = Source.fromResource("jwks.json").mkString
-  lazy val jwks = Json.decode(jwksJson.getBytes).to[Jwks].value
-
-  // valid until 2024-05-15T14:47:26Z
-  val jwToken = Source.fromResource("jwt-token1").mkString
-  val fixedClock = new Clock {
-    val time = Instant.parse("2024-05-15T13:47:26Z")
-    def instant(): Instant = time
-    def getZone(): ZoneId = ZoneId.of("UTC")
-    override def withZone(zone: ZoneId): Clock = this
-  }
-
+class JwksSpec extends FunSuite with JwtResources:
   test("parse jwks json"):
     assertEquals(jwks.keys.size, 2)
     assertEquals(
@@ -65,9 +48,20 @@ class JwksSpec extends FunSuite:
     val header = JwtBorer.readHeader(jwToken).fold(throw _, identity)
     val pubKey = jwks.findPublicKey(header).fold(throw _, identity)
     val result = JwtBorer(fixedClock).decodeAll(jwToken, pubKey)
-    println(JwtBorer(fixedClock).decodeAllNoSignatureCheck(jwToken))
     assert(result.isSuccess)
     assertEquals(
       result.get._2.issuer,
+      Some("https://ci-renku-3622.dev.renku.ch/auth/realms/Renku")
+    )
+
+  test("validation rsa in IO"):
+    import cats.effect.IO
+    import cats.effect.unsafe.implicits.*
+
+    val clock = TestClock.fixedAt(jwTokenValidTime)
+    val result = jwks.validate[IO](clock)(jwToken).unsafeRunSync()
+    assert(result.isRight)
+    assertEquals(
+      result.fold(throw _, identity).issuer,
       Some("https://ci-renku-3622.dev.renku.ch/auth/realms/Renku")
     )

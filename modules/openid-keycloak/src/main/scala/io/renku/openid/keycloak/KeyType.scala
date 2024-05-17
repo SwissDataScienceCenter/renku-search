@@ -18,7 +18,7 @@
 
 package io.renku.openid.keycloak
 
-import io.bullet.borer.{Encoder, Decoder}
+import io.bullet.borer.{Decoder, Encoder}
 
 enum KeyType:
   case EC

@@ -18,6 +18,10 @@
 
 package io.renku.openid.keycloak
 
+import scala.concurrent.duration.FiniteDuration
+
+import org.http4s.Uri
+import pdi.jwt.JwtClaim
 import pdi.jwt.JwtHeader
 
 sealed trait JwtError extends Throwable
@@ -47,4 +51,40 @@ object JwtError:
 
   final case class KeyNotFound(keyId: KeyId, keys: List[JsonWebKey])
       extends RuntimeException(s"Key $keyId not found in JWKS ${keys.map(_.keyId)}")
+      with JwtError
+
+  final case class JwtValidationError(
+      jwt: String,
+      header: Option[JwtHeader],
+      claim: Option[JwtClaim],
+      cause: Throwable
+  ) extends RuntimeException(
+        s"Error decoding token (header=$header, claimExists=${claim.isDefined}): ${cause.getMessage}",
+        cause
+      )
+      with JwtError
+
+  final case class InvalidIssuerUrl(url: String, cause: Throwable)
+      extends RuntimeException(
+        s"Invalid issuer uri '$url' in claim: ${cause.getMessage()}",
+        cause
+      )
+      with JwtError
+
+  final case class OpenIdConfigError(uri: Uri, cause: Throwable)
+      extends RuntimeException(
+        s"Error getting openid config from: ${uri.renderString}",
+        cause
+      )
+      with JwtError
+
+  final case class JwksError(uri: Uri, cause: Throwable)
+      extends RuntimeException(
+        s"Error getting jwks config from: ${uri.renderString}",
+        cause
+      )
+      with JwtError
+
+  final case class TooManyValidationRequests(minDelay: FiniteDuration)
+      extends RuntimeException(s"Too many validation attempts within $minDelay")
       with JwtError

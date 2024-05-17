@@ -18,7 +18,7 @@
 
 package io.renku.openid.keycloak
 
-import io.bullet.borer.{Encoder, Decoder}
+import io.bullet.borer.{Decoder, Encoder}
 
 enum Curve(val nameShort: String, val name: String):
   case P256 extends Curve("P-256", "secp256r1")

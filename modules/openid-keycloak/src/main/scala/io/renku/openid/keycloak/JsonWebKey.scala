@@ -18,10 +18,11 @@
 
 package io.renku.openid.keycloak
 
+import java.security.PublicKey
+
 import io.bullet.borer.*
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.derivation.key
-import java.security.PublicKey
 
 sealed trait JsonWebKey:
   def keyId: KeyId

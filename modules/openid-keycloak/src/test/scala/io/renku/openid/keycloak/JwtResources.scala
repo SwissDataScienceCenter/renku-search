@@ -18,14 +18,25 @@
 
 package io.renku.openid.keycloak
 
-import io.bullet.borer.{Decoder, Encoder}
+import java.time.*
 
-opaque type KeyId = String
+import scala.io.Source
 
-object KeyId:
-  def apply(id: String): KeyId = id
+import io.bullet.borer.Json
 
-  given Decoder[KeyId] = Decoder.forString
-  given Encoder[KeyId] = Encoder.forString
+trait JwtResources:
 
-  extension (self: KeyId) def value: String = self
+  val configEndpointData = Source.fromResource("openid-configuration.json").mkString
+  val jwksJson = Source.fromResource("jwks.json").mkString
+  // valid until 2024-05-15T14:47:26Z
+  val jwToken = Source.fromResource("jwt-token1").mkString
+  val jwTokenValidTime = Instant.parse("2024-05-15T13:47:26Z")
+
+  lazy val jwks = Json.decode(jwksJson.getBytes).to[Jwks].value
+  lazy val configData = Json.decode(configEndpointData.getBytes).to[OpenIdConfig].value
+
+  val fixedClock = new Clock {
+    def instant(): Instant = jwTokenValidTime
+    def getZone(): ZoneId = ZoneId.of("UTC")
+    override def withZone(zone: ZoneId): Clock = this
+  }

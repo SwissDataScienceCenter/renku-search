@@ -22,6 +22,7 @@ import cats.syntax.all.*
 
 import ciris.{ConfigValue, Effect}
 import com.comcast.ip4s.port
+import io.renku.openid.keycloak.JwtVerifyConfig
 import io.renku.search.config.ConfigValues
 import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.SolrConfig
@@ -29,6 +30,7 @@ import io.renku.solr.client.SolrConfig
 final case class SearchApiConfig(
     solrConfig: SolrConfig,
     httpServerConfig: HttpServerConfig,
+    jwtVerifyConfig: JwtVerifyConfig,
     verbosity: Int
 )
 
@@ -37,5 +39,6 @@ object SearchApiConfig:
     (
       ConfigValues.solrConfig,
       ConfigValues.httpServerConfig("SEARCH", port"8080"),
+      ConfigValues.jwtVerifyConfig,
       ConfigValues.logLevel
     ).mapN(SearchApiConfig.apply)

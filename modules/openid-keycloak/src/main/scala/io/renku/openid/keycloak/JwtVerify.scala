@@ -18,7 +18,15 @@
 
 package io.renku.openid.keycloak
 
+import cats.effect.*
+
+import org.http4s.client.Client
 import pdi.jwt.JwtClaim
 
 trait JwtVerify[F[_]]:
   def verify(token: String): F[Either[JwtError, JwtClaim]]
+
+object JwtVerify:
+  def apply[F[_]: Async](client: Client[F], config: JwtVerifyConfig): F[JwtVerify[F]] =
+    val clock = Clock[F]
+    DefaultJwtVerify[F](client, clock, config)

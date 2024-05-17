@@ -21,6 +21,7 @@ package io.renku.search.config
 import cats.syntax.all.*
 import ciris.*
 import com.comcast.ip4s.{Ipv4Address, Port}
+import io.renku.openid.keycloak.JwtVerifyConfig
 import io.renku.redis.client.*
 import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.{SolrConfig, SolrUser}
@@ -85,3 +86,16 @@ object ConfigValues extends ConfigDecoders:
     val port =
       renv(s"${prefix}_HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
     (bindAddress, port).mapN(HttpServerConfig.apply)
+
+  val jwtVerifyConfig: ConfigValue[Effect, JwtVerifyConfig] = {
+    val defaults = JwtVerifyConfig.default
+    val enableSigCheck = renv("JWT_ENABLE_SIGNATURE_CHECK")
+      .as[Boolean]
+      .default(defaults.enableSignatureValidation)
+    val requestDelay = renv("JWT_KEYCLOAK_REQUEST_DELAY")
+      .as[FiniteDuration]
+      .default(defaults.minRequestDelay)
+    val openIdConfigPath =
+      renv("JWT_OPENID_CONFIG_PATH").default(defaults.openIdConfigPath)
+    (requestDelay, enableSigCheck, openIdConfigPath).mapN(JwtVerifyConfig.apply)
+  }

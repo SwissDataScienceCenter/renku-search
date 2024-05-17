@@ -20,7 +20,7 @@ object Dependencies {
     val http4sPrometheusMetrics = "0.24.6"
     val redis4Cats = "1.7.0"
     val sbtMdoc = "2.5.2"
-    val scala = "3.4.1"
+    val scala = "3.4.2"
     val scalacheckEffectMunit = "1.0.4"
     val scodec = "2.2.2"
     val scodecBits = "1.2.0"

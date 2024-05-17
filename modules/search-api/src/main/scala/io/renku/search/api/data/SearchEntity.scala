@@ -86,6 +86,7 @@ object UserId:
 
 final case class User(
     id: Id,
+    namespace: Option[Namespace] = None,
     firstName: Option[users.FirstName] = None,
     lastName: Option[users.LastName] = None,
     score: Option[Double] = None
@@ -96,11 +97,13 @@ object User:
   private given Schema[users.FirstName] = Schema.string[users.FirstName]
   private given Schema[users.LastName] = Schema.string[users.LastName]
   private given Schema[users.Email] = Schema.string[users.Email]
+  private given Schema[Namespace] = Schema.string[Namespace]
   given Schema[User] = Schema
     .derived[User]
     .jsonExample(
       User(
         Id("1CAF4C73F50D4514A041C9EDDB025A36"),
+        Some(Namespace("renku/renku")),
         Some(users.FirstName("Albert")),
         Some(users.LastName("Einstein")),
         Some(2.1)

@@ -1,7 +1,5 @@
 ## Search Query
 
-**NOTE: this is a work in progress**
-
 The search accepts queries in two representations: JSON and a simple
 query string. A query may contain specific and unspecific search
 terms.

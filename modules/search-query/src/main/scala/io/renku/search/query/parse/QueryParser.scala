@@ -21,8 +21,8 @@ package io.renku.search.query.parse
 import cats.data.NonEmptyList
 import cats.parse.{Parser as P, Parser0 as P0}
 
+import io.renku.search.model.*
 import io.renku.search.model.projects.Visibility
-import io.renku.search.model.{EntityType, Keyword, MemberRole}
 import io.renku.search.query.*
 
 private[query] object QueryParser {
@@ -106,6 +106,7 @@ private[query] object QueryParser {
     ((field <* is) ~ values).map { case (f, v) =>
       f match
         case Field.Name      => FieldTerm.NameIs(v)
+        case Field.Namespace => FieldTerm.NamespaceIs(v.map(Namespace(_)))
         case Field.Id        => FieldTerm.IdIs(v)
         case Field.Slug      => FieldTerm.SlugIs(v)
         case Field.CreatedBy => FieldTerm.CreatedByIs(v)

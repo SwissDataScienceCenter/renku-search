@@ -32,6 +32,7 @@ import munit.CatsEffectSuite
 import org.http4s.HttpRoutes
 import org.http4s.client.Client
 import org.http4s.dsl.io.*
+import io.renku.search.common.UrlPattern
 
 class DefaultJwtVerifySpec
     extends CatsEffectSuite
@@ -43,6 +44,10 @@ class DefaultJwtVerifySpec
     def isTooManyRequests = self match
       case Left(_: JwtError.TooManyValidationRequests) => true
       case _                                           => false
+
+    def isForbiddenIssuer = self match
+      case Left(_: JwtError.ForbiddenIssuer) => true
+      case _                                 => false
 
   test("fetch jwks if validation fails, succeeding with new one"):
     val testClientRoutes = HttpRoutes.of[IO] {
@@ -137,4 +142,17 @@ class DefaultJwtVerifySpec
 
       numCalls <- counter.get
       _ = assertEquals(numCalls, 2)
+    yield ()
+
+  test("stop on invalid issuer"):
+    val testClient = Client.fromHttpApp(HttpRoutes.empty[IO].orNotFound)
+    val allowedIssuers = List(UrlPattern.fromString("*.myserver.com"))
+    for
+      verifyer <- DefaultJwtVerify(
+        testClient,
+        TestClock.fixedAt(jwTokenValidTime),
+        JwtVerifyConfig.default.copy(allowedIssuerUrls = allowedIssuers)
+      )
+      result <- verifyer.verify(jwToken)
+      _ = assert(result.isForbiddenIssuer)
     yield ()

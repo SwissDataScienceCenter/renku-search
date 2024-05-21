@@ -97,6 +97,8 @@ final class DefaultJwtVerify[F[_]: Async](
           .fromString(claim.issuer.getOrElse(""))
           .leftMap(ex => JwtError.InvalidIssuerUrl(claim.issuer.getOrElse(""), ex))
       )
+      _ <- EitherT.fromEither(config.checkIssuerUrl(issuerUri))
+
       configUri = issuerUri.addPath(config.openIdConfigPath)
 
       _ <- EitherT.right(logger.debug(s"Fetch openid config from $configUri"))

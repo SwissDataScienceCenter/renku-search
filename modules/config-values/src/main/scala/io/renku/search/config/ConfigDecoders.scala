@@ -25,6 +25,7 @@ import io.renku.redis.client.*
 import org.http4s.Uri
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import io.renku.search.common.UrlPattern
 
 trait ConfigDecoders:
 
@@ -60,3 +61,8 @@ trait ConfigDecoders:
   given ConfigDecoder[String, Port] =
     ConfigDecoder[String]
       .mapOption(Port.getClass.getSimpleName)(Port.fromString)
+
+  given ConfigDecoder[String, List[UrlPattern]] =
+    ConfigDecoder[String].map { str =>
+      str.split(',').toList.map(UrlPattern.fromString)
+    }

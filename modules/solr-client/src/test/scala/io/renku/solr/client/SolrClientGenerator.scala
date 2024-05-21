@@ -18,7 +18,7 @@
 
 package io.renku.solr.client
 
-import io.renku.search.model.CommonGenerators
+import io.renku.search.common.CommonGenerators
 import io.renku.solr.client.facet.*
 import io.renku.solr.client.schema.FieldName
 import org.scalacheck.Gen

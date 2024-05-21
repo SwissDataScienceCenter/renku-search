@@ -24,6 +24,7 @@ import cats.Order as CatsOrder
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
+import io.renku.search.common.CommonGenerators
 import io.renku.search.model.*
 import io.renku.search.model.projects.Visibility
 import io.renku.search.query.parse.QueryUtil

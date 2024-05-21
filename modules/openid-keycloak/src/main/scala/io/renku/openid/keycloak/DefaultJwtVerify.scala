@@ -20,6 +20,7 @@ package io.renku.openid.keycloak
 
 import scala.concurrent.duration.*
 
+import cats.Monad
 import cats.data.EitherT
 import cats.effect.*
 import cats.syntax.all.*
@@ -44,8 +45,8 @@ final class DefaultJwtVerify[F[_]: Async](
 
   private val logger = scribe.cats.effect[F]
 
-  def tryDecode(token: String) =
-    EitherT(state.get.flatMap(_.jwks.validate(clock)(token)))
+  def tryDecode(issuer: Uri, token: String): EitherT[F, JwtError, JwtClaim] =
+    EitherT(state.get.flatMap(_.validate(issuer, clock, token)))
 
   def tryDecodeOnly(token: String): F[Either[JwtError, JwtClaim]] =
     JwtBorer.create[F](using clock).map { jwtb =>
@@ -56,10 +57,24 @@ final class DefaultJwtVerify[F[_]: Async](
     }
 
   def verify(token: String): F[Either[JwtError, JwtClaim]] =
-    if (!config.enableSignatureValidation) tryDecodeOnly(token)
-    else tryDecode(token).foldF(updateCache(token), _.asRight.pure[F])
+    tryDecodeOnly(token).flatMap {
+      case Left(err)                                     => Left(err).pure[F]
+      case Right(c) if !config.enableSignatureValidation => Right(c).pure[F]
+      case Right(c) =>
+        (for
+          issuer <- EitherT.fromEither(readIssuer(c))
+          res <- EitherT(
+            tryDecode(issuer, token).foldF(
+              updateCache(issuer, token),
+              _.asRight.pure[F]
+            )
+          )
+        yield res).value
+    }
 
-  def updateCache(token: String)(jwtError: JwtError): F[Either[JwtError, JwtClaim]] =
+  def updateCache(issuer: Uri, token: String)(
+      jwtError: JwtError
+  ): F[Either[JwtError, JwtClaim]] =
     jwtError match
       case JwtError.JwtValidationError(_, _, Some(claim), _) =>
         (for
@@ -68,37 +83,38 @@ final class DefaultJwtVerify[F[_]: Async](
               s"Token validation failed, fetch JWKS from keycloak and try again: ${jwtError.getMessage()}"
             )
           )
-          jwks <- fetchJWKSGuarded(claim)
+          jwks <- fetchJWKSGuarded(issuer, claim)
           result <- EitherT(jwks.validate(clock)(token))
         yield result).value
       case e => Left(e).pure[F]
 
-  def fetchJWKSGuarded(claim: JwtClaim): EitherT[F, JwtError, Jwks] =
+  def readIssuer(claim: JwtClaim): Either[JwtError, Uri] =
     for
-      _ <- checkLastUpdateDelay(config.minRequestDelay)
-      result <- fetchJWKS(claim)
+      issuerUri <- Uri
+        .fromString(claim.issuer.getOrElse(""))
+        .leftMap(ex => JwtError.InvalidIssuerUrl(claim.issuer.getOrElse(""), ex))
+      _ <- config.checkIssuerUrl(issuerUri)
+    yield issuerUri
+
+  def fetchJWKSGuarded(issuer: Uri, claim: JwtClaim): EitherT[F, JwtError, Jwks] =
+    for
+      _ <- checkLastUpdateDelay(issuer, config.minRequestDelay)
+      result <- fetchJWKS(issuer, claim)
     yield result
 
-  def checkLastUpdateDelay(min: FiniteDuration): EitherT[F, JwtError, Unit] =
+  def checkLastUpdateDelay(issuer: Uri, min: FiniteDuration): EitherT[F, JwtError, Unit] =
     EitherT(
-      clock.monotonic.flatMap(ct => state.modify(_.lastUpdateDelay(ct))).map {
+      clock.monotonic.flatMap(ct => state.modify(_.setLastUpdateDelay(issuer, ct))).map {
         case delay if delay > min => Right(())
         case _                    => Left(JwtError.TooManyValidationRequests(min))
       }
     )
 
-  def fetchJWKS(claim: JwtClaim): EitherT[F, JwtError, Jwks] =
+  def fetchJWKS(issuerUri: Uri, claim: JwtClaim): EitherT[F, JwtError, Jwks] =
     for
       _ <- EitherT.right(
-        clock.monotonic.flatMap(t => state.update(_.copy(lastUpdate = t)))
+        clock.monotonic.flatMap(t => state.update(_.setLastUpdate(issuerUri, t)))
       )
-      issuerUri <- EitherT.fromEither(
-        Uri
-          .fromString(claim.issuer.getOrElse(""))
-          .leftMap(ex => JwtError.InvalidIssuerUrl(claim.issuer.getOrElse(""), ex))
-      )
-      _ <- EitherT.fromEither(config.checkIssuerUrl(issuerUri))
-
       configUri = issuerUri.addPath(config.openIdConfigPath)
 
       _ <- EitherT.right(logger.debug(s"Fetch openid config from $configUri"))
@@ -110,19 +126,56 @@ final class DefaultJwtVerify[F[_]: Async](
       jwks <- EitherT(client.expect[Jwks](GET(openIdCfg.jwksUri)).attempt)
         .leftMap(ex => JwtError.JwksError(openIdCfg.jwksUri, ex))
 
-      _ <- EitherT.right(state.update(_.copy(jwks = jwks)))
+      _ <- EitherT.right(state.update(_.setJwks(issuerUri, jwks)))
       _ <- EitherT.right(
         logger.debug(s"Updated JWKS with keys: ${jwks.keys.map(_.keyId)}")
       )
     yield jwks
 
 object DefaultJwtVerify:
-  final case class State(
+  final case class State(jwks: Map[String, JwksState] = Map.empty):
+    def get(issuer: Uri): JwksState =
+      jwks.getOrElse(issuer.renderString, JwksState())
+
+    def modify(issuer: Uri, f: JwksState => JwksState): State =
+      copy(jwks = jwks.updatedWith(issuer.renderString) {
+        case Some(v) => Some(f(v))
+        case None    => Some(f(JwksState()))
+      })
+
+    def validate[F[_]: Monad](
+        issuer: Uri,
+        clock: Clock[F],
+        token: String
+    ): F[Either[JwtError, JwtClaim]] =
+      get(issuer).jwks.validate(clock)(token)
+
+    def setLastUpdate(issuer: Uri, time: FiniteDuration): State =
+      modify(issuer, _.copy(lastUpdate = time))
+
+    def setJwks(issuer: Uri, data: Jwks): State =
+      modify(issuer, _.copy(jwks = data))
+
+    def setLastUpdateDelay(issuer: Uri, now: FiniteDuration): (State, FiniteDuration) =
+      val issuerUri = issuer.renderString
+      val (ns, time) = get(issuer).lastUpdateDelay(now)
+      (copy(jwks = jwks.updated(issuerUri, ns)), time)
+
+  object State:
+    def of(
+        issuer: Uri,
+        jwks: Jwks = Jwks.empty,
+        lastUpdate: FiniteDuration = Duration.Zero,
+        lastAccess: FiniteDuration = Duration.Zero
+    ): State =
+      State(Map(issuer.renderString -> JwksState(jwks, lastUpdate, lastAccess)))
+
+  final case class JwksState(
       jwks: Jwks = Jwks.empty,
       lastUpdate: FiniteDuration = Duration.Zero,
       lastAccess: FiniteDuration = Duration.Zero
   ):
-    def lastUpdateDelay(now: FiniteDuration): (State, FiniteDuration) =
+    def lastUpdateDelay(now: FiniteDuration): (JwksState, FiniteDuration) =
       (copy(lastAccess = now), now - lastUpdate)
 
   def apply[F[_]: Async](

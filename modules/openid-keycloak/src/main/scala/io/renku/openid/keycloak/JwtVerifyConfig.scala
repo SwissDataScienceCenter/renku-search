@@ -19,6 +19,7 @@
 package io.renku.openid.keycloak
 
 import scala.concurrent.duration.*
+
 import io.renku.search.common.UrlPattern
 import org.http4s.Uri
 

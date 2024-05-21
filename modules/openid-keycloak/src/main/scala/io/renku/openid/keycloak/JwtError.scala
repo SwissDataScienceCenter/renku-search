@@ -20,10 +20,10 @@ package io.renku.openid.keycloak
 
 import scala.concurrent.duration.FiniteDuration
 
+import io.renku.search.common.UrlPattern
 import org.http4s.Uri
 import pdi.jwt.JwtClaim
 import pdi.jwt.JwtHeader
-import io.renku.search.common.UrlPattern
 
 sealed trait JwtError extends Throwable
 

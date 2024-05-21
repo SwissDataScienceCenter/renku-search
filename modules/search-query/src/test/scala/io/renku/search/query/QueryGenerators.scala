@@ -24,8 +24,8 @@ import cats.Order as CatsOrder
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
+import io.renku.search.model.*
 import io.renku.search.model.projects.Visibility
-import io.renku.search.model.{CommonGenerators, MemberRole, ModelGenerators}
 import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
@@ -121,6 +121,9 @@ object QueryGenerators:
   val nameTerm: Gen[FieldTerm] =
     stringValues.map(FieldTerm.NameIs(_))
 
+  val namespaceTerm: Gen[FieldTerm] =
+    stringValues.map(vs => FieldTerm.NamespaceIs(vs.map(Namespace(_))))
+
   val slugTerm: Gen[FieldTerm] =
     stringValues.map(FieldTerm.SlugIs(_))
 
@@ -157,6 +160,7 @@ object QueryGenerators:
     Gen.oneOf(
       projectIdTerm,
       nameTerm,
+      namespaceTerm,
       slugTerm,
       createdByTerm,
       visibilityTerm,

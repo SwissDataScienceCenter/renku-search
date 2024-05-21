@@ -20,6 +20,7 @@ package io.renku.search.query
 
 import cats.data.NonEmptyList
 
+import io.renku.search.model.Namespace
 import io.renku.search.model.projects.Visibility
 import io.renku.search.model.{EntityType, Keyword, MemberRole}
 
@@ -39,6 +40,8 @@ enum FieldTerm(val field: Field, val cmp: Comparison):
       extends FieldTerm(Field.Role, Comparison.Is)
   case KeywordIs(values: NonEmptyList[Keyword])
       extends FieldTerm(Field.Keyword, Comparison.Is)
+  case NamespaceIs(values: NonEmptyList[Namespace])
+      extends FieldTerm(Field.Namespace, Comparison.Is)
 
   private[query] def asString =
     val value = this match
@@ -55,6 +58,7 @@ enum FieldTerm(val field: Field, val cmp: Comparison):
       case CreatedByIs(values) => FieldTerm.nelToString(values)
       case RoleIs(values)      => FieldTerm.nelToString(values.map(_.name))
       case KeywordIs(values)   => FieldTerm.nelToString(values.map(_.value))
+      case NamespaceIs(values) => FieldTerm.nelToString(values.map(_.value))
 
     s"${field.name}${cmp.asString}${value}"
 

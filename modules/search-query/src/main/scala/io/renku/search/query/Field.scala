@@ -30,6 +30,7 @@ enum Field:
   case Type
   case Role
   case Keyword
+  case Namespace
 
   val name: String = Strings.lowerFirst(productPrefix)
 

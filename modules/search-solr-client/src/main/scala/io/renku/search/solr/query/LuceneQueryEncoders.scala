@@ -80,6 +80,13 @@ trait LuceneQueryEncoders:
       )
     }
 
+  given namespaceIs[F[_]: Applicative]: SolrTokenEncoder[F, FieldTerm.NamespaceIs] =
+    SolrTokenEncoder.basic { case FieldTerm.NamespaceIs(values) =>
+      SolrQuery(
+        SolrToken.orFieldIs(SolrField.namespace, values.map(SolrToken.fromNamespace))
+      )
+    }
+
   given created[F[_]: Monad]: SolrTokenEncoder[F, FieldTerm.Created] =
     val createdIs = SolrToken.fieldIs(SolrField.creationDate, _)
     SolrTokenEncoder.create[F, FieldTerm.Created] {

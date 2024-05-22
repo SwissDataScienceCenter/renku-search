@@ -58,6 +58,18 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   private def createCore(core: String) = s"precreate-core $core"
   private def createCoreCmd(core: String) =
     Seq("docker", "exec", containerName, "sh", "-c", createCore(core))
+  // configsets must be copied to allow core api to create cores
+  private val copyConfigSetsCmd =
+    Seq(
+      "docker",
+      "exec",
+      containerName,
+      "cp",
+      "-r",
+      "/opt/solr/server/solr/configsets",
+      "/var/solr/data/"
+    )
+
   private val wasStartedHere = new AtomicBoolean(false)
 
   def start(): Unit =
@@ -66,6 +78,7 @@ class SolrServer(module: String, solrPort: Option[Int]) {
     else {
       println(s"Starting Solr container for '$module' from '$image' image")
       startContainer()
+      copyConfigSets()
       waitForCoresToBeReady()
     }
 
@@ -102,6 +115,9 @@ class SolrServer(module: String, solrPort: Option[Int]) {
     Thread.sleep(500)
     createCores(cores)
   }
+
+  private def copyConfigSets(): Unit =
+    copyConfigSetsCmd.!!
 
   @tailrec
   private def createCores(cores: Set[String], attempt: Int = 1): Unit = {

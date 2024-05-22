@@ -30,7 +30,7 @@ trait SolrServerSuite:
   protected lazy val server: SolrServer = SolrServer
   protected lazy val coreName: String = server.testCoreName1
   protected lazy val solrConfig: SolrConfig = SolrConfig(
-    Uri.unsafeFromString(server.url) / "solr",
+    Uri.unsafeFromString(server.url),
     coreName,
     maybeUser = None,
     logMessageBodies = true

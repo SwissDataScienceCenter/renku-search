@@ -37,7 +37,7 @@ private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Cl
     with BorerEntityJsonCodec
     with SolrEntityCodec:
   private val logger = scribe.cats.effect[F]
-  private val solrUrl: Uri = config.baseUrl / config.core
+  private val solrUrl: Uri = config.baseUrl / "solr" / config.core
 
   def modifySchema(cmds: Seq[SchemaCommand], onErrorLog: ResponseLogging): F[Unit] =
     val req = Method
@@ -95,6 +95,35 @@ private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Cl
         Async[F].raiseError(
           new Exception(s"Inserting $docs failed due to version conflict")
         )
+    }
+
+  def getStatus: F[StatusResponse] =
+    val url = config.baseUrl / "api" / "cores"
+    val req = Method.GET(url)
+    underlying.expect[StatusResponse](req)
+
+  def createCore(name: String, configSet: Option[String]): F[Unit] =
+    val url = config.baseUrl / "api" / "cores"
+    val req = Method
+      .POST(CreateCoreRequest(name, configSet.getOrElse("_default")), url)
+      .withBasicAuth(credentials)
+    underlying.fetchAs[CoreResponse](req).flatMap { resp =>
+      resp.error.map(_.message) match
+        case Some(msg) =>
+          Async[F].raiseError(new Exception(s"Creating core '$name' failed: $msg"))
+        case None => ().pure[F]
+    }
+
+  def deleteCore(name: String): F[Unit] =
+    val url = config.baseUrl / "api" / "cores" / name
+    val req = Method
+      .POST(DeleteCoreRequest(true, true), url)
+      .withBasicAuth(credentials)
+    underlying.fetchAs[CoreResponse](req).flatMap { resp =>
+      resp.error.map(_.message) match
+        case Some(msg) =>
+          Async[F].raiseError(new Exception(s"Deleting core '$name' failed: $msg"))
+        case None => ().pure[F]
     }
 
   private def makeUpdateUrl =

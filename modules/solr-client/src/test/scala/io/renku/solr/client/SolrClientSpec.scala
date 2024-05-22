@@ -138,6 +138,27 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
       } yield ()
     }
 
+  test("create and delete core"):
+    val name = Gen
+      .choose(5, 12)
+      .flatMap(n => Gen.listOfN(n, Gen.alphaChar))
+      .map(_.mkString)
+      .generateOne
+
+    withSolrClient().use { client =>
+      for
+        _ <- client.createCore(name)
+        s1 <- client.getStatus
+        _ = assert(s1.status.keySet.contains(name), s"core $name not available")
+        id <- IO(Gen.uuid.generateOne).map(_.toString)
+        _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
+        _ <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
+        _ <- client.deleteCore(name)
+        s2 <- client.getStatus
+        _ = assert(!s2.status.keySet.contains(name), s"core $name is not deleted")
+      yield ()
+    }
+
 object SolrClientSpec:
   case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)
   object Room:

@@ -27,7 +27,7 @@ import io.renku.solr.client.util.SolrClientBaseSuite
 
 class SolrMigratorSpec extends SolrClientBaseSuite:
   private val logger = scribe.cats.io
-  override protected lazy val coreName: String = server.testCoreName3
+
   private val migrations = Seq(
     SchemaMigration(-5, Add(FieldType.text(TypeName("testText"), Analyzer.classic))),
     SchemaMigration(-4, Add(FieldType.int(TypeName("testInt")))),
@@ -47,19 +47,18 @@ class SolrMigratorSpec extends SolrClientBaseSuite:
       Seq(TypeName("testText"), TypeName("testInt"))
     )
 
-  test("run sample migrations"):
-    withSolrClient().use { client =>
-      val migrator = SchemaMigrator[IO](client)
-      for {
-        _ <- truncate(client)
-        _ <- migrator.migrate(migrations)
-        c <- migrator.currentVersion
-        _ = assertEquals(c, Some(-1L))
-      } yield ()
-    }
+  solrClient.test("run sample migrations") { client =>
+    val migrator = SchemaMigrator[IO](client)
+    for {
+      _ <- truncate(client)
+      _ <- migrator.migrate(migrations)
+      c <- migrator.currentVersion
+      _ = assertEquals(c, Some(-1L))
+    } yield ()
+  }
 
   test("run migrations"):
-    withSolrClient().use { client =>
+    solrClientR.use { client =>
       val migrator = SchemaMigrator(client)
       val first = migrations.take(2)
       for {

@@ -18,11 +18,40 @@
 
 package io.renku.solr.client.util
 
+import cats.effect.*
+import io.renku.solr.client.*
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.LoggingConfigure
 import munit.CatsEffectSuite
+import org.scalacheck.Gen
+import scala.concurrent.duration.Duration
 
 abstract class SolrClientBaseSuite
     extends CatsEffectSuite
     with LoggingConfigure
     with SolrServerSuite
-    with SolrTruncate
+    with SolrTruncate:
+
+  override val munitTimeout = Duration(1, "min")
+
+  private val coreNameGen: Gen[String] =
+    Gen.choose(5, 12).flatMap(n => Gen.listOfN(n, Gen.alphaChar)).map(_.mkString)
+
+  val solrClientR: Resource[IO, SolrClient[IO]] =
+    for
+      serverUri <- Resource.eval(IO(solrServer()))
+      coreName <- Resource.eval(IO(coreNameGen.generateOne))
+      cfg = SolrConfig(serverUri, coreName, None, false)
+      client <- SolrClient[IO](cfg)
+      _ <- Resource.make(createSolrCore(client, coreName))(_ =>
+        deleteSolrCore(client, coreName)
+      )
+    yield client
+
+  val solrClient = ResourceFixture(solrClientR)
+
+  def createSolrCore(client: SolrClient[IO], name: String): IO[Unit] =
+    IO.println(s"Creating core: $name") >> IO(server.createCore(name).get)
+
+  def deleteSolrCore(client: SolrClient[IO], name: String): IO[Unit] =
+    IO.println(s"Deleting core: $name") >> IO(server.deleteCore(name).get)

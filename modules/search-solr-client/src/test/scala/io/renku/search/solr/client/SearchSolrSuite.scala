@@ -28,24 +28,12 @@ import io.renku.solr.client.util.SolrClientBaseSuite
 
 abstract class SearchSolrSuite extends SolrClientBaseSuite:
 
-  abstract class SolrFixture
-      extends Fixture[Resource[IO, SearchSolrClient[IO]]]("search-solr")
+  val searchSolrR: Resource[IO, SearchSolrClient[IO]] =
+    solrClientR
+      .evalMap(c => SearchSolrSuite.setupSchema(c.config.core, c))
+      .map(new SearchSolrClientImpl[IO](_))
 
-  val withSearchSolrClient: SolrFixture = new SolrFixture:
-
-    def apply(): Resource[IO, SearchSolrClient[IO]] =
-      SolrClient[IO](solrConfig.copy(core = server.searchCoreName))
-        .evalTap(SearchSolrSuite.setupSchema(server.searchCoreName, _))
-        .map(new SearchSolrClientImpl[IO](_))
-
-    override def beforeAll(): Unit =
-      server.start()
-
-    override def afterAll(): Unit =
-      server.stop()
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withSearchSolrClient)
+  val searchSolr = ResourceFixture(searchSolrR)
 
 object SearchSolrSuite:
   private val logger = scribe.cats.io

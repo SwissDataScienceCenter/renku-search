@@ -38,35 +38,34 @@ import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
-  test("optimistic locking: fail if exists"):
-    withSolrClient().use { client =>
-      val c0 = Course("c1", "fp in scala", DocVersion.NotExists)
-      for {
-        _ <- client.deleteIds(NonEmptyList.of(c0.id))
-        r0 <- client.upsert(Seq(c0))
-        _ = assert(r0.isSuccess, clue = "Expected successful insert")
+  solrClient.test("optimistic locking: fail if exists") { client =>
+    val c0 = Course("c1", "fp in scala", DocVersion.NotExists)
+    for {
+      _ <- client.deleteIds(NonEmptyList.of(c0.id))
+      r0 <- client.upsert(Seq(c0))
+      _ = assert(r0.isSuccess, clue = "Expected successful insert")
 
-        rs <- client.findById[Course](c0.id)
-        fetched = rs.responseBody.docs.head
-        _ = assert(
-          fetched.version.asLong > 0,
-          clue = "stored entity version must be > 0"
-        )
-        _ = assert(
-          fetched.copy(version = c0.version) == c0,
-          clue = "stored entity not as expected"
-        )
+      rs <- client.findById[Course](c0.id)
+      fetched = rs.responseBody.docs.head
+      _ = assert(
+        fetched.version.asLong > 0,
+        clue = "stored entity version must be > 0"
+      )
+      _ = assert(
+        fetched.copy(version = c0.version) == c0,
+        clue = "stored entity not as expected"
+      )
 
-        r1 <- client.upsert(Seq(c0))
-        _ = assertEquals(
-          r1,
-          UpsertResponse.VersionConflict,
-          clue = "Expected VersionConflict"
-        )
-      } yield ()
-    }
+      r1 <- client.upsert(Seq(c0))
+      _ = assertEquals(
+        r1,
+        UpsertResponse.VersionConflict,
+        clue = "Expected VersionConflict"
+      )
+    } yield ()
+  }
 
-  test("use schema for inserting and querying"):
+  solrClient.test("use schema for inserting and querying") { client =>
     val cmds = Seq(
       SchemaCommand.Add(FieldType.text(TypeName("roomText"), Analyzer.classic)),
       SchemaCommand.Add(FieldType.int(TypeName("roomInt"))),
@@ -75,23 +74,22 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
       SchemaCommand.Add(Field(FieldName("roomSeats"), TypeName("roomInt")))
     )
 
-    withSolrClient().use { client =>
-      val room = Room(UUID.randomUUID().toString, "meeting room", "room for meetings", 56)
-      for {
-        _ <- truncateAll(client)(
-          List("roomName", "roomDescription", "roomSeats").map(FieldName.apply),
-          List("roomText", "roomInt").map(TypeName.apply)
-        )
-        _ <- client.modifySchema(cmds)
-        _ <- client.upsert[Room](Seq(room))
-        qr <- client.query[Room](QueryData(QueryString("_type_s:Room")))
-        _ = qr.responseBody.docs contains room
-        ir <- client.findById[Room](room.id)
-        _ = ir.responseBody.docs contains room
-      } yield ()
-    }
+    val room = Room(UUID.randomUUID().toString, "meeting room", "room for meetings", 56)
+    for {
+      _ <- truncateAll(client)(
+        List("roomName", "roomDescription", "roomSeats").map(FieldName.apply),
+        List("roomText", "roomInt").map(TypeName.apply)
+      )
+      _ <- client.modifySchema(cmds)
+      _ <- client.upsert[Room](Seq(room))
+      qr <- client.query[Room](QueryData(QueryString("_type_s:Room")))
+      _ = qr.responseBody.docs contains room
+      ir <- client.findById[Room](room.id)
+      _ = ir.responseBody.docs contains room
+    } yield ()
+  }
 
-  test("correct facet queries"):
+  solrClient.test("correct facet queries") { client =>
     val decoder: Decoder[Unit] = new Decoder {
       def read(r: Reader): Unit =
         r.skipElement()
@@ -99,65 +97,62 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
     }
     PropF.forAllF(SolrClientGenerator.facets) { facets =>
       val q = QueryData(QueryString("*:*")).withFacet(facets)
-      withSolrClient().use { client =>
-        client.query(q)(using decoder).void
-      }
+      client.query(q)(using decoder).void
     }
+  }
 
-  test("decoding facet response"):
+  solrClient.test("decoding facet response") { client =>
     val rooms = Gen.listOfN(15, Room.gen).sample.get
     val facets =
       Facets(Facet.Terms(FieldName("by_name"), FieldName("roomName"), limit = Some(6)))
-    withSolrClient().use { client =>
-      for {
-        _ <- client.delete(QueryString("_type_s:Room"))
-        _ <- client.upsert(rooms)
-        r <- client.query[Room](QueryData(QueryString("_type_s:Room")).withFacet(facets))
-        _ = assert(r.facetResponse.nonEmpty)
-        _ = assertEquals(r.facetResponse.get.count, 15)
-        _ = assertEquals(
-          r.facetResponse.get.buckets(FieldName("by_name")).buckets.size,
-          6
-        )
-      } yield ()
-    }
 
-  test("delete by id"):
-    withSolrClient().use { client =>
-      for {
-        id <- IO(Gen.uuid.generateOne).map(_.toString)
-        _ <- client.delete(QueryString("_type_s:Person"))
-        _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
-        r <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
-        p = r.responseBody.docs.head
-        _ = assertEquals(p.id, id)
-        _ <- client.deleteIds(NonEmptyList.of(id))
-        _ <- IO.sleep(10.millis)
-        r2 <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
-        _ = assert(r2.responseBody.docs.isEmpty)
-      } yield ()
-    }
+    for {
+      _ <- client.delete(QueryString("_type_s:Room"))
+      _ <- client.upsert(rooms)
+      r <- client.query[Room](QueryData(QueryString("_type_s:Room")).withFacet(facets))
+      _ = assert(r.facetResponse.nonEmpty)
+      _ = assertEquals(r.facetResponse.get.count, 15)
+      _ = assertEquals(
+        r.facetResponse.get.buckets(FieldName("by_name")).buckets.size,
+        6
+      )
+    } yield ()
+  }
 
-  test("create and delete core"):
+  solrClient.test("delete by id") { client =>
+    for {
+      id <- IO(Gen.uuid.generateOne).map(_.toString)
+      _ <- client.delete(QueryString("_type_s:Person"))
+      _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
+      r <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
+      p = r.responseBody.docs.head
+      _ = assertEquals(p.id, id)
+      _ <- client.deleteIds(NonEmptyList.of(id))
+      _ <- IO.sleep(10.millis)
+      r2 <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
+      _ = assert(r2.responseBody.docs.isEmpty)
+    } yield ()
+  }
+
+  solrClient.test("create and delete core") { client =>
     val name = Gen
       .choose(5, 12)
       .flatMap(n => Gen.listOfN(n, Gen.alphaChar))
       .map(_.mkString)
       .generateOne
 
-    withSolrClient().use { client =>
-      for
-        _ <- client.createCore(name)
-        s1 <- client.getStatus
-        _ = assert(s1.status.keySet.contains(name), s"core $name not available")
-        id <- IO(Gen.uuid.generateOne).map(_.toString)
-        _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
-        _ <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
-        _ <- client.deleteCore(name)
-        s2 <- client.getStatus
-        _ = assert(!s2.status.keySet.contains(name), s"core $name is not deleted")
-      yield ()
-    }
+    for
+      _ <- client.createCore(name)
+      s1 <- client.getStatus
+      _ = assert(s1.status.keySet.contains(name), s"core $name not available")
+      id <- IO(Gen.uuid.generateOne).map(_.toString)
+      _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
+      _ <- client.query[SolrClientSpec.Person](QueryData(QueryString(s"id:$id")))
+      _ <- client.deleteCore(name)
+      s2 <- client.getStatus
+      _ = assert(!s2.status.keySet.contains(name), s"core $name is not deleted")
+    yield ()
+  }
 
 object SolrClientSpec:
   case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)

@@ -43,8 +43,6 @@ import org.scalacheck.effect.PropF
 
 class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSuite:
 
-  override protected lazy val coreName: String = server.testCoreName2
-
   override protected def scalaCheckTestParameters: Parameters =
     super.scalaCheckTestParameters.withMinSuccessfulTests(20)
 
@@ -62,9 +60,6 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
     val ctx = Context.fixed[Id](Instant.EPOCH, ZoneId.of("UTC"), role)
     val q = LuceneQueryInterpreter[Id].run(ctx, userQuery)
     QueryData(QueryString(q.query.value, 10, 0)).withSort(q.sort)
-
-  def withSolr =
-    withSolrClient().evalTap(c => SchemaMigrator[IO](c).migrate(Migrations.all).void)
 
   test("amend query with auth data"):
     assertEquals(
@@ -91,31 +86,29 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
     )
     assertEquals(query("", SearchRole.Admin).query, "(_kind:fullentity)")
 
-  test("valid content_all query"):
-    withSolr.use { client =>
-      List("hello world", "bla:test")
-        .map(query(_))
-        .traverse_(client.query[Unit])
-    }
+  solrClient.test("valid content_all query") { client =>
+    List("hello world", "bla:test")
+      .map(query(_))
+      .traverse_(client.query[Unit])
+  }
 
-  test("generate valid solr queries"):
+  solrClient.test("generate valid solr queries") { client =>
     PropF.forAllF(QueryGenerators.query) { q =>
-      withSolr
-        .use { client =>
-          client.query(query(q)).void
-        }
+      client.query(query(q)).void
     }
+  }
 
-  test("sort only"):
+  solrClient.test("sort only") { client =>
     val doc = Map(
       Fields.id.name -> "one",
       Fields.name.name -> "John",
       Fields.entityType.name -> EntityType.User.name,
       Fields.kind.name -> DocumentKind.FullEntity.name
     )
-    PropF.forAllF(QueryGenerators.sortTerm) { order =>
-      val q = Query(Query.Segment.Sort(order))
-      withSolr.use { client =>
+    SchemaMigrator[IO](client).migrate(Migrations.all).void >>
+      PropF.forAllF(QueryGenerators.sortTerm) { order =>
+        val q = Query(Query.Segment.Sort(order))
+
         for {
           _ <- client.upsert(Seq(doc))
           r <- client.query[Map[String, String]](
@@ -127,7 +120,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
           )
         } yield ()
       }
-    }
+  }
 
   test("auth scenarios"):
     withSearchSolrClient().use { solr =>

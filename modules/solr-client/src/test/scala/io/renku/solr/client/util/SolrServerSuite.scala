@@ -18,35 +18,30 @@
 
 package io.renku.solr.client.util
 
-import cats.effect.*
-
 import io.renku.servers.SolrServer
-import io.renku.solr.client.{SolrClient, SolrConfig}
 import org.http4s.Uri
 
+/** Starts the solr server if not already running.
+  *
+  * This is here for running single tests from outside sbt. Within sbt, the solr server is
+  * started before any test is run and therefore will live for the entire test run.
+  */
 trait SolrServerSuite:
   self: munit.Suite =>
 
-  protected lazy val server: SolrServer = SolrServer
-  protected lazy val coreName: String = server.testCoreName1
-  protected lazy val solrConfig: SolrConfig = SolrConfig(
-    Uri.unsafeFromString(server.url),
-    coreName,
-    maybeUser = None,
-    logMessageBodies = true
-  )
+  lazy val server: SolrServer = SolrServer
 
-  val withSolrClient: Fixture[Resource[IO, SolrClient[IO]]] =
-    new Fixture[Resource[IO, SolrClient[IO]]]("solr"):
-
-      def apply(): Resource[IO, SolrClient[IO]] =
-        SolrClient[IO](solrConfig)
+  val solrServer: Fixture[Uri] =
+    new Fixture[Uri]("solr-server"):
+      private var serverUri: Uri = null
+      def apply(): Uri = serverUri
 
       override def beforeAll(): Unit =
         server.start()
+        serverUri = Uri.unsafeFromString(server.url)
 
       override def afterAll(): Unit =
         server.stop()
 
   override def munitFixtures: Seq[Fixture[?]] =
-    List(withSolrClient)
+    List(solrServer)

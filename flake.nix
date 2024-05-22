@@ -17,6 +17,9 @@
           system = flake-utils.lib.system.x86_64-linux;
           modules = [
             ./nix/services.nix
+            {
+              virtualisation.memorySize = 2048;
+            }
           ];
         };
 
@@ -83,6 +86,8 @@
             RS_SEARCH_HTTP_SERVER_PORT = "8080";
             RS_PROVISION_HTTP_SERVER_PORT = "8082";
             RS_METRICS_UPDATE_INTERVAL = "0s";
+            RS_SOLR_CREATE_CORE_CMD = "cnt-solr-create-core %s";
+            RS_SOLR_DELETE_CORE_CMD = "cnt-solr-delete-core %s";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";
@@ -106,6 +111,8 @@
             RS_SEARCH_HTTP_SERVER_PORT = "8080";
             RS_PROVISION_HTTP_SERVER_PORT = "8082";
             RS_METRICS_UPDATE_INTERVAL = "0s";
+            RS_SOLR_CREATE_CORE_CMD = "vm-solr-create-core %s";
+            RS_SOLR_DELETE_CORE_CMD = "vm-solr-delete-core %s";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";

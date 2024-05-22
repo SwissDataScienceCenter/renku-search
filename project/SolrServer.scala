@@ -55,20 +55,16 @@ class SolrServer(module: String, solrPort: Option[Int]) {
     s"curl http://localhost:8983/solr/$core/select?q=*:* --no-progress-meter --fail 1> /dev/null"
   private def isCoreReadyCmd(core: String) =
     Seq("docker", "exec", containerName, "sh", "-c", readyCmd(core))
-  private def createCore(core: String) = s"precreate-core $core"
   private def createCoreCmd(core: String) =
-    Seq("docker", "exec", containerName, "sh", "-c", createCore(core))
-  // configsets must be copied to allow core api to create cores
-  private val copyConfigSetsCmd =
-    Seq(
-      "docker",
-      "exec",
-      containerName,
-      "cp",
-      "-r",
-      "/opt/solr/server/solr/configsets",
-      "/var/solr/data/"
-    )
+    sys.env
+      .get("RS_SOLR_CREATE_CORE_CMD")
+      .map(_.replace("%s", core))
+      .getOrElse(s"docker exec $containerName sh -c precreate-core $core")
+  private def deleteCoreCmd(core: String) =
+    sys.env
+      .get("RS_SOLR_DELETE_CORE_CMD")
+      .map(_.replace("%s", core))
+      .getOrElse(s"docker exec $containerName sh -c solr delete -c $core")
 
   private val wasStartedHere = new AtomicBoolean(false)
 
@@ -78,7 +74,6 @@ class SolrServer(module: String, solrPort: Option[Int]) {
     else {
       println(s"Starting Solr container for '$module' from '$image' image")
       startContainer()
-      copyConfigSets()
       waitForCoresToBeReady()
     }
 
@@ -116,8 +111,17 @@ class SolrServer(module: String, solrPort: Option[Int]) {
     createCores(cores)
   }
 
-  private def copyConfigSets(): Unit =
-    copyConfigSetsCmd.!!
+  def createCore(name: String): Try[Unit] = {
+    val cmd = createCoreCmd(name)
+    println(s"Run create core: $cmd")
+    Try(cmd.!!).map(_ => ())
+  }
+
+  def deleteCore(name: String): Try[Unit] = {
+    val cmd = deleteCoreCmd(name)
+    println(s"Run delete core: $cmd")
+    Try(cmd.!!).map(_ => ())
+  }
 
   @tailrec
   private def createCores(cores: Set[String], attempt: Int = 1): Unit = {

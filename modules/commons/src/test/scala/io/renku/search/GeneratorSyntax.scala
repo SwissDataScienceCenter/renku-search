@@ -46,6 +46,12 @@ trait GeneratorSyntax:
     def asListOfN(min: Int = 1, max: Int = 8): Gen[List[A]] =
       Gen.choose(min, max).flatMap(Gen.listOfN(_, self))
 
+    def asOption: Gen[Option[A]] =
+      Gen.option(self)
+
+    def asSome: Gen[Option[A]] =
+      self.map(Some(_))
+
   extension [A](self: Stream[Gen, A])
     def toIO: Stream[IO, A] =
       self.translate(FunctionK.lift[Gen, IO]([X] => (gx: Gen[X]) => IO(gx.generateOne)))

@@ -164,7 +164,7 @@ lazy val openidKeycloak = project
     http4sBorer % "compile->compile;test->test",
     httpClient % "compile->compile;test->test",
     jwt % "compile->compile;test->test",
-    commons % "test->test"
+    commons % "compile->compile;test->test"
   )
 
 lazy val http4sMetrics = project

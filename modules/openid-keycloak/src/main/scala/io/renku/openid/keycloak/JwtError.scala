@@ -20,6 +20,7 @@ package io.renku.openid.keycloak
 
 import scala.concurrent.duration.FiniteDuration
 
+import io.renku.search.common.UrlPattern
 import org.http4s.Uri
 import pdi.jwt.JwtClaim
 import pdi.jwt.JwtHeader
@@ -87,4 +88,11 @@ object JwtError:
 
   final case class TooManyValidationRequests(minDelay: FiniteDuration)
       extends RuntimeException(s"Too many validation attempts within $minDelay")
+      with JwtError
+
+  final case class ForbiddenIssuer(uri: Uri, allowed: List[UrlPattern])
+      extends RuntimeException(
+        s"Issuer '${uri.renderString}' not configured in the allowed issuers (${allowed
+            .map(_.render)})"
+      )
       with JwtError

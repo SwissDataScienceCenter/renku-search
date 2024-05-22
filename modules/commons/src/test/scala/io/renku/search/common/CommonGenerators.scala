@@ -16,10 +16,11 @@
  * limitations under the License.
  */
 
-package io.renku.search.model
+package io.renku.search.common
 
 import cats.data.NonEmptyList
 
+import io.renku.search.GeneratorSyntax.*
 import org.scalacheck.Gen
 
 object CommonGenerators:
@@ -28,3 +29,27 @@ object CommonGenerators:
       e0 <- gen
       en <- Gen.listOfN(n - 1, gen)
     } yield NonEmptyList(e0, en)
+
+  def urlPatternGen: Gen[UrlPattern] =
+    def segmentGen(inner: Gen[String]): Gen[UrlPattern.Segment] =
+      Gen.oneOf(
+        inner.map(s => UrlPattern.Segment.Prefix(s)),
+        inner.map(s => UrlPattern.Segment.Suffix(s)),
+        inner.map(s => UrlPattern.Segment.Literal(s)),
+        Gen.const(UrlPattern.Segment.MatchAll)
+      )
+
+    val schemes = segmentGen(Gen.oneOf("http", "https"))
+    val ports = segmentGen(Gen.oneOf("123", "8080", "8145", "487", "11"))
+    val hosts = segmentGen(
+      Gen.oneOf("test", "com", "ch", "de", "dev", "renku", "penny", "cycle")
+    ).asListOfN(0, 5)
+    val paths = segmentGen(
+      Gen.oneOf("auth", "authenticate", "doAuth", "me", "run", "api")
+    ).asListOfN(0, 5)
+    for
+      scheme <- schemes.asOption
+      host <- hosts
+      port <- ports.asOption
+      path <- paths
+    yield UrlPattern(scheme, host, port, path)

@@ -21,6 +21,7 @@ package io.renku.search.config
 import cats.syntax.all.*
 import ciris.*
 import com.comcast.ip4s.{Ipv4Address, Port}
+import io.renku.search.common.UrlPattern
 import io.renku.openid.keycloak.JwtVerifyConfig
 import io.renku.redis.client.*
 import io.renku.search.http.HttpServerConfig
@@ -97,5 +98,11 @@ object ConfigValues extends ConfigDecoders:
       .default(defaults.minRequestDelay)
     val openIdConfigPath =
       renv("JWT_OPENID_CONFIG_PATH").default(defaults.openIdConfigPath)
-    (requestDelay, enableSigCheck, openIdConfigPath).mapN(JwtVerifyConfig.apply)
+    val allowedIssuers =
+      renv("JWT_ALLOWED_ISSUER_URL_PATTERNS")
+        .as[List[UrlPattern]]
+        .default(defaults.allowedIssuerUrls)
+    (requestDelay, enableSigCheck, openIdConfigPath, allowedIssuers).mapN(
+      JwtVerifyConfig.apply
+    )
   }

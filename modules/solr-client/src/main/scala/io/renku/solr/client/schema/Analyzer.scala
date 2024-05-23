@@ -33,6 +33,12 @@ object Analyzer:
     case Query
     case None
 
+  object AnalyzerType:
+    def fromString(str: String): Either[String, AnalyzerType] =
+      AnalyzerType.values
+        .find(_.productPrefix.equalsIgnoreCase(str))
+        .toRight(s"Invalid analyzer type: $str")
+
   def index(tokenizer: Tokenizer, filters: Filter*): Analyzer =
     Analyzer(tokenizer, AnalyzerType.Index, filters)
 

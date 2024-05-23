@@ -19,8 +19,10 @@
 package io.renku.solr.client.schema
 
 import io.bullet.borer.Json
+import io.renku.solr.client.SchemaResponse
 import io.renku.solr.client.schema.SchemaCommand.DeleteType
 import munit.FunSuite
+import scala.io.Source
 
 class BorerJsonCodecTest extends FunSuite with SchemaJsonCodec {
 
@@ -35,17 +37,27 @@ class BorerJsonCodecTest extends FunSuite with SchemaJsonCodec {
     val v = SchemaCommand.Add(Field(FieldName("description"), TypeName("integer")))
     assertEquals(
       Json.encode(v).toUtf8String,
-      """{"add-field":{"name":"description","type":"integer","required":false,"indexed":true,"stored":true,"multiValued":false,"uninvertible":true,"docValues":false}}"""
+      """{"add-field":{"name":"description","type":"integer"}}"""
     )
 
   test("encode multiple schema commands into a single object"):
     val vs = Seq(
       DeleteType(TypeName("integer")),
       DeleteType(TypeName("float")),
-      SchemaCommand.Add(Field(FieldName("description"), TypeName("text")))
+      SchemaCommand.Add(Field(FieldName("description"), TypeName("text"), required = true))
     )
     assertEquals(
       Json.encode(vs).toUtf8String,
-      """{"delete-field-type":{"name":"integer"},"delete-field-type":{"name":"float"},"add-field":{"name":"description","type":"text","required":false,"indexed":true,"stored":true,"multiValued":false,"uninvertible":true,"docValues":false}}""".stripMargin
+      """{"delete-field-type":{"name":"integer"},"delete-field-type":{"name":"float"},"add-field":{"name":"description","type":"text","required":true}}""".stripMargin
     )
+
+  test("decode schema response"):
+    val schemaResponseText = Source.fromResource("schema-response.json").mkString
+    val result = Json.decode(schemaResponseText.getBytes()).to[SchemaResponse].value
+    assertEquals(result.schema.copyFields.size, 16)
+    assertEquals(result.schema.dynamicFields.size, 69)
+    assertEquals(result.schema.fields.size, 30)
+    assertEquals(result.schema.fieldTypes.size, 73)
+    assert(result.schema.fields.exists(_.name == FieldName("_kind")))
+    assert(result.schema.copyFields.exists(_.source == FieldName("description")))
 }

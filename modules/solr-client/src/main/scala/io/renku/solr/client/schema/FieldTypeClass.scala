@@ -19,6 +19,7 @@
 package io.renku.solr.client.schema
 
 import io.bullet.borer.Encoder
+import io.bullet.borer.Decoder
 
 opaque type FieldTypeClass = String
 
@@ -43,3 +44,4 @@ object FieldTypeClass:
     val nestedPath: FieldTypeClass = "solr.NestPathField"
 
   given Encoder[FieldTypeClass] = Encoder.forString
+  given Decoder[FieldTypeClass] = Decoder.forString

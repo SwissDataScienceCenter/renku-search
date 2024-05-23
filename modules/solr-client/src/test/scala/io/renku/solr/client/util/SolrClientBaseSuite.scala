@@ -24,15 +24,14 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.LoggingConfigure
 import munit.CatsEffectSuite
 import org.scalacheck.Gen
-import scala.concurrent.duration.Duration
+import munit.catseffect.IOFixture
+import munit.AnyFixture
 
 abstract class SolrClientBaseSuite
     extends CatsEffectSuite
     with LoggingConfigure
     with SolrServerSuite
     with SolrTruncate:
-
-  override val munitTimeout = Duration(1, "min")
 
   private val coreNameGen: Gen[String] =
     Gen.choose(5, 12).flatMap(n => Gen.listOfN(n, Gen.alphaChar)).map(_.mkString)
@@ -48,7 +47,10 @@ abstract class SolrClientBaseSuite
       )
     yield client
 
-  val solrClient = ResourceFixture(solrClientR)
+  val solrClient = ResourceSuiteLocalFixture("solr-client", Resource.make(IO.unit)(_ => IO.unit))
+
+  override def munitFixtures: Seq[AnyFixture[?]] =
+    List(solrClient)
 
   def createSolrCore(client: SolrClient[IO], name: String): IO[Unit] =
     IO.println(s"Creating core: $name") >> IO(server.createCore(name).get)

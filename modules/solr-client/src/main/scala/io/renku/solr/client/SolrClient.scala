@@ -47,6 +47,8 @@ trait SolrClient[F[_]]:
 
   def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]]
 
+  def getSchema: F[SchemaResponse]
+
   def getStatus: F[StatusResponse]
   def createCore(name: String, configSet: Option[String] = None): F[Unit]
   def deleteCore(name: String): F[Unit]

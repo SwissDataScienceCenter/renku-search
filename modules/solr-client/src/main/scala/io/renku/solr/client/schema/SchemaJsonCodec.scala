@@ -19,20 +19,37 @@
 package io.renku.solr.client.schema
 
 import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs.deriveEncoder
-import io.bullet.borer.{Encoder, Writer}
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.{Decoder, Encoder, Writer}
 import io.renku.solr.client.schema.SchemaCommand.Element
 
 trait SchemaJsonCodec {
 
-  given Encoder[Tokenizer] = deriveEncoder
-  given Encoder[Filter] = deriveEncoder
+  given Encoder[Tokenizer] = MapBasedCodecs.deriveEncoder
+  given Decoder[Tokenizer] = MapBasedCodecs.deriveDecoder
+
+  given Encoder[Filter] = MapBasedCodecs.deriveEncoder
+  given Decoder[Filter] = MapBasedCodecs.deriveDecoder
+
   given Encoder[Analyzer.AnalyzerType] =
     Encoder.forString.contramap(_.productPrefix.toLowerCase)
-  given Encoder[Analyzer] = deriveEncoder
-  given Encoder[FieldType] = deriveEncoder
-  given Encoder[DynamicFieldRule] = deriveEncoder
-  given Encoder[CopyFieldRule] = deriveEncoder
+  given Decoder[Analyzer.AnalyzerType] =
+    Decoder.forString.mapEither(Analyzer.AnalyzerType.fromString)
+
+  given Encoder[Analyzer] = MapBasedCodecs.deriveEncoder
+  given Decoder[Analyzer] = MapBasedCodecs.deriveDecoder
+
+  given Encoder[FieldType] = MapBasedCodecs.deriveEncoder
+  given Decoder[FieldType] = MapBasedCodecs.deriveDecoder
+
+  given Encoder[DynamicFieldRule] = MapBasedCodecs.deriveEncoder
+  given Decoder[DynamicFieldRule] = MapBasedCodecs.deriveDecoder
+
+  given Encoder[CopyFieldRule] = MapBasedCodecs.deriveEncoder
+  given Decoder[CopyFieldRule] = MapBasedCodecs.deriveDecoder
+
+  given Decoder[CoreSchema] = MapBasedCodecs.deriveDecoder
+  given Encoder[CoreSchema] = MapBasedCodecs.deriveEncoder
 
   given (using
       e1: Encoder[Field],

@@ -16,19 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client
 
-import io.bullet.borer.Encoder
+import io.renku.solr.client.schema.*
+import io.renku.solr.client.schema.SchemaJsonCodec.given
 import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs
 
-opaque type FieldName = String
-object FieldName:
-  val all: FieldName = "*"
-  val score: FieldName = "score"
 
-  def apply(name: String): FieldName = name
+final case class SchemaResponse(
+  responseHeader: ResponseHeader,
+  schema: CoreSchema
+)
 
-  extension (self: FieldName) def name: String = self
-
-  given Encoder[FieldName] = Encoder.forString
-  given Decoder[FieldName] = Decoder.forString
+object SchemaResponse:
+  given Decoder[SchemaResponse] = MapBasedCodecs.deriveDecoder

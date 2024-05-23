@@ -18,17 +18,12 @@
 
 package io.renku.solr.client.schema
 
-import io.bullet.borer.Encoder
-import io.bullet.borer.Decoder
-
-opaque type FieldName = String
-object FieldName:
-  val all: FieldName = "*"
-  val score: FieldName = "score"
-
-  def apply(name: String): FieldName = name
-
-  extension (self: FieldName) def name: String = self
-
-  given Encoder[FieldName] = Encoder.forString
-  given Decoder[FieldName] = Decoder.forString
+final case class CoreSchema(
+  name: String,
+  version: Double,
+  uniqueKey: FieldName,
+  fieldTypes: List[FieldType] = Nil,
+  fields: List[Field] = Nil,
+  dynamicFields: List[DynamicFieldRule] = Nil,
+  copyFields: List[CopyFieldRule] = Nil
+)

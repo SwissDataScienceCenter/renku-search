@@ -97,6 +97,11 @@ private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Cl
         )
     }
 
+  def getSchema: F[SchemaResponse] =
+    val url = solrUrl / "schema"
+    val req = Method.GET(url)
+    underlying.expect[SchemaResponse](req)
+
   def getStatus: F[StatusResponse] =
     val url = config.baseUrl / "api" / "cores"
     val req = Method.GET(url)

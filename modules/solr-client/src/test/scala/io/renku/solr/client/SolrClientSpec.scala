@@ -38,9 +38,10 @@ import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
 
 class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
-  solrClient.test("optimistic locking: fail if exists") { client =>
+  test("optimistic locking: fail if exists") {
     val c0 = Course("c1", "fp in scala", DocVersion.NotExists)
     for {
+      client <- IO(solrClient())
       _ <- client.deleteIds(NonEmptyList.of(c0.id))
       r0 <- client.upsert(Seq(c0))
       _ = assert(r0.isSuccess, clue = "Expected successful insert")
@@ -65,7 +66,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
     } yield ()
   }
 
-  solrClient.test("use schema for inserting and querying") { client =>
+  test("use schema for inserting and querying") {
     val cmds = Seq(
       SchemaCommand.Add(FieldType.text(TypeName("roomText"), Analyzer.classic)),
       SchemaCommand.Add(FieldType.int(TypeName("roomInt"))),
@@ -76,6 +77,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
 
     val room = Room(UUID.randomUUID().toString, "meeting room", "room for meetings", 56)
     for {
+      client <- IO(solrClient())
       _ <- truncateAll(client)(
         List("roomName", "roomDescription", "roomSeats").map(FieldName.apply),
         List("roomText", "roomInt").map(TypeName.apply)
@@ -89,24 +91,26 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
     } yield ()
   }
 
-  solrClient.test("correct facet queries") { client =>
+  test("correct facet queries") {
     val decoder: Decoder[Unit] = new Decoder {
       def read(r: Reader): Unit =
         r.skipElement()
         ()
     }
+    val client = solrClient()
     PropF.forAllF(SolrClientGenerator.facets) { facets =>
       val q = QueryData(QueryString("*:*")).withFacet(facets)
       client.query(q)(using decoder).void
     }
   }
 
-  solrClient.test("decoding facet response") { client =>
+  test("decoding facet response") {
     val rooms = Gen.listOfN(15, Room.gen).sample.get
     val facets =
       Facets(Facet.Terms(FieldName("by_name"), FieldName("roomName"), limit = Some(6)))
 
     for {
+      client <- IO(solrClient())
       _ <- client.delete(QueryString("_type_s:Room"))
       _ <- client.upsert(rooms)
       r <- client.query[Room](QueryData(QueryString("_type_s:Room")).withFacet(facets))
@@ -119,8 +123,9 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
     } yield ()
   }
 
-  solrClient.test("delete by id") { client =>
+  test("delete by id") {
     for {
+      client <- IO(solrClient())
       id <- IO(Gen.uuid.generateOne).map(_.toString)
       _ <- client.delete(QueryString("_type_s:Person"))
       _ <- client.upsert(Seq(SolrClientSpec.Person(id, "John")))
@@ -134,7 +139,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
     } yield ()
   }
 
-  solrClient.test("create and delete core") { client =>
+  test("create and delete core") {
     val name = Gen
       .choose(5, 12)
       .flatMap(n => Gen.listOfN(n, Gen.alphaChar))
@@ -142,6 +147,7 @@ class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
       .generateOne
 
     for
+      client <- IO(solrClient())
       _ <- client.createCore(name)
       s1 <- client.getStatus
       _ = assert(s1.status.keySet.contains(name), s"core $name not available")

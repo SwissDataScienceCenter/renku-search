@@ -47,9 +47,10 @@ class SolrMigratorSpec extends SolrClientBaseSuite:
       Seq(TypeName("testText"), TypeName("testInt"))
     )
 
-  solrClient.test("run sample migrations") { client =>
-    val migrator = SchemaMigrator[IO](client)
+  test("run sample migrations") {
     for {
+      client <- IO(solrClient())
+      migrator = SchemaMigrator[IO](client)
       _ <- truncate(client)
       _ <- migrator.migrate(migrations)
       c <- migrator.currentVersion
@@ -58,17 +59,17 @@ class SolrMigratorSpec extends SolrClientBaseSuite:
   }
 
   test("run migrations"):
-    solrClientR.use { client =>
-      val migrator = SchemaMigrator(client)
-      val first = migrations.take(2)
-      for {
-        _ <- truncate(client)
-        _ <- migrator.migrate(first)
-        v0 <- migrator.currentVersion
-        _ = assertEquals(v0, Some(-4L))
+    for {
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      first = migrations.take(2)
 
-        _ <- migrator.migrate(migrations)
-        v1 <- migrator.currentVersion
-        _ = assertEquals(v1, Some(-1L))
-      } yield ()
-    }
+      _ <- truncate(client)
+      _ <- migrator.migrate(first)
+      v0 <- migrator.currentVersion
+      _ = assertEquals(v0, Some(-4L))
+
+      _ <- migrator.migrate(migrations)
+      v1 <- migrator.currentVersion
+      _ = assertEquals(v1, Some(-1L))
+    } yield ()

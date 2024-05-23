@@ -43,8 +43,9 @@ class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
       Seq(TypeName("my_text_field"))
     )
 
-  solrClient.test("search case insensitive") { client =>
+  test("search case insensitive") {
     for {
+      client <- IO(solrClient())
       _ <- truncate(client)
       _ <- client.modifySchema(migrations)
       _ <- client.upsert(TestData.sample)

@@ -34,7 +34,11 @@ abstract class SolrClientBaseSuite
     with SolrTruncate:
 
   private val coreNameGen: Gen[String] =
-    Gen.choose(5, 12).flatMap(n => Gen.listOfN(n, Gen.alphaChar)).map(_.mkString)
+    Gen
+      .choose(5, 12)
+      .flatMap(n => Gen.listOfN(n, Gen.alphaChar))
+      .map(_.mkString)
+      .map(name => s"test-core-$name")
 
   val solrClientR: Resource[IO, SolrClient[IO]] =
     for
@@ -47,13 +51,13 @@ abstract class SolrClientBaseSuite
       )
     yield client
 
-  val solrClient = ResourceSuiteLocalFixture("solr-client", Resource.make(IO.unit)(_ => IO.unit))
+  val solrClient = ResourceSuiteLocalFixture("solr-client", solrClientR)
 
   override def munitFixtures: Seq[AnyFixture[?]] =
-    List(solrClient)
+    super.munitFixtures ++ List(solrClient)
 
   def createSolrCore(client: SolrClient[IO], name: String): IO[Unit] =
-    IO.println(s"Creating core: $name") >> IO(server.createCore(name).get)
+    IO(server.createCore(name).get)
 
   def deleteSolrCore(client: SolrClient[IO], name: String): IO[Unit] =
-    IO.println(s"Deleting core: $name") >> IO(server.deleteCore(name).get)
+    IO(server.deleteCore(name).get)

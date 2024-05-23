@@ -9,7 +9,7 @@ object Dependencies {
     val borer = "1.14.0"
     val catsCore = "2.10.0"
     val catsEffect = "3.5.4"
-    val catsEffectMunit = "1.0.7"
+    val catsEffectMunit = "2.0.0"
     val catsParse = "1.0.0"
     val catsScalaCheck = "0.3.2"
     val ciris = "3.6.0"
@@ -83,7 +83,7 @@ object Dependencies {
   )
 
   val catsEffectMunit = Seq(
-    "org.typelevel" %% "munit-cats-effect-3" % V.catsEffectMunit
+    "org.typelevel" %% "munit-cats-effect" % V.catsEffectMunit
   )
 
   val decline = Seq(

@@ -20,6 +20,7 @@ package io.renku.search.provision.user
 
 import cats.data.NonEmptyList
 import cats.effect.IO
+import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
@@ -48,7 +49,7 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
         EventsGenerators
           .eventMessageGen(
             EventsGenerators
-              .userAddedGen("ua-", Gen.const(FirstName("john1")))
+              .userAddedGen("ua-", Gen.const(FirstName("john1").some))
               .map(_.withId(id))
           )
           .generateOne
@@ -64,7 +65,7 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
         EventsGenerators
           .eventMessageGen(
             EventsGenerators
-              .userAddedGen("ua-", Gen.const(FirstName("john2")))
+              .userAddedGen("ua-", Gen.const(FirstName("john2").some))
               .map(_.withId(id))
           )
           .generateOne

@@ -83,7 +83,8 @@ lazy val commons = project
         Dependencies.catsEffect ++
         Dependencies.ducktape ++
         Dependencies.fs2Core ++
-        Dependencies.scodecBits,
+        Dependencies.scodecBits ++
+        Dependencies.scribe,
     Test / sourceGenerators += Def.task {
       val sourceDir =
         (LocalRootProject / baseDirectory).value / "project"
@@ -113,7 +114,8 @@ lazy val jwt = project
     name := "jwt",
     description := "jwt with borer",
     libraryDependencies ++= Dependencies.borer ++
-      Dependencies.jwtScala
+      Dependencies.jwtScala ++
+      Dependencies.scribe
   )
 
 lazy val http4sBorer = project
@@ -207,7 +209,8 @@ lazy val redisClient = project
       Dependencies.catsCore ++
         Dependencies.catsEffect ++
         Dependencies.redis4Cats ++
-        Dependencies.redis4CatsStreams
+        Dependencies.redis4CatsStreams ++
+        Dependencies.scribe
   )
   .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(RevolverPlugin)
@@ -278,7 +281,8 @@ lazy val avroCodec = project
     name := "avro-codec",
     libraryDependencies ++=
       Dependencies.avro ++
-        Dependencies.scodecBits
+        Dependencies.scodecBits ++
+        Dependencies.scribe
   )
 
 lazy val http4sAvro = project
@@ -449,12 +453,11 @@ lazy val commonSettings = Seq(
   Test / parallelExecution := false,
   semanticdbEnabled := true, // enable SemanticDB
   semanticdbVersion := scalafixSemanticdb.revision,
-  libraryDependencies ++=
-    Dependencies.scribe,
   libraryDependencies ++= (
-      Dependencies.catsEffectMunit ++
+      Dependencies.munitCatsEffect ++
         Dependencies.scalacheckEffectMunit ++
-        Dependencies.catsScalaCheck
+        Dependencies.catsScalaCheck ++
+        Dependencies.scribe
     ).map(_ % Test),
   // Format: on
   organizationName := "Swiss Data Science Center (SDSC)",

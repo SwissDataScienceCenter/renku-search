@@ -20,19 +20,18 @@ package io.renku.queue.client
 
 import cats.effect.{IO, Resource}
 
-import dev.profunktor.redis4cats.connection.RedisClient
 import io.renku.redis.client.ClientId
-import io.renku.redis.client.util.RedisSpec
+import io.renku.redis.client.util.RedisBaseSuite
+import munit.AnyFixture
 
-trait QueueSpec extends RedisSpec:
-  self: munit.Suite =>
+trait QueueSuite extends RedisBaseSuite:
 
-  abstract class QueueFixture extends Fixture[Resource[IO, QueueClient[IO]]]("queue")
+  val queueClientR: Resource[IO, QueueClient[IO]] =
+    redisClientsR.map(c =>
+      new QueueClientImpl[IO](c.queueClient, ClientId("search-provisioner"))
+    )
 
-  val withQueueClient: QueueFixture = () =>
-    withRedisClient
-      .asRedisQueueClient()
-      .map(new QueueClientImpl[IO](_, ClientId("search-provisioner")))
+  val queueClient = ResourceSuiteLocalFixture("queue-client", queueClientR)
 
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient)
+  override def munitFixtures: Seq[AnyFixture[?]] =
+    super.munitFixtures ++ List(queueClient)

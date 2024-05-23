@@ -32,7 +32,7 @@ import io.renku.search.solr.documents.{Group as GroupDocument, User as UserDocum
 import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.{QueryData, QueryString}
 
-trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
+trait ProvisioningSuite extends SearchSolrSuite with QueueSuite:
   val queueConfig: QueuesConfig = QueuesConfig(
     projectCreated = QueueName("projectCreated"),
     projectUpdated = QueueName("projectUpdated"),

@@ -26,46 +26,43 @@ import io.renku.redis.client.RedisClientGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.events.EventMessage
-import munit.CatsEffectSuite
 
-class QueueClientSpec extends CatsEffectSuite with QueueSpec:
+class QueueClientSpec extends QueueSuite:
   test("can enqueue and dequeue project-member-add events"):
-    withQueueClient().use { queue =>
-      val qname = RedisClientGenerators.queueNameGen.generateOne
-      val msg = EventsGenerators
-        .eventMessageGen(EventsGenerators.projectMemberAddedGen)
-        .generateOne
-      for
-        msgId <- queue.enqueue(qname, msg)
-        res <- queue
-          .acquireMessageStream[ProjectMemberAdded](qname, 1, None)
-          .take(1)
-          .compile
-          .toList
-        _ = assertEquals(res.head, msg.copy(id = msgId))
-      yield ()
-    }
+    val qname = RedisClientGenerators.queueNameGen.generateOne
+    val msg = EventsGenerators
+      .eventMessageGen(EventsGenerators.projectMemberAddedGen)
+      .generateOne
+    for
+      queue <- IO(queueClient())
+      msgId <- queue.enqueue(qname, msg)
+      res <- queue
+        .acquireMessageStream[ProjectMemberAdded](qname, 1, None)
+        .take(1)
+        .compile
+        .toList
+      _ = assertEquals(res.head, msg.copy(id = msgId))
+    yield ()
 
   test("can enqueue and dequeue project-created events"):
-    withQueueClient().use { queueClient =>
-      val queue = RedisClientGenerators.queueNameGen.generateOne
-      for
-        dequeued <- SignallingRef.of[IO, List[EventMessage[ProjectCreated]]](Nil)
+    val queue = RedisClientGenerators.queueNameGen.generateOne
+    for
+      queueClient <- IO(queueClient())
+      dequeued <- SignallingRef.of[IO, List[EventMessage[ProjectCreated]]](Nil)
 
-        message0 = EventsGenerators
-          .eventMessageGen(EventsGenerators.projectCreatedGen("test"))
-          .generateOne
-        message1Id <- queueClient.enqueue(queue, message0)
-        message1 = message0.copy(id = message1Id)
+      message0 = EventsGenerators
+        .eventMessageGen(EventsGenerators.projectCreatedGen("test"))
+        .generateOne
+      message1Id <- queueClient.enqueue(queue, message0)
+      message1 = message0.copy(id = message1Id)
 
-        streamingProcFiber <- queueClient
-          .acquireMessageStream[ProjectCreated](queue, chunkSize = 1, maybeOffset = None)
-          .evalMap(event => dequeued.update(event :: _))
-          .compile
-          .drain
-          .start
-        _ <- dequeued.waitUntil(_.contains(message1))
+      streamingProcFiber <- queueClient
+        .acquireMessageStream[ProjectCreated](queue, chunkSize = 1, maybeOffset = None)
+        .evalMap(event => dequeued.update(event :: _))
+        .compile
+        .drain
+        .start
+      _ <- dequeued.waitUntil(_.contains(message1))
 
-        _ <- streamingProcFiber.cancel
-      yield ()
-    }
+      _ <- streamingProcFiber.cancel
+    yield ()

@@ -16,23 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search
+package io.renku.redis.client.util
 
-import io.renku.logging.LoggingSetup
+import cats.effect.*
+import io.renku.redis.client.RedisQueueClient
+import dev.profunktor.redis4cats.connection.RedisClient
+import dev.profunktor.redis4cats.RedisCommands
+import io.renku.redis.client.RedisConfig
 
-trait LoggingConfigure extends munit.Suite:
-
-  def defaultVerbosity: Int = 0
-
-  override def beforeAll(): Unit =
-    setLoggingVerbosity(defaultVerbosity)
-    super.beforeAll()
-
-  def setLoggingVerbosity(level: Int): Unit =
-    LoggingSetup.doConfigure(level)
-
-  def withVerbosity[T](level: Int)(body: => T): T =
-    val verbosity = defaultVerbosity
-    LoggingSetup.doConfigure(level)
-    try body
-    finally LoggingSetup.doConfigure(verbosity)
+final case class RedisClients(
+    config: RedisConfig,
+    lowLevel: RedisClient,
+    commands: RedisCommands[IO, String, String],
+    queueClient: RedisQueueClient[IO]
+)

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.solr.client.util
 
 import cats.effect.{ExitCode, IO, IOApp}
 

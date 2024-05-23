@@ -19,45 +19,25 @@
 package io.renku.search.solr.client
 
 import cats.effect.*
-import cats.effect.std.CountDownLatch
 
 import io.renku.search.solr.schema.Migrations
-import io.renku.solr.client.SolrClient
 import io.renku.solr.client.migration.SchemaMigrator
 import io.renku.solr.client.util.SolrClientBaseSuite
+import munit.AnyFixture
+import io.renku.solr.client.SolrClient
 
 abstract class SearchSolrSuite extends SolrClientBaseSuite:
 
-  val searchSolrR: Resource[IO, SearchSolrClient[IO]] =
+  val solrClientWithSchemaR: Resource[IO, SolrClient[IO]] =
     solrClientR
-      .evalMap(c => SearchSolrSuite.setupSchema(c.config.core, c))
-      .map(new SearchSolrClientImpl[IO](_))
+      .evalTap(c => SchemaMigrator[IO](c).migrate(Migrations.all))
 
-  val searchSolr = ResourceFixture(searchSolrR)
+  val searchSolrR: Resource[IO, SearchSolrClient[IO]] =
+    solrClientWithSchemaR.map(new SearchSolrClientImpl[IO](_))
 
-object SearchSolrSuite:
-  private val logger = scribe.cats.io
-  private case class MigrateState(tasks: Map[String, IO[Unit]] = Map.empty):
-    def add(name: String, task: IO[Unit]): MigrateState = copy(tasks.updated(name, task))
-  private val currentState: Ref[IO, MigrateState] =
-    Ref.unsafe(MigrateState())
+  val solrClientWithSchema =
+    ResourceSuiteLocalFixture("solr-client-with-schema", solrClientWithSchemaR)
+  val searchSolrClient = ResourceSuiteLocalFixture("search-solr-client", searchSolrR)
 
-  private def setupSchema(coreName: String, client: SolrClient[IO]): IO[Unit] =
-    CountDownLatch[IO](1).flatMap { latch =>
-      currentState.flatModify { state =>
-        state.tasks.get(coreName) match
-          case Some(t) =>
-            (
-              state,
-              logger
-                .info(s"Waiting for migrations to finish for core $coreName")
-                .flatMap(_ => t)
-            )
-          case None =>
-            val task = SchemaMigrator[IO](client)
-              .migrate(Migrations.all)
-              .flatTap(_ => latch.release)
-            val wait = latch.await
-            (state.add(coreName, wait), task)
-      }
-    }
+  override def munitFixtures: Seq[AnyFixture[?]] =
+    super.munitFixtures ++ List(searchSolrClient, solrClientWithSchema)

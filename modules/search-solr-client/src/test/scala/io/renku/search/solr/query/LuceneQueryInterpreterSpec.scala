@@ -34,8 +34,6 @@ import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
-import io.renku.search.solr.schema.Migrations
-import io.renku.solr.client.migration.SchemaMigrator
 import io.renku.solr.client.{QueryData, QueryString}
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Test.Parameters
@@ -86,27 +84,29 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
     )
     assertEquals(query("", SearchRole.Admin).query, "(_kind:fullentity)")
 
-  solrClient.test("valid content_all query") { client =>
+  test("valid content_all query") {
+    val client = solrClientWithSchema()
     List("hello world", "bla:test")
       .map(query(_))
       .traverse_(client.query[Unit])
   }
 
-  solrClient.test("generate valid solr queries") { client =>
+  test("generate valid solr queries") {
+    val client = solrClientWithSchema()
     PropF.forAllF(QueryGenerators.query) { q =>
       client.query(query(q)).void
     }
   }
 
-  solrClient.test("sort only") { client =>
+  test("sort only") {
+    val client = solrClientWithSchema()
     val doc = Map(
       Fields.id.name -> "one",
       Fields.name.name -> "John",
       Fields.entityType.name -> EntityType.User.name,
       Fields.kind.name -> DocumentKind.FullEntity.name
     )
-    SchemaMigrator[IO](client).migrate(Migrations.all).void >>
-      PropF.forAllF(QueryGenerators.sortTerm) { order =>
+    PropF.forAllF(QueryGenerators.sortTerm) { order =>
         val q = Query(Query.Segment.Sort(order))
 
         for {
@@ -123,31 +123,30 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
   }
 
   test("auth scenarios"):
-    withSearchSolrClient().use { solr =>
-      for {
-        data <- AuthTestData.generate
-        _ <- solr.upsert(data.all)
-        query = data.queryAll
+    for {
+      solr <- IO(searchSolrClient())
+      data <- AuthTestData.generate
+      _ <- solr.upsert(data.all)
+      query = data.queryAll
 
-        publicEntities <- solr.queryEntity(SearchRole.Anonymous, query, 50, 0)
-        user1Entities <- solr.queryEntity(SearchRole.User(data.user1.id), query, 50, 0)
-        user2Entities <- solr.queryEntity(SearchRole.User(data.user2.id), query, 50, 0)
-        user3Entities <- solr.queryEntity(SearchRole.User(data.user3.id), query, 50, 0)
-        _ = assertEquals(
-          publicEntities.responseBody.docs.map(_.id).toSet,
-          data.publicEntityIds.toSet
-        )
-        _ = assertEquals(
-          user1Entities.responseBody.docs.map(_.id).toSet,
-          data.user1EntityIds.toSet
-        )
-        _ = assertEquals(
-          user2Entities.responseBody.docs.map(_.id).toSet,
-          data.user2EntityIds.toSet
-        )
-        _ = assertEquals(
-          user3Entities.responseBody.docs.map(_.id).toSet,
-          data.user3EntityIds.toSet
-        )
-      } yield ()
-    }
+      publicEntities <- solr.queryEntity(SearchRole.Anonymous, query, 50, 0)
+      user1Entities <- solr.queryEntity(SearchRole.User(data.user1.id), query, 50, 0)
+      user2Entities <- solr.queryEntity(SearchRole.User(data.user2.id), query, 50, 0)
+      user3Entities <- solr.queryEntity(SearchRole.User(data.user3.id), query, 50, 0)
+      _ = assertEquals(
+        publicEntities.responseBody.docs.map(_.id).toSet,
+        data.publicEntityIds.toSet
+      )
+      _ = assertEquals(
+        user1Entities.responseBody.docs.map(_.id).toSet,
+        data.user1EntityIds.toSet
+      )
+      _ = assertEquals(
+        user2Entities.responseBody.docs.map(_.id).toSet,
+        data.user2EntityIds.toSet
+      )
+      _ = assertEquals(
+        user3Entities.responseBody.docs.map(_.id).toSet,
+        data.user3EntityIds.toSet
+      )
+    } yield ()

@@ -19,10 +19,11 @@
 package io.renku.servers
 
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.annotation.tailrec
 import scala.sys.process.*
 import scala.util.Try
-import java.util.concurrent.atomic.AtomicInteger
 
 @annotation.nowarn
 object SolrServer {
@@ -47,22 +48,27 @@ object SolrServer {
   private val isRunningCmd =
     Seq("docker", "container", "ls", "--filter", s"name=$containerName")
   private val stopCmd = s"docker stop -t5 $containerName"
-  private def readyCmd(core: String) =
-    s"curl http://localhost:8983/solr/$core/select?q=*:* --no-progress-meter --fail 1> /dev/null"
   private def isCoreReadyCmd(core: String) =
-    Seq("docker", "exec", containerName, "sh", "-c", readyCmd(core))
+    Seq(
+      "curl",
+      "--fail",
+      "-s",
+      "-o",
+      "/dev/null",
+      s"$url/solr/$core/select"
+    )
   private def createCoreCmd(core: String) =
     sys.env
       .get("RS_SOLR_CREATE_CORE_CMD")
       .map(_.replace("%s", core))
-      .getOrElse(s"docker exec $containerName sh -c precreate-core $core")
+      .getOrElse(s"docker exec $containerName solr create -c $core")
   private def deleteCoreCmd(core: String) =
     sys.env
       .get("RS_SOLR_DELETE_CORE_CMD")
       .map(_.replace("%s", core))
       .getOrElse(s"docker exec $containerName sh -c solr delete -c $core")
 
-  // configsets must be copied to allow core api to create cores
+  // configsets are copied to $SOLR_HOME to allow core api to create cores
   private val copyConfigSetsCmd =
     Seq(
       "docker",
@@ -82,6 +88,7 @@ object SolrServer {
     else {
       println(s"Starting Solr container '$image'")
       startContainer()
+      createCores(cores)
       copyConfigSets()
       waitForCoresToBeReady()
     }
@@ -112,12 +119,11 @@ object SolrServer {
   private def startContainer(): Unit = {
     val retryOnContainerFailedToRun: Throwable => Unit = {
       case ex if ex.getMessage contains "Nonzero exit value: 125" =>
-        Thread.sleep(500); start()
+        Thread.sleep(500); startContainer()
       case ex => throw ex
     }
     Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => wasStartedHere.set(true))
     Thread.sleep(500)
-    createCores(cores)
   }
 
   private def copyConfigSets(): Unit =

@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.user
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 
 import io.renku.events.EventsGenerators
 import io.renku.events.EventsGenerators.*
@@ -45,55 +45,55 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
 
   UserRemovedProcessSpec.testCases.foreach { tc =>
     test(s"process user removed: $tc"):
-      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-        for
-          _ <- tc.setup(solrClient)
+      for
+        services <- IO(testServices())
+        handler = services.messageHandlers
+        queueClient = services.queueClient
+        solrClient = services.searchClient
 
-          msgId <- queueClient.enqueue(
-            queueConfig.userRemoved,
-            EventsGenerators.eventMessageGen(Gen.const(tc.userRemovedEvent)).generateOne
-          )
+        _ <- tc.setup(solrClient)
 
-          _ <- handlers.makeUserRemoved.take(1).compile.drain
+        msgId <- queueClient.enqueue(
+          queueConfig.userRemoved,
+          EventsGenerators.eventMessageGen(Gen.const(tc.userRemovedEvent)).generateOne
+        )
 
-          users <- loadPartialOrEntity(solrClient, EntityType.User, tc.userId)
-          _ = assert(users.isEmpty)
+        _ <- handler.makeUserRemoved.take(1).compile.drain
 
-          projects <- solrClient
-            .queryAll[EntityDocument](QueryData(QueryString(tc.projectsQuery.value)))
-            .compile
-            .toList
-          groups <- solrClient
-            .queryAll[EntityDocument](QueryData(QueryString(tc.groupsQuery.value)))
-            .compile
-            .toList
+        users <- loadPartialOrEntity(solrClient, EntityType.User, tc.userId)
+        _ = assert(users.isEmpty)
 
-          _ = assertEquals(projects.size, tc.initialProjectsCount)
-          _ = assertEquals(groups.size, tc.initialGroupsCount)
+        projects <- solrClient
+          .queryAll[EntityDocument](QueryData(QueryString(tc.projectsQuery.value)))
+          .compile
+          .toList
+        groups <- solrClient
+          .queryAll[EntityDocument](QueryData(QueryString(tc.groupsQuery.value)))
+          .compile
+          .toList
 
-          _ = assert(
-            projects.forall {
-              case p: ProjectDocument => !p.toEntityMembers.contains(tc.userId)
-              case _                  => false
-            },
-            "user is still in project members"
-          )
-          _ = assert(
-            groups.forall {
-              case g: GroupDocument => !g.toEntityMembers.contains(tc.userId)
-              case _                => false
-            },
-            "user is still in group members"
-          )
+        _ = assertEquals(projects.size, tc.initialProjectsCount)
+        _ = assertEquals(groups.size, tc.initialGroupsCount)
 
-          last <- queueClient.findLastProcessed(queueConfig.userRemoved)
-          _ = assertEquals(last, Some(msgId))
-        yield ()
-      }
+        _ = assert(
+          projects.forall {
+            case p: ProjectDocument => !p.toEntityMembers.contains(tc.userId)
+            case _                  => false
+          },
+          "user is still in project members"
+        )
+        _ = assert(
+          groups.forall {
+            case g: GroupDocument => !g.toEntityMembers.contains(tc.userId)
+            case _                => false
+          },
+          "user is still in group members"
+        )
+
+        last <- queueClient.findLastProcessed(queueConfig.userRemoved)
+        _ = assertEquals(last, Some(msgId))
+      yield ()
   }
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
 
 object UserRemovedProcessSpec:
 

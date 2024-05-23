@@ -6,7 +6,7 @@
 }: {
   services.dev-solr = {
     enable = true;
-    cores = ["rsdev-test" "core-test1" "core-test2" "core-test3" "search-core-test"];
+    cores = ["rsdev-test" "search-core-test"];
     heap = 1024;
   };
 

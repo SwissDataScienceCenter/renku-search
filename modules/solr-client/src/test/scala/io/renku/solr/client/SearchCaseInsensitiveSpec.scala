@@ -27,9 +27,13 @@ import io.bullet.borer.derivation.key
 import io.renku.solr.client.SearchCaseInsensitiveSpec.TestData
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.SolrClientBaseSuite
+import munit.CatsEffectSuite
 
-class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
+class SearchCaseInsensitiveSpec extends CatsEffectSuite with SolrClientBaseSuite:
   private val logger = scribe.cats.io
+
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, solrClient)
 
   private val migrations = Seq(
     SchemaCommand.Add(FieldType.text(TypeName("my_text_field"), Analyzer.defaultSearch)),

@@ -40,6 +40,8 @@ import org.scalacheck.Test.Parameters
 import org.scalacheck.effect.PropF
 
 class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSuite:
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, solrClientWithSchema)
 
   override protected def scalaCheckTestParameters: Parameters =
     super.scalaCheckTestParameters.withMinSuccessfulTests(20)
@@ -85,21 +87,22 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
     assertEquals(query("", SearchRole.Admin).query, "(_kind:fullentity)")
 
   test("valid content_all query") {
-    val client = solrClientWithSchema()
-    List("hello world", "bla:test")
-      .map(query(_))
-      .traverse_(client.query[Unit])
+    IO(solrClientWithSchema()).flatMap { client =>
+      List("hello world", "bla:test")
+        .map(query(_))
+        .traverse_(client.query[Unit])
+    }
   }
 
   test("generate valid solr queries") {
-    val client = solrClientWithSchema()
     PropF.forAllF(QueryGenerators.query) { q =>
-      client.query(query(q)).void
+      IO(solrClientWithSchema()).flatMap { client =>
+        client.query(query(q)).void
+      }
     }
   }
 
   test("sort only") {
-    val client = solrClientWithSchema()
     val doc = Map(
       Fields.id.name -> "one",
       Fields.name.name -> "John",
@@ -107,19 +110,19 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
       Fields.kind.name -> DocumentKind.FullEntity.name
     )
     PropF.forAllF(QueryGenerators.sortTerm) { order =>
-        val q = Query(Query.Segment.Sort(order))
-
-        for {
-          _ <- client.upsert(Seq(doc))
-          r <- client.query[Map[String, String]](
-            query(q).withFields(Fields.id, Fields.name, Fields.entityType).withLimit(2)
-          )
-          _ = assert(
-            r.responseBody.docs.nonEmpty,
-            s"Expected at least one result, but got: ${r.responseBody.docs}"
-          )
-        } yield ()
-      }
+      val q = Query(Query.Segment.Sort(order))
+      for {
+        client <- IO(solrClientWithSchema())
+        _ <- client.upsert(Seq(doc))
+        r <- client.query[Map[String, String]](
+          query(q).withFields(Fields.id, Fields.name, Fields.entityType).withLimit(2)
+        )
+        _ = assert(
+          r.responseBody.docs.nonEmpty,
+          s"Expected at least one result, but got: ${r.responseBody.docs}"
+        )
+      } yield ()
+    }
   }
 
   test("auth scenarios"):

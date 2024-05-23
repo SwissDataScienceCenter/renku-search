@@ -26,8 +26,12 @@ import io.renku.redis.client.RedisClientGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.events.EventMessage
+import munit.AnyFixture
+import munit.CatsEffectSuite
 
-class QueueClientSpec extends QueueSuite:
+class QueueClientSpec extends CatsEffectSuite with QueueSuite:
+  override def munitFixtures = List(redisServer, queueClient)
+
   test("can enqueue and dequeue project-member-add events"):
     val qname = RedisClientGenerators.queueNameGen.generateOne
     val msg = EventsGenerators

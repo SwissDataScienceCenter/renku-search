@@ -19,10 +19,11 @@
 package io.renku.redis.client.util
 
 import cats.effect.*
-import io.renku.redis.client.RedisQueueClient
-import dev.profunktor.redis4cats.connection.RedisClient
+
 import dev.profunktor.redis4cats.RedisCommands
+import dev.profunktor.redis4cats.connection.RedisClient
 import io.renku.redis.client.RedisConfig
+import io.renku.redis.client.RedisQueueClient
 
 final case class RedisClients(
     config: RedisConfig,

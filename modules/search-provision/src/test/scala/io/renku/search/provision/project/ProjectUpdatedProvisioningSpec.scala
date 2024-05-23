@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.project
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators
@@ -42,31 +42,31 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
 
   ProjectUpdatedProvisioningSpec.testCases.foreach { tc =>
     test(s"can fetch events, decode them, and update in Solr: $tc"):
-      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-        for
-          _ <- tc.dbState.create(solrClient)
-          _ <- queueClient.enqueue(
-            queueConfig.projectUpdated,
-            EventsGenerators.eventMessageGen(Gen.const(tc.projectUpdated)).generateOne
-          )
+      for
+        services <- IO(testServices())
+        handler = services.messageHandlers
+        queueClient = services.queueClient
+        solrClient = services.searchClient
 
-          _ <- handlers
-            .makeProjectUpsert[ProjectUpdated](queueConfig.projectUpdated)
-            .take(1)
-            .compile
-            .toList
+        _ <- tc.dbState.create(solrClient)
+        _ <- queueClient.enqueue(
+          queueConfig.projectUpdated,
+          EventsGenerators.eventMessageGen(Gen.const(tc.projectUpdated)).generateOne
+        )
 
-          docs <- loadProjectPartialOrEntity(solrClient, tc.projectId)
-          _ = docs.headOption match
-            case Some(doc) =>
-              assertEquals(doc.setVersion(DocVersion.Off), tc.expectedProject)
-            case None => fail("no project document found")
-        yield ()
-      }
+        _ <- handler
+          .makeProjectUpsert[ProjectUpdated](queueConfig.projectUpdated)
+          .take(1)
+          .compile
+          .toList
+
+        docs <- loadProjectPartialOrEntity(solrClient, tc.projectId)
+        _ = docs.headOption match
+          case Some(doc) =>
+            assertEquals(doc.setVersion(DocVersion.Off), tc.expectedProject)
+          case None => fail("no project document found")
+      yield ()
   }
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
 
 object ProjectUpdatedProvisioningSpec:
   enum DbState:

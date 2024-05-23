@@ -19,8 +19,8 @@
 package io.renku.solr.client.util
 
 import io.renku.servers.SolrServer
+import munit.Suite
 import org.http4s.Uri
-import munit.{Suite, AnyFixture}
 
 /** Starts the solr server if not already running.
   *
@@ -29,19 +29,18 @@ import munit.{Suite, AnyFixture}
   */
 trait SolrServerSuite extends Suite:
 
-  lazy val server: SolrServer = SolrServer
+  lazy val solrServerValue = SolrServer
 
   val solrServer: Fixture[Uri] =
     new Fixture[Uri]("solr-server"):
-      private var serverUri: Uri = null
-      def apply(): Uri = serverUri
+      private var serverUri: Option[Uri] = None
+      def apply(): Uri = serverUri match
+        case Some(u) => u
+        case None    => sys.error(s"Fixture $fixtureName not initialized")
 
       override def beforeAll(): Unit =
-        server.start()
-        serverUri = Uri.unsafeFromString(server.url)
+        solrServerValue.start()
+        serverUri = Some(Uri.unsafeFromString(solrServerValue.url))
 
       override def afterAll(): Unit =
-        server.stop()
-
-  override def munitFixtures: Seq[AnyFixture[?]] =
-    super.munitFixtures ++ List(solrServer)
+        solrServerValue.stop()

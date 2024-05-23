@@ -32,10 +32,13 @@ import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
 import io.renku.solr.client.DocVersion
+import munit.CatsEffectSuite
 import org.scalacheck.Gen
 import scribe.Scribe
 
-class SearchApiSpec extends SearchSolrSuite:
+class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, searchSolrClient)
 
   private given Scribe[IO] = scribe.cats[IO]
 

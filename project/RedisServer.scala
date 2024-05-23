@@ -21,12 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.sys.process.*
 import scala.util.Try
 
-object RedisServer extends RedisServer("graph", None)
-
-@annotation.nowarn()
-class RedisServer(module: String, val redisPort: Option[Int]) {
-
-  val port = redisPort.orElse(sys.env.get("RS_REDIS_PORT").map(_.toInt)).getOrElse(6379)
+@annotation.nowarn
+object RedisServer {
+  val port = sys.env.get("RS_REDIS_PORT").map(_.toInt).getOrElse(6379)
   val host: String = sys.env.get("RS_REDIS_HOST").getOrElse("localhost")
   val url: String = s"redis://$host:$port"
 
@@ -34,7 +31,7 @@ class RedisServer(module: String, val redisPort: Option[Int]) {
   // to not start a Redis server via docker for the tests
   private val skipServer: Boolean = sys.env.contains("NO_REDIS")
 
-  private val containerName = s"$module-test-redis"
+  private val containerName = "search-test-redis"
   private val image = "redis:7.2.4-alpine"
   private val startCmd = s"""|docker run --rm
                              |--name $containerName
@@ -52,7 +49,7 @@ class RedisServer(module: String, val redisPort: Option[Int]) {
     if (skipServer) println("Not starting Redis via docker")
     else if (checkRunning) ()
     else {
-      println(s"Starting Redis container for '$module' from '$image' image")
+      println(s"Starting Redis container for from '$image' image")
       startContainer()
       var rc = 1
       val maxTries = 500
@@ -61,11 +58,11 @@ class RedisServer(module: String, val redisPort: Option[Int]) {
         counter += 1
         Thread.sleep(500)
         rc = Process(isReadyCmd).!
-        if (rc == 0) println(s"Redis container for '$module' started on port $port")
+        if (rc == 0) println(s"Redis container for started on port $port")
         else println(s"IsReadyCmd returned $rc")
       }
       if (rc != 0)
-        sys.error(s"Redis container for '$module' could not be started on port $port")
+        sys.error(s"Redis container for could not be started on port $port")
     }
   }
 
@@ -86,14 +83,14 @@ class RedisServer(module: String, val redisPort: Option[Int]) {
   def stop(): Unit =
     if (skipServer || !wasStartedHere.get()) ()
     else {
-      println(s"Stopping Redis container for '$module'")
+      println(s"Stopping Redis container '$image'")
       stopCmd.!!
       ()
     }
 
   def forceStop(): Unit =
     if (!skipServer) {
-      println(s"Stopping Redis container for '$module'")
+      println(s"Stopping Redis container '$image'")
       stopCmd.!!
       ()
     }

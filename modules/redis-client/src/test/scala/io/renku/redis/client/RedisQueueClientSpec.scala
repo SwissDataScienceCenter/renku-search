@@ -29,17 +29,19 @@ import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
 import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisBaseSuite
 import io.renku.search.GeneratorSyntax.*
+import munit.CatsEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.Gen.alphaChar
 import org.scalacheck.cats.implicits.*
 import scodec.bits.ByteVector
 
-class RedisQueueClientSpec extends RedisBaseSuite:
+class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
+  override def munitFixtures = List(redisServer, redisClients)
 
   test("can enqueue and dequeue events"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
     for
-      client <- IO(redisQueueClient())
+      client <- IO(redisClients().queueClient)
       dequeued <- SignallingRef.of[IO, List[(String, String)]](Nil)
 
       message1 = "message1"
@@ -68,7 +70,7 @@ class RedisQueueClientSpec extends RedisBaseSuite:
   test("can start enqueueing events from the given messageId excluding"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
     for
-      client <- IO(redisQueueClient())
+      client <- IO(redisClients().queueClient)
       dequeued <- SignallingRef.of[IO, List[String]](Nil)
 
       message1 = "message1"
@@ -118,7 +120,7 @@ class RedisQueueClientSpec extends RedisBaseSuite:
     val clientId = RedisClientGenerators.clientIdGen.generateOne
     val messageId = RedisClientGenerators.messageIdGen.generateOne
     for
-      client <- IO(redisQueueClient())
+      client <- IO(redisClients().queueClient)
       _ <- client.findLastProcessed(clientId, queue).map(v => assert(v.isEmpty))
 
       _ <- client.markProcessed(clientId, queue, messageId)
@@ -132,7 +134,7 @@ class RedisQueueClientSpec extends RedisBaseSuite:
     val queue = RedisClientGenerators.queueNameGen.generateOne
     val messages = (stringGen, stringGen).mapN(_ -> _).generateList(1, 30)
     for
-      client <- IO(redisQueueClient())
+      client <- IO(redisClients().queueClient)
       _ <- messages.traverse_ { case (h, p) =>
         client.enqueue(queue, toByteVector(h), toByteVector(p))
       }
@@ -145,7 +147,7 @@ class RedisQueueClientSpec extends RedisBaseSuite:
     val (msgH, msgP) = (stringGen, stringGen).mapN(_ -> _).generateOne
     val newerMessages = (stringGen, stringGen).mapN(_ -> _).generateList(1, 30)
     for
-      client <- IO(redisQueueClient())
+      client <- IO(redisClients().queueClient)
       _ <- olderMessages.traverse_ { case (h, p) =>
         client.enqueue(queue, toByteVector(h), toByteVector(p))
       }

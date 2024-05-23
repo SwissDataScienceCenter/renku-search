@@ -18,11 +18,11 @@
 
 package io.renku.redis.client.util
 
-import munit.Suite
-import io.renku.servers.RedisServer
-import munit.AnyFixture
-import io.renku.redis.client.*
 import scala.concurrent.duration.*
+
+import io.renku.redis.client.*
+import io.renku.servers.RedisServer
+import munit.Suite
 
 /** Starts the redis server if not already running.
   *
@@ -31,7 +31,7 @@ import scala.concurrent.duration.*
   */
 trait RedisServerSuite extends Suite:
 
-  private lazy val redisServerValue: RedisServer = RedisServer
+  private lazy val redisServerValue = RedisServer
 
   val redisServer: Fixture[RedisConfig] =
     new Fixture[RedisConfig]("redis-server"):
@@ -48,6 +48,3 @@ trait RedisServerSuite extends Suite:
 
       override def afterAll(): Unit =
         redisServerValue.stop()
-
-  override def munitFixtures: Seq[AnyFixture[?]] =
-    super.munitFixtures ++ List(redisServer)

@@ -19,7 +19,7 @@
 package io.renku.search.provision.user
 
 import cats.data.NonEmptyList
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
@@ -34,80 +34,83 @@ import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
 
 class UserAddedProvisioningSpec extends ProvisioningSuite:
-  test("overwrite data for duplicate events".flaky):
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      for
-        id <- IO(ModelGenerators.idGen.generateOne)
-        _ <- solrClient.deleteIds(NonEmptyList.of(id))
-        add1 <- queueClient.enqueue(
-          queueConfig.userAdded,
-          EventsGenerators
-            .eventMessageGen(
-              EventsGenerators
-                .userAddedGen("ua-", Gen.const(FirstName("john1")))
-                .map(_.withId(id))
-            )
-            .generateOne
-        )
-        results1 <- handlers
-          .makeUpsert[UserAdded](queueConfig.userAdded)
-          .take(1)
-          .compile
-          .toList
+  test("overwrite data for duplicate events"):
+    for
+      services <- IO(testServices())
+      handler = services.messageHandlers
+      queueClient = services.queueClient
+      solrClient = services.searchClient
 
-        add2 <- queueClient.enqueue(
-          queueConfig.userAdded,
-          EventsGenerators
-            .eventMessageGen(
-              EventsGenerators
-                .userAddedGen("ua-", Gen.const(FirstName("john2")))
-                .map(_.withId(id))
-            )
-            .generateOne
-        )
-        results2 <- handlers
-          .makeUpsert[UserAdded](queueConfig.userAdded)
-          .take(1)
-          .compile
-          .toList
-        results = results1 ++ results2
+      id <- IO(ModelGenerators.idGen.generateOne)
+      _ <- solrClient.deleteIds(NonEmptyList.of(id))
+      add1 <- queueClient.enqueue(
+        queueConfig.userAdded,
+        EventsGenerators
+          .eventMessageGen(
+            EventsGenerators
+              .userAddedGen("ua-", Gen.const(FirstName("john1")))
+              .map(_.withId(id))
+          )
+          .generateOne
+      )
+      results1 <- handler
+        .makeUpsert[UserAdded](queueConfig.userAdded)
+        .take(1)
+        .compile
+        .toList
 
-        _ = assert(results.nonEmpty && results.forall(_.isSuccess))
-        doc <- solrClient.findById[EntityDocument](CompoundId.userEntity(id))
-        _ = assert(doc.isDefined, "user not found")
-        user = doc.get.asInstanceOf[UserDocument]
-        _ = assertEquals(user.firstName, Some(FirstName("john2")))
-      yield ()
-    }
+      add2 <- queueClient.enqueue(
+        queueConfig.userAdded,
+        EventsGenerators
+          .eventMessageGen(
+            EventsGenerators
+              .userAddedGen("ua-", Gen.const(FirstName("john2")))
+              .map(_.withId(id))
+          )
+          .generateOne
+      )
+      results2 <- handler
+        .makeUpsert[UserAdded](queueConfig.userAdded)
+        .take(1)
+        .compile
+        .toList
+      results = results1 ++ results2
+
+      _ = assert(results.nonEmpty && results.forall(_.isSuccess))
+      doc <- solrClient.findById[EntityDocument](CompoundId.userEntity(id))
+      _ = assert(doc.isDefined, "user not found")
+      user = doc.get.asInstanceOf[UserDocument]
+      _ = assertEquals(user.firstName, Some(FirstName("john2")))
+    yield ()
 
   test("can fetch events, decode them, and send them to Solr"):
     val userAdded = EventsGenerators.userAddedGen(prefix = "user-added").generateOne
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      for
-        _ <- queueClient.enqueue(
-          queueConfig.userAdded,
-          EventsGenerators.eventMessageGen(Gen.const(userAdded)).generateOne
-        )
+    for
+      services <- IO(testServices())
+      handler = services.messageHandlers
+      queueClient = services.queueClient
+      solrClient = services.searchClient
 
-        result <- handlers
-          .makeUpsert[UserAdded](queueConfig.userAdded)
-          .take(10)
-          .find(_.isSuccess)
-          .compile
-          .lastOrError
+      _ <- queueClient.enqueue(
+        queueConfig.userAdded,
+        EventsGenerators.eventMessageGen(Gen.const(userAdded)).generateOne
+      )
 
-        _ = assert(result.isSuccess)
+      result <- handler
+        .makeUpsert[UserAdded](queueConfig.userAdded)
+        .take(10)
+        .find(_.isSuccess)
+        .compile
+        .lastOrError
 
-        doc <- solrClient.findById[EntityDocument](
-          CompoundId.userEntity(userAdded.id)
-        )
-        _ = assert(doc.isDefined)
-        _ = assertEquals(
-          doc.get.setVersion(DocVersion.Off),
-          userAdded.toModel(DocVersion.Off)
-        )
-      yield ()
-    }
+      _ = assert(result.isSuccess)
 
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
+      doc <- solrClient.findById[EntityDocument](
+        CompoundId.userEntity(userAdded.id)
+      )
+      _ = assert(doc.isDefined)
+      _ = assertEquals(
+        doc.get.setVersion(DocVersion.Off),
+        userAdded.toModel(DocVersion.Off)
+      )
+    yield ()

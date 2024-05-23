@@ -33,8 +33,11 @@ import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData
+import munit.CatsEffectSuite
 
-class SearchSolrClientSpec extends SearchSolrSuite:
+class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, searchSolrClient)
 
   test("be able to insert and fetch a Project document"):
     val project =

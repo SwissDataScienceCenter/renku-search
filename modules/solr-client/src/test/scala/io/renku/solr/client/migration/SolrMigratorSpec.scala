@@ -24,9 +24,13 @@ import io.renku.solr.client.SolrClient
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.schema.SchemaCommand.Add
 import io.renku.solr.client.util.SolrClientBaseSuite
+import munit.CatsEffectSuite
 
-class SolrMigratorSpec extends SolrClientBaseSuite:
+class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
   private val logger = scribe.cats.io
+
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, solrClient)
 
   private val migrations = Seq(
     SchemaMigration(-5, Add(FieldType.text(TypeName("testText"), Analyzer.classic))),

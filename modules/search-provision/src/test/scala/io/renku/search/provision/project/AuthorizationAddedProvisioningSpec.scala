@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.project
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
@@ -40,34 +40,33 @@ class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
 
   testCases.foreach { tc =>
     test(s"can fetch events, decode them, and update docs in Solr: $tc"):
+      for {
+        services <- IO(testServices())
+        handler = services.messageHandlers
+        queueClient = services.queueClient
+        solrClient = services.searchClient
 
-      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-        for {
-          _ <- tc.dbState.create(solrClient)
+        _ <- tc.dbState.create(solrClient)
 
-          collector <- BackgroundCollector[SolrDocument](
-            loadProjectPartialOrEntity(solrClient, tc.projectId)
-          )
-          _ <- collector.start
+        collector <- BackgroundCollector[SolrDocument](
+          loadProjectPartialOrEntity(solrClient, tc.projectId)
+        )
+        _ <- collector.start
 
-          provisioningFiber <- handlers.projectAuthAdded.compile.drain.start
+        provisioningFiber <- handler.projectAuthAdded.compile.drain.start
 
-          _ <- queueClient.enqueue(
-            queueConfig.projectAuthorizationAdded,
-            EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
-          )
-          _ <- collector.waitUntil(docs =>
-            scribe.debug(s"Check for ${tc.expectedProject}")
-            docs.exists(tc.checkExpected)
-          )
+        _ <- queueClient.enqueue(
+          queueConfig.projectAuthorizationAdded,
+          EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
+        )
+        _ <- collector.waitUntil(docs =>
+          scribe.debug(s"Check for ${tc.expectedProject}")
+          docs.exists(tc.checkExpected)
+        )
 
-          _ <- provisioningFiber.cancel
-        } yield ()
-      }
+        _ <- provisioningFiber.cancel
+      } yield ()
   }
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
 
 object AuthorizationAddedProvisioningSpec:
   enum DbState:

@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.user
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators
@@ -37,37 +37,40 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
     case TestCase(name, updateF) =>
       val userAdded = EventsGenerators.userAddedGen(prefix = "user-update").generateOne
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
-        withMessageHandlers(queueConfig).use { case (handler, queueClient, solrClient) =>
-          for
-            collector <- BackgroundCollector[EntityDocument](
-              solrClient
-                .findById[EntityDocument](
-                  CompoundId.userEntity(userAdded.id)
-                )
-                .map(_.toSet)
-            )
-            _ <- collector.start
+        for
+          services <- IO(testServices())
+          handler = services.messageHandlers
+          queueClient = services.queueClient
+          solrClient = services.searchClient
 
-            provisioningFiber <- handler.userUpdated.compile.drain.start
+          collector <- BackgroundCollector[EntityDocument](
+            solrClient
+              .findById[EntityDocument](
+                CompoundId.userEntity(userAdded.id)
+              )
+              .map(_.toSet)
+          )
+          _ <- collector.start
 
-            orig = userAdded.toModel(DocVersion.Off)
-            _ <- solrClient.upsert(Seq(orig.widen))
+          provisioningFiber <- handler.userUpdated.compile.drain.start
 
-            userUpdated = updateF(userAdded)
-            _ <- queueClient.enqueue(
-              queueConfig.userUpdated,
-              EventsGenerators.eventMessageGen(Gen.const(userUpdated)).generateOne
-            )
+          orig = userAdded.toModel(DocVersion.Off)
+          _ <- solrClient.upsert(Seq(orig.widen))
 
-            _ <- collector.waitUntil(docs =>
-              docs.map(_.setVersion(DocVersion.Off)) contains userUpdated
-                .toModel(orig)
-                .setVersion(DocVersion.Off)
-            )
+          userUpdated = updateF(userAdded)
+          _ <- queueClient.enqueue(
+            queueConfig.userUpdated,
+            EventsGenerators.eventMessageGen(Gen.const(userUpdated)).generateOne
+          )
 
-            _ <- provisioningFiber.cancel
-          yield ()
-        }
+          _ <- collector.waitUntil(docs =>
+            docs.map(_.setVersion(DocVersion.Off)) contains userUpdated
+              .toModel(orig)
+              .setVersion(DocVersion.Off)
+          )
+
+          _ <- provisioningFiber.cancel
+        yield ()
   }
 
   private case class TestCase(name: String, f: UserAdded => UserUpdated)
@@ -154,6 +157,3 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
         )
     }
   )
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)

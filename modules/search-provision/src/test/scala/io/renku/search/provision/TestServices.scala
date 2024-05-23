@@ -16,18 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.queue.client
+package io.renku.search.provision
 
-import cats.effect.{IO, Resource}
+import cats.effect.*
 
-import io.renku.redis.client.ClientId
-import io.renku.redis.client.util.RedisBaseSuite
+import io.renku.queue.client.QueueClient
+import io.renku.search.solr.client.SearchSolrClient
 
-trait QueueSuite extends RedisBaseSuite:
-
-  val queueClientR: Resource[IO, QueueClient[IO]] =
-    redisClientsR.map(c =>
-      new QueueClientImpl[IO](c.queueClient, ClientId("search-provisioner"))
-    )
-
-  val queueClient = ResourceSuiteLocalFixture("queue-client", queueClientR)
+final case class TestServices(
+    messageHandlers: MessageHandlers[IO],
+    queueClient: QueueClient[IO],
+    searchClient: SearchSolrClient[IO]
+)

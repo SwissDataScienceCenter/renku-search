@@ -33,11 +33,19 @@ import io.renku.solr.client.SolrClientSpec.{Course, Room}
 import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.SolrClientBaseSuite
+import munit.CatsEffectSuite
 import munit.ScalaCheckEffectSuite
 import org.scalacheck.Gen
 import org.scalacheck.effect.PropF
 
-class SolrClientSpec extends SolrClientBaseSuite with ScalaCheckEffectSuite:
+class SolrClientSpec
+    extends CatsEffectSuite
+    with SolrClientBaseSuite
+    with ScalaCheckEffectSuite:
+
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, solrClient)
+
   test("optimistic locking: fail if exists") {
     val c0 = Course("c1", "fp in scala", DocVersion.NotExists)
     for {

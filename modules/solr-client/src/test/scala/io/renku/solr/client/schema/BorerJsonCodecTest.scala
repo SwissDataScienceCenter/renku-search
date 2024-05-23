@@ -18,11 +18,12 @@
 
 package io.renku.solr.client.schema
 
+import scala.io.Source
+
 import io.bullet.borer.Json
 import io.renku.solr.client.SchemaResponse
 import io.renku.solr.client.schema.SchemaCommand.DeleteType
 import munit.FunSuite
-import scala.io.Source
 
 class BorerJsonCodecTest extends FunSuite with SchemaJsonCodec {
 
@@ -44,7 +45,9 @@ class BorerJsonCodecTest extends FunSuite with SchemaJsonCodec {
     val vs = Seq(
       DeleteType(TypeName("integer")),
       DeleteType(TypeName("float")),
-      SchemaCommand.Add(Field(FieldName("description"), TypeName("text"), required = true))
+      SchemaCommand.Add(
+        Field(FieldName("description"), TypeName("text"), required = true)
+      )
     )
     assertEquals(
       Json.encode(vs).toUtf8String,

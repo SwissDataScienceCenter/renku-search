@@ -19,19 +19,18 @@
 package io.renku.solr.client.util
 
 import cats.effect.*
-import io.renku.solr.client.*
+
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.LoggingConfigure
-import munit.CatsEffectSuite
+import io.renku.solr.client.*
+import munit.CatsEffectFixtures
 import org.scalacheck.Gen
-import munit.catseffect.IOFixture
-import munit.AnyFixture
 
-abstract class SolrClientBaseSuite
-    extends CatsEffectSuite
+trait SolrClientBaseSuite
+    extends SolrServerSuite
     with LoggingConfigure
-    with SolrServerSuite
-    with SolrTruncate:
+    with SolrTruncate
+    with CatsEffectFixtures:
 
   private val coreNameGen: Gen[String] =
     Gen
@@ -47,17 +46,14 @@ abstract class SolrClientBaseSuite
       cfg = SolrConfig(serverUri, coreName, None, false)
       client <- SolrClient[IO](cfg)
       _ <- Resource.make(createSolrCore(client, coreName))(_ =>
-        deleteSolrCore(client, coreName)
+        deleteSolrCore(client, coreName).start.void
       )
     yield client
 
   val solrClient = ResourceSuiteLocalFixture("solr-client", solrClientR)
 
-  override def munitFixtures: Seq[AnyFixture[?]] =
-    super.munitFixtures ++ List(solrClient)
-
   def createSolrCore(client: SolrClient[IO], name: String): IO[Unit] =
-    IO(server.createCore(name).get)
+    IO.blocking(solrServerValue.createCore(name).get)
 
   def deleteSolrCore(client: SolrClient[IO], name: String): IO[Unit] =
-    IO(server.deleteCore(name).get)
+    IO.blocking(solrServerValue.deleteCore(name).get)

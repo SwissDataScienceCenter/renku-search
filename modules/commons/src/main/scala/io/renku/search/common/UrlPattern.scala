@@ -52,9 +52,11 @@ object UrlPattern:
   )
   private[common] def splitUrl(url: String): UrlParts = {
     def readScheme(s: String): (Option[String], String) =
-      s.split("://").filter(_.nonEmpty).toList match
-        case s :: rest :: Nil => (Some(s), rest)
-        case rest             => (None, rest.mkString)
+      if (!s.contains("://")) (None, s)
+      else
+        s.split("://").filter(_.nonEmpty).toList match
+          case first :: rest :: Nil => (Some(first), rest)
+          case first                => (Some(first.mkString), "")
 
     def readHostPort(s: String): (List[String], Option[String]) =
       s.split(':').toList match

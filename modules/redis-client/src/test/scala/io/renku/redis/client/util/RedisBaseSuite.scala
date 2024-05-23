@@ -25,15 +25,14 @@ import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log as RedisLog
-import io.renku.redis.client.RedisQueueClient
 import io.renku.redis.client.RedisQueueClientImpl
 import io.renku.search.LoggingConfigure
 import munit.*
 
-abstract class RedisBaseSuite
-    extends CatsEffectSuite
+trait RedisBaseSuite
+    extends RedisServerSuite
     with LoggingConfigure
-    with RedisServerSuite:
+    with CatsEffectFixtures:
 
   given RedisLog[IO] = new RedisLog {
     def debug(msg: => String): IO[Unit] = scribe.cats.io.debug(msg)
@@ -50,30 +49,4 @@ abstract class RedisBaseSuite
       qc = new RedisQueueClientImpl[IO](lc)
     yield RedisClients(config, lc, cmds, qc)
 
-  val lowLevelClientR: Resource[IO, RedisClient] =
-    redisClientsR.map(_.lowLevel)
-
-  val redisCommandsR: Resource[IO, RedisCommands[IO, String, String]] =
-    redisClientsR.map(_.commands)
-
-  val redisQueueClientR: Resource[IO, RedisQueueClient[IO]] =
-    redisClientsR.map(_.queueClient)
-
   val redisClients = ResourceSuiteLocalFixture("all-redis-clients", redisClientsR)
-
-  val lowLevelClient =
-    ResourceSuiteLocalFixture("low-level-redis-client", lowLevelClientR)
-
-  val redisCommands =
-    ResourceSuiteLocalFixture("redis-commands", redisCommandsR)
-
-  val redisQueueClient =
-    ResourceSuiteLocalFixture("redis-queue-client", redisQueueClientR)
-
-  override def munitFixtures: Seq[AnyFixture[?]] =
-    super.munitFixtures ++ List(
-      redisClients,
-      lowLevelClient,
-      redisCommands,
-      redisQueueClient
-    )

@@ -18,8 +18,8 @@
 
 package io.renku.solr.client.schema
 
-import io.bullet.borer.Encoder
 import io.bullet.borer.Decoder
+import io.bullet.borer.Encoder
 
 opaque type TypeName = String
 

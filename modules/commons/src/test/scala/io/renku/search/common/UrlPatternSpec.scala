@@ -53,6 +53,14 @@ class UrlPatternSpec extends ScalaCheckSuite:
     )
 
   test("fromString"):
+    assertEquals(
+      UrlPattern.fromString("http://"),
+      UrlPattern.all.copy(scheme = Some(Segment.Literal("http")))
+    )
+    assertEquals(
+      UrlPattern.fromString("http"),
+      UrlPattern.all.copy(host = List(Segment.Literal("http")))
+    )
     assertEquals(UrlPattern.fromString("*"), UrlPattern.all)
     assertEquals(UrlPattern.fromString(""), UrlPattern.all)
     assertEquals(

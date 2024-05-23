@@ -19,7 +19,7 @@
 package io.renku.search.provision.group
 
 import cats.data.NonEmptyList
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
@@ -35,70 +35,73 @@ import org.scalacheck.Gen
 class GroupAddedProvisioningSpec extends ProvisioningSuite:
 
   test("overwrite data for duplicate events"):
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      for
-        id <- IO(ModelGenerators.idGen.generateOne)
-        _ <- solrClient.deleteIds(NonEmptyList.of(id))
-        add1 <- queueClient.enqueue(
-          queueConfig.groupAdded,
-          EventsGenerators
-            .eventMessageGen(
-              Gen.const(GroupAdded(id, Name("SDSC"), Namespace("sdsc-namespace"), None))
-            )
-            .generateOne
-        )
-        add2 <- queueClient.enqueue(
-          queueConfig.groupAdded,
-          EventsGenerators
-            .eventMessageGen(
-              Gen.const(
-                GroupAdded(id, Name("Renku"), Namespace("sdsc-namespace"), None)
-              )
-            )
-            .generateOne
-        )
-        results <- handlers
-          .makeUpsert[GroupAdded](queueConfig.groupAdded)
-          .take(2)
-          .compile
-          .toList
+    for
+      services <- IO(testServices())
+      handler = services.messageHandlers
+      queueClient = services.queueClient
+      solrClient = services.searchClient
 
-        _ = assert(results.nonEmpty && results.forall(_.isSuccess))
-        doc <- solrClient.findById[EntityDocument](CompoundId.groupEntity(id))
-        _ = assert(doc.isDefined, "group not found")
-        group = doc.get.asInstanceOf[GroupDocument]
-        _ = assertEquals(group.name, Name("Renku"))
-      yield ()
-    }
+      id <- IO(ModelGenerators.idGen.generateOne)
+      _ <- solrClient.deleteIds(NonEmptyList.of(id))
+      add1 <- queueClient.enqueue(
+        queueConfig.groupAdded,
+        EventsGenerators
+          .eventMessageGen(
+            Gen.const(GroupAdded(id, Name("SDSC"), Namespace("sdsc-namespace"), None))
+          )
+          .generateOne
+      )
+      add2 <- queueClient.enqueue(
+        queueConfig.groupAdded,
+        EventsGenerators
+          .eventMessageGen(
+            Gen.const(
+              GroupAdded(id, Name("Renku"), Namespace("sdsc-namespace"), None)
+            )
+          )
+          .generateOne
+      )
+      results <- handler
+        .makeUpsert[GroupAdded](queueConfig.groupAdded)
+        .take(2)
+        .compile
+        .toList
+
+      _ = assert(results.nonEmpty && results.forall(_.isSuccess))
+      doc <- solrClient.findById[EntityDocument](CompoundId.groupEntity(id))
+      _ = assert(doc.isDefined, "group not found")
+      group = doc.get.asInstanceOf[GroupDocument]
+      _ = assertEquals(group.name, Name("Renku"))
+    yield ()
 
   test("can fetch events, decode them, and send them to Solr"):
     val groupAdded = EventsGenerators.groupAddedGen(prefix = "group-added").generateOne
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      for
-        _ <- queueClient.enqueue(
-          queueConfig.groupAdded,
-          EventsGenerators.eventMessageGen(Gen.const(groupAdded)).generateOne
-        )
+    for
+      services <- IO(testServices())
+      handler = services.messageHandlers
+      queueClient = services.queueClient
+      solrClient = services.searchClient
 
-        result <- handlers
-          .makeUpsert[GroupAdded](queueConfig.groupAdded)
-          .take(10)
-          .find(_.isSuccess)
-          .compile
-          .lastOrError
+      _ <- queueClient.enqueue(
+        queueConfig.groupAdded,
+        EventsGenerators.eventMessageGen(Gen.const(groupAdded)).generateOne
+      )
 
-        _ = assert(result.isSuccess)
+      result <- handler
+        .makeUpsert[GroupAdded](queueConfig.groupAdded)
+        .take(10)
+        .find(_.isSuccess)
+        .compile
+        .lastOrError
 
-        doc <- solrClient.findById[EntityDocument](
-          CompoundId.groupEntity(groupAdded.id)
-        )
-        _ = assert(doc.isDefined)
-        _ = assertEquals(
-          doc.get.setVersion(DocVersion.Off),
-          groupAdded.fold(_.toModel(DocVersion.Off))
-        )
-      yield ()
-    }
+      _ = assert(result.isSuccess)
 
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
+      doc <- solrClient.findById[EntityDocument](
+        CompoundId.groupEntity(groupAdded.id)
+      )
+      _ = assert(doc.isDefined)
+      _ = assertEquals(
+        doc.get.setVersion(DocVersion.Off),
+        groupAdded.fold(_.toModel(DocVersion.Off))
+      )
+    yield ()

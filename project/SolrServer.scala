@@ -22,14 +22,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.annotation.tailrec
 import scala.sys.process.*
 import scala.util.Try
+import java.util.concurrent.atomic.AtomicInteger
 
-object SolrServer extends SolrServer("graph", None)
+@annotation.nowarn
+object SolrServer {
+  private val createCoreCounter: AtomicInteger = new AtomicInteger(0)
 
-@annotation.nowarn()
-class SolrServer(module: String, solrPort: Option[Int]) {
-
-  private val port =
-    solrPort.orElse(sys.env.get("RS_SOLR_PORT").map(_.toInt)).getOrElse(8983)
+  private val port = sys.env.get("RS_SOLR_PORT").map(_.toInt).getOrElse(8983)
   private val host: String = sys.env.get("RS_SOLR_HOST").getOrElse("localhost")
   val url: String = s"http://$host:$port"
 
@@ -37,13 +36,10 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   // to not start a Solr server via docker for the tests
   private val skipServer: Boolean = sys.env.contains("NO_SOLR")
 
-  private val containerName = s"$module-test-solr"
+  private val containerName = "search-test-solr"
   private val image = "solr:9.4.1-slim"
   val searchCoreName = "search-core-test"
-  val testCoreName1 = "core-test1"
-  val testCoreName2 = "core-test2"
-  val testCoreName3 = "core-test3"
-  private val cores = Set(testCoreName1, testCoreName2, testCoreName3, searchCoreName)
+  private val cores = Set(searchCoreName)
   private val startCmd = s"""|docker run --rm
                              |--name $containerName
                              |-p $port:8983
@@ -84,7 +80,7 @@ class SolrServer(module: String, solrPort: Option[Int]) {
     if (skipServer) println("Not starting Solr via docker")
     else if (checkRunning) ()
     else {
-      println(s"Starting Solr container for '$module' from '$image' image")
+      println(s"Starting Solr container '$image'")
       startContainer()
       copyConfigSets()
       waitForCoresToBeReady()
@@ -98,9 +94,9 @@ class SolrServer(module: String, solrPort: Option[Int]) {
       counter += 1
       Thread.sleep(500)
       rc = checkCoresReady
-      if (rc == 0) println(s"Solr cores for '$module' ready on port $port")
+      if (rc == 0) println(s"Solr cores ready on port $port")
     }
-    if (rc != 0) sys.error(s"Solr cores for '$module' could not be started")
+    if (rc != 0) sys.error(s"Solr cores could not be started")
   }
 
   private def checkCoresReady =
@@ -127,10 +123,14 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   private def copyConfigSets(): Unit =
     copyConfigSetsCmd.!!
 
-  def createCore(name: String): Try[Unit] = {
+  def createCore(name: String): Try[Unit] = synchronized {
     val cmd = createCoreCmd(name)
     println(s"Run create core: $cmd")
-    Try(cmd.!!).map(_ => ())
+    Try(cmd.!!).map { _ =>
+      val n = createCoreCounter.incrementAndGet()
+      println(s"======== $n CORES CREATED")
+      ()
+    }
   }
 
   def deleteCore(name: String): Try[Unit] = {
@@ -163,14 +163,14 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   def stop(): Unit =
     if (skipServer || !wasStartedHere.get()) ()
     else {
-      println(s"Stopping Solr container for '$module'")
+      println(s"Stopping Solr container '$image'")
       stopCmd.!!
       ()
     }
 
   def forceStop(): Unit =
     if (!skipServer) {
-      println(s"Stopping Solr container for '$module'")
+      println(s"Stopping Solr container '$image'")
       stopCmd.!!
       ()
     }

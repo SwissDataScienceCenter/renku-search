@@ -18,6 +18,8 @@
 
 package io.renku.search.provision
 
+import scala.concurrent.duration.Duration
+
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -51,6 +53,8 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
     groupMemberUpdated = QueueName("groupMemberUpdated"),
     groupMemberRemoved = QueueName("groupMemberRemoved")
   )
+
+  override def munitIOTimeout: Duration = Duration(1, "min")
 
   val testServicesR: Resource[IO, TestServices] =
     for

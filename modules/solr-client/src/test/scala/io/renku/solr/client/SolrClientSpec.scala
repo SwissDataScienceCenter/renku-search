@@ -168,6 +168,13 @@ class SolrClientSpec
     yield ()
   }
 
+  test("Obtain schema"):
+    for
+      client <- IO(solrClient())
+      schema <- client.getSchema
+      _ = assert(schema.schema.fieldTypes.nonEmpty)
+    yield ()
+
 object SolrClientSpec:
   case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)
   object Room:

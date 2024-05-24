@@ -19,7 +19,7 @@
 package io.renku.solr.client.util
 
 import io.renku.servers.SolrServer
-import munit.Suite
+import munit.Fixture
 import org.http4s.Uri
 
 /** Starts the solr server if not already running.
@@ -27,7 +27,7 @@ import org.http4s.Uri
   * This is here for running single tests from outside sbt. Within sbt, the solr server is
   * started before any test is run and therefore will live for the entire test run.
   */
-trait SolrServerSuite extends Suite:
+trait SolrServerSuite:
 
   lazy val solrServerValue = SolrServer
 

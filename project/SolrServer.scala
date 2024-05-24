@@ -129,14 +129,11 @@ object SolrServer {
   private def copyConfigSets(): Unit =
     copyConfigSetsCmd.!!
 
-  def createCore(name: String): Try[Unit] = synchronized {
+  def createCore(name: String): Try[Unit] = {
     val cmd = createCoreCmd(name)
-    println(s"Run create core: $cmd")
-    Try(cmd.!!).map { _ =>
-      val n = createCoreCounter.incrementAndGet()
-      println(s"======== $n CORES CREATED")
-      ()
-    }
+    val n = createCoreCounter.incrementAndGet()
+    println(s"Create $n-th core: $cmd")
+    Try(cmd.!!).map(_ => ())
   }
 
   def deleteCore(name: String): Try[Unit] = {

@@ -23,8 +23,10 @@ import cats.syntax.all.*
 import org.http4s.HttpRoutes
 import sttp.tapir.*
 import sttp.tapir.server.http4s.Http4sServerInterpreter
+import io.renku.search.common.CurrentVersion
+import io.renku.search.http.borer.TapirBorerJson
 
-object OperationRoutes {
+object OperationRoutes extends TapirBorerJson {
   private def pingEndpoint[F[_]: Async] =
     endpoint.get
       .in("ping")
@@ -32,6 +34,15 @@ object OperationRoutes {
       .description("Ping")
       .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
 
+
+  private given Schema[CurrentVersion] = Schema.derived
+
+  private def versionEndpoint[F[_]: Async] =
+    endpoint.get.in("version")
+      .out(borerJsonBody[CurrentVersion])
+      .description("Return version information")
+      .serverLogicSuccess[F](_ => CurrentVersion.get.pure[F])
+
   def apply[F[_]: Async]: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint))
+    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint, versionEndpoint))
 }

@@ -16,14 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search.solr.client
+package io.renku.solr.client
 
-import cats.effect.{ExitCode, IO, IOApp}
+import io.bullet.borer.Decoder
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.renku.solr.client.schema.*
+import io.renku.solr.client.schema.SchemaJsonCodec.given
 
-import io.renku.servers.SolrServer
+final case class SchemaResponse(
+    responseHeader: ResponseHeader,
+    schema: CoreSchema
+)
 
-/** This is a utility to start a Solr server for manual testing */
-object TestSearchSolrServer extends IOApp:
-
-  override def run(args: List[String]): IO[ExitCode] =
-    (IO(SolrServer.start()) >> IO.never[ExitCode]).as(ExitCode.Success)
+object SchemaResponse:
+  given Decoder[SchemaResponse] = MapBasedCodecs.deriveDecoder

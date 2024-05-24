@@ -6,8 +6,8 @@
 }: {
   services.dev-solr = {
     enable = true;
-    cores = ["rsdev-test" "core-test1" "core-test2" "core-test3" "search-core-test"];
-    heap = 512;
+    cores = ["rsdev-test" "search-core-test"];
+    heap = 1024;
   };
 
   networking.hostName = "rsdev";

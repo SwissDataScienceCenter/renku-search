@@ -20,8 +20,8 @@ package io.renku.search.provision
 
 import scala.concurrent.duration.*
 
+import cats.effect.IO
 import cats.effect.std.CountDownLatch
-import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators
@@ -42,48 +42,47 @@ import org.scalacheck.Gen
 class ConcurrentUpdateSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
     test(s"process concurrent events: $tc"):
+      for {
+        services <- IO(testServices())
+        handler = services.messageHandlers
+        queueClient = services.queueClient
+        solrClient = services.searchClient
 
-      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-        for {
-          _ <- tc.dbState.create(solrClient)
+        _ <- tc.dbState.create(solrClient)
 
-          collector <- BackgroundCollector[SolrDocument](
-            loadProjectPartialOrEntity(solrClient, tc.projectId)
-          )
-          _ <- collector.start
-          msgFiber <- List(handlers.projectCreated, handlers.projectAuthAdded)
-            .traverse(_.compile.drain.start)
+        collector <- BackgroundCollector[SolrDocument](
+          loadProjectPartialOrEntity(solrClient, tc.projectId)
+        )
+        _ <- collector.start
+        msgFiber <- List(handler.projectCreated, handler.projectAuthAdded)
+          .traverse(_.compile.drain.start)
 
-          latch <- CountDownLatch[IO](1)
+        latch <- CountDownLatch[IO](1)
 
-          sendAuth <- (latch.await >> queueClient.enqueue(
-            queueConfig.projectAuthorizationAdded,
-            EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
-          )).start
+        sendAuth <- (latch.await >> queueClient.enqueue(
+          queueConfig.projectAuthorizationAdded,
+          EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
+        )).start
 
-          sendCreate <- (latch.await >> queueClient.enqueue(
-            queueConfig.projectCreated,
-            EventsGenerators.eventMessageGen(Gen.const(tc.projectCreated)).generateOne
-          )).start
+        sendCreate <- (latch.await >> queueClient.enqueue(
+          queueConfig.projectCreated,
+          EventsGenerators.eventMessageGen(Gen.const(tc.projectCreated)).generateOne
+        )).start
 
-          _ <- latch.release
-          _ <- List(sendAuth, sendCreate).traverse_(_.join)
+        _ <- latch.release
+        _ <- List(sendAuth, sendCreate).traverse_(_.join)
 
-          _ <- collector.waitUntil(
-            docs =>
-              scribe.debug(s"Check for ${tc.expectedProject}")
-              docs.exists(tc.checkExpected)
-            ,
-            timeout = 30.seconds
-          )
+        _ <- collector.waitUntil(
+          docs =>
+            scribe.debug(s"Check for ${tc.expectedProject}")
+            docs.exists(tc.checkExpected)
+          ,
+          timeout = 30.seconds
+        )
 
-          _ <- msgFiber.traverse_(_.cancel)
-        } yield ()
-      }
+        _ <- msgFiber.traverse_(_.cancel)
+      } yield ()
   }
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
 
 object ConcurrentUpdateSpec:
   enum DbState:

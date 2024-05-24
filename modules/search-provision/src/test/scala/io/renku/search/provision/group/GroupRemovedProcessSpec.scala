@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.group
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators
@@ -49,29 +49,29 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
       "and turn all the group's project to partial in Solr"
   ):
     val initialState = GroupRemovedProcessSpec.DbState.create.generateOne
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      for
-        _ <- initialState.setup(solrClient)
-        init <- initialState.loadByIds(solrClient)
-        _ = assertEquals(init.setVersion(DocVersion.NotExists), initialState)
+    for
+      services <- IO(testServices())
+      handler = services.messageHandlers
+      queueClient = services.queueClient
+      solrClient = services.searchClient
 
-        _ <- queueClient.enqueue(
-          queueConfig.groupRemoved,
-          EventsGenerators
-            .eventMessageGen(Gen.const(GroupRemoved(initialState.group.id)))
-            .generateOne
-        )
+      _ <- initialState.setup(solrClient)
+      init <- initialState.loadByIds(solrClient)
+      _ = assertEquals(init.setVersion(DocVersion.NotExists), initialState)
 
-        _ <- handlers.makeGroupRemoved.take(1).compile.toList
+      _ <- queueClient.enqueue(
+        queueConfig.groupRemoved,
+        EventsGenerators
+          .eventMessageGen(Gen.const(GroupRemoved(initialState.group.id)))
+          .generateOne
+      )
 
-        projects <- initialState.loadPartialProjects(solrClient)
-        _ = assertEquals(projects.size, initialState.projects.size)
-        _ = assertEquals(projects.map(_.id), initialState.projects.map(_.id))
-      yield ()
-    }
+      _ <- handler.makeGroupRemoved.take(1).compile.toList
 
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
+      projects <- initialState.loadPartialProjects(solrClient)
+      _ = assertEquals(projects.size, initialState.projects.size)
+      _ = assertEquals(projects.map(_.id), initialState.projects.map(_.id))
+    yield ()
 
 object GroupRemovedProcessSpec:
 

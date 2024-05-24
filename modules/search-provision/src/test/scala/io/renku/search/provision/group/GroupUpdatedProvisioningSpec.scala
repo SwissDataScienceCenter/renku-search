@@ -18,7 +18,7 @@
 
 package io.renku.search.provision.group
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators
@@ -41,35 +41,35 @@ class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
 
   GroupUpdatedProvisioningSpec.testCases.foreach { tc =>
     test(s"can fetch events, decode them, and update group doc in Solr: $tc"):
-      withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-        for
-          _ <- tc.dbState.create(solrClient)
+      for
+        services <- IO(testServices())
+        handler = services.messageHandlers
+        queueClient = services.queueClient
+        solrClient = services.searchClient
 
-          _ <- queueClient.enqueue(
-            queueConfig.groupUpdated,
-            EventsGenerators.eventMessageGen(Gen.const(tc.groupUpdated)).generateOne
-          )
+        _ <- tc.dbState.create(solrClient)
 
-          _ <- handlers
-            .makeGroupUpdated(queueConfig.groupUpdated)
-            .take(2)
-            .compile
-            .toList
+        _ <- queueClient.enqueue(
+          queueConfig.groupUpdated,
+          EventsGenerators.eventMessageGen(Gen.const(tc.groupUpdated)).generateOne
+        )
 
-          group <- loadGroupPartialOrEntity(solrClient, tc.groupId)
-          _ = assertEquals(group.size, 1)
-          _ = assert(tc.checkExpectedGroup(group.head))
+        _ <- handler
+          .makeGroupUpdated(queueConfig.groupUpdated)
+          .take(2)
+          .compile
+          .toList
 
-          projects <- tc.projectQuery
-            .map(q => solrClient.queryAll[EntityDocument](q).compile.toList)
-            .getOrElse(IO(Nil))
-          _ = assert(tc.checkExpectedProjects(group.head, projects))
-        yield ()
-      }
+        group <- loadGroupPartialOrEntity(solrClient, tc.groupId)
+        _ = assertEquals(group.size, 1)
+        _ = assert(tc.checkExpectedGroup(group.head))
+
+        projects <- tc.projectQuery
+          .map(q => solrClient.queryAll[EntityDocument](q).compile.toList)
+          .getOrElse(IO(Nil))
+        _ = assert(tc.checkExpectedProjects(group.head, projects))
+      yield ()
   }
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
 
 object GroupUpdatedProvisioningSpec:
   enum DbState:

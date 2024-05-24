@@ -16,31 +16,40 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.util
+package io.renku.redis.client.util
 
-import io.renku.servers.SolrServer
+import scala.concurrent.duration.*
+
+import io.renku.redis.client.*
+import io.renku.servers.RedisServer
 import munit.Fixture
-import org.http4s.Uri
 
-/** Starts the solr server if not already running.
+/** Starts the redis server if not already running.
   *
   * This is here for running single tests from outside sbt. Within sbt, the solr server is
   * started before any test is run and therefore will live for the entire test run.
   */
-trait SolrServerSuite:
+trait RedisServerSuite:
 
-  lazy val solrServerValue = SolrServer
+  private lazy val redisServerValue = RedisServer
 
-  val solrServer: Fixture[Uri] =
-    new Fixture[Uri]("solr-server"):
-      private var serverUri: Option[Uri] = None
-      def apply(): Uri = serverUri match
-        case Some(u) => u
+  val redisServer: Fixture[RedisConfig] =
+    new Fixture[RedisConfig]("redis-server"):
+      private var redisConfig: Option[RedisConfig] = None
+      def apply(): RedisConfig = redisConfig match
+        case Some(c) => c
         case None    => sys.error(s"Fixture $fixtureName not initialized")
 
       override def beforeAll(): Unit =
-        solrServerValue.start()
-        serverUri = Some(Uri.unsafeFromString(solrServerValue.url))
+        redisServerValue.start()
+        redisConfig = Some(
+          RedisConfig(
+            RedisHost(redisServerValue.host),
+            RedisPort(redisServerValue.port),
+            connectionRefreshInterval = 10.minutes
+          )
+        )
 
       override def afterAll(): Unit =
-        solrServerValue.stop()
+        redisServerValue.stop()
+        redisConfig = None

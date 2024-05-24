@@ -33,81 +33,81 @@ import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData
+import munit.CatsEffectSuite
 
-class SearchSolrClientSpec extends SearchSolrSuite:
+class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, searchSolrClient)
 
   test("be able to insert and fetch a Project document"):
-    withSearchSolrClient().use { client =>
-      val project =
-        projectDocumentGen("solr-project", "solr project description").generateOne
-      for {
-        _ <- client.upsert(Seq(project.widen))
-        qr <- client.queryEntity(
-          SearchRole.Admin,
-          Query.parse("solr").toOption.get,
-          10,
-          0
-        )
-        _ = assert(
-          qr.responseBody.docs.map(
-            _.noneScore
-              .assertVersionNot(DocVersion.NotExists)
-              .setVersion(DocVersion.NotExists)
-          ) contains project
-        )
-        gr <- client.findById[EntityDocument](CompoundId.projectEntity(project.id))
-        _ = assert(
-          gr.map(
-            _.assertVersionNot(DocVersion.NotExists).setVersion(DocVersion.NotExists)
-          ) contains project
-        )
-      } yield ()
-    }
+    val project =
+      projectDocumentGen("solr-project", "solr project description").generateOne
+    for {
+      client <- IO(searchSolrClient())
+      _ <- client.upsert(Seq(project.widen))
+      qr <- client.queryEntity(
+        SearchRole.Admin,
+        Query.parse("solr").toOption.get,
+        10,
+        0
+      )
+      _ = assert(
+        qr.responseBody.docs.map(
+          _.noneScore
+            .assertVersionNot(DocVersion.NotExists)
+            .setVersion(DocVersion.NotExists)
+        ) contains project
+      )
+      gr <- client.findById[EntityDocument](CompoundId.projectEntity(project.id))
+      _ = assert(
+        gr.map(
+          _.assertVersionNot(DocVersion.NotExists).setVersion(DocVersion.NotExists)
+        ) contains project
+      )
+    } yield ()
 
   test("be able to insert and fetch a User document"):
-    withSearchSolrClient().use { client =>
-      val firstName = users.FirstName("Johnny")
-      val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
-      for {
-        _ <- client.upsert(Seq(user.widen))
-        qr <- client.queryEntity(
-          SearchRole.Admin,
-          Query.parse(firstName.value).toOption.get,
-          10,
-          0
-        )
-        _ = assert(
-          qr.responseBody.docs.map(
-            _.noneScore
-              .assertVersionNot(DocVersion.NotExists)
-              .setVersion(DocVersion.NotExists)
-          ) contains user
-        )
-        gr <- client.findById[EntityDocument](CompoundId.userEntity(user.id))
-        _ = assert(
-          gr.map(
-            _.assertVersionNot(DocVersion.NotExists).setVersion(DocVersion.NotExists)
-          ) contains user
-        )
-      } yield ()
-    }
+    val firstName = users.FirstName("Johnny")
+    val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
+    for {
+      client <- IO(searchSolrClient())
+      _ <- client.upsert(Seq(user.widen))
+      qr <- client.queryEntity(
+        SearchRole.Admin,
+        Query.parse(firstName.value).toOption.get,
+        10,
+        0
+      )
+      _ = assert(
+        qr.responseBody.docs.map(
+          _.noneScore
+            .assertVersionNot(DocVersion.NotExists)
+            .setVersion(DocVersion.NotExists)
+        ) contains user
+      )
+      gr <- client.findById[EntityDocument](CompoundId.userEntity(user.id))
+      _ = assert(
+        gr.map(
+          _.assertVersionNot(DocVersion.NotExists).setVersion(DocVersion.NotExists)
+        ) contains user
+      )
+    } yield ()
 
   test("be able to find by the given query"):
-    withSearchSolrClient().use { client =>
-      val firstName = users.FirstName("Ian")
-      val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
-      case class UserId(id: String)
-      given Decoder[UserId] = deriveDecoder[UserId]
-      for {
-        _ <- client.upsert(Seq(user.widen))
-        gr <- client.query[UserId](
-          QueryData(
-            s"firstName:$firstName",
-            filter = Seq.empty,
-            limit = 100,
-            offset = 0
-          ).withFields(Fields.id)
-        )
-        _ = assert(gr.responseBody.docs.map(_.id) contains user.id.value)
-      } yield ()
-    }
+    val firstName = users.FirstName("Ian")
+    val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
+    case class UserId(id: String)
+    given Decoder[UserId] = deriveDecoder[UserId]
+    for {
+      client <- IO(searchSolrClient())
+      _ <- client.upsert(Seq(user.widen))
+      gr <- client.query[UserId](
+        QueryData(
+          s"firstName:$firstName",
+          filter = Seq.empty,
+          limit = 100,
+          offset = 0
+        ).withFields(Fields.id)
+      )
+      _ = assert(gr.responseBody.docs.map(_.id) contains user.id.value)
+    } yield ()

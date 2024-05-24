@@ -20,7 +20,7 @@ package io.renku.search.provision.project
 
 import scala.concurrent.duration.*
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import fs2.Stream
 import fs2.concurrent.SignallingRef
 
@@ -42,53 +42,53 @@ import org.scalacheck.Gen
 class ProjectRemovedProcessSpec extends ProvisioningSuite:
 
   test(s"can fetch events, decode them, and remove Solr"):
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      for
-        solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
+    for
+      services <- IO(testServices())
+      handler = services.messageHandlers
+      queueClient = services.queueClient
+      solrClient = services.searchClient
 
-        provisioningFiber <- handlers.projectRemoved.compile.drain.start
+      solrDoc <- SignallingRef.of[IO, Option[EntityDocument]](None)
 
-        created = projectCreatedGen(prefix = "remove").generateOne
-        _ <- solrClient.upsert(Seq(created.toModel(DocVersion.Off).widen))
+      provisioningFiber <- handler.projectRemoved.compile.drain.start
 
-        docsCollectorFiber <-
-          Stream
-            .awakeEvery[IO](500 millis)
-            .evalMap(_ =>
-              solrClient.findById[EntityDocument](
-                CompoundId.projectEntity(created.id)
-              )
+      created = projectCreatedGen(prefix = "remove").generateOne
+      _ <- solrClient.upsert(Seq(created.toModel(DocVersion.Off).widen))
+
+      docsCollectorFiber <-
+        Stream
+          .awakeEvery[IO](500 millis)
+          .evalMap(_ =>
+            solrClient.findById[EntityDocument](
+              CompoundId.projectEntity(created.id)
             )
-            .evalMap(e => solrDoc.update(_ => e))
-            .compile
-            .drain
-            .start
+          )
+          .evalMap(e => solrDoc.update(_ => e))
+          .compile
+          .drain
+          .start
 
-        _ <- solrDoc.waitUntil(
-          _.nonEmpty
-        )
+      _ <- solrDoc.waitUntil(
+        _.nonEmpty
+      )
 
-        removed = ProjectRemoved(created.id)
-        schemaVersion = Gen.oneOf(removed.version.toList).generateOne
-        schema = schemaVersion match
-          case SchemaVersion.V1 => v1.ProjectRemoved.SCHEMA$
-          case SchemaVersion.V2 => v2.ProjectRemoved.SCHEMA$
+      removed = ProjectRemoved(created.id)
+      schemaVersion = Gen.oneOf(removed.version.toList).generateOne
+      schema = schemaVersion match
+        case SchemaVersion.V1 => v1.ProjectRemoved.SCHEMA$
+        case SchemaVersion.V2 => v2.ProjectRemoved.SCHEMA$
 
-        _ <- queueClient.enqueue(
-          queueConfig.projectRemoved,
-          EventsGenerators.eventMessageGen(Gen.const(removed)).generateOne
-        )
+      _ <- queueClient.enqueue(
+        queueConfig.projectRemoved,
+        EventsGenerators.eventMessageGen(Gen.const(removed)).generateOne
+      )
 
-        _ <- solrDoc.waitUntil(
-          _.isEmpty
-        )
+      _ <- solrDoc.waitUntil(
+        _.isEmpty
+      )
 
-        _ <- provisioningFiber.cancel
-        _ <- docsCollectorFiber.cancel
-      yield ()
-    }
+      _ <- provisioningFiber.cancel
+      _ <- docsCollectorFiber.cancel
+    yield ()
 
   private lazy val queryProjects = Query(typeIs(EntityType.Project))
-
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)

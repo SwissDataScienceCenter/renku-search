@@ -24,10 +24,14 @@ import io.renku.solr.client.SolrClient
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.schema.SchemaCommand.Add
 import io.renku.solr.client.util.SolrClientBaseSuite
+import munit.CatsEffectSuite
 
-class SolrMigratorSpec extends SolrClientBaseSuite:
+class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
   private val logger = scribe.cats.io
-  override protected lazy val coreName: String = server.testCoreName3
+
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, solrClient)
+
   private val migrations = Seq(
     SchemaMigration(-5, Add(FieldType.text(TypeName("testText"), Analyzer.classic))),
     SchemaMigration(-4, Add(FieldType.int(TypeName("testInt")))),
@@ -47,29 +51,29 @@ class SolrMigratorSpec extends SolrClientBaseSuite:
       Seq(TypeName("testText"), TypeName("testInt"))
     )
 
-  test("run sample migrations"):
-    withSolrClient().use { client =>
-      val migrator = SchemaMigrator[IO](client)
-      for {
-        _ <- truncate(client)
-        _ <- migrator.migrate(migrations)
-        c <- migrator.currentVersion
-        _ = assertEquals(c, Some(-1L))
-      } yield ()
-    }
+  test("run sample migrations") {
+    for {
+      client <- IO(solrClient())
+      migrator = SchemaMigrator[IO](client)
+      _ <- truncate(client)
+      _ <- migrator.migrate(migrations)
+      c <- migrator.currentVersion
+      _ = assertEquals(c, Some(-1L))
+    } yield ()
+  }
 
   test("run migrations"):
-    withSolrClient().use { client =>
-      val migrator = SchemaMigrator(client)
-      val first = migrations.take(2)
-      for {
-        _ <- truncate(client)
-        _ <- migrator.migrate(first)
-        v0 <- migrator.currentVersion
-        _ = assertEquals(v0, Some(-4L))
+    for {
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      first = migrations.take(2)
 
-        _ <- migrator.migrate(migrations)
-        v1 <- migrator.currentVersion
-        _ = assertEquals(v1, Some(-1L))
-      } yield ()
-    }
+      _ <- truncate(client)
+      _ <- migrator.migrate(first)
+      v0 <- migrator.currentVersion
+      _ = assertEquals(v0, Some(-4L))
+
+      _ <- migrator.migrate(migrations)
+      v1 <- migrator.currentVersion
+      _ = assertEquals(v1, Some(-1L))
+    } yield ()

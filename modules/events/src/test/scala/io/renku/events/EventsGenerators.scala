@@ -22,6 +22,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 import io.renku.events.v1.ProjectAuthorizationAdded
+import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.model.Id
 import io.renku.search.model.MemberRole
@@ -315,11 +316,11 @@ object EventsGenerators:
 
   def v1UserAddedGen(
       prefix: String,
-      firstName: Gen[FirstName] = ModelGenerators.userFirstNameGen
+      firstName: Gen[Option[FirstName]] = ModelGenerators.userFirstNameGen.asOption
   ): Gen[v1.UserAdded] =
     for
       id <- Gen.uuid.map(_.toString)
-      firstName <- Gen.option(firstName.map(_.value))
+      firstName <- firstName.map(_.map(_.value))
       lastName <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
       email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
     yield v1.UserAdded(
@@ -331,11 +332,11 @@ object EventsGenerators:
 
   def v2UserAddedGen(
       prefix: String,
-      firstName: Gen[FirstName] = ModelGenerators.userFirstNameGen
+      firstName: Gen[Option[FirstName]] = ModelGenerators.userFirstNameGen.asOption
   ): Gen[v2.UserAdded] =
     for
       id <- Gen.uuid.map(_.toString)
-      firstName <- Gen.option(firstName.map(_.value))
+      firstName <- firstName.map(_.map(_.value))
       lastName <- alphaStringGen(max = 5).map(v => s"$prefix-$v")
       email <- Gen.option(stringGen(max = 5).map(host => s"$lastName@$host.com"))
       ns <- ModelGenerators.namespaceGen
@@ -349,7 +350,7 @@ object EventsGenerators:
 
   def userAddedGen(
       prefix: String,
-      firstName: Gen[FirstName] = ModelGenerators.userFirstNameGen
+      firstName: Gen[Option[FirstName]] = ModelGenerators.userFirstNameGen.asOption
   ): Gen[UserAdded] =
     Gen.oneOf(
       v1UserAddedGen(prefix, firstName).map(UserAdded.V1.apply),

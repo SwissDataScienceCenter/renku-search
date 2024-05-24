@@ -34,10 +34,13 @@ import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.documents.User as UserDocument
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.UpsertResponse
+import munit.CatsEffectSuite
 import org.scalacheck.Gen
 import scribe.Scribe
 
-class PushToSolrSpec extends SearchSolrSuite:
+class PushToSolrSpec extends CatsEffectSuite with SearchSolrSuite:
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, searchSolrClient)
 
   val messageGen: Gen[EventMessage[UserDocument]] =
     for
@@ -59,49 +62,49 @@ class PushToSolrSpec extends SearchSolrSuite:
 
   test("honor max retries on conflict"):
     val reader = PushToSolrSpec.MessageReaderMock()
-    withSearchSolrClient().use { client =>
-      val pushToSolr = PushToSolr[IO](client, reader)
-      val counter = Ref.unsafe[IO, Int](0)
-      val msg =
-        messageGen.generateOne.map(_.setVersion(DocVersion.Exists): EntityOrPartial)
-      val maxRetries = 2
-      for
-        r <- pushData(pushToSolr, counter.update(_ + 1))(
-          msg,
-          maxRetries
-        ).compile.lastOrError
-        runs <- counter.get
-        _ = assertEquals(runs, maxRetries + 1)
-        _ = assertEquals(r, UpsertResponse.VersionConflict)
-        marked <- reader.getProcessed
-        _ = assert(marked.contains(msg.id))
-      yield ()
-    }
+    val counter = Ref.unsafe[IO, Int](0)
+    val msg =
+      messageGen.generateOne.map(_.setVersion(DocVersion.Exists): EntityOrPartial)
+    val maxRetries = 2
+
+    for
+      client <- IO(searchSolrClient())
+      pushToSolr = PushToSolr[IO](client, reader)
+      r <- pushData(pushToSolr, counter.update(_ + 1))(
+        msg,
+        maxRetries
+      ).compile.lastOrError
+      runs <- counter.get
+      _ = assertEquals(runs, maxRetries + 1)
+      _ = assertEquals(r, UpsertResponse.VersionConflict)
+      marked <- reader.getProcessed
+      _ = assert(marked.contains(msg.id))
+    yield ()
 
   test("try until success"):
     val reader = PushToSolrSpec.MessageReaderMock()
-    withSearchSolrClient().use { client =>
-      val pushToSolr = PushToSolr[IO](client, reader)
-      val msg = messageGen.generateOne.map(_.setVersion(DocVersion.Exists))
-      val counter = Ref.unsafe[IO, Int](0)
-      val post = counter.updateAndGet(_ + 1).flatMap {
+    val msg = messageGen.generateOne.map(_.setVersion(DocVersion.Exists))
+    val counter = Ref.unsafe[IO, Int](0)
+    val msgCast = msg.map(e => e: EntityOrPartial)
+    val maxRetries = 6
+
+    for
+      client <- IO(searchSolrClient())
+      post = counter.updateAndGet(_ + 1).flatMap {
         case n if n == 3 =>
           scribe.cats.io.info(s"inserting now") >> client
             .upsertSuccess(msg.payload.map(_.setVersion(DocVersion.Off)))
             .void
         case _ => IO.unit
       }
-      val msgCast = msg.map(e => e: EntityOrPartial)
-      val maxRetries = 6
-      for
-        r <- pushData(pushToSolr, post)(msgCast, maxRetries).compile.lastOrError
-        runs <- counter.get
-        _ = assertEquals(runs, 3)
-        _ = assert(r.isSuccess)
-        marked <- reader.getProcessed
-        _ = assert(marked.contains(msg.id))
-      yield ()
-    }
+      pushToSolr = PushToSolr[IO](client, reader)
+      r <- pushData(pushToSolr, post)(msgCast, maxRetries).compile.lastOrError
+      runs <- counter.get
+      _ = assertEquals(runs, 3)
+      _ = assert(r.isSuccess)
+      marked <- reader.getProcessed
+      _ = assert(marked.contains(msg.id))
+    yield ()
 
 object PushToSolrSpec:
 

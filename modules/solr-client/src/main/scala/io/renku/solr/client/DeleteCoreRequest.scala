@@ -16,27 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client
 
+import io.bullet.borer.Encoder
+import io.bullet.borer.Writer
 import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.derivation.key
-import io.bullet.borer.{Decoder, Encoder}
 
-final case class Field(
-    name: FieldName,
-    @key("type") typeName: TypeName,
-    required: Boolean = false,
-    indexed: Boolean = true,
-    stored: Boolean = true,
-    multiValued: Boolean = false,
-    uninvertible: Boolean = true,
-    docValues: Boolean = false
-):
-  def makeMultiValued: Field = copy(multiValued = true)
+final case class DeleteCoreRequest(
+    deleteInstanceDir: Boolean,
+    deleteIndex: Boolean
+)
 
-object Field:
-  def apply(name: FieldName, fieldType: FieldType): Field =
-    apply(name, fieldType.name)
+object DeleteCoreRequest:
 
-  given Encoder[Field] = MapBasedCodecs.deriveEncoder
-  given Decoder[Field] = MapBasedCodecs.deriveDecoder
+  given Encoder[DeleteCoreRequest] =
+    given inner: Encoder[DeleteCoreRequest] =
+      MapBasedCodecs.deriveEncoder[DeleteCoreRequest]
+    new Encoder[DeleteCoreRequest] {
+      def write(w: Writer, v: DeleteCoreRequest): Writer =
+        w.writeMapOpen(1)
+        w.writeMapMember("unload", v)
+        w.writeMapClose()
+    }

@@ -37,47 +37,47 @@ import io.renku.solr.client.QueryString
 import org.scalacheck.Gen
 
 class GroupMemberAddedSpec extends ProvisioningSuite:
-  override def munitFixtures: Seq[Fixture[?]] =
-    List(withRedisClient, withQueueClient, withSearchSolrClient)
 
   test("adding member to group and related projects"):
-    withMessageHandlers(queueConfig).use { case (handlers, queueClient, solrClient) =>
-      val initialState = DbState.groupWithProjectsGen.generateOne
-      val role = ModelGenerators.memberRoleGen.generateOne
-      val newMember =
-        GroupMemberAdded(initialState.group.id, ModelGenerators.idGen.generateOne, role)
-      for
-        _ <- initialState.setup(solrClient)
-        msg = EventsGenerators.eventMessageGen(Gen.const(newMember)).generateOne
-        _ <- queueClient.enqueue(queueConfig.groupMemberAdded, msg)
-        _ <- handlers
-          .makeGroupMemberUpsert[GroupMemberAdded](queueConfig.groupMemberAdded)
-          .take(2) // two updates, one for the single group and one for all its projects
-          .compile
-          .toList
-        currentGroup <- solrClient
-          .findById[EntityDocument](
-            CompoundId.groupEntity(initialState.group.id)
-          )
-          .map(_.get.asInstanceOf[GroupDocument])
-        _ = assert(
-          currentGroup.toEntityMembers.getMemberIds(role).contains(newMember.userId),
-          s"new member '${newMember.userId}' not in group $role"
+    val initialState = DbState.groupWithProjectsGen.generateOne
+    val role = ModelGenerators.memberRoleGen.generateOne
+    val newMember =
+      GroupMemberAdded(initialState.group.id, ModelGenerators.idGen.generateOne, role)
+    for
+      services <- IO(testServices())
+      handler = services.messageHandlers
+      queueClient = services.queueClient
+      solrClient = services.searchClient
+      _ <- initialState.setup(solrClient)
+      msg = EventsGenerators.eventMessageGen(Gen.const(newMember)).generateOne
+      _ <- queueClient.enqueue(queueConfig.groupMemberAdded, msg)
+      _ <- handler
+        .makeGroupMemberUpsert[GroupMemberAdded](queueConfig.groupMemberAdded)
+        .take(2) // two updates, one for the single group and one for all its projects
+        .compile
+        .toList
+      currentGroup <- solrClient
+        .findById[EntityDocument](
+          CompoundId.groupEntity(initialState.group.id)
         )
+        .map(_.get.asInstanceOf[GroupDocument])
+      _ = assert(
+        currentGroup.toEntityMembers.getMemberIds(role).contains(newMember.userId),
+        s"new member '${newMember.userId}' not in group $role"
+      )
 
-        currentProjects <- solrClient
-          .query[EntityDocument](initialState.projectQuery)
-          .map(_.responseBody.docs)
-          .map(_.map(_.asInstanceOf[ProjectDocument]))
-        _ = assertEquals(currentProjects.size, initialState.projects.size)
-        _ = assert(
-          currentProjects.forall(
-            _.toGroupMembers.getMemberIds(role).contains(newMember.userId)
-          ),
-          s"new member '${newMember.userId}' not in projects group $role"
-        )
-      yield ()
-    }
+      currentProjects <- solrClient
+        .query[EntityDocument](initialState.projectQuery)
+        .map(_.responseBody.docs)
+        .map(_.map(_.asInstanceOf[ProjectDocument]))
+      _ = assertEquals(currentProjects.size, initialState.projects.size)
+      _ = assert(
+        currentProjects.forall(
+          _.toGroupMembers.getMemberIds(role).contains(newMember.userId)
+        ),
+        s"new member '${newMember.userId}' not in projects group $role"
+      )
+    yield ()
 
 object GroupMemberAddedSpec:
   enum DbState:

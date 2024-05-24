@@ -67,7 +67,7 @@ object ConfigValues extends ConfigDecoders:
     renv("CLIENT_ID").default(default.value).as[ClientId]
 
   val solrConfig: ConfigValue[Effect, SolrConfig] = {
-    val url = renv("SOLR_URL").default("http://localhost:8983/solr").as[Uri]
+    val url = renv("SOLR_URL").default("http://localhost:8983").as[Uri]
     val core = renv("SOLR_CORE").default("search-core-test")
     val maybeUser =
       (renv("SOLR_USER").default("admin"), renv("SOLR_PASS"))

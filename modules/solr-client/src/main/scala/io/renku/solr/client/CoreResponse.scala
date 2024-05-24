@@ -16,27 +16,24 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client
 
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.derivation.key
-import io.bullet.borer.{Decoder, Encoder}
+import io.bullet.borer.Decoder
+import io.bullet.borer.NullOptions.given
+import io.bullet.borer.derivation.{MapBasedCodecs, key}
 
-final case class Field(
-    name: FieldName,
-    @key("type") typeName: TypeName,
-    required: Boolean = false,
-    indexed: Boolean = true,
-    stored: Boolean = true,
-    multiValued: Boolean = false,
-    uninvertible: Boolean = true,
-    docValues: Boolean = false
+final case class CoreResponse(
+    responseHeader: ResponseHeader,
+    error: Option[CoreResponse.Error] = None,
+    core: Option[String] = None
 ):
-  def makeMultiValued: Field = copy(multiValued = true)
 
-object Field:
-  def apply(name: FieldName, fieldType: FieldType): Field =
-    apply(name, fieldType.name)
+  def isSuccess: Boolean = error.isEmpty
 
-  given Encoder[Field] = MapBasedCodecs.deriveEncoder
-  given Decoder[Field] = MapBasedCodecs.deriveDecoder
+object CoreResponse:
+
+  final case class Error(@key("msg") message: String)
+  object Error:
+    given Decoder[Error] = MapBasedCodecs.deriveDecoder
+
+  given Decoder[CoreResponse] = MapBasedCodecs.deriveDecoder

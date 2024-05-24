@@ -16,27 +16,14 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client.schema
+package io.renku.solr.client.util
 
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.derivation.key
-import io.bullet.borer.{Decoder, Encoder}
+import cats.effect.{ExitCode, IO, IOApp}
 
-final case class Field(
-    name: FieldName,
-    @key("type") typeName: TypeName,
-    required: Boolean = false,
-    indexed: Boolean = true,
-    stored: Boolean = true,
-    multiValued: Boolean = false,
-    uninvertible: Boolean = true,
-    docValues: Boolean = false
-):
-  def makeMultiValued: Field = copy(multiValued = true)
+import io.renku.servers.SolrServer
 
-object Field:
-  def apply(name: FieldName, fieldType: FieldType): Field =
-    apply(name, fieldType.name)
+/** This is a utility to start a Solr server for manual testing */
+object TestSearchSolrServer extends IOApp:
 
-  given Encoder[Field] = MapBasedCodecs.deriveEncoder
-  given Decoder[Field] = MapBasedCodecs.deriveDecoder
+  override def run(args: List[String]): IO[ExitCode] =
+    (IO(SolrServer.start()) >> IO.never[ExitCode]).as(ExitCode.Success)

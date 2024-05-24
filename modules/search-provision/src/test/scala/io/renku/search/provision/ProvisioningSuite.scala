@@ -18,11 +18,13 @@
 
 package io.renku.search.provision
 
+import scala.concurrent.duration.Duration
+
 import cats.effect.{IO, Resource}
 import cats.syntax.all.*
 import fs2.Stream
 
-import io.renku.queue.client.{QueueClient, QueueSpec}
+import io.renku.queue.client.{QueueClient, QueueSuite}
 import io.renku.redis.client.QueueName
 import io.renku.search.config.QueuesConfig
 import io.renku.search.model.{EntityType, Id, Namespace}
@@ -31,8 +33,9 @@ import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
 import io.renku.search.solr.documents.{Group as GroupDocument, User as UserDocument, *}
 import io.renku.search.solr.query.SolrToken
 import io.renku.solr.client.{QueryData, QueryString}
+import munit.CatsEffectSuite
 
-trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
+trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueSuite:
   val queueConfig: QueuesConfig = QueuesConfig(
     projectCreated = QueueName("projectCreated"),
     projectUpdated = QueueName("projectUpdated"),
@@ -51,19 +54,23 @@ trait ProvisioningSuite extends SearchSolrSuite with QueueSpec:
     groupMemberRemoved = QueueName("groupMemberRemoved")
   )
 
-  def withMessageHandlers(
-      cfg: QueuesConfig = queueConfig
-  ): Resource[IO, (MessageHandlers[IO], QueueClient[IO], SearchSolrClient[IO])] =
-    (withSearchSolrClient(), withQueueClient()).mapN { (solrClient, queueClient) =>
-      val steps =
-        PipelineSteps[IO](
-          solrClient,
-          Stream[IO, QueueClient[IO]](queueClient),
-          inChunkSize = 1
-        )
-      val handlers = MessageHandlers[IO](steps, queueConfig)
-      (handlers, queueClient, solrClient)
-    }
+  override def munitIOTimeout: Duration = Duration(1, "min")
+
+  val testServicesR: Resource[IO, TestServices] =
+    for
+      solrClient <- searchSolrR
+      queue <- queueClientR
+      steps = PipelineSteps[IO](
+        solrClient,
+        Stream[IO, QueueClient[IO]](queue),
+        inChunkSize = 1
+      )
+      handlers = MessageHandlers[IO](steps, queueConfig)
+    yield TestServices(handlers, queue, solrClient)
+
+  val testServices = ResourceSuiteLocalFixture("test-services", testServicesR)
+
+  override def munitFixtures = List(solrServer, redisServer, testServices)
 
   def loadProjectsByNs(solrClient: SearchSolrClient[IO])(
       ns: Namespace

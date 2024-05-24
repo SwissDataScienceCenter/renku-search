@@ -20,7 +20,7 @@ package io.renku.search
 
 import io.renku.logging.LoggingSetup
 
-trait LoggingConfigure extends munit.FunSuite:
+trait LoggingConfigure extends munit.Suite:
 
   def defaultVerbosity: Int = 0
 

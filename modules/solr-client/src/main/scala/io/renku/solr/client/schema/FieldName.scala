@@ -18,6 +18,7 @@
 
 package io.renku.solr.client.schema
 
+import io.bullet.borer.Decoder
 import io.bullet.borer.Encoder
 
 opaque type FieldName = String
@@ -30,3 +31,4 @@ object FieldName:
   extension (self: FieldName) def name: String = self
 
   given Encoder[FieldName] = Encoder.forString
+  given Decoder[FieldName] = Decoder.forString

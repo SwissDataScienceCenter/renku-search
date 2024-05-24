@@ -27,10 +27,14 @@ import io.bullet.borer.derivation.key
 import io.renku.solr.client.SearchCaseInsensitiveSpec.TestData
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.util.SolrClientBaseSuite
+import munit.CatsEffectSuite
 
-class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
+class SearchCaseInsensitiveSpec extends CatsEffectSuite with SolrClientBaseSuite:
   private val logger = scribe.cats.io
-  override protected lazy val coreName: String = server.testCoreName2
+
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, solrClient)
+
   private val migrations = Seq(
     SchemaCommand.Add(FieldType.text(TypeName("my_text_field"), Analyzer.defaultSearch)),
     SchemaCommand.Add(Field(FieldName("my_name"), TypeName("my_text_field")))
@@ -43,27 +47,27 @@ class SearchCaseInsensitiveSpec extends SolrClientBaseSuite:
       Seq(TypeName("my_text_field"))
     )
 
-  test("search case insensitive"):
-    withSolrClient().use { client =>
-      for {
-        _ <- truncate(client)
-        _ <- client.modifySchema(migrations)
-        _ <- client.upsert(TestData.sample)
+  test("search case insensitive") {
+    for {
+      client <- IO(solrClient())
+      _ <- truncate(client)
+      _ <- client.modifySchema(migrations)
+      _ <- client.upsert(TestData.sample)
 
-        // find pogacar without this Č character
-        r1 <- client.query[TestData](QueryString("my_name:pogacar"))
-        _ = assertEquals(r1.responseBody.docs.head, TestData.get(11))
-        // find pogi with that Č character
-        r2 <- client.query[TestData](QueryString("my_name:POGAČAR"))
-        _ = assertEquals(r2.responseBody.docs.head, TestData.get(11))
-        // find with umlaut
-        r3 <- client.query[TestData](QueryString("my_name:über"))
-        _ = assertEquals(r3.responseBody.docs.head, TestData.get(31))
-        // find without umlaut
-        r4 <- client.query[TestData](QueryString("my_name:uber"))
-        _ = assertEquals(r4.responseBody.docs.head, TestData.get(31))
-      } yield ()
-    }
+      // find pogacar without this Č character
+      r1 <- client.query[TestData](QueryString("my_name:pogacar"))
+      _ = assertEquals(r1.responseBody.docs.head, TestData.get(11))
+      // find pogi with that Č character
+      r2 <- client.query[TestData](QueryString("my_name:POGAČAR"))
+      _ = assertEquals(r2.responseBody.docs.head, TestData.get(11))
+      // find with umlaut
+      r3 <- client.query[TestData](QueryString("my_name:über"))
+      _ = assertEquals(r3.responseBody.docs.head, TestData.get(31))
+      // find without umlaut
+      r4 <- client.query[TestData](QueryString("my_name:uber"))
+      _ = assertEquals(r4.responseBody.docs.head, TestData.get(31))
+    } yield ()
+  }
 
 object SearchCaseInsensitiveSpec:
   def idQuery: String = s"id:${getClass.getSimpleName}*"

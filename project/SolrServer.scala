@@ -19,17 +19,17 @@
 package io.renku.servers
 
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+
 import scala.annotation.tailrec
 import scala.sys.process.*
 import scala.util.Try
 
-object SolrServer extends SolrServer("graph", None)
+@annotation.nowarn
+object SolrServer {
+  private val createCoreCounter: AtomicInteger = new AtomicInteger(0)
 
-@annotation.nowarn()
-class SolrServer(module: String, solrPort: Option[Int]) {
-
-  private val port =
-    solrPort.orElse(sys.env.get("RS_SOLR_PORT").map(_.toInt)).getOrElse(8983)
+  private val port = sys.env.get("RS_SOLR_PORT").map(_.toInt).getOrElse(8983)
   private val host: String = sys.env.get("RS_SOLR_HOST").getOrElse("localhost")
   val url: String = s"http://$host:$port"
 
@@ -37,13 +37,10 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   // to not start a Solr server via docker for the tests
   private val skipServer: Boolean = sys.env.contains("NO_SOLR")
 
-  private val containerName = s"$module-test-solr"
+  private val containerName = "search-test-solr"
   private val image = "solr:9.4.1-slim"
   val searchCoreName = "search-core-test"
-  val testCoreName1 = "core-test1"
-  val testCoreName2 = "core-test2"
-  val testCoreName3 = "core-test3"
-  private val cores = Set(testCoreName1, testCoreName2, testCoreName3, searchCoreName)
+  private val cores = Set(searchCoreName)
   private val startCmd = s"""|docker run --rm
                              |--name $containerName
                              |-p $port:8983
@@ -51,21 +48,48 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   private val isRunningCmd =
     Seq("docker", "container", "ls", "--filter", s"name=$containerName")
   private val stopCmd = s"docker stop -t5 $containerName"
-  private def readyCmd(core: String) =
-    s"curl http://localhost:8983/solr/$core/select?q=*:* --no-progress-meter --fail 1> /dev/null"
   private def isCoreReadyCmd(core: String) =
-    Seq("docker", "exec", containerName, "sh", "-c", readyCmd(core))
-  private def createCore(core: String) = s"precreate-core $core"
+    Seq(
+      "curl",
+      "--fail",
+      "-s",
+      "-o",
+      "/dev/null",
+      s"$url/solr/$core/select"
+    )
   private def createCoreCmd(core: String) =
-    Seq("docker", "exec", containerName, "sh", "-c", createCore(core))
+    sys.env
+      .get("RS_SOLR_CREATE_CORE_CMD")
+      .map(_.replace("%s", core))
+      .getOrElse(s"docker exec $containerName solr create -c $core")
+  private def deleteCoreCmd(core: String) =
+    sys.env
+      .get("RS_SOLR_DELETE_CORE_CMD")
+      .map(_.replace("%s", core))
+      .getOrElse(s"docker exec $containerName sh -c solr delete -c $core")
+
+  // configsets are copied to $SOLR_HOME to allow core api to create cores
+  private val copyConfigSetsCmd =
+    Seq(
+      "docker",
+      "exec",
+      containerName,
+      "cp",
+      "-r",
+      "/opt/solr/server/solr/configsets",
+      "/var/solr/data/"
+    )
+
   private val wasStartedHere = new AtomicBoolean(false)
 
   def start(): Unit =
     if (skipServer) println("Not starting Solr via docker")
     else if (checkRunning) ()
     else {
-      println(s"Starting Solr container for '$module' from '$image' image")
+      println(s"Starting Solr container '$image'")
       startContainer()
+      createCores(cores)
+      copyConfigSets()
       waitForCoresToBeReady()
     }
 
@@ -77,9 +101,9 @@ class SolrServer(module: String, solrPort: Option[Int]) {
       counter += 1
       Thread.sleep(500)
       rc = checkCoresReady
-      if (rc == 0) println(s"Solr cores for '$module' ready on port $port")
+      if (rc == 0) println(s"Solr cores ready on port $port")
     }
-    if (rc != 0) sys.error(s"Solr cores for '$module' could not be started")
+    if (rc != 0) sys.error(s"Solr cores could not be started")
   }
 
   private def checkCoresReady =
@@ -95,12 +119,27 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   private def startContainer(): Unit = {
     val retryOnContainerFailedToRun: Throwable => Unit = {
       case ex if ex.getMessage contains "Nonzero exit value: 125" =>
-        Thread.sleep(500); start()
+        Thread.sleep(500); startContainer()
       case ex => throw ex
     }
     Try(startCmd.!!).fold(retryOnContainerFailedToRun, _ => wasStartedHere.set(true))
     Thread.sleep(500)
-    createCores(cores)
+  }
+
+  private def copyConfigSets(): Unit =
+    copyConfigSetsCmd.!!
+
+  def createCore(name: String): Try[Unit] = {
+    val cmd = createCoreCmd(name)
+    val n = createCoreCounter.incrementAndGet()
+    println(s"Create $n-th core: $cmd")
+    Try(cmd.!!).map(_ => ())
+  }
+
+  def deleteCore(name: String): Try[Unit] = {
+    val cmd = deleteCoreCmd(name)
+    println(s"Run delete core: $cmd")
+    Try(cmd.!!).map(_ => ())
   }
 
   @tailrec
@@ -127,14 +166,14 @@ class SolrServer(module: String, solrPort: Option[Int]) {
   def stop(): Unit =
     if (skipServer || !wasStartedHere.get()) ()
     else {
-      println(s"Stopping Solr container for '$module'")
+      println(s"Stopping Solr container '$image'")
       stopCmd.!!
       ()
     }
 
   def forceStop(): Unit =
     if (!skipServer) {
-      println(s"Stopping Solr container for '$module'")
+      println(s"Stopping Solr container '$image'")
       stopCmd.!!
       ()
     }

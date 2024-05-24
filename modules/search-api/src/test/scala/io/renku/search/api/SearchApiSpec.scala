@@ -32,63 +32,64 @@ import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
 import io.renku.solr.client.DocVersion
+import munit.CatsEffectSuite
 import org.scalacheck.Gen
 import scribe.Scribe
 
-class SearchApiSpec extends SearchSolrSuite:
+class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
+  override def munitFixtures: Seq[munit.AnyFixture[?]] =
+    List(solrServer, searchSolrClient)
 
   private given Scribe[IO] = scribe.cats[IO]
 
   test("do a lookup in Solr to find entities matching the given phrase"):
-    withSearchSolrClient().use { client =>
-      val project1 = projectDocumentGen(
-        "matching",
-        "matching description",
-        Gen.const(Visibility.Public)
-      ).generateOne
-      val project2 = projectDocumentGen(
-        "disparate",
-        "disparate description",
-        Gen.const(Visibility.Public)
-      ).generateOne
-      val searchApi = new SearchApiImpl[IO](client)
-      for {
-        _ <- client.upsert((project1 :: project2 :: Nil).map(_.widen))
-        results <- searchApi
-          .query(AuthContext.anonymous)(mkQuery("matching"))
-          .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
+    val project1 = projectDocumentGen(
+      "matching",
+      "matching description",
+      Gen.const(Visibility.Public)
+    ).generateOne
+    val project2 = projectDocumentGen(
+      "disparate",
+      "disparate description",
+      Gen.const(Visibility.Public)
+    ).generateOne
+    for {
+      client <- IO(searchSolrClient())
+      searchApi = new SearchApiImpl[IO](client)
+      _ <- client.upsert((project1 :: project2 :: Nil).map(_.widen))
+      results <- searchApi
+        .query(AuthContext.anonymous)(mkQuery("matching"))
+        .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
 
-        expected = toApiEntities(project1).toSet
-        obtained = results.items.map(scoreToNone).toSet
-      } yield assert(
-        expected.diff(obtained).isEmpty,
-        s"Expected $expected, bot got $obtained"
-      )
-    }
+      expected = toApiEntities(project1).toSet
+      obtained = results.items.map(scoreToNone).toSet
+    } yield assert(
+      expected.diff(obtained).isEmpty,
+      s"Expected $expected, bot got $obtained"
+    )
 
   test("return Project and User entities"):
-    withSearchSolrClient().use { client =>
-      val project = projectDocumentGen(
-        "exclusive",
-        "exclusive description",
-        Gen.const(Visibility.Public)
-      ).generateOne
-      val user =
-        SolrUser(project.createdBy, DocVersion.NotExists, FirstName("exclusive").some)
-      val searchApi = new SearchApiImpl[IO](client)
-      for {
-        _ <- client.upsert(project :: user :: Nil)
-        results <- searchApi
-          .query(AuthContext.anonymous)(mkQuery("exclusive"))
-          .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
+    val project = projectDocumentGen(
+      "exclusive",
+      "exclusive description",
+      Gen.const(Visibility.Public)
+    ).generateOne
+    val user =
+      SolrUser(project.createdBy, DocVersion.NotExists, FirstName("exclusive").some)
+    for {
+      client <- IO(searchSolrClient())
+      searchApi = new SearchApiImpl[IO](client)
+      _ <- client.upsert(project :: user :: Nil)
+      results <- searchApi
+        .query(AuthContext.anonymous)(mkQuery("exclusive"))
+        .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
 
-        expected = toApiEntities(project, user).toSet
-        obtained = results.items.map(scoreToNone).toSet
-      } yield assert(
-        expected.diff(obtained).isEmpty,
-        s"Expected $expected, bot got $obtained"
-      )
-    }
+      expected = toApiEntities(project, user).toSet
+      obtained = results.items.map(scoreToNone).toSet
+    } yield assert(
+      expected.diff(obtained).isEmpty,
+      s"Expected $expected, bot got $obtained"
+    )
 
   private def scoreToNone(e: SearchEntity): SearchEntity = e match
     case e: Project => e.copy(score = None)

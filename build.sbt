@@ -198,6 +198,10 @@ lazy val http4sCommons = project
         Dependencies.http4sServer ++
         Dependencies.tapirHttp4sServer
   )
+  .dependsOn(
+    commons % "compile->compile;test->test",
+    http4sBorer % "compile->compile;test->test"
+  )
 
 lazy val redisClient = project
   .in(file("modules/redis-client"))

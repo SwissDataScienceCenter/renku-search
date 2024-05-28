@@ -20,9 +20,9 @@ package io.renku.openid.keycloak
 
 import scala.concurrent.duration.FiniteDuration
 
+import io.renku.search.jwt.RenkuToken
 import io.renku.search.common.UrlPattern
 import org.http4s.Uri
-import pdi.jwt.JwtClaim
 import pdi.jwt.JwtHeader
 
 sealed trait JwtError extends Throwable
@@ -57,7 +57,7 @@ object JwtError:
   final case class JwtValidationError(
       jwt: String,
       header: Option[JwtHeader],
-      claim: Option[JwtClaim],
+      claim: Option[RenkuToken],
       cause: Throwable
   ) extends RuntimeException(
         s"Error decoding token (header=$header, claimExists=${claim.isDefined}): ${cause.getMessage}",

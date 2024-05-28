@@ -20,11 +20,11 @@ package io.renku.openid.keycloak
 
 import cats.effect.*
 
+import io.renku.search.jwt.RenkuToken
 import org.http4s.client.Client
-import pdi.jwt.JwtClaim
 
 trait JwtVerify[F[_]]:
-  def verify(token: String): F[Either[JwtError, JwtClaim]]
+  def verify(token: String): F[Either[JwtError, RenkuToken]]
 
 object JwtVerify:
   def apply[F[_]: Async](client: Client[F], config: JwtVerifyConfig): F[JwtVerify[F]] =

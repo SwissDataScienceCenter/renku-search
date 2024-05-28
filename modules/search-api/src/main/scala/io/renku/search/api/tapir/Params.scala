@@ -70,9 +70,11 @@ object Params extends TapirCodecs with TapirBorerJson {
     borerJsonBody[SearchResult].and(pagingInfo).map(_._1)(r => (r, r.pagingInfo))
 
   private val renkuAuthIdToken: EndpointInput[Option[AuthToken.JwtToken]] =
-    header[Option[AuthToken.JwtToken]]("Renku-Auth-Id-Token")
+    auth.bearer[Option[String]]().map(_.map(t => AuthToken.JwtToken(t)))(_.map(_.token))
+
   private val renkuAuthAnonId: EndpointInput[Option[AuthToken.AnonymousId]] =
     header[Option[AuthToken.AnonymousId]]("Renku-Auth-Anon-Id")
+
   val renkuAuth: EndpointInput[AuthToken] =
     (renkuAuthIdToken / renkuAuthAnonId).map { case (token, id) =>
       token.orElse(id).getOrElse(AuthToken.None)

@@ -1,0 +1,49 @@
+{
+  "exp": 1716905204,
+  "iat": 1716903404,
+  "auth_time": 1716903404,
+  "jti": "488ecd30-a7bb-473b-9eac-3ec43d5447a6",
+  "iss": "https://ci-renku-3646.dev.renku.ch/auth/realms/Renku",
+  "aud": [
+    "renku",
+    "account"
+  ],
+  "sub": "48c85c75-b407-4259-b06b-a611e71df5f0",
+  "typ": "Bearer",
+  "azp": "renku-ui",
+  "session_state": "77bd8cc2-8230-4ec8-82d3-617bc3bf8013",
+  "acr": "1",
+  "allowed-origins": [
+    "https://ci-renku-3646.dev.renku.ch/*"
+  ],
+  "realm_access": {
+    "roles": [
+      "offline_access",
+      "default-roles-renku",
+      "uma_authorization"
+    ]
+  },
+  "resource_access": {
+    "account": {
+      "roles": [
+        "manage-account",
+        "manage-account-links",
+        "view-profile"
+      ]
+    }
+  },
+  "scope": "openid microprofile-jwt email profile",
+  "sid": "77bd8cc2-8230-4ec8-82d3-617bc3bf8013",
+  "upn": "eike.kettner@sdsc.ethz.ch",
+  "email_verified": false,
+  "name": "Eike Kettner",
+  "groups": [
+    "offline_access",
+    "default-roles-renku",
+    "uma_authorization"
+  ],
+  "preferred_username": "eike.kettner@sdsc.ethz.ch",
+  "given_name": "Eike",
+  "family_name": "Kettner",
+  "email": "eike.kettner@sdsc.ethz.ch"
+}

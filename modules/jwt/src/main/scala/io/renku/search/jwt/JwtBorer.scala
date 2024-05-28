@@ -26,25 +26,27 @@ import io.bullet.borer.Json
 import pdi.jwt.*
 
 class JwtBorer(override val clock: Clock)
-    extends JwtCore[JwtHeader, JwtClaim]
+    extends JwtCore[JwtHeader, RenkuToken]
     with BorerCodec:
   private val noSigOptions = JwtOptions.DEFAULT.copy(signature = false)
 
   protected def parseHeader(header: String): JwtHeader =
     Json.decode(header.getBytes).to[JwtHeader].value
 
-  protected def parseClaim(claim: String): JwtClaim =
-    Json.decode(claim.getBytes).to[JwtClaim].value
+  protected def parseClaim(claim: String): RenkuToken =
+    Json.decode(claim.getBytes).to[RenkuToken].value
 
   protected def extractAlgorithm(header: JwtHeader): Option[JwtAlgorithm] =
     header.algorithm
-  protected def extractExpiration(claim: JwtClaim): Option[Long] = claim.expiration
-  protected def extractNotBefore(claim: JwtClaim): Option[Long] = claim.notBefore
+  protected def extractExpiration(claim: RenkuToken): Option[Long] =
+    claim.expirationTime.map(_.getEpochSecond)
+  protected def extractNotBefore(claim: RenkuToken): Option[Long] =
+    claim.notBefore.map(_.getEpochSecond())
 
-  def decodeAllNoSignatureCheck(token: String): Try[(JwtHeader, JwtClaim, String)] =
+  def decodeAllNoSignatureCheck(token: String): Try[(JwtHeader, RenkuToken, String)] =
     decodeAll(token, noSigOptions)
 
-  def decodeNoSignatureCheck(token: String): Try[JwtClaim] =
+  def decodeNoSignatureCheck(token: String): Try[RenkuToken] =
     decode(token, noSigOptions)
 
 object JwtBorer extends JwtBorer(Clock.systemUTC()):

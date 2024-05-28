@@ -21,6 +21,7 @@ package io.renku.search.jwt
 import munit.FunSuite
 import pdi.jwt.Jwt
 import pdi.jwt.JwtAlgorithm
+import java.time.Instant
 
 class JwtBorerSpec extends FunSuite:
 
@@ -30,6 +31,12 @@ class JwtBorerSpec extends FunSuite:
 
   val regexDecode = Jwt.decodeAll(exampleToken, secret).get
 
+  val expectClaim = RenkuToken(
+    issuedAt = Some(Instant.ofEpochSecond(1516239022L)),
+    subject = Some("my-user-id"),
+    name = Some("John Doe")
+  )
+
   test("decode"):
     val (header, claim, _) = JwtBorer.decodeAll(exampleToken, secret).get
     assertEquals(header.algorithm, Some(JwtAlgorithm.HS256))
@@ -37,14 +44,14 @@ class JwtBorerSpec extends FunSuite:
     assertEquals(header.keyId, None)
     assertEquals(header.contentType, None)
 
-    assertEquals(claim.subject, Some("my-user-id"))
-    assertEquals(claim.issuedAt, Some(1516239022L))
+    assertEquals(claim.subject, expectClaim.subject)
+    assertEquals(claim.issuedAt, expectClaim.issuedAt)
     assertEquals(header, regexDecode._1)
-    assertEquals(claim, regexDecode._2.withContent("{}"))
+    assertEquals(claim, expectClaim)
 
   test("decode without secret"):
     val (header, claim, _) = JwtBorer.decodeAllNoSignatureCheck(exampleToken).get
     val claim2 = JwtBorer.decodeNoSignatureCheck(exampleToken).get
     assertEquals(claim, claim2)
     assertEquals(header, regexDecode._1)
-    assertEquals(claim, regexDecode._2.withContent("{}"))
+    assertEquals(claim, expectClaim)

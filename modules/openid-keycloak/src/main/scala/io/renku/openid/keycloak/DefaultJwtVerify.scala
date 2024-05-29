@@ -27,12 +27,11 @@ import cats.syntax.all.*
 
 import io.renku.openid.keycloak.DefaultJwtVerify.State
 import io.renku.search.http.borer.BorerEntityJsonCodec
-import io.renku.search.jwt.JwtBorer
+import io.renku.search.jwt.{JwtBorer, RenkuToken}
 import org.http4s.Method.GET
 import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
-import pdi.jwt.JwtClaim
 
 final class DefaultJwtVerify[F[_]: Async](
     client: Client[F],
@@ -45,10 +44,10 @@ final class DefaultJwtVerify[F[_]: Async](
 
   private val logger = scribe.cats.effect[F]
 
-  def tryDecode(issuer: Uri, token: String): EitherT[F, JwtError, JwtClaim] =
+  def tryDecode(issuer: Uri, token: String): EitherT[F, JwtError, RenkuToken] =
     EitherT(state.get.flatMap(_.validate(issuer, clock, token)))
 
-  def tryDecodeOnly(token: String): F[Either[JwtError, JwtClaim]] =
+  def tryDecodeOnly(token: String): F[Either[JwtError, RenkuToken]] =
     JwtBorer.create[F](using clock).map { jwtb =>
       jwtb
         .decodeNoSignatureCheck(token)
@@ -56,7 +55,7 @@ final class DefaultJwtVerify[F[_]: Async](
         .leftMap(ex => JwtError.JwtValidationError(token, None, None, ex))
     }
 
-  def verify(token: String): F[Either[JwtError, JwtClaim]] =
+  def verify(token: String): F[Either[JwtError, RenkuToken]] =
     tryDecodeOnly(token).flatMap {
       case Left(err)                                     => Left(err).pure[F]
       case Right(c) if !config.enableSignatureValidation => Right(c).pure[F]
@@ -74,7 +73,7 @@ final class DefaultJwtVerify[F[_]: Async](
 
   def updateCache(issuer: Uri, token: String)(
       jwtError: JwtError
-  ): F[Either[JwtError, JwtClaim]] =
+  ): F[Either[JwtError, RenkuToken]] =
     jwtError match
       case JwtError.JwtValidationError(_, _, Some(claim), _) =>
         (for
@@ -88,7 +87,7 @@ final class DefaultJwtVerify[F[_]: Async](
         yield result).value
       case e => Left(e).pure[F]
 
-  def readIssuer(claim: JwtClaim): Either[JwtError, Uri] =
+  def readIssuer(claim: RenkuToken): Either[JwtError, Uri] =
     for
       issuerUri <- Uri
         .fromString(claim.issuer.getOrElse(""))
@@ -96,7 +95,7 @@ final class DefaultJwtVerify[F[_]: Async](
       _ <- config.checkIssuerUrl(issuerUri)
     yield issuerUri
 
-  def fetchJWKSGuarded(issuer: Uri, claim: JwtClaim): EitherT[F, JwtError, Jwks] =
+  def fetchJWKSGuarded(issuer: Uri, claim: RenkuToken): EitherT[F, JwtError, Jwks] =
     for
       _ <- checkLastUpdateDelay(issuer, config.minRequestDelay)
       result <- fetchJWKS(issuer, claim)
@@ -110,7 +109,7 @@ final class DefaultJwtVerify[F[_]: Async](
       }
     )
 
-  def fetchJWKS(issuerUri: Uri, claim: JwtClaim): EitherT[F, JwtError, Jwks] =
+  def fetchJWKS(issuerUri: Uri, claim: RenkuToken): EitherT[F, JwtError, Jwks] =
     for
       _ <- EitherT.right(
         clock.monotonic.flatMap(t => state.update(_.setLastUpdate(issuerUri, t)))
@@ -147,7 +146,7 @@ object DefaultJwtVerify:
         issuer: Uri,
         clock: Clock[F],
         token: String
-    ): F[Either[JwtError, JwtClaim]] =
+    ): F[Either[JwtError, RenkuToken]] =
       get(issuer).jwks.validate(clock)(token)
 
     def setLastUpdate(issuer: Uri, time: FiniteDuration): State =

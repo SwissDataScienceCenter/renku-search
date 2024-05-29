@@ -24,6 +24,9 @@ import cats.syntax.all.*
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.search.GeneratorSyntax.*
+import io.renku.search.model.Id
+import io.renku.search.model.ModelGenerators
+import io.renku.search.model.projects.Visibility
 import io.renku.search.model.users
 import io.renku.search.query.Query
 import io.renku.search.solr.SearchRole
@@ -46,7 +49,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
       client <- IO(searchSolrClient())
       _ <- client.upsert(Seq(project.widen))
       qr <- client.queryEntity(
-        SearchRole.Admin,
+        SearchRole.admin(Id("admin")),
         Query.parse("solr").toOption.get,
         10,
         0
@@ -73,7 +76,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
       client <- IO(searchSolrClient())
       _ <- client.upsert(Seq(user.widen))
       qr <- client.queryEntity(
-        SearchRole.Admin,
+        SearchRole.admin(Id("admin")),
         Query.parse(firstName.value).toOption.get,
         10,
         0
@@ -111,3 +114,29 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
       )
       _ = assert(gr.responseBody.docs.map(_.id) contains user.id.value)
     } yield ()
+
+  test("query entities with different roles"):
+    for
+      client <- IO(searchSolrClient())
+      entityMembers <- IO(entityMembersGen.suchThat(_.nonEmpty).generateOne)
+      project <- IO(
+        projectDocumentGen
+          .map(p => p.setMembers(entityMembers).copy(visibility = Visibility.Private))
+          .generateOne
+      )
+      _ <- client.upsertSuccess(Seq(project))
+      member = entityMembers.allIds.head
+      nonMember <- IO(ModelGenerators.idGen.generateOne)
+      query = Query(Query.Segment.idIs(project.id.value))
+      anonResult <- client.queryEntity(SearchRole.anonymous, query, 1, 0)
+      nonMemberResult <- client.queryEntity(SearchRole.user(nonMember), query, 1, 0)
+      memberResult <- client.queryEntity(SearchRole.user(member), query, 1, 0)
+      adminResult <- client.queryEntity(SearchRole.admin(Id("admin")), query, 1, 0)
+
+      _ = assert(anonResult.responseBody.docs.isEmpty)
+      _ = assert(nonMemberResult.responseBody.docs.isEmpty)
+      _ = assertEquals(memberResult.responseBody.docs.size, 1)
+      _ = assertEquals(adminResult.responseBody.docs.size, 1)
+      _ = assertEquals(memberResult.responseBody.docs.head.id, project.id)
+      _ = assertEquals(adminResult.responseBody.docs.head.id, project.id)
+    yield ()

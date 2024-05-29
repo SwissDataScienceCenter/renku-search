@@ -89,6 +89,13 @@ final case class EntityMembers(
     owners.contains(id) || editors.contains(id) ||
       viewers.contains(id) || members.contains(id)
 
+  def isEmpty: Boolean =
+    MemberRole.values.forall(getMemberIds(_).isEmpty)
+
+  def nonEmpty: Boolean = !isEmpty
+
+  def allIds: Set[Id] = MemberRole.values.flatMap(getMemberIds).toSet
+
   def ++(other: EntityMembers): EntityMembers =
     MemberRole.valuesLowerFirst.foldLeft(this) { (acc, role) =>
       acc.addMembers(role, other.getMemberIds(role))

@@ -67,7 +67,7 @@ trait LuceneQueryEncoders:
     SolrTokenEncoder.create[F, FieldTerm.RoleIs] { case (ctx, FieldTerm.RoleIs(values)) =>
       SolrQuery {
         ctx.role match
-          case SearchRole.Admin     => SolrToken.empty
+          case SearchRole.Admin(_)  => SolrToken.empty
           case SearchRole.Anonymous => SolrToken.publicOnly
           case SearchRole.User(id)  => SolrToken.roleIn(id, values)
       }.pure[F]

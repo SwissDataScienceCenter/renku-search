@@ -16,27 +16,23 @@
  * limitations under the License.
  */
 
-package io.renku.openid.keycloak
+package io.renku.search.jwt
 
-import cats.Applicative
-import cats.effect.*
+import scala.io.Source
 
-import io.renku.search.jwt.RenkuToken
-import org.http4s.client.Client
+import io.bullet.borer.Json
+import munit.FunSuite
 
-trait JwtVerify[F[_]]:
-  def verify(token: String): F[Either[JwtError, RenkuToken]]
+class RenkuTokenSpec extends FunSuite:
 
-object JwtVerify:
-  def apply[F[_]: Async](client: Client[F], config: JwtVerifyConfig): F[JwtVerify[F]] =
-    val clock = Clock[F]
-    DefaultJwtVerify[F](client, clock, config)
+  test("decode jwt payload"):
+    val jsonStr = Source.fromResource("jwt1.json").mkString
+    val decoded = Json.decode(jsonStr.getBytes).to[RenkuToken].value
+    assertEquals(decoded.subject, Some("48c85c75-b407-4259-b06b-a611e71df5f0"))
+    assert(decoded.isAdmin == false)
 
-  def fixed[F[_]: Applicative](result: JwtError | RenkuToken): JwtVerify[F] =
-    new JwtVerify[F] {
-      def verify(token: String): F[Either[JwtError, RenkuToken]] =
-        Applicative[F].pure(result match
-          case a: JwtError   => Left(a)
-          case b: RenkuToken => Right(b)
-        )
-    }
+  test("decode jwt payload (admin)"):
+    val jsonStr = Source.fromResource("jwt2.json").mkString
+    val decoded = Json.decode(jsonStr.getBytes).to[RenkuToken].value
+    assertEquals(decoded.subject, Some("48c85c75-b407-4259-b06b-a611e71df5f0"))
+    assert(decoded.isAdmin == true)

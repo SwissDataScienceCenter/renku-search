@@ -18,9 +18,10 @@
 
 package io.renku.search.jwt
 
-import munit.FunSuite
 import scala.io.Source
+
 import io.bullet.borer.Json
+import munit.FunSuite
 
 class RenkuTokenSpec extends FunSuite:
 

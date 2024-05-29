@@ -23,6 +23,7 @@ import cats.syntax.all.*
 import fs2.io.net.Network
 
 import io.renku.openid.keycloak.{JwtVerify, JwtVerifyConfig}
+import io.renku.search.api.auth.Authenticate
 import io.renku.search.api.routes.*
 import io.renku.search.http.ClientBuilder
 import io.renku.search.http.RetryConfig
@@ -50,21 +51,23 @@ final class Routes[F[_]: Async: Network](
     solrConfig: SolrConfig,
     jwtVerifyConfig: JwtVerifyConfig
 ):
+  private val logger = scribe.cats.effect[F]
 
   private val prefix = "/search"
 
   private val makeJwtVerify =
     ClientBuilder(EmberClientBuilder.default[F])
       .withDefaultRetry(RetryConfig.default)
-      .withLogging(logBody = false, scribe.cats.effect[F])
+      .withLogging(logBody = false, logger)
       .build
       .evalMap(JwtVerify(_, jwtVerifyConfig))
 
   private val makeSearchRoutes =
     for
       jwtVerify <- makeJwtVerify
+      auth = Authenticate[F](jwtVerify, logger)
       api <- SearchApi[F](solrConfig)
-    yield SearchRoutes[F](api, jwtVerify)
+    yield SearchRoutes[F](api, auth)
 
   private def searchHttpRoutes(searchRoutes: SearchRoutes[F]) =
     Router[F](

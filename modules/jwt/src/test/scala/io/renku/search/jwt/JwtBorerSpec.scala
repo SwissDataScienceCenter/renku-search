@@ -18,10 +18,11 @@
 
 package io.renku.search.jwt
 
+import java.time.Instant
+
 import munit.FunSuite
 import pdi.jwt.Jwt
 import pdi.jwt.JwtAlgorithm
-import java.time.Instant
 
 class JwtBorerSpec extends FunSuite:
 

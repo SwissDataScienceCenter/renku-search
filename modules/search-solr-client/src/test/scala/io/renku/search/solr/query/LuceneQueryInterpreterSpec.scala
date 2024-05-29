@@ -52,7 +52,9 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
       ()
   }
 
-  def query(s: String | Query, role: SearchRole = SearchRole.Admin): QueryData =
+  val adminRole: SearchRole = SearchRole.admin(model.Id("admin"))
+
+  def query(s: String | Query, role: SearchRole = adminRole): QueryData =
     val userQuery: Query = s match
       case str: String => Query.parse(str).fold(sys.error, identity)
       case qq: Query   => qq
@@ -71,7 +73,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
       "((content_all:help~) AND visibility:public AND _kind:fullentity)"
     )
     assertEquals(
-      query("help", SearchRole.Admin).query,
+      query("help", adminRole).query,
       "(content_all:help~ AND _kind:fullentity)"
     )
 
@@ -84,7 +86,7 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
       query("", SearchRole.Anonymous).query,
       "(visibility:public AND _kind:fullentity)"
     )
-    assertEquals(query("", SearchRole.Admin).query, "(_kind:fullentity)")
+    assertEquals(query("", adminRole).query, "(_kind:fullentity)")
 
   test("valid content_all query") {
     IO(solrClientWithSchema()).flatMap { client =>

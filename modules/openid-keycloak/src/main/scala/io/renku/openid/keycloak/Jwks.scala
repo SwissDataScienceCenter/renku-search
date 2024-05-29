@@ -26,7 +26,7 @@ import cats.syntax.all.*
 
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.{Decoder, Encoder}
-import io.renku.search.jwt.{RenkuToken, JwtBorer}
+import io.renku.search.jwt.{JwtBorer, RenkuToken}
 import pdi.jwt.JwtHeader
 
 final case class Jwks(
@@ -45,7 +45,9 @@ final case class Jwks(
       pk <- wk.toPublicKey
     yield pk
 
-  def validate[F[_]: Monad](clock: Clock[F])(jwt: String): F[Either[JwtError, RenkuToken]] =
+  def validate[F[_]: Monad](
+      clock: Clock[F]
+  )(jwt: String): F[Either[JwtError, RenkuToken]] =
     JwtBorer.create[F](using clock).map { jwtCheck =>
       for
         (header, claim, _) <- jwtCheck

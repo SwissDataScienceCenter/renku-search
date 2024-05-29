@@ -20,8 +20,8 @@ package io.renku.openid.keycloak
 
 import scala.concurrent.duration.FiniteDuration
 
-import io.renku.search.jwt.RenkuToken
 import io.renku.search.common.UrlPattern
+import io.renku.search.jwt.RenkuToken
 import org.http4s.Uri
 import pdi.jwt.JwtHeader
 

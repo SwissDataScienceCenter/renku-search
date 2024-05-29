@@ -41,7 +41,7 @@ final class LuceneQueryInterpreter[F[_]: Monad]
       role match
         case SearchRole.Anonymous => query.asAnonymous
         case SearchRole.User(id)  => query.asUser(id)
-        case SearchRole.Admin     => query.asAdmin
+        case SearchRole.Admin(_)  => query.asAdmin
     }
 
 object LuceneQueryInterpreter:

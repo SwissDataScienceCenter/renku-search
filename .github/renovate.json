@@ -1,0 +1,12 @@
+{
+  "automerge": true,
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "sbt"
+      ],
+      "enabled": false
+    }
+  ]
+}

@@ -18,8 +18,8 @@
 
 package io.renku.solr.client
 
-import io.bullet.borer.Decoder
-import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.bullet.borer.{Decoder, Encoder}
 
 final case class ResponseBody[A](
     numFound: Long,
@@ -31,4 +31,5 @@ final case class ResponseBody[A](
     copy(docs = docs.map(f))
 
 object ResponseBody:
-  given [A](using Decoder[A]): Decoder[ResponseBody[A]] = deriveDecoder
+  given [A](using Decoder[A]): Decoder[ResponseBody[A]] = MapBasedCodecs.deriveDecoder
+  given [A](using Encoder[A]): Encoder[ResponseBody[A]] = MapBasedCodecs.deriveEncoder

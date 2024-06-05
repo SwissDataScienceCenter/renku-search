@@ -50,10 +50,10 @@ object SolrSort:
     def nonEmpty: Boolean = !self.isEmpty
     def ++(next: SolrSort): SolrSort =
       Monoid[SolrSort].combine(self, next)
+    private[client] def toSolr: String =
+      self.map { case (f, d) => s"${f.name} ${d.name}" }.mkString(",")
 
   given Monoid[SolrSort] =
     Monoid.instance(empty, (a, b) => if (a.isEmpty) b else if (b.isEmpty) a else a ++ b)
 
-  given Encoder[SolrSort] = Encoder.forString.contramap(list =>
-    list.map { case (f, d) => s"${f.name} ${d.name}" }.mkString(",")
-  )
+  given Encoder[SolrSort] = Encoder.forString.contramap(_.toSolr)

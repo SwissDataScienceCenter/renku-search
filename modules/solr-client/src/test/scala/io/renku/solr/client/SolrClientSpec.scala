@@ -29,6 +29,7 @@ import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.derivation.key
 import io.bullet.borer.{Decoder, Encoder, Reader}
 import io.renku.search.GeneratorSyntax.*
+import io.renku.solr.client.SolrClientSpec.CourseMember
 import io.renku.solr.client.SolrClientSpec.{Course, Room}
 import io.renku.solr.client.facet.{Facet, Facets}
 import io.renku.solr.client.schema.*
@@ -175,6 +176,42 @@ class SolrClientSpec
       _ = assert(schema.schema.fieldTypes.nonEmpty)
     yield ()
 
+  test("use subqueries"):
+    for
+      client <- IO(solrClient())
+      course = Course("course1", "TechCourse")
+      courseMember = CourseMember("course-mem-1", "John Doe", "course1")
+      _ <- client.upsert(Seq(course))
+      _ <- client.upsert(Seq(courseMember))
+
+      resNormal <- client.query[CourseMember](
+        QueryData("_type_s:CourseMember", Seq.empty, 10, 0)
+      )
+      _ = assertEquals(
+        resNormal.responseBody.docs.head.copy(version = DocVersion.NotExists),
+        courseMember
+      )
+
+      resSub <- client.query[CourseMember](
+        QueryData("_type_s:CourseMember", Seq.empty, 10, 0)
+          .withFields(FieldName.all)
+          .addSubQuery(
+            FieldName("courseFull"),
+            SubQuery(
+              query = "{!terms f=id v=$row.course_id_s}",
+              filter = "{!terms f=_type_s v=Course}",
+              fields = Seq(FieldName.all),
+              limit = 2
+            )
+          )
+      )
+      _ = assertEquals(
+        resSub.responseBody.docs.head.courseFull.get.docs.head
+          .copy(version = DocVersion.NotExists),
+        course
+      )
+    yield ()
+
 object SolrClientSpec:
   case class Room(id: String, roomName: String, roomDescription: String, roomSeats: Int)
   object Room:
@@ -204,3 +241,15 @@ object SolrClientSpec:
   object Course:
     given Decoder[Course] = MapBasedCodecs.deriveDecoder
     given Encoder[Course] = EncoderSupport.deriveWithDiscriminator[Course]("_type_s")
+
+  final case class CourseMember(
+      id: String,
+      @key("name_s") name: String,
+      @key("course_id_s") courseId: String,
+      courseFull: Option[ResponseBody[Course]] = None,
+      @key("_version_") version: DocVersion = DocVersion.NotExists
+  )
+  object CourseMember:
+    given Decoder[CourseMember] = MapBasedCodecs.deriveDecoder
+    given Encoder[CourseMember] =
+      EncoderSupport.deriveWithDiscriminator[CourseMember]("_type_s")

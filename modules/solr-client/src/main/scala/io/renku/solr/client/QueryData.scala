@@ -43,6 +43,12 @@ final case class QueryData(
   def withLimit(limit: Int): QueryData = copy(limit = limit)
   def withOffset(offset: Int): QueryData = copy(offset = offset)
 
+  def addSubQuery(field: FieldName, sq: SubQuery): QueryData =
+    copy(
+      params = params ++ sq.toParams(field),
+      fields = fields :+ FieldName(s"${field.name}:[subquery]")
+    )
+
 object QueryData:
 
   def apply(query: QueryString): QueryData =

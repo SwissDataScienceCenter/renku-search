@@ -111,7 +111,7 @@ object AuthorizationAddedProvisioningSpec:
   val testCases =
     for {
       role <- MemberRole.valuesV1.toList
-      proj = SolrDocumentGenerators.projectDocumentGen.generateOne
+      proj = SolrDocumentGenerators.projectDocumentGenForInsert.generateOne
       pproj = SolrDocumentGenerators.partialProjectGen.generateOne
       dbState <- List(DbState.Empty, DbState.Project(proj), DbState.PartialProject(pproj))
       userId = ModelGenerators.idGen.generateOne

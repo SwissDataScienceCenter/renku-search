@@ -137,7 +137,7 @@ object UserRemovedProcessSpec:
   val testCases: List[TestCase] =
     val role = ModelGenerators.memberRoleGen.generateOne
     val user = SolrDocumentGenerators.userDocumentGen.generateOne
-    val proj = SolrDocumentGenerators.projectDocumentGen
+    val proj = SolrDocumentGenerators.projectDocumentGenForInsert
       .asListOfN(1, 3)
       .map(_.map(_.modifyEntityMembers(_.addMember(user.id, role))))
       .generateOne

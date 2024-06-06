@@ -53,6 +53,7 @@ trait Projects:
       description = pc.description.map(_.toDescription),
       keywords = pc.keywords.map(_.toKeyword).toList,
       createdBy = pc.createdBy.toId,
+      creatorDetails = None,
       creationDate = pc.creationDate.toCreationDate
     )
 
@@ -68,7 +69,8 @@ trait Projects:
       description = pc.description.map(_.toDescription),
       keywords = pc.keywords.map(_.toKeyword).toList,
       createdBy = pc.createdBy.toId,
-      creationDate = pc.creationDate.toCreationDate
+      creationDate = pc.creationDate.toCreationDate,
+      creatorDetails = None
     )
 
   def fromProjectUpdated(pu: v1.ProjectUpdated, orig: ProjectDocument): ProjectDocument =

@@ -108,6 +108,7 @@ object AuthTestData:
       .projectDocumentGen(
         s"user${user.id}-${vis.name}-proj",
         "description",
+        SolrDocumentGenerators.userDocumentGen.asOption,
         Gen.const(vis)
       )
       .map(p => (user.id, vis) -> p.copy(owners = Set(user.id)))

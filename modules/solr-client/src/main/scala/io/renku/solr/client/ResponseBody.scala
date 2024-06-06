@@ -33,3 +33,6 @@ final case class ResponseBody[A](
 object ResponseBody:
   given [A](using Decoder[A]): Decoder[ResponseBody[A]] = MapBasedCodecs.deriveDecoder
   given [A](using Encoder[A]): Encoder[ResponseBody[A]] = MapBasedCodecs.deriveEncoder
+
+  def single[A](value: A): ResponseBody[A] =
+    ResponseBody(1, 0, true, Seq(value))

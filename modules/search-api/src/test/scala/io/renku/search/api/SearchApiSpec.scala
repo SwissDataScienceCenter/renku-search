@@ -29,6 +29,7 @@ import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
 import io.renku.solr.client.DocVersion
+import io.renku.solr.client.ResponseBody
 import munit.CatsEffectSuite
 import org.scalacheck.Gen
 import scribe.Scribe
@@ -43,11 +44,13 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
     val project1 = projectDocumentGen(
       "matching",
       "matching description",
+      Gen.const(None),
       Gen.const(Visibility.Public)
     ).generateOne
     val project2 = projectDocumentGen(
       "disparate",
       "disparate description",
+      Gen.const(None),
       Gen.const(Visibility.Public)
     ).generateOne
     for {
@@ -66,13 +69,14 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
     )
 
   test("return Project and User entities"):
+    val userId = ModelGenerators.idGen.generateOne
+    val user = SolrUser(userId, DocVersion.NotExists, FirstName("exclusive").some)
     val project = projectDocumentGen(
       "exclusive",
       "exclusive description",
+      Gen.const(None),
       Gen.const(Visibility.Public)
-    ).generateOne
-    val user =
-      SolrUser(project.createdBy, DocVersion.NotExists, FirstName("exclusive").some)
+    ).generateOne.copy(createdBy = userId)
     for {
       client <- IO(searchSolrClient())
       searchApi = new SearchApiImpl[IO](client)
@@ -81,7 +85,10 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
         .query(AuthContext.anonymous)(mkQuery("exclusive"))
         .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
 
-      expected = toApiEntities(project, user).toSet
+      expected = toApiEntities(
+        project.copy(creatorDetails = ResponseBody.single(user).some),
+        user
+      ).toSet
       obtained = results.items.map(scoreToNone).toSet
     } yield assert(
       expected.diff(obtained).isEmpty,

@@ -40,6 +40,8 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   private val logger = scribe.cats.effect[F]
   private val interpreter = LuceneQueryInterpreter.forSync[F]
 
+  private val creatorDetails: FieldName = FieldName("creatorDetails")
+
   private val typeTerms = Facet.Terms(
     EntityDocumentSchema.Fields.entityType,
     EntityDocumentSchema.Fields.entityType
@@ -69,6 +71,14 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
             .withSort(solrQuery.sort)
             .withFacet(Facets(typeTerms))
             .withFields(FieldName.all, FieldName.score)
+            .addSubQuery(
+              creatorDetails,
+              SubQuery(
+                "{!terms f=id v=$row.createdBy}",
+                "{!terms f=_kind v=fullentity}",
+                1
+              ).withFields(FieldName.all)
+            )
         )
     } yield res
 

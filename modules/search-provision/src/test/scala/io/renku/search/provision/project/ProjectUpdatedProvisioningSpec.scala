@@ -105,7 +105,9 @@ object ProjectUpdatedProvisioningSpec:
   val testCases =
     val em = SolrDocumentGenerators.entityMembersGen
     val proj = em
-      .flatMap(gm => SolrDocumentGenerators.projectDocumentGen.map(_.setGroupMembers(gm)))
+      .flatMap(gm =>
+        SolrDocumentGenerators.projectDocumentGenForInsert.map(_.setGroupMembers(gm))
+      )
       .generateOne
     val pproj = em
       .flatMap(gm => SolrDocumentGenerators.partialProjectGen.map(_.setGroupMembers(gm)))

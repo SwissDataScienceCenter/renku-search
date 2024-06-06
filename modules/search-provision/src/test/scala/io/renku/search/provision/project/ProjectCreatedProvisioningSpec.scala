@@ -197,7 +197,7 @@ object ProjectCreatedProvisioningSpec:
     override def toString = s"ProjectCreated: ${projectId.value.take(6)}… db=$dbState"
 
   val testCases =
-    val proj = SolrDocumentGenerators.projectDocumentGen.generateOne
+    val proj = SolrDocumentGenerators.projectDocumentGenForInsert.generateOne
     val pproj = SolrDocumentGenerators.partialProjectGen.generateOne
     val group = SolrDocumentGenerators.entityMembersGen
       .flatMap(em => SolrDocumentGenerators.groupDocumentGen.map(g => g.setMembers(em)))

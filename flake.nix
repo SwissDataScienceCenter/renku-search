@@ -84,7 +84,9 @@
             RS_CONTAINER = "rsdev";
             RS_LOG_LEVEL = "3";
             RS_SEARCH_HTTP_SERVER_PORT = "8080";
+            RS_SEARCH_HTTP_SHUTDOWN_TIMEOUT = "0ms";
             RS_PROVISION_HTTP_SERVER_PORT = "8082";
+            RS_PROVISION_HTTP_SHUTDOWN_TIMEOUT = "0ms";
             RS_METRICS_UPDATE_INTERVAL = "0s";
             RS_SOLR_CREATE_CORE_CMD = "cnt-solr-create-core %s";
             RS_SOLR_DELETE_CORE_CMD = "cnt-solr-delete-core %s";
@@ -109,7 +111,9 @@
             VM_SSH_PORT = "10022";
             RS_LOG_LEVEL = "3";
             RS_SEARCH_HTTP_SERVER_PORT = "8080";
+            RS_SEARCH_HTTP_SHUTDOWN_TIMEOUT = "0ms";
             RS_PROVISION_HTTP_SERVER_PORT = "8082";
+            RS_PROVISION_HTTP_SHUTDOWN_TIMEOUT = "0ms";
             RS_METRICS_UPDATE_INTERVAL = "0s";
             RS_SOLR_CREATE_CORE_CMD = "vm-solr-create-core %s";
             RS_SOLR_DELETE_CORE_CMD = "vm-solr-delete-core %s";

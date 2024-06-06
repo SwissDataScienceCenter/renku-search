@@ -34,6 +34,6 @@ object HttpServer:
       .default[F]
       .withHost(config.bindAddress)
       .withPort(config.port)
-      .withIdleTimeout(scala.concurrent.duration.Duration.Zero)
+      .withShutdownTimeout(config.shutdownTimeout)
       .withHttpApp(routes.orNotFound)
       .build

@@ -68,11 +68,10 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
     )
     client.expect[List[String]](req).map(_.flatMap(toFirstAndLast))
 
-  private lazy val toUser: ((users.FirstName, users.LastName)) => F[User] = {
-    case (first, last) =>
-      gens.generateId.map(id =>
-        User(id, DocVersion.NotExists, first.some, last.some, Name(s"$first $last").some)
-      )
+  private lazy val toUser: ((FirstName, LastName)) => F[User] = { case (first, last) =>
+    gens.generateId.map(id =>
+      User(id, DocVersion.NotExists, first.some, last.some, Name(s"$first $last").some)
+    )
   }
 
   override def findProject: Stream[F, (Project, List[User])] =
@@ -86,7 +85,7 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
 
   private def toProject(
       name: Name,
-      desc: projects.Description,
+      desc: Description,
       keywords: List[Keyword],
       user: User
   ): F[(Project, List[User])] =
@@ -98,7 +97,7 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
         name = name,
         slug = slug,
         repositories = Seq(createRepo(slug)),
-        visibility = projects.Visibility.Public,
+        visibility = Visibility.Public,
         description = Some(desc),
         keywords = keywords,
         createdBy = user.id,
@@ -107,14 +106,14 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
     }
 
   private def createSlug(name: Name, user: User) =
-    projects.Slug {
+    Slug {
       val nameConditioned = name.value.replace(" ", "_")
       val namespace = user.name.map(_.value.replace(" ", "_")).getOrElse(nameConditioned)
       s"$namespace/$nameConditioned".toLowerCase
     }
 
-  private def createRepo(slug: projects.Slug) =
-    projects.Repository(s"https://github.com/$slug")
+  private def createRepo(slug: Slug) =
+    Repository(s"https://github.com/$slug")
 
   private lazy val findName: Stream[F, Name] =
     Stream.evals(getNameSuggestions).map(Name.apply) ++ findName
@@ -126,12 +125,12 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
     )
     client.expect[List[String]](req)
 
-  private lazy val findDescription: Stream[F, projects.Description] =
+  private lazy val findDescription: Stream[F, Description] =
     Stream
       .evals(getReviews)
       .zip(Stream.evals(getBusinessNames))
       .flatMap { case (l, r) => Stream(l, r) }
-      .map(projects.Description.apply) ++ findDescription
+      .map(Description.apply) ++ findDescription
 
   private lazy val getReviews: F[List[String]] =
     val req = post(
@@ -168,8 +167,8 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
       .putHeaders(Accept(application.json))
       .putHeaders(Header.Raw(ci"X-Api-Key", apiKey))
 
-  private def toFirstAndLast(v: String): Option[(users.FirstName, users.LastName)] =
+  private def toFirstAndLast(v: String): Option[(FirstName, LastName)] =
     v.split(' ').toList match {
-      case f :: r => Some(users.FirstName(f) -> users.LastName(r.mkString(" ")))
+      case f :: r => Some(FirstName(f) -> LastName(r.mkString(" ")))
       case _      => None
     }

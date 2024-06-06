@@ -35,13 +35,13 @@ sealed trait SearchEntity
 final case class Project(
     id: Id,
     name: Name,
-    slug: projects.Slug,
+    slug: Slug,
     namespace: Option[Namespace],
-    repositories: Seq[projects.Repository],
-    visibility: projects.Visibility,
-    description: Option[projects.Description] = None,
+    repositories: Seq[Repository],
+    visibility: Visibility,
+    description: Option[Description] = None,
     createdBy: UserId,
-    creationDate: projects.CreationDate,
+    creationDate: CreationDate,
     keywords: List[Keyword] = Nil,
     score: Option[Double] = None
 ) extends SearchEntity
@@ -50,12 +50,12 @@ object Project:
   private given Schema[Id] = Schema.string[Id]
   private given Schema[Name] = Schema.string[Name]
   private given Schema[Namespace] = Schema.string[Namespace]
-  private given Schema[projects.Slug] = Schema.string[projects.Slug]
-  private given Schema[projects.Repository] = Schema.string[projects.Repository]
-  private given Schema[projects.Visibility] =
-    Schema.derivedEnumeration[projects.Visibility].defaultStringBased
-  private given Schema[projects.Description] = Schema.string[projects.Description]
-  private given Schema[projects.CreationDate] = Schema(SDateTime())
+  private given Schema[Slug] = Schema.string[Slug]
+  private given Schema[Repository] = Schema.string[Repository]
+  private given Schema[Visibility] =
+    Schema.derivedEnumeration[Visibility].defaultStringBased
+  private given Schema[Description] = Schema.string[Description]
+  private given Schema[CreationDate] = Schema(SDateTime())
   private given Schema[Keyword] = Schema.string[Keyword]
   given Schema[Project] = Schema
     .derived[Project]
@@ -63,13 +63,13 @@ object Project:
       Project(
         Id("01HRA7AZ2Q234CDQWGA052F8MK"),
         Name("renku"),
-        projects.Slug("renku"),
+        Slug("renku"),
         Some(Namespace("renku/renku")),
-        Seq(projects.Repository("https://github.com/renku")),
-        projects.Visibility.Public,
-        Some(projects.Description("Renku project")),
+        Seq(Repository("https://github.com/renku")),
+        Visibility.Public,
+        Some(Description("Renku project")),
         UserId(Id("1CAF4C73F50D4514A041C9EDDB025A36")),
-        projects.CreationDate(Instant.now),
+        CreationDate(Instant.now),
         List(Keyword("data"), Keyword("science")),
         Some(1.0)
       ): SearchEntity
@@ -87,16 +87,16 @@ object UserId:
 final case class User(
     id: Id,
     namespace: Option[Namespace] = None,
-    firstName: Option[users.FirstName] = None,
-    lastName: Option[users.LastName] = None,
+    firstName: Option[FirstName] = None,
+    lastName: Option[LastName] = None,
     score: Option[Double] = None
 ) extends SearchEntity
 
 object User:
   private given Schema[Id] = Schema.string[Id]
-  private given Schema[users.FirstName] = Schema.string[users.FirstName]
-  private given Schema[users.LastName] = Schema.string[users.LastName]
-  private given Schema[users.Email] = Schema.string[users.Email]
+  private given Schema[FirstName] = Schema.string[FirstName]
+  private given Schema[LastName] = Schema.string[LastName]
+  private given Schema[Email] = Schema.string[Email]
   private given Schema[Namespace] = Schema.string[Namespace]
   given Schema[User] = Schema
     .derived[User]
@@ -104,8 +104,8 @@ object User:
       User(
         Id("1CAF4C73F50D4514A041C9EDDB025A36"),
         Some(Namespace("renku/renku")),
-        Some(users.FirstName("Albert")),
-        Some(users.LastName("Einstein")),
+        Some(FirstName("Albert")),
+        Some(LastName("Einstein")),
         Some(2.1)
       ): SearchEntity
     )
@@ -114,7 +114,7 @@ final case class Group(
     id: Id,
     name: Name,
     namespace: Namespace,
-    description: Option[groups.Description] = None,
+    description: Option[Description] = None,
     score: Option[Double] = None
 ) extends SearchEntity
 
@@ -122,7 +122,7 @@ object Group:
   private given Schema[Id] = Schema.string[Id]
   private given Schema[Name] = Schema.string[Name]
   private given Schema[Namespace] = Schema.string[Namespace]
-  private given Schema[groups.Description] = Schema.string[groups.Description]
+  private given Schema[Description] = Schema.string[Description]
   given Schema[Group] = Schema
     .derived[Group]
     .jsonExample(
@@ -130,7 +130,7 @@ object Group:
         Id("2CAF4C73F50D4514A041C9EDDB025A36"),
         Name("SDSC"),
         Namespace("SDSC"),
-        Some(groups.Description("SDSC group")),
+        Some(Description("SDSC group")),
         Some(1.1)
       ): SearchEntity
     )

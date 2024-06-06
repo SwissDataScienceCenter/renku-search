@@ -22,8 +22,7 @@ import cats.data.NonEmptyList
 import cats.kernel.Monoid
 import cats.syntax.all.*
 
-import io.renku.search.model.EntityType
-import io.renku.search.model.projects.Visibility
+import io.renku.search.model.*
 import io.renku.search.query.FieldTerm.Created
 import io.renku.search.query.Query.Segment
 import io.renku.search.query.parse.{QueryParser, QueryUtil}

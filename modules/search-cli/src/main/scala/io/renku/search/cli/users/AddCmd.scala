@@ -26,7 +26,6 @@ import io.renku.search.cli.{CommonOpts, Services}
 import io.renku.search.config.QueuesConfig
 import io.renku.search.events.UserAdded
 import io.renku.search.model.*
-import io.renku.search.model.users.*
 
 object AddCmd:
 

@@ -22,7 +22,6 @@ import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.*
-import io.renku.search.model.projects.*
 import io.renku.search.solr.documents.{Group as GroupDocument, Project as ProjectDocument}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
 import io.renku.solr.client.{DocVersion, EncoderSupport}
@@ -113,7 +112,7 @@ object PartialEntityDocument:
       @key("_version_") version: DocVersion = DocVersion.Off,
       name: Option[Name] = None,
       namespace: Option[Namespace] = None,
-      description: Option[groups.Description] = None,
+      description: Option[Description] = None,
       owners: Set[Id] = Set.empty,
       editors: Set[Id] = Set.empty,
       viewers: Set[Id] = Set.empty

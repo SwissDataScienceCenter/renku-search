@@ -26,7 +26,6 @@ import cats.syntax.all.*
 
 import io.renku.search.common.CommonGenerators
 import io.renku.search.model.*
-import io.renku.search.model.projects.Visibility
 import io.renku.search.query.parse.QueryUtil
 import org.scalacheck.Gen
 import org.scalacheck.cats.implicits.*
@@ -134,8 +133,8 @@ object QueryGenerators:
   val visibilityTerm: Gen[FieldTerm] =
     Gen
       .frequency(
-        10 -> ModelGenerators.projectVisibilityGen.map(NonEmptyList.one),
-        1 -> CommonGenerators.nelOfN(2, ModelGenerators.projectVisibilityGen)
+        10 -> ModelGenerators.visibilityGen.map(NonEmptyList.one),
+        1 -> CommonGenerators.nelOfN(2, ModelGenerators.visibilityGen)
       )
       .map(vs => FieldTerm.VisibilityIs(vs.distinct))
 

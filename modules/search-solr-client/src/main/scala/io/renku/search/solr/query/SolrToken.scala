@@ -25,7 +25,6 @@ import cats.data.NonEmptyList
 import cats.syntax.all.*
 
 import io.renku.search.model.*
-import io.renku.search.model.projects.Visibility
 import io.renku.search.query.Comparison
 import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField

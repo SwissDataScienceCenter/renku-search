@@ -21,17 +21,9 @@ package io.renku.search.model
 import io.bullet.borer.Codec
 import io.github.arainko.ducktape.Transformer
 
-object groups:
-  opaque type Description = String
-  object Description:
-    def apply(v: String): Description = v
-    def from(v: Option[String]): Option[Description] =
-      v.flatMap {
-        _.trim match {
-          case "" => Option.empty[Description]
-          case o  => Option(o)
-        }
-      }
-    extension (self: Description) def value: String = self
-    given Transformer[String, Description] = apply
-    given Codec[Description] = Codec.of[String]
+opaque type LastName = String
+object LastName:
+  def apply(v: String): LastName = v
+  extension (self: LastName) def value: String = self
+  given Transformer[String, LastName] = apply
+  given Codec[LastName] = Codec.bimap[String, LastName](_.value, LastName.apply)

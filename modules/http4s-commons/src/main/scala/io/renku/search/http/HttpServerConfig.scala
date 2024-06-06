@@ -20,4 +20,5 @@ package io.renku.search.http
 
 import com.comcast.ip4s.{Ipv4Address, Port}
 
-final case class HttpServerConfig(bindAddress: Ipv4Address, port: Port)
+final case class HttpServerConfig(bindAddress: Ipv4Address, port: Port):
+  override def toString = s"Http server @ ${bindAddress}:$port"

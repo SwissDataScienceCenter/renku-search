@@ -16,26 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.model
 
-import cats.effect.{ExitCode, IO, IOApp}
+import java.time.Instant
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+import cats.kernel.Order
 
-object Microservice extends IOApp:
-  private val logger = scribe.cats.io
-  private val loadConfig = SearchApiConfig.config.load[IO]
+import io.bullet.borer.Codec
+import io.github.arainko.ducktape.*
+import io.renku.search.borer.codecs.all.given
 
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use { _ =>
-          logger.info(
-            s"Search microservice running: ${config.httpServerConfig}"
-          ) >> IO.never
-        }
-    } yield ExitCode.Success
+opaque type CreationDate = Instant
+object CreationDate:
+  def apply(v: Instant): CreationDate = v
+  extension (self: CreationDate) def value: Instant = self
+  given Transformer[Instant, CreationDate] = apply
+  given Codec[CreationDate] = Codec.of[Instant]
+  given Order[CreationDate] = Order.fromComparable[Instant]

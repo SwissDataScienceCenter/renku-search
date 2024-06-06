@@ -23,7 +23,6 @@ import cats.syntax.all.*
 import com.monovore.decline.Argument
 import com.monovore.decline.Opts
 import io.renku.search.model.*
-import io.renku.search.model.projects.{Description as ProjectDescription, *}
 
 trait CommonOpts:
 
@@ -52,20 +51,20 @@ trait CommonOpts:
   given Argument[Repository] =
     Argument.readString.map(Repository(_))
 
-  given Argument[ProjectDescription] =
-    Argument.readString.map(ProjectDescription(_))
+  given Argument[Description] =
+    Argument.readString.map(Description(_))
 
   given Argument[Keyword] =
     Argument.readString.map(Keyword(_))
 
-  given Argument[users.FirstName] =
-    Argument.readString.map(users.FirstName(_))
+  given Argument[FirstName] =
+    Argument.readString.map(FirstName(_))
 
-  given Argument[users.LastName] =
-    Argument.readString.map(users.LastName(_))
+  given Argument[LastName] =
+    Argument.readString.map(LastName(_))
 
-  given Argument[users.Email] =
-    Argument.readString.map(users.Email(_))
+  given Argument[Email] =
+    Argument.readString.map(Email(_))
 
   val nameOpt: Opts[Name] =
     Opts.option[Name]("name", "The name of the entity")
@@ -111,16 +110,16 @@ trait CommonOpts:
       .map(_.toList)
       .withDefault(Nil)
 
-  val projectDescription: Opts[Option[ProjectDescription]] =
-    Opts.option[ProjectDescription]("description", "The project description").orNone
+  val projectDescription: Opts[Option[Description]] =
+    Opts.option[Description]("description", "The project description").orNone
 
-  val firstName: Opts[Option[users.FirstName]] =
-    Opts.option[users.FirstName]("first-name", "The first name").orNone
+  val firstName: Opts[Option[FirstName]] =
+    Opts.option[FirstName]("first-name", "The first name").orNone
 
-  val lastName: Opts[Option[users.LastName]] =
-    Opts.option[users.LastName]("last-name", "The last name").orNone
+  val lastName: Opts[Option[LastName]] =
+    Opts.option[LastName]("last-name", "The last name").orNone
 
-  val email: Opts[Option[users.Email]] =
-    Opts.option[users.Email]("email", "The email address").orNone
+  val email: Opts[Option[Email]] =
+    Opts.option[Email]("email", "The email address").orNone
 
 object CommonOpts extends CommonOpts

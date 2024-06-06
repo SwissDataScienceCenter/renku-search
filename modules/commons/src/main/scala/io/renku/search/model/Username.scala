@@ -16,26 +16,14 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.model
 
-import cats.effect.{ExitCode, IO, IOApp}
+import io.bullet.borer.Codec
+import io.github.arainko.ducktape.Transformer
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
-
-object Microservice extends IOApp:
-  private val logger = scribe.cats.io
-  private val loadConfig = SearchApiConfig.config.load[IO]
-
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use { _ =>
-          logger.info(
-            s"Search microservice running: ${config.httpServerConfig}"
-          ) >> IO.never
-        }
-    } yield ExitCode.Success
+opaque type Username = String
+object Username:
+  def apply(v: String): Username = v
+  extension (self: Username) def value: String = self
+  given Transformer[String, Username] = apply
+  given Codec[Username] = Codec.bimap[String, Username](_.value, Username.apply)

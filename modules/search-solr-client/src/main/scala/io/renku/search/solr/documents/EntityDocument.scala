@@ -23,7 +23,6 @@ import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.search.model.*
 import io.renku.search.model.MemberRole.*
-import io.renku.search.model.projects.Visibility
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.EncoderSupport.*
 import io.renku.solr.client.{DocVersion, EncoderSupport}
@@ -45,12 +44,12 @@ final case class Project(
     id: Id,
     @key("_version_") version: DocVersion = DocVersion.Off,
     name: Name,
-    slug: projects.Slug,
-    repositories: Seq[projects.Repository] = Seq.empty,
-    visibility: projects.Visibility,
-    description: Option[projects.Description] = None,
+    slug: Slug,
+    repositories: Seq[Repository] = Seq.empty,
+    visibility: Visibility,
+    description: Option[Description] = None,
     createdBy: Id,
-    creationDate: projects.CreationDate,
+    creationDate: CreationDate,
     owners: Set[Id] = Set.empty,
     editors: Set[Id] = Set.empty,
     viewers: Set[Id] = Set.empty,
@@ -97,8 +96,8 @@ object Project:
 final case class User(
     id: Id,
     @key("_version_") version: DocVersion = DocVersion.Off,
-    firstName: Option[users.FirstName] = None,
-    lastName: Option[users.LastName] = None,
+    firstName: Option[FirstName] = None,
+    lastName: Option[LastName] = None,
     name: Option[Name] = None,
     namespace: Option[Namespace] = None,
     score: Option[Double] = None
@@ -123,8 +122,8 @@ object User:
   def of(
       id: Id,
       namespace: Option[Namespace] = None,
-      firstName: Option[users.FirstName] = None,
-      lastName: Option[users.LastName] = None,
+      firstName: Option[FirstName] = None,
+      lastName: Option[LastName] = None,
       score: Option[Double] = None
   ): User =
     User(
@@ -142,7 +141,7 @@ final case class Group(
     @key("_version_") version: DocVersion = DocVersion.Off,
     name: Name,
     namespace: Namespace,
-    description: Option[groups.Description] = None,
+    description: Option[Description] = None,
     owners: Set[Id] = Set.empty,
     editors: Set[Id] = Set.empty,
     viewers: Set[Id] = Set.empty,
@@ -180,7 +179,7 @@ object Group:
       owners: Set[Id] = Set.empty,
       editors: Set[Id] = Set.empty,
       viewers: Set[Id] = Set.empty,
-      description: Option[groups.Description] = None,
+      description: Option[Description] = None,
       score: Option[Double] = None
   ): Group =
     Group(

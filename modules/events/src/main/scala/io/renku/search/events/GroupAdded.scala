@@ -25,7 +25,6 @@ import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.v2
 import io.renku.search.model.*
-import io.renku.search.model.Id
 import org.apache.avro.Schema
 
 sealed trait GroupAdded extends RenkuEventPayload:
@@ -41,7 +40,7 @@ object GroupAdded:
       id: Id,
       name: Name,
       namespace: Namespace,
-      description: Option[groups.Description]
+      description: Option[Description]
   ): GroupAdded =
     GroupAdded.V2(
       v2.GroupAdded(id.value, name.value, description.map(_.value), namespace.value)

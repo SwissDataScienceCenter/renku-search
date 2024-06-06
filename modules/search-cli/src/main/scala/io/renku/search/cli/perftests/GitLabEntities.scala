@@ -27,7 +27,7 @@ import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.bullet.borer.derivation.key
 import io.renku.search.borer.codecs.DateTimeDecoders
-import io.renku.search.model.projects
+import io.renku.search.model.Visibility
 
 final private case class GitLabProject(
     id: Int,
@@ -39,7 +39,7 @@ final private case class GitLabProject(
     @key("tag_list") tagList: List[String],
     topics: List[String]
 ):
-  val visibility: projects.Visibility = projects.Visibility.Public
+  val visibility: Visibility = Visibility.Public
 
   lazy val tagsAndTopics: List[String] =
     (tagList ::: topics).distinct

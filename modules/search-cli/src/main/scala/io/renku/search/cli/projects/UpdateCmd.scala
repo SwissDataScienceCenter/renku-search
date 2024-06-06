@@ -33,10 +33,10 @@ object UpdateCmd extends CommonOpts:
       id: Id,
       name: Name,
       namespace: Namespace,
-      slug: projects.Slug,
-      visibility: projects.Visibility,
-      repositories: Seq[projects.Repository],
-      description: Option[projects.Description],
+      slug: Slug,
+      visibility: Visibility,
+      repositories: Seq[Repository],
+      description: Option[Description],
       keywords: Seq[Keyword]
   ):
     def asPayload: ProjectUpdated = ProjectUpdated(

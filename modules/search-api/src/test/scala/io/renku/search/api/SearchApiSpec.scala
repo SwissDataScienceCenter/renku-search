@@ -24,9 +24,7 @@ import cats.syntax.all.*
 import io.github.arainko.ducktape.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.api.data.*
-import io.renku.search.model.Id
-import io.renku.search.model.projects.Visibility
-import io.renku.search.model.users.FirstName
+import io.renku.search.model.*
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*

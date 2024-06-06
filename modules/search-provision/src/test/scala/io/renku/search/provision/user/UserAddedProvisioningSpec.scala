@@ -25,9 +25,7 @@ import cats.syntax.all.*
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.UserAdded
-import io.renku.search.model.Id
-import io.renku.search.model.ModelGenerators
-import io.renku.search.model.users.FirstName
+import io.renku.search.model.*
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument, User as UserDocument}

@@ -16,26 +16,26 @@
  * limitations under the License.
  */
 
-package io.renku.search.api
+package io.renku.search.model
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.kernel.Order
 
-import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
+import io.bullet.borer.derivation.MapBasedCodecs.*
+import io.bullet.borer.{Decoder, Encoder}
 
-object Microservice extends IOApp:
-  private val logger = scribe.cats.io
-  private val loadConfig = SearchApiConfig.config.load[IO]
+enum Visibility:
+  lazy val name: String = productPrefix.toLowerCase
+  case Public, Private
 
-  override def run(args: List[String]): IO[ExitCode] =
-    for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use { _ =>
-          logger.info(
-            s"Search microservice running: ${config.httpServerConfig}"
-          ) >> IO.never
-        }
-    } yield ExitCode.Success
+object Visibility:
+  given Order[Visibility] = Order.by(_.ordinal)
+  given Encoder[Visibility] = Encoder.forString.contramap(_.name)
+  given Decoder[Visibility] = Decoder.forString.mapEither(Visibility.fromString)
+
+  def fromString(v: String): Either[String, Visibility] =
+    Visibility.values
+      .find(_.name.equalsIgnoreCase(v))
+      .toRight(s"Invalid visibility: $v")
+
+  def unsafeFromString(v: String): Visibility =
+    fromString(v).fold(sys.error, identity)

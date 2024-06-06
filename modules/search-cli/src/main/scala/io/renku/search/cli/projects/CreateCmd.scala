@@ -33,12 +33,12 @@ object CreateCmd extends CommonOpts:
       id: Id,
       name: Name,
       namespace: Namespace,
-      slug: projects.Slug,
-      visibility: projects.Visibility,
+      slug: Slug,
+      visibility: Visibility,
       createdBy: Id,
       creationDate: Timestamp,
-      repositories: Seq[projects.Repository],
-      description: Option[projects.Description],
+      repositories: Seq[Repository],
+      description: Option[Description],
       keywords: Seq[Keyword]
   ):
     def asPayload: ProjectCreated = ProjectCreated(

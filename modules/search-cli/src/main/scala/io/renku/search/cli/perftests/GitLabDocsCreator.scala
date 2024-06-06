@@ -28,7 +28,6 @@ import io.github.arainko.ducktape.*
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
 import io.renku.search.model.*
-import io.renku.search.model.Namespace
 import io.renku.search.solr.documents.{Project, User}
 import io.renku.solr.client.DocVersion
 import org.http4s.*
@@ -85,12 +84,12 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
           Field.computed(_.keywords, _.tagsAndTopics.map(Keyword.apply)),
           Field.default(_.version),
           Field.computed(_.id, s => Id(s"gl_proj_${s.id}")),
-          Field.computed(_.slug, s => projects.Slug(s.path_with_namespace)),
+          Field.computed(_.slug, s => Slug(s.path_with_namespace)),
           Field
-            .computed(_.repositories, s => Seq(projects.Repository(s.http_url_to_repo))),
+            .computed(_.repositories, s => Seq(Repository(s.http_url_to_repo))),
           Field.computed(_.visibility, s => s.visibility),
           Field.computed(_.createdBy, s => user.id),
-          Field.computed(_.creationDate, s => projects.CreationDate(s.created_at)),
+          Field.computed(_.creationDate, s => CreationDate(s.created_at)),
           Field.default(_.owners),
           Field.default(_.editors),
           Field.default(_.viewers),
@@ -154,8 +153,8 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     GET(uri)
       .putHeaders(Accept(application.json))
 
-  private def toFirstAndLast(v: String): Option[(users.FirstName, users.LastName)] =
+  private def toFirstAndLast(v: String): Option[(FirstName, LastName)] =
     v.trim.split(' ').toList match {
-      case f :: r => Some(users.FirstName(f) -> users.LastName(r.mkString(" ")))
+      case f :: r => Some(FirstName(f) -> LastName(r.mkString(" ")))
       case _      => None
     }

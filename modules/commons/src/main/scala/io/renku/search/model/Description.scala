@@ -19,7 +19,6 @@
 package io.renku.search.model
 
 import io.bullet.borer.Codec
-import io.github.arainko.ducktape.Transformer
 
 opaque type Description = String
 object Description:
@@ -32,5 +31,4 @@ object Description:
       }
     }
   extension (self: Description) def value: String = self
-  given Transformer[String, Description] = apply
   given Codec[Description] = Codec.of[String]

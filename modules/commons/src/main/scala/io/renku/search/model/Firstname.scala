@@ -19,11 +19,9 @@
 package io.renku.search.model
 
 import io.bullet.borer.Codec
-import io.github.arainko.ducktape.Transformer
 
 opaque type FirstName = String
 object FirstName:
   def apply(v: String): FirstName = v
   extension (self: FirstName) def value: String = self
-  given Transformer[String, FirstName] = apply
   given Codec[FirstName] = Codec.bimap[String, FirstName](_.value, FirstName.apply)

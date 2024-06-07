@@ -14,7 +14,6 @@ object Dependencies {
     val catsScalaCheck = "0.3.2"
     val ciris = "3.6.0"
     val decline = "2.4.1"
-    val ducktape = "0.2.2"
     val fs2 = "3.10.2"
     val http4s = "0.23.27"
     val http4sPrometheusMetrics = "0.24.6"
@@ -89,10 +88,6 @@ object Dependencies {
   val decline = Seq(
     "com.monovore" %% "decline" % V.decline,
     "com.monovore" %% "decline-effect" % V.decline
-  )
-
-  val ducktape = Seq(
-    "io.github.arainko" %% "ducktape" % V.ducktape
   )
 
   val fs2Core = Seq(

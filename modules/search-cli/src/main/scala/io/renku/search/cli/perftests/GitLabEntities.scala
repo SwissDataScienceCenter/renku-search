@@ -44,6 +44,11 @@ final private case class GitLabProject(
   lazy val tagsAndTopics: List[String] =
     (tagList ::: topics).distinct
 
+  lazy val namespace: String =
+    path_with_namespace.lastIndexOf('/') match
+      case n if n > 0 => path_with_namespace.drop(n)
+      case _          => path_with_namespace
+
 private object GitLabProject extends DateTimeDecoders:
   given Decoder[GitLabProject] = deriveDecoder
 

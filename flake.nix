@@ -95,6 +95,7 @@
             NO_SOLR = "true";
             NO_REDIS = "true";
             DEV_CONTAINER = "rsdev-cnt";
+            SBT_OPTS = "-Xmx2G";
 
             buildInputs =
               commonPackages
@@ -121,8 +122,8 @@
             #don't start docker container for dbTests
             NO_SOLR = "true";
             NO_REDIS = "true";
-
             DEV_VM = "rsdev-vm";
+            SBT_OPTS = "-Xmx2G";
 
             buildInputs =
               commonPackages

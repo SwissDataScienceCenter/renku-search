@@ -21,12 +21,10 @@ package io.renku.search.model
 import cats.kernel.Order
 
 import io.bullet.borer.Codec
-import io.github.arainko.ducktape.*
 
 opaque type Repository = String
 object Repository:
   def apply(v: String): Repository = v
   extension (self: Repository) def value: String = self
-  given Transformer[String, Repository] = apply
   given Codec[Repository] = Codec.of[String]
   given Order[Repository] = Order.fromComparable[String]

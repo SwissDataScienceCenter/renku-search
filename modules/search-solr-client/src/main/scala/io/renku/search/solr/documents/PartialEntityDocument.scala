@@ -21,10 +21,11 @@ package io.renku.search.solr.documents
 import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
+import io.renku.json.EncoderSupport
 import io.renku.search.model.*
 import io.renku.search.solr.documents.{Group as GroupDocument, Project as ProjectDocument}
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields as SolrField
-import io.renku.solr.client.{DocVersion, EncoderSupport}
+import io.renku.solr.client.DocVersion
 
 sealed trait PartialEntityDocument extends SolrDocument:
   def applyTo(e: EntityDocument): EntityDocument

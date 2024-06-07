@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.json
 
 import scala.quoted.*
 

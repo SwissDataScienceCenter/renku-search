@@ -16,14 +16,24 @@
  * limitations under the License.
  */
 
-package io.renku.search.borer.codecs
+package io.renku.json.codecs
 
 import java.time.Instant
+import java.time.format.DateTimeParseException
 
-import io.bullet.borer.Encoder
+import cats.syntax.all.*
 
-trait DateTimeEncoders:
-  given Encoder[Instant] = DateTimeEncoders.forInstant
+import io.bullet.borer.Decoder
+import io.bullet.borer.Decoder.*
 
-object DateTimeEncoders:
-  val forInstant: Encoder[Instant] = Encoder.forString.contramap[Instant](_.toString)
+trait DateTimeDecoders:
+  given Decoder[Instant] = DateTimeDecoders.forInstant
+
+object DateTimeDecoders:
+
+  val forInstant: Decoder[Instant] =
+    Decoder.forString.mapEither { v =>
+      Either
+        .catchOnly[DateTimeParseException](Instant.parse(v))
+        .leftMap(_.getMessage)
+    }

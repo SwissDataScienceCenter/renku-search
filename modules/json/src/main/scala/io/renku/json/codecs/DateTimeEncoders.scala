@@ -16,8 +16,14 @@
  * limitations under the License.
  */
 
-package io.renku.search.borer.codecs
+package io.renku.json.codecs
 
-trait all extends DateTimeEncoders, DateTimeDecoders
+import java.time.Instant
 
-object all extends all
+import io.bullet.borer.Encoder
+
+trait DateTimeEncoders:
+  given Encoder[Instant] = DateTimeEncoders.forInstant
+
+object DateTimeEncoders:
+  val forInstant: Encoder[Instant] = Encoder.forString.contramap[Instant](_.toString)

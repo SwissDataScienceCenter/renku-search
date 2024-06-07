@@ -26,7 +26,7 @@ import io.bullet.borer.Decoder
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.bullet.borer.derivation.key
-import io.renku.search.borer.codecs.DateTimeDecoders
+import io.renku.json.codecs.DateTimeDecoders
 import io.renku.search.model.Visibility
 
 final private case class GitLabProject(

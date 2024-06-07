@@ -24,7 +24,7 @@ import cats.kernel.Order
 
 import io.bullet.borer.Codec
 import io.github.arainko.ducktape.*
-import io.renku.search.borer.codecs.all.given
+import io.renku.json.codecs.all.given
 
 opaque type CreationDate = Instant
 object CreationDate:

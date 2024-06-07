@@ -21,11 +21,11 @@ package io.renku.search.solr.documents
 import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
+import io.renku.json.EncoderSupport
 import io.renku.search.model.*
 import io.renku.search.model.MemberRole.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
-import io.renku.solr.client.EncoderSupport.*
-import io.renku.solr.client.{DocVersion, EncoderSupport}
+import io.renku.solr.client.DocVersion
 
 sealed trait EntityDocument extends SolrDocument:
   val score: Option[Double]

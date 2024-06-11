@@ -42,6 +42,9 @@ class DefaultJwtVerifySpec
     with BorerEntityJsonCodec:
 
   val issuer: Uri = uri"https://ci-renku-3622.dev.renku.ch/auth/realms/Renku"
+  val jwtConfig = JwtVerifyConfig.default.copy(allowedIssuerUrls =
+    List(UrlPattern.fromString("*.*.renku.ch"))
+  )
 
   extension [B](self: Either[JwtError, B])
     def isTooManyRequests = self match
@@ -65,7 +68,7 @@ class DefaultJwtVerifySpec
     val clock = TestClock.fixedAt(jwTokenValidTime)
     for
       state <- Ref[IO].of(DefaultJwtVerify.State())
-      verifyer = new DefaultJwtVerify(testClient, state, clock, JwtVerifyConfig.default)
+      verifyer = new DefaultJwtVerify(testClient, state, clock, jwtConfig)
       result <- verifyer.verify(jwToken)
       claim = result.fold(throw _, identity)
       _ = assertEquals(claim, expected)
@@ -91,7 +94,7 @@ class DefaultJwtVerifySpec
         testClient,
         verifyerState,
         clock,
-        JwtVerifyConfig.default
+        jwtConfig
       )
       result <- verifyer.verify(jwToken)
       claim = result.fold(throw _, identity)
@@ -112,7 +115,7 @@ class DefaultJwtVerifySpec
       FiniteDuration(jwTokenValidTime.minusSeconds(20).toEpochMilli(), "ms")
     for
       state <- Ref[IO].of(DefaultJwtVerify.State.of(issuer, lastUpdate = initialUpdate))
-      verifyer = new DefaultJwtVerify(testClient, state, clock, JwtVerifyConfig.default)
+      verifyer = new DefaultJwtVerify(testClient, state, clock, jwtConfig)
       results <- (1 to 10).toList.parTraverse(_ => verifyer.verify(jwToken))
       numCalls <- counter.get
       _ = assert(results.forall(_.isTooManyRequests))
@@ -135,11 +138,11 @@ class DefaultJwtVerifySpec
       FiniteDuration(jwTokenValidTime.minusSeconds(121).toEpochMilli(), "ms")
     for
       state <- Ref[IO].of(DefaultJwtVerify.State.of(issuer, lastUpdate = initialUpdate))
-      verifyer1 = new DefaultJwtVerify(testClient, state, clock1, JwtVerifyConfig.default)
+      verifyer1 = new DefaultJwtVerify(testClient, state, clock1, jwtConfig)
       result1 <- verifyer1.verify(jwToken)
       _ = assert(result1.isTooManyRequests)
 
-      verifyer2 = new DefaultJwtVerify(testClient, state, clock2, JwtVerifyConfig.default)
+      verifyer2 = new DefaultJwtVerify(testClient, state, clock2, jwtConfig)
       result2 <- verifyer2.verify(jwToken)
       _ = assert(result2.isRight)
 
@@ -183,7 +186,7 @@ class DefaultJwtVerifySpec
     val testClient = Client.fromHttpApp(testClientRoutes.orNotFound)
     for
       state <- Ref[IO].of(DefaultJwtVerify.State())
-      verifyer = new DefaultJwtVerify(testClient, state, clock, JwtVerifyConfig.default)
+      verifyer = new DefaultJwtVerify(testClient, state, clock, jwtConfig)
       _ <- verifyer.verify(jwToken)
       res <- verifyer.verify(jwToken2)
       data <- state.get

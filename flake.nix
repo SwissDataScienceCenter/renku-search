@@ -88,6 +88,7 @@
             RS_METRICS_UPDATE_INTERVAL = "0s";
             RS_SOLR_CREATE_CORE_CMD = "cnt-solr-create-core %s";
             RS_SOLR_DELETE_CORE_CMD = "cnt-solr-delete-core %s";
+            RS_JWT_ALLOWED_ISSUER_URL_PATTERNS = "renku.ch,*.renku.ch,*.*.renku.ch";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";
@@ -113,6 +114,7 @@
             RS_METRICS_UPDATE_INTERVAL = "0s";
             RS_SOLR_CREATE_CORE_CMD = "vm-solr-create-core %s";
             RS_SOLR_DELETE_CORE_CMD = "vm-solr-delete-core %s";
+            RS_JWT_ALLOWED_ISSUER_URL_PATTERNS = "renku.ch,*.renku.ch,*.*.renku.ch";
 
             #don't start docker container for dbTests
             NO_SOLR = "true";

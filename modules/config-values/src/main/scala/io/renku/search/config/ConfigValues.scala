@@ -101,7 +101,6 @@ object ConfigValues extends ConfigDecoders:
     val allowedIssuers =
       renv("JWT_ALLOWED_ISSUER_URL_PATTERNS")
         .as[List[UrlPattern]]
-        .default(defaults.allowedIssuerUrls)
     (requestDelay, enableSigCheck, openIdConfigPath, allowedIssuers).mapN(
       JwtVerifyConfig.apply
     )

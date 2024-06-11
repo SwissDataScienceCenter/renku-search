@@ -54,5 +54,5 @@ object JwtVerifyConfig:
     minRequestDelay = 1.minute,
     enableSignatureValidation = true,
     openIdConfigPath = ".well-known/openid-configuration",
-    List("*.*.renku.ch", "*.renku.ch", "renku.ch").map(UrlPattern.fromString)
+    Nil
   )

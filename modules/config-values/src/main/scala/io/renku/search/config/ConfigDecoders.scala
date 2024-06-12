@@ -18,6 +18,7 @@
 
 package io.renku.search.config
 
+import cats.Show
 import cats.syntax.all.*
 import ciris.{ConfigDecoder, ConfigError}
 import com.comcast.ip4s.{Ipv4Address, Port}
@@ -28,6 +29,11 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import io.renku.search.common.UrlPattern
 
 trait ConfigDecoders:
+  extension [A, B](self: ConfigDecoder[A, B])
+    def emap[C](typeName: String)(f: B => Either[String, C])(using Show[B]) =
+      self.mapEither((key, b) =>
+        f(b).left.map(err => ConfigError.decode(typeName, key, b))
+      )
 
   given ConfigDecoder[String, Uri] =
     ConfigDecoder[String].mapEither { (_, s) =>
@@ -63,6 +69,6 @@ trait ConfigDecoders:
       .mapOption(Port.getClass.getSimpleName)(Port.fromString)
 
   given ConfigDecoder[String, List[UrlPattern]] =
-    ConfigDecoder[String].map { str =>
-      str.split(',').toList.map(UrlPattern.fromString)
+    ConfigDecoder[String].emap("UrlPattern") { str =>
+      str.split(',').toList.traverse(UrlPattern.fromString)
     }

@@ -43,7 +43,7 @@ class DefaultJwtVerifySpec
 
   val issuer: Uri = uri"https://ci-renku-3622.dev.renku.ch/auth/realms/Renku"
   val jwtConfig = JwtVerifyConfig.default.copy(allowedIssuerUrls =
-    List(UrlPattern.fromString("*.*.renku.ch"))
+    List(UrlPattern.unsafeFromString("*.*.renku.ch"))
   )
 
   extension [B](self: Either[JwtError, B])
@@ -152,7 +152,7 @@ class DefaultJwtVerifySpec
 
   test("stop on invalid issuer"):
     val testClient = Client.fromHttpApp(HttpRoutes.empty[IO].orNotFound)
-    val allowedIssuers = List(UrlPattern.fromString("*.myserver.com"))
+    val allowedIssuers = List(UrlPattern.unsafeFromString("*.myserver.com"))
     for
       verifyer <- DefaultJwtVerify(
         testClient,

@@ -26,7 +26,7 @@ import org.scalacheck.Prop
 class UrlPatternSpec extends ScalaCheckSuite:
   def urlPattern(str: String) = UrlPattern.unsafeFromString(str)
 
-  test("read parts"):
+  test("read parts") {
     assertEquals(UrlPattern.splitUrl(""), UrlParts(None, Nil, None, Nil))
     assertEquals(
       UrlPattern.splitUrl("test.com"),
@@ -52,6 +52,11 @@ class UrlPatternSpec extends ScalaCheckSuite:
       UrlPattern.splitUrl("/auth/exec"),
       UrlParts(None, Nil, None, List("auth", "exec"))
     )
+    assertEquals(
+      UrlPattern.splitUrl("https://test.com:123/auth//**"),
+      UrlParts(Some("https"), List("test", "com"), Some("123"), List("auth", "**"))
+    )
+  }
 
   test("fromString successful") {
     assertEquals(
@@ -168,6 +173,9 @@ class UrlPatternSpec extends ScalaCheckSuite:
       urlPattern("*.test.com/auth/renku") -> List(
         "http://dev.test.com/auth/renku",
         "sub1.test.com/auth/renku"
+      ),
+      urlPattern("https://renku.com/auth/**") -> List(
+        "https://renku.com/auth/realms/Renku"
       ),
       urlPattern("test.com/**") -> List(
         "http://test.com/auth/a/b",

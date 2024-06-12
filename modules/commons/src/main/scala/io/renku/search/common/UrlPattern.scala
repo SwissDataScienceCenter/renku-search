@@ -48,7 +48,7 @@ final case class UrlPattern(
           }
         case n =>
           values.sizeIs >= n &&
-            pattern.take(n).zip(values).forall { case (s, h) => s.matches(h) }
+          pattern.take(n).zip(values).forall { case (s, h) => s.matches(h) }
     }
 
 object UrlPattern:
@@ -79,7 +79,7 @@ object UrlPattern:
     rest0.split('/').toList match
       case hp :: rest =>
         val (host, port) = readHostPort(hp)
-        UrlParts(scheme, host, port, rest)
+        UrlParts(scheme, host, port, rest.filter(_.nonEmpty))
       case _ =>
         val (host, port) = readHostPort(rest0)
         UrlParts(scheme, host, port, Nil)

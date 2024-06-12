@@ -41,6 +41,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   private val interpreter = LuceneQueryInterpreter.forSync[F]
 
   private val creatorDetails: FieldName = FieldName("creatorDetails")
+  private val namespaceDetails: FieldName = FieldName("namespaceDetails")
 
   private val typeTerms = Facet.Terms(
     EntityDocumentSchema.Fields.entityType,
@@ -76,6 +77,14 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
               SubQuery(
                 "{!terms f=id v=$row.createdBy}",
                 "{!terms f=_kind v=fullentity}",
+                1
+              ).withFields(FieldName.all)
+            )
+            .addSubQuery(
+              namespaceDetails,
+              SubQuery(
+                "{!terms f=namespace v=$row.namespace}",
+                "(_type:User OR _type:Group) AND _kind:fullentity",
                 1
               ).withFields(FieldName.all)
             )

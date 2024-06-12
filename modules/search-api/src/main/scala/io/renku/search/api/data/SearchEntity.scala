@@ -37,7 +37,7 @@ object SearchEntity:
       id: Id,
       name: Name,
       slug: Slug,
-      namespace: Option[Namespace],
+      namespace: Option[UserOrGroup],
       repositories: Seq[Repository],
       visibility: Visibility,
       description: Option[Description] = None,
@@ -77,3 +77,12 @@ object SearchEntity:
     given Encoder[Group] = EncoderSupport.deriveWithDiscriminator(discriminatorField)
     given Decoder[Group] = MapBasedCodecs.deriveDecoder
   end Group
+
+  type UserOrGroup = User | Group
+  object UserOrGroup:
+    given Encoder[UserOrGroup] = new Encoder[UserOrGroup]:
+      def write(w: Writer, v: UserOrGroup) = v match
+        case u: User => Encoder[User].write(w, u)
+        case g: Group => Encoder[Group].write(w, g)
+
+    given Decoder[UserOrGroup] = ???

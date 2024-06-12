@@ -24,11 +24,10 @@ import fs2.Stream
 import fs2.io.net.Network
 
 import io.bullet.borer.Decoder
-import io.github.arainko.ducktape.*
+import io.renku.search.events.syntax.*
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.borer.BorerEntityJsonCodec.given
 import io.renku.search.model.*
-import io.renku.search.model.Namespace
 import io.renku.search.solr.documents.{Project, User}
 import io.renku.solr.client.DocVersion
 import org.http4s.*
@@ -63,7 +62,7 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
       .takeWhile(_.nonEmpty)
       .flatMap(Stream.emits)
       .evalMap(gp => findProjectUsers(gp.id).compile.toList.map(_.distinct).tupleLeft(gp))
-      .evalMap(toProject)
+      .map(toProject)
       .unNone
 
   private def getProjects(page: Int) =
@@ -75,34 +74,26 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     )
     client.expect[List[GitLabProject]](req)
 
-  private lazy val toProject
-      : ((GitLabProject, List[User])) => F[Option[(Project, List[User])]] = {
-    case (glProj, all @ user :: users) =>
-      (glProj
-        .into[Project]
-        .transform(
-          Field.default(_.namespace),
-          Field.computed(_.keywords, _.tagsAndTopics.map(Keyword.apply)),
-          Field.default(_.version),
-          Field.computed(_.id, s => Id(s"gl_proj_${s.id}")),
-          Field.computed(_.slug, s => projects.Slug(s.path_with_namespace)),
-          Field
-            .computed(_.repositories, s => Seq(projects.Repository(s.http_url_to_repo))),
-          Field.computed(_.visibility, s => s.visibility),
-          Field.computed(_.createdBy, s => user.id),
-          Field.computed(_.creationDate, s => projects.CreationDate(s.created_at)),
-          Field.default(_.owners),
-          Field.default(_.editors),
-          Field.default(_.viewers),
-          Field.default(_.groupOwners),
-          Field.default(_.groupEditors),
-          Field.default(_.groupViewers),
-          Field.default(_.members),
-          Field.default(_.score)
-        ) -> all).some.pure[F]
-    case (name, Nil) =>
-      Option.empty.pure[F]
-  }
+  private def toProject(
+      glProj: GitLabProject,
+      users: List[User]
+  ): Option[(Project, List[User])] =
+    users match
+      case Nil => None
+      case creator :: all =>
+        val p = Project(
+          id = Id(s"gl_proj_${glProj.id}"),
+          name = glProj.name.toName,
+          slug = glProj.path_with_namespace.toSlug,
+          repositories = Seq(glProj.http_url_to_repo.toRepository),
+          visibility = glProj.visibility,
+          description = glProj.description.map(_.toDescription),
+          createdBy = creator.id,
+          creationDate = glProj.created_at.toCreationDate,
+          keywords = glProj.tagsAndTopics.map(_.toKeyword),
+          namespace = glProj.namespace.toNamespace.some
+        )
+        Some(p -> users)
 
   private def findProjectUsers(projectId: Int) =
     Stream
@@ -121,32 +112,20 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     )
     client.expect[List[GitLabProjectUser]](req)
 
-  private def toUser(glUser: GitLabProjectUser): User =
-    val firstAndLast = toFirstAndLast(glUser.name.trim)
-    glUser
-      .into[User]
-      .transform(
-        Field.computed(_.namespace, u => Namespace(u.username).some),
-        Field.default(_.version),
-        Field.computed(_.id, s => Id(s"gl_user_${s.id}")),
-        Field.computed(
-          _.firstName,
-          s =>
-            firstAndLast.map(_._1).flatMap {
-              case v if v.value.trim.isBlank => None
-              case v                         => v.some
-            }
-        ),
-        Field.computed(
-          _.lastName,
-          s =>
-            firstAndLast.map(_._2).flatMap {
-              case v if v.value.trim.isBlank => None
-              case v                         => v.some
-            }
-        ),
-        Field.default(_.score)
-      )
+  private def toUser(u: GitLabProjectUser): User =
+    val firstAndLast = toFirstAndLast(u.name.trim)
+    User(
+      id = Id(s"gl_user_${u.id}"),
+      namespace = u.username.toNamespace.some,
+      firstName = firstAndLast.map(_._1).flatMap {
+        case v if v.value.trim.isBlank => None
+        case v                         => v.some
+      },
+      lastName = firstAndLast.map(_._2).flatMap {
+        case v if v.value.trim.isBlank => None
+        case v                         => v.some
+      }
+    )
 
   private lazy val apiV4 = gitLabUri / "api" / "v4"
 
@@ -154,8 +133,8 @@ private class GitLabDocsCreator[F[_]: Async: ModelTypesGenerators](
     GET(uri)
       .putHeaders(Accept(application.json))
 
-  private def toFirstAndLast(v: String): Option[(users.FirstName, users.LastName)] =
+  private def toFirstAndLast(v: String): Option[(FirstName, LastName)] =
     v.trim.split(' ').toList match {
-      case f :: r => Some(users.FirstName(f) -> users.LastName(r.mkString(" ")))
+      case f :: r => Some(FirstName(f) -> LastName(r.mkString(" ")))
       case _      => None
     }

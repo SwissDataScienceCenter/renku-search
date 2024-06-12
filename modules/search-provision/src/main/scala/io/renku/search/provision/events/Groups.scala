@@ -31,9 +31,9 @@ trait Groups:
     GroupDocument(
       id = ga.id.toId,
       version = version,
-      name = ga.name.toGroupName,
+      name = ga.name.toName,
       namespace = ga.namespace.toNamespace,
-      description = ga.description.map(_.toGroupDescription)
+      description = ga.description.map(_.toDescription)
     )
 
   def fromGroupUpdated(
@@ -43,17 +43,17 @@ trait Groups:
     PartialEntityDocument.Group(
       id = ga.id.toId,
       version = version,
-      name = Some(ga.name.toGroupName),
+      name = Some(ga.name.toName),
       namespace = Some(ga.namespace.toNamespace),
-      description = ga.description.map(_.toGroupDescription)
+      description = ga.description.map(_.toDescription)
     )
 
   def fromGroupUpdated(gu: v2.GroupUpdated, orig: GroupDocument): GroupDocument =
     orig.copy(
       id = gu.id.toId,
-      name = gu.name.toGroupName,
+      name = gu.name.toName,
       namespace = gu.namespace.toNamespace,
-      description = gu.description.map(_.toGroupDescription)
+      description = gu.description.map(_.toDescription)
     )
 
   def fromGroupUpdated(
@@ -62,9 +62,9 @@ trait Groups:
   ): PartialEntityDocument.Group =
     orig.copy(
       id = gu.id.toId,
-      name = Some(gu.name.toGroupName),
+      name = Some(gu.name.toName),
       namespace = Some(gu.namespace.toNamespace),
-      description = gu.description.map(_.toGroupDescription)
+      description = gu.description.map(_.toDescription)
     )
 
   def fromGroupMemberAdded(

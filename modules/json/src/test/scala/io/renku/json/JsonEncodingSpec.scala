@@ -16,13 +16,13 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.json
 
 import io.bullet.borer.*
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.bullet.borer.derivation.key
-import io.renku.solr.client.JsonEncodingSpec.{Animal, Room}
+import io.renku.json.JsonEncodingSpec.{Animal, Room}
 import munit.FunSuite
 
 class JsonEncodingSpec extends FunSuite {

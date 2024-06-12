@@ -21,12 +21,10 @@ package io.renku.search.model
 import cats.Show
 
 import io.bullet.borer.Codec
-import io.github.arainko.ducktape.Transformer
 
 opaque type Id = String
 object Id:
   def apply(v: String): Id = v
   extension (self: Id) def value: String = self
-  given Transformer[String, Id] = apply
   given Codec[Id] = Codec.of[String]
   given Show[Id] = Show.show(_.value)

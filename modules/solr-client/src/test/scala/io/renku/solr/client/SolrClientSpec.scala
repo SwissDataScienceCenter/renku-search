@@ -28,6 +28,7 @@ import cats.effect.IO
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.derivation.key
 import io.bullet.borer.{Decoder, Encoder, Reader}
+import io.renku.json.EncoderSupport
 import io.renku.search.GeneratorSyntax.*
 import io.renku.solr.client.SolrClientSpec.CourseMember
 import io.renku.solr.client.SolrClientSpec.{Course, Room}

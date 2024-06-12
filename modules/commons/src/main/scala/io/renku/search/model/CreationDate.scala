@@ -16,24 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search.borer.codecs
+package io.renku.search.model
 
 import java.time.Instant
-import java.time.format.DateTimeParseException
 
-import cats.syntax.all.*
+import cats.kernel.Order
 
-import io.bullet.borer.Decoder
-import io.bullet.borer.Decoder.*
+import io.bullet.borer.Codec
+import io.renku.json.codecs.all.given
 
-trait DateTimeDecoders:
-  given Decoder[Instant] = DateTimeDecoders.forInstant
-
-object DateTimeDecoders:
-
-  val forInstant: Decoder[Instant] =
-    Decoder.forString.mapEither { v =>
-      Either
-        .catchOnly[DateTimeParseException](Instant.parse(v))
-        .leftMap(_.getMessage)
-    }
+opaque type CreationDate = Instant
+object CreationDate:
+  def apply(v: Instant): CreationDate = v
+  extension (self: CreationDate) def value: Instant = self
+  given Codec[CreationDate] = Codec.of[Instant]
+  given Order[CreationDate] = Order.fromComparable[Instant]

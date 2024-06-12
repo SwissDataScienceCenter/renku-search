@@ -24,7 +24,7 @@ import cats.data.NonEmptyList
 import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}
-import io.renku.search.model.{Id, Namespace, users}
+import io.renku.search.model.*
 import org.apache.avro.Schema
 
 sealed trait UserUpdated extends RenkuEventPayload:
@@ -39,9 +39,9 @@ object UserUpdated:
   def apply(
       id: Id,
       namespace: Namespace,
-      firstName: Option[users.FirstName],
-      lastName: Option[users.LastName],
-      email: Option[users.Email]
+      firstName: Option[FirstName],
+      lastName: Option[LastName],
+      email: Option[Email]
   ): UserUpdated =
     V2(
       v2.UserUpdated(

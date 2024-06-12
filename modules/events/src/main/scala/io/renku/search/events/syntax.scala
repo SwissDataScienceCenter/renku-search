@@ -22,8 +22,6 @@ import java.time.Instant
 
 import io.renku.events.{v1, v2}
 import io.renku.search.model.*
-import io.renku.search.model.projects.*
-import io.renku.search.model.users.{FirstName, LastName}
 
 trait syntax:
   extension (self: v1.Visibility)
@@ -52,8 +50,6 @@ trait syntax:
     def toFirstName: FirstName = FirstName(self)
     def toLastName: LastName = LastName(self)
     def toKeyword: Keyword = Keyword(self)
-    def toGroupName: Name = toName
-    def toGroupDescription: groups.Description = groups.Description(self)
 
   extension (self: Instant) def toCreationDate: CreationDate = CreationDate(self)
 

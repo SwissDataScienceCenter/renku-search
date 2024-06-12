@@ -20,8 +20,8 @@ package io.renku.search.solr.documents
 
 import io.bullet.borer.Decoder
 import io.bullet.borer.Encoder
+import io.renku.json.EncoderSupport
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
-import io.renku.solr.client.EncoderSupport
 
 enum DocumentKind:
   case FullEntity

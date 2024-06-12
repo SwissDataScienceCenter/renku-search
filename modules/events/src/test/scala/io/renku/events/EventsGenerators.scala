@@ -24,10 +24,7 @@ import java.time.temporal.ChronoUnit
 import io.renku.events.v1.ProjectAuthorizationAdded
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
-import io.renku.search.model.Id
-import io.renku.search.model.MemberRole
-import io.renku.search.model.ModelGenerators
-import io.renku.search.model.users.FirstName
+import io.renku.search.model.*
 import org.apache.avro.Schema
 import org.scalacheck.Gen
 import org.scalacheck.Gen.{alphaChar, alphaNumChar}

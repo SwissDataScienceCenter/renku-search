@@ -34,5 +34,6 @@ object HttpServer:
       .default[F]
       .withHost(config.bindAddress)
       .withPort(config.port)
+      .withShutdownTimeout(config.shutdownTimeout)
       .withHttpApp(routes.orNotFound)
       .build

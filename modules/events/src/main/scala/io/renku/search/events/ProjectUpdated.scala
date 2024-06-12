@@ -25,7 +25,6 @@ import io.renku.avro.codec.AvroEncoder
 import io.renku.avro.codec.all.given
 import io.renku.events.{v1, v2}
 import io.renku.search.model.*
-import io.renku.search.model.projects.Visibility
 import org.apache.avro.Schema
 
 sealed trait ProjectUpdated extends RenkuEventPayload:
@@ -43,10 +42,10 @@ object ProjectUpdated:
       id: Id,
       name: Name,
       namespace: Namespace,
-      slug: projects.Slug,
-      visibility: projects.Visibility,
-      repositories: Seq[projects.Repository] = Seq(),
-      description: Option[projects.Description] = None,
+      slug: Slug,
+      visibility: Visibility,
+      repositories: Seq[Repository] = Seq(),
+      description: Option[Description] = None,
       keywords: Seq[Keyword] = Seq()
   ): ProjectUpdated = V2(
     v2.ProjectUpdated(

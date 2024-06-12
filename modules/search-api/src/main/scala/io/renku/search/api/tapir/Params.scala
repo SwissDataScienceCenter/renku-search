@@ -25,7 +25,7 @@ import io.renku.search.http.borer.TapirBorerJson
 import io.renku.search.query.Query
 import sttp.tapir.{query as queryParam, *}
 
-object Params extends TapirCodecs with TapirBorerJson {
+object Params extends TapirCodecs with TapirBorerJson with ApiSchema {
 
   val query: EndpointInput[Query] =
     queryParam[Query]("q").description("User defined search query").default(Query.empty)

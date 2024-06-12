@@ -16,14 +16,15 @@
  * limitations under the License.
  */
 
-package io.renku.search.borer.codecs
+package io.renku.search.model
 
-import java.time.Instant
+import cats.kernel.Order
 
-import io.bullet.borer.Encoder
+import io.bullet.borer.Codec
 
-trait DateTimeEncoders:
-  given Encoder[Instant] = DateTimeEncoders.forInstant
-
-object DateTimeEncoders:
-  val forInstant: Encoder[Instant] = Encoder.forString.contramap[Instant](_.toString)
+opaque type Slug = String
+object Slug:
+  def apply(v: String): Slug = v
+  extension (self: Slug) def value: String = self
+  given Codec[Slug] = Codec.of[String]
+  given Order[Slug] = Order.fromComparable[String]

@@ -61,6 +61,9 @@ final class ClientBuilder[F[_]: Async](
     new ClientBuilder[F](delegate.withLogger(LoggerProxy(logger)), mw :: middlewares)
   }
 
+  def withIdleConnectionTime(t: Duration) =
+    forward(_.withIdleConnectionTime(t))
+
   private def forward(
       f: EmberClientBuilder[F] => EmberClientBuilder[F]
   ): ClientBuilder[F] =

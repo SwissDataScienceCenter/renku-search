@@ -85,7 +85,7 @@ Possbile values are:
 
 ```scala mdoc:passthrough
 println(
-  projects.Visibility.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
+  Visibility.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
 )
 ```
 

@@ -30,8 +30,8 @@ object ModelGenerators:
   val idGen: Gen[Id] = Gen.uuid.map(uuid => Id(uuid.toString))
   val nameGen: Gen[Name] =
     alphaStringGen(max = 10).map(Name.apply)
-  val projectDescGen: Gen[projects.Description] =
-    alphaStringGen(max = 30).map(projects.Description.apply)
+  val projectDescGen: Gen[Description] =
+    alphaStringGen(max = 30).map(Description.apply)
 
   val timestampGen: Gen[Timestamp] =
     Gen
@@ -47,10 +47,10 @@ object ModelGenerators:
   val memberRoleGen: Gen[MemberRole] =
     Gen.oneOf(MemberRole.valuesV2)
 
-  val projectVisibilityGen: Gen[projects.Visibility] =
-    Gen.oneOf(projects.Visibility.values.toList)
-  val projectCreationDateGen: Gen[projects.CreationDate] =
-    instantGen().map(projects.CreationDate.apply)
+  val visibilityGen: Gen[Visibility] =
+    Gen.oneOf(Visibility.values.toList)
+  val creationDateGen: Gen[CreationDate] =
+    instantGen().map(CreationDate.apply)
 
   val keywordGen: Gen[Keyword] =
     Gen
@@ -73,25 +73,25 @@ object ModelGenerators:
       .chooseNum(min.toEpochMilli, max.toEpochMilli)
       .map(Instant.ofEpochMilli(_).truncatedTo(ChronoUnit.MILLIS))
 
-  val userFirstNameGen: Gen[users.FirstName] = Gen
+  val userFirstNameGen: Gen[FirstName] = Gen
     .oneOf("Eike", "Kuba", "Ralf", "Lorenzo", "Jean-Pierre", "Alfonso")
-    .map(users.FirstName.apply)
-  val userLastNameGen: Gen[users.LastName] = Gen
+    .map(FirstName.apply)
+  val userLastNameGen: Gen[LastName] = Gen
     .oneOf("Kowalski", "Doe", "Tourist", "Milkman", "Da Silva", "Bar")
-    .map(users.LastName.apply)
-  def userEmailGen(first: users.FirstName, last: users.LastName): Gen[users.Email] = Gen
+    .map(LastName.apply)
+  def userEmailGen(first: FirstName, last: LastName): Gen[Email] = Gen
     .oneOf("mail.com", "hotmail.com", "epfl.ch", "ethz.ch")
-    .map(v => users.Email(s"$first.$last@$v"))
-  val userEmailGen: Gen[users.Email] =
+    .map(v => Email(s"$first.$last@$v"))
+  val userEmailGen: Gen[Email] =
     (
       Gen.oneOf("mail.com", "hotmail.com", "epfl.ch", "ethz.ch"),
       userFirstNameGen,
       userLastNameGen
-    ).mapN((f, l, p) => users.Email(s"$f.$l@$p"))
+    ).mapN((f, l, p) => Email(s"$f.$l@$p"))
 
   val groupNameGen: Gen[Name] =
     Gen.oneOf(
       List("sdsc", "renku", "datascience", "rocket-science").map(Name.apply)
     )
-  val groupDescGen: Gen[groups.Description] =
-    alphaStringGen(max = 5).map(groups.Description.apply)
+  val groupDescGen: Gen[Description] =
+    alphaStringGen(max = 5).map(Description.apply)

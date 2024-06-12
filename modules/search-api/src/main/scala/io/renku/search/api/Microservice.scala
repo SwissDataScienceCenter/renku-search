@@ -24,7 +24,7 @@ import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 
 object Microservice extends IOApp:
-
+  private val logger = scribe.cats.io
   private val loadConfig = SearchApiConfig.config.load[IO]
 
   override def run(args: List[String]): IO[ExitCode] =
@@ -33,5 +33,9 @@ object Microservice extends IOApp:
       _ <- IO(LoggingSetup.doConfigure(config.verbosity))
       _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
         .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use(_ => IO.never)
+        .use { _ =>
+          logger.info(
+            s"Search microservice running: ${config.httpServerConfig}"
+          ) >> IO.never
+        }
     } yield ExitCode.Success

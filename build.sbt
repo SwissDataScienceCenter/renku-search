@@ -57,6 +57,7 @@ lazy val root = project
     }
   )
   .aggregate(
+    json,
     commons,
     jwt,
     openidKeycloak,
@@ -72,6 +73,18 @@ lazy val root = project
     searchCli
   )
 
+lazy val json = project
+  .in(file("modules/json"))
+  .settings(commonSettings)
+  .settings(
+    name := "json",
+    // please don't add more dependencies here
+    libraryDependencies ++= Dependencies.borer,
+    description := "Utilities around working with borer"
+  )
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+
 lazy val commons = project
   .in(file("modules/commons"))
   .settings(commonSettings)
@@ -81,7 +94,6 @@ lazy val commons = project
       Dependencies.borer ++
         Dependencies.catsCore ++
         Dependencies.catsEffect ++
-        Dependencies.ducktape ++
         Dependencies.fs2Core ++
         Dependencies.scodecBits ++
         Dependencies.scribe,
@@ -102,6 +114,7 @@ lazy val commons = project
     buildInfoKeys := Seq(name, version, gitHeadCommit, gitDescribedVersion),
     buildInfoPackage := "io.renku.search"
   )
+  .dependsOn(json % "compile->compile;test->test")
   .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
 
@@ -255,6 +268,7 @@ lazy val solrClient = project
   )
   .dependsOn(
     httpClient % "compile->compile;test->test",
+    json % "compile->compile;test->test",
     commons % "test->test"
   )
 

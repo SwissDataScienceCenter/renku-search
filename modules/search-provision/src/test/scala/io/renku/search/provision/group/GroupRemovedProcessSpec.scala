@@ -24,8 +24,7 @@ import cats.syntax.all.*
 import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.GroupRemoved
-import io.renku.search.model.EntityType
-import io.renku.search.model.Id
+import io.renku.search.model.{EntityType, Id}
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators

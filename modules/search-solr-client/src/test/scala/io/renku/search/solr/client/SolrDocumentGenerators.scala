@@ -23,7 +23,7 @@ import cats.syntax.all.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.model.*
 import io.renku.search.model.ModelGenerators.*
-import io.renku.search.model.projects.Visibility
+import io.renku.search.model.Visibility
 import io.renku.search.solr.documents.*
 import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
@@ -53,18 +53,18 @@ trait SolrDocumentGenerators:
   def projectDocumentGen(
       name: String,
       desc: String,
-      visibilityGen: Gen[Visibility] = projectVisibilityGen
+      visibilityGen: Gen[Visibility] = visibilityGen
   ): Gen[Project] =
-    (idGen, idGen, visibilityGen, projectCreationDateGen)
+    (idGen, idGen, visibilityGen, creationDateGen)
       .mapN((projectId, creatorId, visibility, creationDate) =>
         Project(
           projectId,
           DocVersion.NotExists,
           Name(name),
-          projects.Slug(name),
-          Seq(projects.Repository(s"http://github.com/$name")),
+          Slug(name),
+          Seq(Repository(s"http://github.com/$name")),
           visibility,
-          Option(projects.Description(desc)),
+          Option(Description(desc)),
           creatorId,
           creationDate
         )

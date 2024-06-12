@@ -24,7 +24,6 @@ import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.ProjectMemberAdded
 import io.renku.search.model.*
-import io.renku.search.model.MemberRole
 import io.renku.search.provision.project.AuthorizationAddedProvisioningSpec.testCases
 import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}

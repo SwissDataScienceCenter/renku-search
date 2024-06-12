@@ -16,8 +16,12 @@
  * limitations under the License.
  */
 
-package io.renku.search.borer.codecs
+package io.renku.search.model
 
-trait all extends DateTimeEncoders, DateTimeDecoders
+import io.bullet.borer.Codec
 
-object all extends all
+opaque type FirstName = String
+object FirstName:
+  def apply(v: String): FirstName = v
+  extension (self: FirstName) def value: String = self
+  given Codec[FirstName] = Codec.bimap[String, FirstName](_.value, FirstName.apply)

@@ -21,12 +21,9 @@ package io.renku.search.api
 import cats.effect.IO
 import cats.syntax.all.*
 
-import io.github.arainko.ducktape.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.api.data.*
-import io.renku.search.model.Id
-import io.renku.search.model.projects.Visibility
-import io.renku.search.model.users.FirstName
+import io.renku.search.model.*
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
@@ -92,15 +89,11 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
     )
 
   private def scoreToNone(e: SearchEntity): SearchEntity = e match
-    case e: Project => e.copy(score = None)
-    case e: User    => e.copy(score = None)
-    case e: Group   => e.copy(score = None)
+    case e: SearchEntity.Project => e.copy(score = None)
+    case e: SearchEntity.User    => e.copy(score = None)
+    case e: SearchEntity.Group   => e.copy(score = None)
 
   private def mkQuery(phrase: String): QueryInput =
     QueryInput.pageOne(Query.parse(s"Fields $phrase").fold(sys.error, identity))
 
-  private def toApiEntities(e: EntityDocument*) = e.map(toApiEntity)
-
-  private def toApiEntity(e: EntityDocument) =
-    given Transformer[Id, UserId] = (id: Id) => UserId(id)
-    e.to[SearchEntity]
+  private def toApiEntities(e: EntityDocument*) = e.map(EntityConverter.apply)

@@ -41,7 +41,7 @@ object GroupUpdated:
       id: Id,
       name: Name,
       namespace: Namespace,
-      description: Option[groups.Description]
+      description: Option[Description]
   ): GroupUpdated =
     GroupUpdated.V2(
       v2.GroupUpdated(id.value, name.value, description.map(_.value), namespace.value)

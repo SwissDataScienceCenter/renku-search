@@ -21,10 +21,8 @@ package io.renku.search.api
 import cats.effect.Async
 import cats.syntax.all.*
 
-import io.github.arainko.ducktape.*
 import io.renku.search.api.data.*
 import io.renku.search.model.EntityType
-import io.renku.search.model.Id
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.documents.EntityDocument
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
@@ -80,10 +78,6 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
         FacetData(all)
       }
       .getOrElse(FacetData.empty)
-    val items = solrResult.responseBody.docs.map(toApiEntity)
+    val items = solrResult.responseBody.docs.map(EntityConverter.apply)
     if (hasMore) SearchResult(items.init, facets, pageInfo)
     else SearchResult(items, facets, pageInfo)
-
-  private lazy val toApiEntity: EntityDocument => SearchEntity =
-    given Transformer[Id, UserId] = (id: Id) => UserId(id)
-    _.to[SearchEntity]

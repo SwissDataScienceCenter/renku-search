@@ -24,10 +24,7 @@ import cats.syntax.all.*
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs.deriveDecoder
 import io.renku.search.GeneratorSyntax.*
-import io.renku.search.model.Id
-import io.renku.search.model.ModelGenerators
-import io.renku.search.model.projects.Visibility
-import io.renku.search.model.users
+import io.renku.search.model.*
 import io.renku.search.query.Query
 import io.renku.search.solr.SearchRole
 import io.renku.search.solr.client.SolrDocumentGenerators.*
@@ -70,7 +67,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
     } yield ()
 
   test("be able to insert and fetch a User document"):
-    val firstName = users.FirstName("Johnny")
+    val firstName = FirstName("Johnny")
     val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
     for {
       client <- IO(searchSolrClient())
@@ -97,7 +94,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
     } yield ()
 
   test("be able to find by the given query"):
-    val firstName = users.FirstName("Ian")
+    val firstName = FirstName("Ian")
     val user = userDocumentGen.generateOne.copy(firstName = firstName.some)
     case class UserId(id: String)
     given Decoder[UserId] = deriveDecoder[UserId]

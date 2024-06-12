@@ -24,6 +24,7 @@ import munit.ScalaCheckSuite
 import org.scalacheck.Prop
 
 class UrlPatternSpec extends ScalaCheckSuite:
+  def urlPattern(str: String) = UrlPattern.unsafeFromString(str)
 
   test("read parts"):
     assertEquals(UrlPattern.splitUrl(""), UrlParts(None, Nil, None, Nil))
@@ -52,19 +53,18 @@ class UrlPatternSpec extends ScalaCheckSuite:
       UrlParts(None, Nil, None, List("auth", "exec"))
     )
 
-  test("fromString"):
+  test("fromString successful") {
     assertEquals(
-      UrlPattern.fromString("http://"),
+      urlPattern("http://"),
       UrlPattern.all.copy(scheme = Some(Segment.Literal("http")))
     )
     assertEquals(
-      UrlPattern.fromString("http"),
+      urlPattern("http"),
       UrlPattern.all.copy(host = List(Segment.Literal("http")))
     )
-    assertEquals(UrlPattern.fromString("*"), UrlPattern.all)
-    assertEquals(UrlPattern.fromString(""), UrlPattern.all)
+    assertEquals(urlPattern("*"), UrlPattern.all)
     assertEquals(
-      UrlPattern.fromString("*.*"),
+      urlPattern("*.*"),
       UrlPattern(
         None,
         List(Segment.MatchAll, Segment.MatchAll),
@@ -73,7 +73,7 @@ class UrlPatternSpec extends ScalaCheckSuite:
       )
     )
     assertEquals(
-      UrlPattern.fromString("*.test.com"),
+      urlPattern("*.test.com"),
       UrlPattern(
         None,
         List(Segment.MatchAll, Segment.Literal("test"), Segment.Literal("com")),
@@ -82,7 +82,7 @@ class UrlPatternSpec extends ScalaCheckSuite:
       )
     )
     assertEquals(
-      UrlPattern.fromString("*test.com"),
+      urlPattern("*test.com"),
       UrlPattern(
         None,
         List(Segment.Suffix("test"), Segment.Literal("com")),
@@ -91,7 +91,7 @@ class UrlPatternSpec extends ScalaCheckSuite:
       )
     )
     assertEquals(
-      UrlPattern.fromString("*test.com/auth*"),
+      urlPattern("*test.com/auth*"),
       UrlPattern(
         None,
         List(Segment.Suffix("test"), Segment.Literal("com")),
@@ -100,7 +100,7 @@ class UrlPatternSpec extends ScalaCheckSuite:
       )
     )
     assertEquals(
-      UrlPattern.fromString("https://test.com:15*/auth/sign"),
+      urlPattern("https://test.com:15*/auth/sign"),
       UrlPattern(
         Some(Segment.Literal("https")),
         List(Segment.Literal("test"), Segment.Literal("com")),
@@ -108,10 +108,35 @@ class UrlPatternSpec extends ScalaCheckSuite:
         List(Segment.Literal("auth"), Segment.Literal("sign"))
       )
     )
+    assertEquals(
+      urlPattern("https://test.com/**"),
+      UrlPattern(
+        Some(Segment.Literal("https")),
+        List(Segment.Literal("test"), Segment.Literal("com")),
+        None,
+        List(Segment.MatchAllRemainder)
+      )
+    )
+    assertEquals(
+      urlPattern("https://test.com/abc/**"),
+      UrlPattern(
+        Some(Segment.Literal("https")),
+        List(Segment.Literal("test"), Segment.Literal("com")),
+        None,
+        List(Segment.Literal("abc"), Segment.MatchAllRemainder)
+      )
+    )
+  }
+
+  test("fromString fail") {
+    assert(UrlPattern.fromString("").isLeft)
+    assert(UrlPattern.fromString("test.com/a/**/b").isLeft)
+    assert(UrlPattern.fromString("**.com/a/b").isLeft)
+  }
 
   property("read valid url pattern") {
     Prop.forAll(CommonGenerators.urlPatternGen) { pattern =>
-      val parsed = UrlPattern.fromString(pattern.render)
+      val parsed = urlPattern(pattern.render)
       val result = parsed == pattern
       if (!result) {
         println(s"Given: $pattern   Parsed: ${parsed}   Rendered: ${pattern.render}")
@@ -132,17 +157,28 @@ class UrlPatternSpec extends ScalaCheckSuite:
 
   test("matches successful"):
     List(
-      UrlPattern.fromString("*.test.com") -> List(
+      urlPattern("*.test.com") -> List(
         "dev.test.com",
         "http://sub.test.com/ab/cd"
       ),
-      UrlPattern.fromString("/auth/renku") -> List(
+      urlPattern("/auth/renku") -> List(
         "dev.test.com/auth/renku",
         "http://sub.test.com/auth/renku"
       ),
-      UrlPattern.fromString("*.test.com/auth/renku") -> List(
+      urlPattern("*.test.com/auth/renku") -> List(
         "http://dev.test.com/auth/renku",
         "sub1.test.com/auth/renku"
+      ),
+      urlPattern("test.com/**") -> List(
+        "http://test.com/auth/a/b",
+        "https://test.com/auth",
+        "https://test.com",
+        "https://test.com/"
+      ),
+      urlPattern("test.com/a/c/**") -> List(
+        "http://test.com/a/c",
+        "http://test.com/a/c/b",
+        "http://test.com/a/c/b/1/2"
       )
     ).foreach { case (pattern, values) =>
       values.foreach(v =>
@@ -155,17 +191,21 @@ class UrlPatternSpec extends ScalaCheckSuite:
 
   test("matches not successful"):
     List(
-      UrlPattern.fromString("*.test.com") -> List(
+      urlPattern("*.test.com") -> List(
         "fest.com",
         "http://sub.fest.com/ab/cd"
       ),
-      UrlPattern.fromString("/auth/renku") -> List(
+      urlPattern("/auth/renku") -> List(
         "fest.com/tauth/renku",
         "http://sub.test.com/auth/renkuu"
       ),
-      UrlPattern.fromString("*.test.com/auth/renku") -> List(
+      urlPattern("*.test.com/auth/renku") -> List(
         "http://dev.test.com/auth",
         "sub1.sub2.test.com/auth/renku"
+      ),
+      urlPattern("test.com/a/c/**") -> List(
+        "http://test.com/a/b/c",
+        "http://test.com/a"
       )
     ).foreach { case (pattern, values) =>
       values.foreach(v =>

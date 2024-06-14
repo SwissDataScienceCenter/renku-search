@@ -18,8 +18,6 @@
 
 package io.renku.search.api.tapir
 
-import cats.syntax.all.*
-
 import io.renku.search.api.data.*
 import io.renku.search.model.{EntityType, Id}
 import io.renku.search.query.Query
@@ -29,13 +27,8 @@ trait TapirCodecs:
   given Codec[String, Query, CodecFormat.TextPlain] =
     Codec.string.mapEither(Query.parse(_))(_.render)
 
-  given Schema[Query] = Schema.anyObject[Query]
-  given Schema[QueryInput] = Schema.derived
-
   given Codec[String, EntityType, CodecFormat.TextPlain] =
     Codec.string.mapEither(EntityType.fromString(_))(_.name)
-
-  given Schema[EntityType] = Schema.derivedEnumeration.defaultStringBased
 
   given Codec[String, AuthToken.JwtToken, CodecFormat.TextPlain] =
     Codec.string.map(AuthToken.JwtToken(_))(_.render)

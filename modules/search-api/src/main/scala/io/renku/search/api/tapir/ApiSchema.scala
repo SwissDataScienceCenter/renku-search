@@ -24,6 +24,7 @@ import io.renku.search.api.data.*
 import io.renku.search.api.data.SearchEntity.*
 import io.renku.search.api.tapir.SchemaSyntax.*
 import io.renku.search.model.*
+import io.renku.search.query.Query
 import sttp.tapir.Schema.SName
 import sttp.tapir.SchemaType.*
 import sttp.tapir.generic.Configuration
@@ -31,13 +32,18 @@ import sttp.tapir.{FieldName, Schema, SchemaType}
 
 /** tapir schema definitions for the search api data structures */
 trait ApiSchema extends ApiSchema.Primitives:
+  given Schema[Query] = Schema.anyObject[Query]
+  given Schema[QueryInput] = Schema.derived
+
   given Schema[User] = Schema
     .derived[User]
-    .jsonExample(ApiSchema.exampleUser)
+    .jsonExample(ApiSchema.exampleUser.widen)
 
   given Schema[Group] = Schema
     .derived[Group]
-    .jsonExample(ApiSchema.exampleGroup)
+    .jsonExample(ApiSchema.exampleGroup.widen)
+
+  given Schema[UserOrGroup] = Schema.derived
 
   given (using userSchema: Schema[User]): Schema[Project] = Schema
     .derived[Project]
@@ -57,7 +63,7 @@ trait ApiSchema extends ApiSchema.Primitives:
         userSchema.copy(schemaType = userType.copy(fields = df :: userType.fields))
       schemaOptUser.copy(schemaType = SOption(nextUserSchema)(identity))
     }
-    .jsonExample(ApiSchema.exampleProject)
+    .jsonExample(ApiSchema.exampleProject.widen)
 
   given (using
       projectSchema: Schema[Project],
@@ -100,9 +106,10 @@ object ApiSchema:
     given Schema[FirstName] = Schema.string[FirstName]
     given Schema[LastName] = Schema.string[LastName]
     given Schema[Email] = Schema.string[Email]
+    given Schema[EntityType] = Schema.derivedEnumeration[EntityType].defaultStringBased
   end Primitives
 
-  val exampleUser: SearchEntity = User(
+  val exampleUser: SearchEntity.User = User(
     Id("1CAF4C73F50D4514A041C9EDDB025A36"),
     Some(Namespace("renku/renku")),
     Some(FirstName("Albert")),
@@ -110,7 +117,7 @@ object ApiSchema:
     Some(2.1)
   )
 
-  val exampleGroup: SearchEntity = Group(
+  val exampleGroup: SearchEntity.Group = Group(
     Id("2CAF4C73F50D4514A041C9EDDB025A36"),
     Name("SDSC"),
     Namespace("SDSC"),
@@ -118,15 +125,15 @@ object ApiSchema:
     Some(1.1)
   )
 
-  val exampleProject: SearchEntity = Project(
+  val exampleProject: SearchEntity.Project = Project(
     id = Id("01HRA7AZ2Q234CDQWGA052F8MK"),
     name = Name("renku"),
     slug = Slug("renku"),
-    namespace = Some(Namespace("renku/renku")),
+    namespace = Some(UserOrGroup(exampleGroup)),
     repositories = Seq(Repository("https://github.com/renku")),
     visibility = Visibility.Public,
     description = Some(Description("Renku project")),
-    createdBy = Some(exampleUser.asInstanceOf[User]),
+    createdBy = Some(exampleUser),
     creationDate = CreationDate(Instant.now),
     keywords = List(Keyword("data"), Keyword("science")),
     score = Some(1.0)

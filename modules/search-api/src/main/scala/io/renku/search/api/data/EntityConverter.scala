@@ -31,7 +31,11 @@ trait EntityConverter:
       id = p.id,
       name = p.name,
       slug = p.slug,
-      namespace = p.namespace,
+      namespace = p.namespaceDetails.flatMap(_.docs.headOption).map {
+        case u: UserDocument  => UserOrGroup(u)
+        case g: GroupDocument => UserOrGroup(g)
+        case _                => sys.error("todo")
+      },
       repositories = p.repositories,
       visibility = p.visibility,
       description = p.description,

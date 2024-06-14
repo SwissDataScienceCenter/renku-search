@@ -61,6 +61,7 @@ final case class Project(
     groupViewers: Set[Id] = Set.empty,
     keywords: List[Keyword] = List.empty,
     namespace: Option[Namespace] = None,
+    namespaceDetails: Option[ResponseBody[EntityDocument]] = None,
     score: Option[Double] = None
 ) extends EntityDocument:
   def setVersion(v: DocVersion): Project = copy(version = v)

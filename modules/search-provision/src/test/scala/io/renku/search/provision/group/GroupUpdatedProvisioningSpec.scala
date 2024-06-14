@@ -147,7 +147,7 @@ object GroupUpdatedProvisioningSpec:
     val pgroup = SolrDocumentGenerators.partialGroupGen.generateOne
     val upd = EventsGenerators.groupUpdatedGen("group-update").generateOne
     val group2 = SolrDocumentGenerators.groupDocumentGen.generateOne
-    val projects = SolrDocumentGenerators.projectDocumentGen
+    val projects = SolrDocumentGenerators.projectDocumentGenForInsert
       .asListOfN(1, 6)
       .map(
         _.map(_.copy(namespace = Some(group2.namespace), version = DocVersion.NotExists))

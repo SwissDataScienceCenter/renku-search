@@ -34,6 +34,7 @@ import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData
 import munit.CatsEffectSuite
+import org.scalacheck.Gen
 
 class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
   override def munitFixtures: Seq[munit.AnyFixture[?]] =
@@ -41,7 +42,11 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
 
   test("be able to insert and fetch a Project document"):
     val project =
-      projectDocumentGen("solr-project", "solr project description").generateOne
+      projectDocumentGen(
+        "solr-project",
+        "solr project description",
+        Gen.const(None)
+      ).generateOne
     for {
       client <- IO(searchSolrClient())
       _ <- client.upsert(Seq(project.widen))
@@ -54,6 +59,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
       _ = assert(
         qr.responseBody.docs.map(
           _.noneScore
+            .setCreatedBy(None)
             .assertVersionNot(DocVersion.NotExists)
             .setVersion(DocVersion.NotExists)
         ) contains project
@@ -117,7 +123,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
       client <- IO(searchSolrClient())
       entityMembers <- IO(entityMembersGen.suchThat(_.nonEmpty).generateOne)
       project <- IO(
-        projectDocumentGen
+        projectDocumentGenForInsert
           .map(p => p.setMembers(entityMembers).copy(visibility = Visibility.Private))
           .generateOne
       )

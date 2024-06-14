@@ -99,7 +99,9 @@ object GroupMemberAddedSpec:
           .map(_.setMembers(groupMembers))
         projects <- Gen
           .choose(1, 6)
-          .flatMap(n => Gen.listOfN(n, SolrDocumentGenerators.projectDocumentGen))
+          .flatMap(n =>
+            Gen.listOfN(n, SolrDocumentGenerators.projectDocumentGenForInsert)
+          )
           .map(
             _.map(
               _.copy(namespace = Some(group.namespace))

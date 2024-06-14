@@ -35,7 +35,10 @@ trait EntityConverter:
       repositories = p.repositories,
       visibility = p.visibility,
       description = p.description,
-      createdBy = SearchEntity.UserId(p.createdBy),
+      createdBy = p.creatorDetails
+        .flatMap(_.docs.headOption)
+        .map(user)
+        .orElse(Some(SearchEntity.User(p.createdBy))),
       creationDate = p.creationDate,
       keywords = p.keywords,
       score = p.score

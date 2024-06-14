@@ -39,13 +39,25 @@ trait ApiSchema extends ApiSchema.Primitives:
     .derived[Group]
     .jsonExample(ApiSchema.exampleGroup)
 
-  given Schema[Project] = Schema
+  given (using userSchema: Schema[User]): Schema[Project] = Schema
     .derived[Project]
+    .modify(_.createdBy) { schemaOptUser =>
+      // this is necessary to include the `type` property into the schema of the createdBy property
+      // It is not added automagically, because we use the concrete type `User` and not `SearchEntity`
+      // (the sealed trait).
+      // Using `SearchEntity` results in a deadlock when evaluating the magnolia macros from tapir. I
+      // tried to make all components lazy, but didn't manage to solve it
+      val userType = userSchema.schemaType.asInstanceOf[SProduct[User]]
+      val df = SProductField[User, String](
+        FieldName("type"),
+        Schema.string,
+        _ => Some("User")
+      )
+      val nextUserSchema: Schema[User] =
+        userSchema.copy(schemaType = userType.copy(fields = df :: userType.fields))
+      schemaOptUser.copy(schemaType = SOption(nextUserSchema)(identity))
+    }
     .jsonExample(ApiSchema.exampleProject)
-
-  given Schema[UserId] = Schema
-    .derived[UserId]
-    .jsonExample(UserId(Id("01HRA7AZ2Q234CDQWGA052F8MK")))
 
   given (using
       projectSchema: Schema[Project],
@@ -54,7 +66,7 @@ trait ApiSchema extends ApiSchema.Primitives:
   ): Schema[SearchEntity] = {
     val derived = Schema.derived[SearchEntity]
     derived.schemaType match {
-      case s: SCoproduct[_] =>
+      case s: SCoproduct[?] =>
         derived.copy(schemaType =
           s.addDiscriminatorField(
             FieldName(SearchEntity.discriminatorField),
@@ -107,16 +119,16 @@ object ApiSchema:
   )
 
   val exampleProject: SearchEntity = Project(
-    Id("01HRA7AZ2Q234CDQWGA052F8MK"),
-    Name("renku"),
-    Slug("renku"),
-    Some(Namespace("renku/renku")),
-    Seq(Repository("https://github.com/renku")),
-    Visibility.Public,
-    Some(Description("Renku project")),
-    UserId(Id("bla")),
-    CreationDate(Instant.now),
-    List(Keyword("data"), Keyword("science")),
-    Some(1.0)
+    id = Id("01HRA7AZ2Q234CDQWGA052F8MK"),
+    name = Name("renku"),
+    slug = Slug("renku"),
+    namespace = Some(Namespace("renku/renku")),
+    repositories = Seq(Repository("https://github.com/renku")),
+    visibility = Visibility.Public,
+    description = Some(Description("Renku project")),
+    createdBy = Some(exampleUser.asInstanceOf[User]),
+    creationDate = CreationDate(Instant.now),
+    keywords = List(Keyword("data"), Keyword("science")),
+    score = Some(1.0)
   )
 end ApiSchema

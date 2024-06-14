@@ -20,17 +20,18 @@ package io.renku.search.api.data
 
 import io.bullet.borer.*
 import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs.{deriveAllCodecs, deriveCodec}
+import io.bullet.borer.derivation.MapBasedCodecs
+import io.renku.json.EncoderSupport
 import io.renku.search.model.*
 
 sealed trait SearchEntity:
   def id: Id
-  def score: Option[Double]
 
 object SearchEntity:
   private[api] val discriminatorField = "type"
   given AdtEncodingStrategy = AdtEncodingStrategy.flat(discriminatorField)
-  given Codec[SearchEntity] = deriveAllCodecs[SearchEntity]
+  given Decoder[SearchEntity] = MapBasedCodecs.deriveDecoder[SearchEntity]
+  given Encoder[SearchEntity] = EncoderSupport.derive[SearchEntity]
 
   final case class Project(
       id: Id,
@@ -40,15 +41,17 @@ object SearchEntity:
       repositories: Seq[Repository],
       visibility: Visibility,
       description: Option[Description] = None,
-      createdBy: UserId,
+      createdBy: Option[User],
       creationDate: CreationDate,
       keywords: List[Keyword] = Nil,
       score: Option[Double] = None
   ) extends SearchEntity
 
-  final case class UserId(id: Id)
-  object UserId:
-    given Codec[UserId] = deriveCodec[UserId]
+  object Project:
+    given Encoder[Project] =
+      EncoderSupport.deriveWithDiscriminator[Project](discriminatorField)
+    given Decoder[Project] = MapBasedCodecs.deriveDecoder
+  end Project
 
   final case class User(
       id: Id,
@@ -58,6 +61,11 @@ object SearchEntity:
       score: Option[Double] = None
   ) extends SearchEntity
 
+  object User:
+    given Encoder[User] = EncoderSupport.deriveWithDiscriminator(discriminatorField)
+    given Decoder[User] = MapBasedCodecs.deriveDecoder
+  end User
+
   final case class Group(
       id: Id,
       name: Name,
@@ -65,3 +73,7 @@ object SearchEntity:
       description: Option[Description] = None,
       score: Option[Double] = None
   ) extends SearchEntity
+  object Group:
+    given Encoder[Group] = EncoderSupport.deriveWithDiscriminator(discriminatorField)
+    given Decoder[Group] = MapBasedCodecs.deriveDecoder
+  end Group

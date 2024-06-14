@@ -26,6 +26,7 @@ import io.renku.search.model.*
 import io.renku.search.model.MemberRole.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.DocVersion
+import io.renku.solr.client.ResponseBody
 
 sealed trait EntityDocument extends SolrDocument:
   val score: Option[Double]
@@ -49,6 +50,7 @@ final case class Project(
     visibility: Visibility,
     description: Option[Description] = None,
     createdBy: Id,
+    creatorDetails: Option[ResponseBody[User]] = None,
     creationDate: CreationDate,
     owners: Set[Id] = Set.empty,
     editors: Set[Id] = Set.empty,

@@ -29,6 +29,7 @@ import io.renku.search.http.borer.BorerEntityJsonCodec.given
 import io.renku.search.model.*
 import io.renku.search.solr.documents.{Project, User}
 import io.renku.solr.client.DocVersion
+import io.renku.solr.client.ResponseBody
 import org.http4s.*
 import org.http4s.MediaType.application
 import org.http4s.Method.{GET, POST}
@@ -101,7 +102,8 @@ private class RandommerIoDocsCreator[F[_]: Async: ModelTypesGenerators](
         description = Some(desc),
         keywords = keywords,
         createdBy = user.id,
-        creationDate = creationDate
+        creationDate = creationDate,
+        creatorDetails = Some(ResponseBody.single(user))
       ) -> List(user)
     }
 

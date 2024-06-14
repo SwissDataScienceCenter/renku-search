@@ -108,7 +108,7 @@ object AuthorizationRemovedProvisioningSpec:
     val userId = ModelGenerators.idGen.generateOne
     val userRole = ModelGenerators.memberRoleGen.generateOne
     val proj =
-      SolrDocumentGenerators.projectDocumentGen.generateOne.modifyEntityMembers(
+      SolrDocumentGenerators.projectDocumentGenForInsert.generateOne.modifyEntityMembers(
         _.addMember(userId, userRole)
       )
     val pproj =

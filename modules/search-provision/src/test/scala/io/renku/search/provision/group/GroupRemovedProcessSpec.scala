@@ -113,5 +113,5 @@ object GroupRemovedProcessSpec:
     def create: Gen[DbState] =
       for
         group <- SolrDocumentGenerators.groupDocumentGen
-        projects <- SolrDocumentGenerators.projectDocumentGen.asListOfN()
+        projects <- SolrDocumentGenerators.projectDocumentGenForInsert.asListOfN()
       yield DbState(group, projects.toSet.map(_.copy(namespace = group.namespace.some)))

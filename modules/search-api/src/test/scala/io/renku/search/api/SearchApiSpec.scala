@@ -45,11 +45,13 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
       "matching",
       "matching description",
       Gen.const(None),
+      Gen.const(None),
       Gen.const(Visibility.Public)
     ).generateOne
     val project2 = projectDocumentGen(
       "disparate",
       "disparate description",
+      Gen.const(None),
       Gen.const(None),
       Gen.const(Visibility.Public)
     ).generateOne
@@ -75,12 +77,13 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
       "exclusive",
       "exclusive description",
       Gen.const(None),
+      Gen.const(None),
       Gen.const(Visibility.Public)
     ).generateOne.copy(createdBy = userId)
     for {
       client <- IO(searchSolrClient())
       searchApi = new SearchApiImpl[IO](client)
-      _ <- client.upsert(project :: user :: Nil)
+      _ <- client.upsert[EntityDocument](project :: user :: Nil)
       results <- searchApi
         .query(AuthContext.anonymous)(mkQuery("exclusive"))
         .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))

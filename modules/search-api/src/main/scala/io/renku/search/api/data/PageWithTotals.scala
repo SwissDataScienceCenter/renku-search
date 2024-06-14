@@ -21,7 +21,6 @@ package io.renku.search.api.data
 import io.bullet.borer.NullOptions.given
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.{Decoder, Encoder}
-import sttp.tapir.Schema
 
 final case class PageWithTotals(
     page: PageDef,
@@ -34,7 +33,6 @@ final case class PageWithTotals(
 object PageWithTotals:
   given Encoder[PageWithTotals] = MapBasedCodecs.deriveEncoder
   given Decoder[PageWithTotals] = MapBasedCodecs.deriveDecoder
-  given Schema[PageWithTotals] = Schema.derived
 
   def apply(page: PageDef, totalResults: Long, hasMore: Boolean): PageWithTotals =
     PageWithTotals(

@@ -28,6 +28,14 @@ sealed trait SearchEntity:
   def id: Id
   def widen: SearchEntity = this
 
+sealed trait UserOrGroup:
+  def id: Id
+
+object UserOrGroup:
+  given AdtEncodingStrategy = AdtEncodingStrategy.flat(SearchEntity.discriminatorField)
+  given Decoder[UserOrGroup] = MapBasedCodecs.deriveDecoder[UserOrGroup]
+  given Encoder[UserOrGroup] = EncoderSupport.derive[UserOrGroup]
+
 object SearchEntity:
   private[api] val discriminatorField = "type"
   given AdtEncodingStrategy = AdtEncodingStrategy.flat(discriminatorField)
@@ -61,6 +69,7 @@ object SearchEntity:
       lastName: Option[LastName] = None,
       score: Option[Double] = None
   ) extends SearchEntity
+      with UserOrGroup
 
   object User:
     given Encoder[User] = EncoderSupport.deriveWithDiscriminator(discriminatorField)
@@ -74,6 +83,7 @@ object SearchEntity:
       description: Option[Description] = None,
       score: Option[Double] = None
   ) extends SearchEntity
+      with UserOrGroup
   object Group:
     given Encoder[Group] = EncoderSupport.deriveWithDiscriminator(discriminatorField)
     given Decoder[Group] = MapBasedCodecs.deriveDecoder

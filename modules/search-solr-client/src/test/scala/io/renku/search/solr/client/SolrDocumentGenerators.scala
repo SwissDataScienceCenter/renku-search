@@ -49,7 +49,8 @@ trait SolrDocumentGenerators:
     projectDocumentGen(
       s"proj-$differentiator",
       s"proj desc $differentiator",
-      userDocumentGen.asOption
+      userDocumentGen.asOption,
+      userOrGroupDocumentGen.asOption
     )
 
   val projectDocumentGenForInsert: Gen[Project] =
@@ -57,6 +58,7 @@ trait SolrDocumentGenerators:
     projectDocumentGen(
       s"proj-$differentiator",
       s"proj desc $differentiator",
+      Gen.const(None),
       Gen.const(None)
     )
 
@@ -64,21 +66,27 @@ trait SolrDocumentGenerators:
       name: String,
       desc: String,
       creatorGen: Gen[Option[User]],
+      namespaceGen: Gen[Option[User | Group]],
       visibilityGen: Gen[Visibility] = visibilityGen
   ): Gen[Project] =
-    (idGen, idGen, visibilityGen, creationDateGen, creatorGen)
-      .mapN((projectId, creatorId, visibility, creationDate, creator) =>
+    (idGen, idGen, namespaceGen, visibilityGen, creationDateGen, creatorGen)
+      .mapN((projectId, creatorId, namespace, visibility, creationDate, creator) =>
         Project(
-          projectId,
-          DocVersion.NotExists,
-          Name(name),
-          Slug(name),
-          Seq(Repository(s"http://github.com/$name")),
-          visibility,
-          Option(Description(desc)),
-          creatorId,
-          creator.map(_.copy(id = creatorId)).map(ResponseBody.single),
-          creationDate
+          id = projectId,
+          version = DocVersion.NotExists,
+          name = Name(name),
+          slug = Slug(name),
+          namespace = namespace.flatMap {
+            case u: User  => u.namespace
+            case g: Group => g.namespace.some
+          },
+          namespaceDetails = namespace.map(ResponseBody.single),
+          repositories = Seq(Repository(s"http://github.com/$name")),
+          visibility = visibility,
+          description = Option(Description(desc)),
+          createdBy = creatorId,
+          creatorDetails = creator.map(_.copy(id = creatorId)).map(ResponseBody.single),
+          creationDate = creationDate
         )
       )
 
@@ -115,3 +123,6 @@ trait SolrDocumentGenerators:
           desc
         )
       )
+
+  def userOrGroupDocumentGen: Gen[User | Group] =
+    Gen.oneOf(userDocumentGen, groupDocumentGen)

@@ -31,10 +31,14 @@ trait EntityConverter:
       id = p.id,
       name = p.name,
       slug = p.slug,
-      namespace = p.namespaceDetails.flatMap(_.docs.headOption).map {
-        case u: UserDocument  => UserOrGroup(u)
-        case g: GroupDocument => UserOrGroup(g)
-        case _                => sys.error("todo")
+      namespace = p.namespaceDetails.flatMap(_.docs.headOption).flatMap {
+        case u: UserDocument  => Some(user(u))
+        case g: GroupDocument => Some(group(g))
+        case v =>
+          scribe.error(
+            s"Error converting project namespace due to incorrect data. A user or group was expected as the project namespace of ${p.id}/${p.slug}, but found: $v"
+          )
+          None
       },
       repositories = p.repositories,
       visibility = p.visibility,

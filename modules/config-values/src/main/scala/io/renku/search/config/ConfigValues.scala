@@ -86,7 +86,8 @@ object ConfigValues extends ConfigDecoders:
       renv(s"${prefix}_HTTP_SERVER_BIND_ADDRESS").default("0.0.0.0").as[Ipv4Address]
     val port =
       renv(s"${prefix}_HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
-    val shutdownTimeout = renv(s"${prefix}_HTTP_SHUTDOWN_TIMEOUT").default("30s").as[Duration]
+    val shutdownTimeout =
+      renv(s"${prefix}_HTTP_SHUTDOWN_TIMEOUT").default("30s").as[Duration]
     (bindAddress, port, shutdownTimeout).mapN(HttpServerConfig.apply)
 
   val jwtVerifyConfig: ConfigValue[Effect, JwtVerifyConfig] = {

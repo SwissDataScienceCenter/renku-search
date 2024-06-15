@@ -34,11 +34,11 @@ object OperationRoutes extends TapirBorerJson {
       .description("Ping")
       .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
 
-
   private given Schema[CurrentVersion] = Schema.derived
 
   private def versionEndpoint[F[_]: Async] =
-    endpoint.get.in("version")
+    endpoint.get
+      .in("version")
       .out(borerJsonBody[CurrentVersion])
       .description("Return version information")
       .serverLogicSuccess[F](_ => CurrentVersion.get.pure[F])

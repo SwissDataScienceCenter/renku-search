@@ -53,8 +53,6 @@ final class Routes[F[_]: Async: Network](
 ):
   private val logger = scribe.cats.effect[F]
 
-  private val prefix = "/search"
-
   private val makeJwtVerify =
     ClientBuilder(EmberClientBuilder.default[F])
       .withDefaultRetry(RetryConfig.default)
@@ -71,11 +69,13 @@ final class Routes[F[_]: Async: Network](
 
   private def searchHttpRoutes(searchRoutes: SearchRoutes[F]) =
     Router[F](
-      prefix -> (openApiRoute(searchRoutes).routes <+> searchRoutes.routes)
+      "/search" -> (openApiRoute(searchRoutes).routes <+> searchRoutes.routes),
+      "/api/search/query" -> (openApiRoute(searchRoutes).routes <+> searchRoutes.routes),
+      "/search/query" -> (openApiRoute(searchRoutes).routes <+> searchRoutes.routes)
     )
 
   private def openApiRoute(searchRoutes: SearchRoutes[F]) =
-    OpenApiRoute[F](s"/api$prefix", "Renku Search API", searchRoutes.endpoints)
+    OpenApiRoute[F](s"/api/search/query", "Renku Search API", searchRoutes.endpoints)
 
   private lazy val operationHttpRoutes =
     Router[F]("/" -> OperationRoutes[F])

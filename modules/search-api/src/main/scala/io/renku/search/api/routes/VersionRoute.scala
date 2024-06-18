@@ -16,33 +16,32 @@
  * limitations under the License.
  */
 
-package io.renku.search.http.routes
+package io.renku.search.api.routes
 
-import cats.effect.Async
+import cats.effect.*
 import cats.syntax.all.*
-import org.http4s.HttpRoutes
 import sttp.tapir.*
-import sttp.tapir.server.http4s.Http4sServerInterpreter
 import io.renku.search.common.CurrentVersion
-import io.renku.search.http.borer.TapirBorerJson
+import org.http4s.HttpRoutes
 
-object OperationRoutes extends TapirBorerJson {
-  def pingEndpoint[F[_]: Async] =
-    endpoint.get
-      .in("ping")
-      .out(stringBody)
-      .description("Ping")
-      .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
+final class VersionRoute[F[_]: Async](prefix: EndpointInput[Unit])
+    extends RoutesDefinition[F]:
+  private val baseEndpoint = endpoint.in(prefix).tag("Information")
 
-  private given Schema[CurrentVersion] = Schema.derived
-
-  def versionEndpoint[F[_]: Async] =
-    endpoint.get
+  val versionEndpoint =
+    baseEndpoint.get
       .in("version")
       .out(borerJsonBody[CurrentVersion])
-      .description("Return version information")
-      .serverLogicSuccess[F](_ => CurrentVersion.get.pure[F])
+      .description("Returns version information")
 
-  def apply[F[_]: Async]: HttpRoutes[F] =
-    Http4sServerInterpreter[F]().toRoutes(List(pingEndpoint, versionEndpoint))
-}
+  val versionRoute = RoutesDefinition
+    .interpreter[F]
+    .toRoutes(
+      versionEndpoint.serverLogicSuccess[F](_ => CurrentVersion.get.pure[F])
+    )
+
+  override val docRoutes: List[AnyEndpoint] =
+    List(versionEndpoint)
+
+  override val routes: HttpRoutes[F] =
+    versionRoute

@@ -19,6 +19,6 @@
 
   services.openapi-docs = {
     enable = true;
-    openapi-spec = "http://localhost:8080/search/spec.json";
+    openapi-spec = "http://localhost:8080/api/search/spec.json";
   };
 }

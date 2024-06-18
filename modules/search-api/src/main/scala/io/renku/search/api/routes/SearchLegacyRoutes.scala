@@ -28,35 +28,36 @@ import io.renku.search.query.docs.SearchQueryManual
 import org.http4s.HttpRoutes
 import sttp.tapir.*
 
-final class SearchRoutes[F[_]: Async](
+// keep this until gateway is updated to forward to `SearchRoutes`
+final class SearchLegacyRoutes[F[_]: Async](
     api: SearchApi[F],
-    authenticate: Authenticate[F],
-    prefix: EndpointInput[Unit] = "api" / "search",
+    authenticate: Authenticate[F]
 ) extends RoutesDefinition[F] {
 
   private val logger = scribe.cats.effect[F]
-  private val baseEndpoint = endpoint.in(prefix).tag("Search")
+  private val baseEndpoint = endpoint.tag("Search (Legacy)").deprecated()
 
-  val queryEndpoint: Endpoint[AuthToken, QueryInput, String, SearchResult, Any] =
-    baseEndpoint.get
-      .in("query")
+  def queryEndpoint(
+      in: Endpoint[Unit, Unit, Unit, Unit, Any]
+  ): Endpoint[AuthToken, QueryInput, String, SearchResult, Any] =
+    in
       .in(Params.queryInput)
       .securityIn(Params.renkuAuth)
       .errorOut(borerJsonBody[String])
       .out(Params.searchResult)
       .description(SearchQueryManual.markdown)
 
-  val queryRoute = RoutesDefinition
-    .interpreter[F]
-    .toRoutes(
-      queryEndpoint
-        .serverSecurityLogic(authenticate.apply)
-        .serverLogic(api.query)
-    )
+  val queryPath = queryEndpoint(baseEndpoint.get.in("search"))
+  val rootPath = queryEndpoint(baseEndpoint.get.in("search"/"query"))
 
   override val docRoutes: List[AnyEndpoint] =
-    List(queryEndpoint)
+    List(queryPath, rootPath)
 
   override val routes: HttpRoutes[F] =
-    queryRoute
+    RoutesDefinition
+      .interpreter[F]
+      .toRoutes(
+        List(queryPath, rootPath)
+          .map(_.serverSecurityLogic(authenticate.apply).serverLogic(api.query))
+      )
 }

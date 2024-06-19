@@ -20,32 +20,30 @@ package io.renku.search.api
 
 import cats.effect.*
 import cats.syntax.all.*
-import io.renku.search.api.routes.OpenApiRoute
-import io.renku.search.http.routes.OperationRoutes
-import io.renku.search.http.metrics.MetricsRoutes
-import io.renku.search.metrics.CollectorRegistryBuilder
-import org.http4s.server.Router
-import io.renku.search.http.HttpServer
-import scribe.Scribe
-import org.http4s.HttpApp
-import org.http4s.server.middleware.{RequestId, RequestLogger}
-import org.http4s.server.middleware.ResponseLogger
 import fs2.io.net.Network
 
-object SearchServer:
+import io.renku.search.api.routes.OpenApiRoute
+import io.renku.search.http.HttpServer
+import io.renku.search.http.metrics.MetricsRoutes
+import io.renku.search.http.routes.OperationRoutes
+import io.renku.search.metrics.CollectorRegistryBuilder
+import org.http4s.HttpApp
+import org.http4s.server.middleware.ResponseLogger
+import org.http4s.server.middleware.{RequestId, RequestLogger}
+import scribe.Scribe
 
+object SearchServer:
+  val pathPrefix = List("api", "search")
   def create[F[_]: Async: Network](config: SearchApiConfig, app: ServiceRoutes[F]) =
     for
       logger <- Resource.pure(scribe.cats.effect[F])
-      openApiRoute = OpenApiRoute(app.docRoutes)
+      openApiRoute = OpenApiRoute(app.docRoutes, pathPrefix).routes
+      openApiLegacy = OpenApiRoute(app.docRoutes, List("search")).routes
       opRoutes = OperationRoutes[F]
       metricRoutes = MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics)
       businessRoutes <- metricRoutes.makeRoutes(app.routes)
 
-      routes = Router[F](
-        "/" -> (businessRoutes <+> opRoutes),
-        "/api/search" -> openApiRoute.routes
-      )
+      routes = openApiRoute <+> openApiLegacy <+> businessRoutes <+> opRoutes
 
       server <- HttpServer[F](config.httpServerConfig)
         .withHttpApp(
@@ -60,14 +58,14 @@ object SearchServer:
   private def middleWares[F[_]: Async](
       logger: Scribe[F]
   ): List[HttpApp[F] => HttpApp[F]] =
-    val logAction = (str: String) => logger.info(str)
+    val log = (str: String) => logger.info(str)
     List(
       RequestLogger
-        .httpApp(logHeaders = true, logBody = false, logAction = logAction.some),
+        .httpApp(logHeaders = true, logBody = false, logAction = log.some),
       RequestId.httpApp[F],
       ResponseLogger.httpApp(
         logHeaders = true,
         logBody = false,
-        logAction = logAction.some
+        logAction = log.some
       )
     )

@@ -27,10 +27,8 @@ import io.renku.search.api.auth.Authenticate
 import io.renku.search.api.routes.*
 import io.renku.search.http.ClientBuilder
 import io.renku.search.http.RetryConfig
-import org.http4s.HttpRoutes
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.server.Router
-import sttp.tapir.*
 
 /** Defines the routes for the whole search service */
 trait ServiceRoutes[F[_]] extends RoutesDefinition[F]:
@@ -50,14 +48,18 @@ object ServiceRoutes:
       authenticate = Authenticate[F](jwtVerify, logger)
 
       routeDefs = List(
-        SearchRoutes(searchApi, authenticate, prefix = "api" / "search"),
-        SearchLegacyRoutes(searchApi, authenticate),
-        VersionRoute[F](prefix = "api" / "search"),
+        SearchRoutes(searchApi, authenticate, Nil),
+        VersionRoute[F](Nil)
+      )
+      legacyDefs = List(
+        SearchLegacyRoutes(searchApi, authenticate, Nil)
       )
     yield new ServiceRoutes[F] {
       val config = cfg
-      val docRoutes = routeDefs.map(_.docRoutes).reduce(_ ++ _)
+      val docRoutes = (routeDefs ++ legacyDefs).map(_.docRoutes).reduce(_ ++ _)
       val routes = Router(
-        "/" -> routeDefs.map(_.routes).reduce(_ <+> _)
+        "/api/search" -> routeDefs.map(_.routes).reduce(_ <+> _),
+        "/search/query" -> legacyDefs.map(_.routes).reduce(_ <+> _),
+        "/search" -> legacyDefs.map(_.routes).reduce(_ <+> _)
       )
     }

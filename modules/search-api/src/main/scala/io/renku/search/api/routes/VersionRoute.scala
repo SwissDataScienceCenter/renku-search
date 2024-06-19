@@ -20,13 +20,14 @@ package io.renku.search.api.routes
 
 import cats.effect.*
 import cats.syntax.all.*
-import sttp.tapir.*
+
 import io.renku.search.common.CurrentVersion
 import org.http4s.HttpRoutes
+import sttp.tapir.*
 
-final class VersionRoute[F[_]: Async](prefix: EndpointInput[Unit])
+final class VersionRoute[F[_]: Async](pathPrefix: List[String])
     extends RoutesDefinition[F]:
-  private val baseEndpoint = endpoint.in(prefix).tag("Information")
+  private val baseEndpoint = endpoint.in(pathPrefix).tag("Information")
 
   val versionEndpoint =
     baseEndpoint.get

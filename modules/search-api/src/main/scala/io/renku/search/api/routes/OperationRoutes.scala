@@ -19,11 +19,11 @@
 package io.renku.search.api.routes
 
 import cats.effect.*
-import sttp.tapir.*
+
 import io.renku.search.http.routes.OperationRoutes as OpRoutes
 import org.http4s.HttpRoutes
+import sttp.tapir.*
 
-final class OperationRoutes[F[_]: Async]
-    extends RoutesDefinition[F]:
+final class OperationRoutes[F[_]: Async] extends RoutesDefinition[F]:
   override val docRoutes: List[AnyEndpoint] = Nil
   override val routes: HttpRoutes[F] = OpRoutes[F]

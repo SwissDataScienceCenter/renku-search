@@ -18,7 +18,7 @@
 
 package io.renku.search.api
 
-import cats.effect.{ExitCode, IO, IOApp, Resource}
+import cats.effect.*
 
 import io.renku.logging.LoggingSetup
 

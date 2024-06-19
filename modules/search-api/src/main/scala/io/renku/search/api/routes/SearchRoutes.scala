@@ -31,11 +31,11 @@ import sttp.tapir.*
 final class SearchRoutes[F[_]: Async](
     api: SearchApi[F],
     authenticate: Authenticate[F],
-    prefix: EndpointInput[Unit] = "api" / "search",
+    pathPrefix: List[String]
 ) extends RoutesDefinition[F] {
 
   private val logger = scribe.cats.effect[F]
-  private val baseEndpoint = endpoint.in(prefix).tag("Search")
+  private val baseEndpoint = endpoint.in(pathPrefix).tag("Search")
 
   val queryEndpoint: Endpoint[AuthToken, QueryInput, String, SearchResult, Any] =
     baseEndpoint.get

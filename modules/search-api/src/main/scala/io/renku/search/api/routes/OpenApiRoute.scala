@@ -29,7 +29,10 @@ import sttp.apispec.openapi.circe.given
 import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
-final class OpenApiRoute[F[_]: Async](endpoints: List[AnyEndpoint]):
+final class OpenApiRoute[F[_]: Async](
+    endpoints: List[AnyEndpoint],
+    pathPrefix: List[String]
+) extends RoutesDefinition[F]:
   private val openAPIEndpoint =
     val docs = OpenAPIDocsInterpreter()
       .toOpenAPI(
@@ -37,15 +40,25 @@ final class OpenApiRoute[F[_]: Async](endpoints: List[AnyEndpoint]):
         "Renku Search API",
         BuildInfo.gitDescribedVersion.getOrElse(BuildInfo.version)
       )
-      .servers(List(Server(url = "/", description = "Renku Search API".some)))
+      .servers(
+        List(
+          Server(
+            url = pathPrefix.mkString("/", "/", ""),
+            description = "Renku Search API".some
+          )
+        )
+      )
 
     endpoint.get
+      .in(pathPrefix)
       .in("spec.json")
       .out(stringJsonBody)
       .description("OpenAPI docs")
       .serverLogic(_ => docs.asJson.spaces2.asRight.pure[F])
 
-  val routes: HttpRoutes[F] =
+  override val docRoutes = Nil
+
+  override val routes: HttpRoutes[F] =
     RoutesDefinition
       .interpreter[F]
       .toRoutes(openAPIEndpoint)

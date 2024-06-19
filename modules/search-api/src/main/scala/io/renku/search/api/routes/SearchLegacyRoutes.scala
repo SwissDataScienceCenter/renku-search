@@ -65,7 +65,7 @@ final class SearchLegacyRoutes[F[_]: Async](
   // make up for our url patterns wrt gateway (i.e. have the openapi
   // spec show the server as a path and the endpoints rebased onto
   // that)
-  override val docRoutes: List[AnyEndpoint] =
+  override val docEndpoints: List[AnyEndpoint] =
     List(rootPath)
 
   override val routes: HttpRoutes[F] =

@@ -46,7 +46,7 @@ trait SearchRoutesSuite
         solrConfig = solrClient.config,
         verbosity = defaultVerbosity
       )
-      ServiceRoutes[IO](cfg)
+      ServiceRoutes[IO](cfg, Microservice.pathPrefix)
     }
 
   val searchHttpRoutesR: Resource[IO, HttpRoutes[IO]] =

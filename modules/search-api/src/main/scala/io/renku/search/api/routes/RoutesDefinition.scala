@@ -30,7 +30,7 @@ import sttp.tapir.server.interceptor.cors.CORSInterceptor
 
 trait RoutesDefinition[F[_]] extends ApiSchema with TapirBorerJson:
   def routes: HttpRoutes[F]
-  def docRoutes: List[AnyEndpoint]
+  def docEndpoints: List[AnyEndpoint]
 
   extension [A, B, C, D, E](self: Endpoint[A, B, C, D, E])
     def in(path: List[String]) = path match

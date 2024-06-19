@@ -56,7 +56,7 @@ final class OpenApiRoute[F[_]: Async](
       .description("OpenAPI docs")
       .serverLogic(_ => docs.asJson.spaces2.asRight.pure[F])
 
-  override val docRoutes = Nil
+  override val docEndpoints = Nil
 
   override val routes: HttpRoutes[F] =
     RoutesDefinition

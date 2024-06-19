@@ -25,6 +25,7 @@ import io.renku.logging.LoggingSetup
 object Microservice extends IOApp:
   private val logger = scribe.cats.io
   private val loadConfig = SearchApiConfig.config.load[IO]
+  val pathPrefix = List("api", "search")
 
   override def run(args: List[String]): IO[ExitCode] =
     createServer.useForever
@@ -34,7 +35,7 @@ object Microservice extends IOApp:
       config <- Resource.eval(loadConfig)
       _ <- Resource.eval(IO(LoggingSetup.doConfigure(config.verbosity)))
       logger <- Resource.pure(scribe.cats.io)
-      app <- ServiceRoutes[IO](config)
+      app <- ServiceRoutes[IO](config, pathPrefix)
       server <- SearchServer.create[IO](config, app)
       _ <- Resource.eval(
         logger.info(

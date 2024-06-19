@@ -41,7 +41,7 @@ final class VersionRoute[F[_]: Async](pathPrefix: List[String])
       versionEndpoint.serverLogicSuccess[F](_ => CurrentVersion.get.pure[F])
     )
 
-  override val docRoutes: List[AnyEndpoint] =
+  override val docEndpoints: List[AnyEndpoint] =
     List(versionEndpoint)
 
   override val routes: HttpRoutes[F] =

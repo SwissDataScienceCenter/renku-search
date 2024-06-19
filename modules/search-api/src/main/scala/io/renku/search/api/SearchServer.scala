@@ -22,7 +22,7 @@ import cats.effect.*
 import cats.syntax.all.*
 import fs2.io.net.Network
 
-import io.renku.search.api.routes.{OpenApiLegacyRoute, OpenApiRoute}
+import io.renku.search.api.routes.OpenApiLegacyRoute
 import io.renku.search.http.HttpServer
 import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
@@ -33,7 +33,6 @@ import org.http4s.server.middleware.{RequestId, RequestLogger}
 import scribe.Scribe
 
 object SearchServer:
-  val pathPrefix = List("api", "search")
   def create[F[_]: Async: Network](config: SearchApiConfig, app: ServiceRoutes[F]) =
     for
       routes <- makeHttpRoutes(app)
@@ -45,15 +44,14 @@ object SearchServer:
   def makeHttpRoutes[F[_]: Async](
       app: ServiceRoutes[F]
   ): Resource[F, HttpRoutes[F]] =
-    val openApiRoute = OpenApiRoute(app.docRoutes, pathPrefix).routes
-    val openApiLegacy = OpenApiLegacyRoute(app.docRoutes).routes
+    val openApiLegacy = OpenApiLegacyRoute(app.docEndpoints).routes
     val opRoutes = OperationRoutes[F]
-    val metricRoutes = MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics)
+    val metrics = MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics)
     for
       logger <- Resource.pure(scribe.cats.effect[F])
-      businessRoutes <- metricRoutes.makeRoutes(app.routes)
+      businessRoutes <- metrics.makeRoutes(app.routes)
       routes = List(
-        openApiRoute,
+        app.openapiDocRoutes,
         openApiLegacy,
         withMiddleware(logger, businessRoutes),
         opRoutes

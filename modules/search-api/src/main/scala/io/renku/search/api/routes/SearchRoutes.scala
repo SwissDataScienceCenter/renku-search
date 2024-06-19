@@ -54,7 +54,7 @@ final class SearchRoutes[F[_]: Async](
         .serverLogic(api.query)
     )
 
-  override val docRoutes: List[AnyEndpoint] =
+  override val docEndpoints: List[AnyEndpoint] =
     List(queryEndpoint)
 
   override val routes: HttpRoutes[F] =

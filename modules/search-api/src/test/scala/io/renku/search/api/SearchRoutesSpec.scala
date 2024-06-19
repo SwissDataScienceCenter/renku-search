@@ -114,8 +114,7 @@ class SearchRoutesSpec extends CatsEffectSuite with SearchRoutesSuite:
     for
       client <- makeClient
       req = Method.GET(uri"/version")
-      s <- client.expect[CurrentVersion](req)
-      _ <- IO.println(s)
+      _ <- client.expect[CurrentVersion](req)
     yield ()
 
   test("metrics"):

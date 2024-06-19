@@ -24,6 +24,7 @@ import io.renku.search.api.data.*
 import io.renku.search.api.data.SearchEntity.*
 import io.renku.search.api.tapir.SchemaSyntax.*
 import io.renku.search.model.*
+import io.renku.search.query.Query
 import sttp.tapir.Schema.SName
 import sttp.tapir.SchemaType.*
 import sttp.tapir.generic.Configuration
@@ -31,13 +32,28 @@ import sttp.tapir.{FieldName, Schema, SchemaType}
 
 /** tapir schema definitions for the search api data structures */
 trait ApiSchema extends ApiSchema.Primitives:
+  given Schema[Query] = Schema.anyObject[Query]
+  given Schema[QueryInput] = Schema.derived
+
   given Schema[User] = Schema
     .derived[User]
-    .jsonExample(ApiSchema.exampleUser)
+    .jsonExample(ApiSchema.exampleUser.widen)
 
   given Schema[Group] = Schema
     .derived[Group]
-    .jsonExample(ApiSchema.exampleGroup)
+    .jsonExample(ApiSchema.exampleGroup.widen)
+
+  given (using
+      userSchema: Schema[User],
+      groupSchema: Schema[Group]
+  ): Schema[UserOrGroup] =
+    Schema
+      .derived[UserOrGroup]
+      .withDiscriminator(
+        SearchEntity.discriminatorField,
+        Map("User" -> userSchema, "Group" -> groupSchema)
+      )
+      .jsonExample(ApiSchema.exampleGroup: UserOrGroup)
 
   given (using userSchema: Schema[User]): Schema[Project] = Schema
     .derived[Project]
@@ -57,31 +73,37 @@ trait ApiSchema extends ApiSchema.Primitives:
         userSchema.copy(schemaType = userType.copy(fields = df :: userType.fields))
       schemaOptUser.copy(schemaType = SOption(nextUserSchema)(identity))
     }
-    .jsonExample(ApiSchema.exampleProject)
+    .jsonExample(ApiSchema.exampleProject.widen)
 
   given (using
       projectSchema: Schema[Project],
       userSchema: Schema[User],
-      groupSchema: Schema[Group]
-  ): Schema[SearchEntity] = {
-    val derived = Schema.derived[SearchEntity]
-    derived.schemaType match {
-      case s: SCoproduct[?] =>
-        derived.copy(schemaType =
-          s.addDiscriminatorField(
-            FieldName(SearchEntity.discriminatorField),
-            Schema.string,
-            List(
-              projectSchema.name.map(SRef(_)).map("Project" -> _),
-              userSchema.name.map(SRef(_)).map("User" -> _),
-              groupSchema.name.map(SRef(_)).map("Group" -> _)
-            ).flatten.toMap
+      groupSchema: Schema[Group],
+      ug: Schema[UserOrGroup]
+  ): Schema[SearchEntity] =
+    Schema
+      .derived[SearchEntity]
+      .withDiscriminator(
+        SearchEntity.discriminatorField,
+        Map("Project" -> projectSchema, "User" -> userSchema, "Group" -> groupSchema)
+      )
+
+  given Schema[FacetData] = {
+    given Schema[Map[EntityType, Int]] = Schema.schemaForMap(_.name)
+    Schema
+      .derived[FacetData]
+      .jsonExample(
+        FacetData(
+          Map(
+            EntityType.Project -> 15,
+            EntityType.User -> 3
           )
         )
-      case s => derived
-    }
+      )
   }
 
+  given Schema[PageDef] = Schema.derived
+  given Schema[PageWithTotals] = Schema.derived
   given Schema[SearchResult] = Schema.derived
 end ApiSchema
 
@@ -100,9 +122,29 @@ object ApiSchema:
     given Schema[FirstName] = Schema.string[FirstName]
     given Schema[LastName] = Schema.string[LastName]
     given Schema[Email] = Schema.string[Email]
+    given Schema[EntityType] = Schema.derivedEnumeration[EntityType].defaultStringBased
+
+    extension [A](self: Schema[A])
+      def withDiscriminator(property: String, subs: Map[String, Schema[?]]): Schema[A] =
+        self.schemaType match {
+          case s: SCoproduct[?] =>
+            self.copy(schemaType =
+              s.addDiscriminatorField(
+                FieldName(property),
+                Schema.string,
+                subs.toList
+                  .map { case (value, schema) =>
+                    schema.name.map(SRef(_)).map(value -> _)
+                  }
+                  .flatten
+                  .toMap
+              )
+            )
+          case _ => self
+        }
   end Primitives
 
-  val exampleUser: SearchEntity = User(
+  val exampleUser: SearchEntity.User = User(
     Id("1CAF4C73F50D4514A041C9EDDB025A36"),
     Some(Namespace("renku/renku")),
     Some(FirstName("Albert")),
@@ -110,7 +152,7 @@ object ApiSchema:
     Some(2.1)
   )
 
-  val exampleGroup: SearchEntity = Group(
+  val exampleGroup: SearchEntity.Group = Group(
     Id("2CAF4C73F50D4514A041C9EDDB025A36"),
     Name("SDSC"),
     Namespace("SDSC"),
@@ -118,15 +160,15 @@ object ApiSchema:
     Some(1.1)
   )
 
-  val exampleProject: SearchEntity = Project(
+  val exampleProject: SearchEntity.Project = Project(
     id = Id("01HRA7AZ2Q234CDQWGA052F8MK"),
     name = Name("renku"),
     slug = Slug("renku"),
-    namespace = Some(Namespace("renku/renku")),
+    namespace = Some(exampleGroup),
     repositories = Seq(Repository("https://github.com/renku")),
     visibility = Visibility.Public,
     description = Some(Description("Renku project")),
-    createdBy = Some(exampleUser.asInstanceOf[User]),
+    createdBy = Some(exampleUser),
     creationDate = CreationDate(Instant.now),
     keywords = List(Keyword("data"), Keyword("science")),
     score = Some(1.0)

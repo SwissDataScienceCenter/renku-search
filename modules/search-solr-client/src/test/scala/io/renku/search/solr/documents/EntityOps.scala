@@ -38,6 +38,11 @@ trait EntityOps:
         case e: Project => e.copy(creatorDetails = user)
         case e          => e
 
+    def setNamespaceDetails(n: Option[ResponseBody[NestedUserOrGroup]]): EntityDocument =
+      entity match
+        case e: Project => e.copy(namespaceDetails = n)
+        case e          => e
+
     def assertVersionNot(v: DocVersion): EntityDocument =
       assert(entity.version != v)
       entity

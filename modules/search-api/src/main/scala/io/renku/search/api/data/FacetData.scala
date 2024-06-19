@@ -21,9 +21,7 @@ package io.renku.search.api.data
 import io.bullet.borer.Decoder
 import io.bullet.borer.Encoder
 import io.bullet.borer.derivation.MapBasedCodecs
-import io.renku.search.api.tapir.SchemaSyntax.*
 import io.renku.search.model.EntityType
-import sttp.tapir.Schema
 
 final case class FacetData(
     entityType: Map[EntityType, Int]
@@ -34,16 +32,3 @@ object FacetData:
 
   given Decoder[FacetData] = MapBasedCodecs.deriveDecoder
   given Encoder[FacetData] = MapBasedCodecs.deriveEncoder
-  given Schema[FacetData] = {
-    given Schema[Map[EntityType, Int]] = Schema.schemaForMap(_.name)
-    Schema
-      .derived[FacetData]
-      .jsonExample(
-        FacetData(
-          Map(
-            EntityType.Project -> 15,
-            EntityType.User -> 3
-          )
-        )
-      )
-  }

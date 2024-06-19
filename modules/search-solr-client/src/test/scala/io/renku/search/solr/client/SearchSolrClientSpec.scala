@@ -33,6 +33,7 @@ import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData
+import io.renku.solr.client.ResponseBody
 import munit.CatsEffectSuite
 import org.scalacheck.Gen
 
@@ -40,11 +41,45 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
   override def munitFixtures: Seq[munit.AnyFixture[?]] =
     List(solrServer, searchSolrClient)
 
+  test("load project with resolved namespace and creator"):
+    val user = userDocumentGen.generateOne
+    val group = groupDocumentGen.generateOne
+    val project = projectDocumentGen(
+      "project-test0",
+      "project-test0 description",
+      Gen.const(None),
+      Gen.const(None)
+    ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
+
+    for
+      client <- IO(searchSolrClient())
+      _ <- client.upsert(Seq(project.widen, user.widen, group.widen))
+
+      qr <- client.queryEntity(
+        SearchRole.admin(Id("admin")),
+        Query.parse("test0").toOption.get,
+        10,
+        0
+      )
+      _ = assertEquals(qr.responseBody.docs.size, 1)
+      _ = assert(qr.responseBody.docs.head.isInstanceOf[Project])
+      p = qr.responseBody.docs.head.asInstanceOf[Project]
+      _ = assertEquals(
+        p.creatorDetails.map(_.map(_.setVersion(user.version))),
+        ResponseBody.single(user).some
+      )
+      _ = assertEquals(
+        p.namespaceDetails.map(_.map(_.setVersion(group.version))),
+        ResponseBody.single[NestedUserOrGroup](group).some
+      )
+    yield ()
+
   test("be able to insert and fetch a Project document"):
     val project =
       projectDocumentGen(
         "solr-project",
         "solr project description",
+        Gen.const(None),
         Gen.const(None)
       ).generateOne
     for {
@@ -60,6 +95,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
         qr.responseBody.docs.map(
           _.noneScore
             .setCreatedBy(None)
+            .setNamespaceDetails(None)
             .assertVersionNot(DocVersion.NotExists)
             .setVersion(DocVersion.NotExists)
         ) contains project

@@ -33,13 +33,35 @@ sealed trait EntityDocument extends SolrDocument:
   def widen: EntityDocument = this
   def setVersion(v: DocVersion): EntityDocument
 
+// This type is used to avoid a self-recursive type, because it
+// doesn't work with deriving encoders. Recursive structures don't
+// work with lazy-vals/given etc, it either deadlocks or
+// stack-overflows in scala3 (it is officially undefined behaviour)
+//
+// Since solr cannot guarantee that there is a user or group, a
+// fallback `Unknown` is used to catch other or missing data instead
+// of failing decoding by a runtime exception
+sealed trait NestedUserOrGroup:
+  def setVersion(v: DocVersion): NestedUserOrGroup
+object NestedUserOrGroup:
+  final case class Unknown(id: Id, @key("type") entityType: Option[EntityType] = None)
+      extends NestedUserOrGroup:
+    def setVersion(v: DocVersion): NestedUserOrGroup = this
+
+  object Unknown:
+    given Encoder[Unknown] = MapBasedCodecs.deriveEncoder
+
+  given AdtEncodingStrategy =
+    AdtEncodingStrategy.flat(typeMemberName = Fields.entityType.name)
+  given Encoder[NestedUserOrGroup] = EncoderSupport.derive
+  given Decoder[NestedUserOrGroup] = MapBasedCodecs.deriveAllDecoders
+
 object EntityDocument:
   given AdtEncodingStrategy =
     AdtEncodingStrategy.flat(typeMemberName = Fields.entityType.name)
 
   given Encoder[EntityDocument] = EncoderSupport.derive[EntityDocument]
   given Decoder[EntityDocument] = MapBasedCodecs.deriveAllDecoders[EntityDocument]
-  given Codec[EntityDocument] = Codec.of[EntityDocument]
 
 final case class Project(
     id: Id,
@@ -61,6 +83,7 @@ final case class Project(
     groupViewers: Set[Id] = Set.empty,
     keywords: List[Keyword] = List.empty,
     namespace: Option[Namespace] = None,
+    namespaceDetails: Option[ResponseBody[NestedUserOrGroup]] = None,
     score: Option[Double] = None
 ) extends EntityDocument:
   def setVersion(v: DocVersion): Project = copy(version = v)
@@ -103,7 +126,8 @@ final case class User(
     name: Option[Name] = None,
     namespace: Option[Namespace] = None,
     score: Option[Double] = None
-) extends EntityDocument:
+) extends EntityDocument
+    with NestedUserOrGroup:
   def setVersion(v: DocVersion): User = copy(version = v)
 
 object User:
@@ -148,7 +172,8 @@ final case class Group(
     editors: Set[Id] = Set.empty,
     viewers: Set[Id] = Set.empty,
     score: Option[Double] = None
-) extends EntityDocument:
+) extends EntityDocument
+    with NestedUserOrGroup:
   def setVersion(v: DocVersion): Group = copy(version = v)
 
   def toEntityMembers: EntityMembers =

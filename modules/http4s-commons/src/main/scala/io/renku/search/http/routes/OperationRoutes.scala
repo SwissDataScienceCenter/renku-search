@@ -32,7 +32,7 @@ object OperationRoutes extends TapirBorerJson {
       .in("ping")
       .out(stringBody)
       .description("Ping")
-      .serverLogic[F](_ => "pong".asRight[Unit].pure[F])
+      .serverLogicSuccess[F](_ => "pong".pure[F])
 
   private given Schema[CurrentVersion] = Schema.derived
 

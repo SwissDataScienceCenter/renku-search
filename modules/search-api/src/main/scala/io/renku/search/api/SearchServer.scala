@@ -22,12 +22,13 @@ import cats.effect.*
 import cats.syntax.all.*
 import fs2.io.net.Network
 
-import io.renku.search.api.routes.OpenApiRoute
+import io.renku.search.api.routes.{OpenApiLegacyRoute, OpenApiRoute}
 import io.renku.search.http.HttpServer
 import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
 import org.http4s.HttpApp
+import org.http4s.HttpRoutes
 import org.http4s.server.middleware.ResponseLogger
 import org.http4s.server.middleware.{RequestId, RequestLogger}
 import scribe.Scribe
@@ -37,20 +38,23 @@ object SearchServer:
   def create[F[_]: Async: Network](config: SearchApiConfig, app: ServiceRoutes[F]) =
     for
       logger <- Resource.pure(scribe.cats.effect[F])
-      openApiRoute = OpenApiRoute(app.docRoutes, pathPrefix).routes
-      openApiLegacy = OpenApiRoute(app.docRoutes, List("search")).routes
-      opRoutes = OperationRoutes[F]
-      metricRoutes = MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics)
-      businessRoutes <- metricRoutes.makeRoutes(app.routes)
-
-      routes = openApiRoute <+> openApiLegacy <+> businessRoutes <+> opRoutes
-
+      routes <- makeHttpRoutes(app)
       server <- HttpServer[F](config.httpServerConfig)
-        .withHttpApp(
-          withMiddleware(logger, routes.orNotFound)
-        )
+        .withHttpApp(withMiddleware(logger, routes.orNotFound))
         .build
     yield server
+
+  def makeHttpRoutes[F[_]: Async](
+      app: ServiceRoutes[F]
+  ): Resource[F, HttpRoutes[F]] =
+    val openApiRoute = OpenApiRoute(app.docRoutes, pathPrefix).routes
+    val openApiLegacy = OpenApiLegacyRoute(app.docRoutes).routes
+    val opRoutes = OperationRoutes[F]
+    val metricRoutes = MetricsRoutes[F](CollectorRegistryBuilder[F].withJVMMetrics)
+    for
+      businessRoutes <- metricRoutes.makeRoutes(app.routes)
+      routes = openApiRoute <+> openApiLegacy <+> businessRoutes <+> opRoutes
+    yield routes
 
   def withMiddleware[F[_]: Async](logger: Scribe[F], httpApp: HttpApp[F]): HttpApp[F] =
     middleWares[F](logger).foldLeft(httpApp)((app, mf) => mf(app))

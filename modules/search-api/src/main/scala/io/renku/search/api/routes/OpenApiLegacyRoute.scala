@@ -29,9 +29,8 @@ import sttp.apispec.openapi.circe.given
 import sttp.tapir.*
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
-final class OpenApiRoute[F[_]: Async](
-    endpoints: List[AnyEndpoint],
-    pathPrefix: List[String]
+final class OpenApiLegacyRoute[F[_]: Async](
+    endpoints: List[AnyEndpoint]
 ) extends RoutesDefinition[F]:
   private val openAPIEndpoint =
     val docs = OpenAPIDocsInterpreter()
@@ -43,14 +42,14 @@ final class OpenApiRoute[F[_]: Async](
       .servers(
         List(
           Server(
-            url = pathPrefix.mkString("/", "/", ""),
+            url = "/api/search",
             description = "Renku Search API".some
           )
         )
       )
 
     endpoint.get
-      .in(pathPrefix)
+      .in("search")
       .in("spec.json")
       .out(stringJsonBody)
       .description("OpenAPI docs")

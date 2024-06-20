@@ -24,43 +24,39 @@ import io.renku.search.api.SearchApi
 import io.renku.search.api.auth.Authenticate
 import io.renku.search.api.data.*
 import io.renku.search.api.tapir.*
-import io.renku.search.http.borer.TapirBorerJson
 import io.renku.search.query.docs.SearchQueryManual
 import org.http4s.HttpRoutes
 import sttp.tapir.*
-import sttp.tapir.server.ServerEndpoint
-import sttp.tapir.server.http4s.Http4sServerInterpreter
-import sttp.tapir.server.http4s.Http4sServerOptions
-import sttp.tapir.server.interceptor.cors.CORSInterceptor
 
-final class SearchRoutes[F[_]: Async](api: SearchApi[F], authenticate: Authenticate[F])
-    extends TapirBorerJson
-    with TapirCodecs {
+final class SearchRoutes[F[_]: Async](
+    api: SearchApi[F],
+    authenticate: Authenticate[F],
+    pathPrefix: List[String]
+) extends RoutesDefinition[F] {
 
   private val logger = scribe.cats.effect[F]
+  private val baseEndpoint = endpoint.in(pathPrefix).tag("Search")
 
-  private val searchEndpointGet
-      : Endpoint[AuthToken, QueryInput, String, SearchResult, Any] =
-    endpoint.get
-      .in("")
+  val queryEndpoint: Endpoint[AuthToken, QueryInput, String, SearchResult, Any] =
+    baseEndpoint.get
+      .in("query")
       .in(Params.queryInput)
       .securityIn(Params.renkuAuth)
       .errorOut(borerJsonBody[String])
       .out(Params.searchResult)
       .description(SearchQueryManual.markdown)
 
-  val endpoints: List[ServerEndpoint[Any, F]] =
-    List(
-      searchEndpointGet
+  val queryRoute = RoutesDefinition
+    .interpreter[F]
+    .toRoutes(
+      queryEndpoint
         .serverSecurityLogic(authenticate.apply)
         .serverLogic(api.query)
     )
 
-  val routes: HttpRoutes[F] =
-    Http4sServerInterpreter[F](
-      Http4sServerOptions.customiseInterceptors
-        .corsInterceptor(CORSInterceptor.default)
-        .options
-    )
-      .toRoutes(endpoints)
+  override val docEndpoints: List[AnyEndpoint] =
+    List(queryEndpoint)
+
+  override val routes: HttpRoutes[F] =
+    queryRoute
 }

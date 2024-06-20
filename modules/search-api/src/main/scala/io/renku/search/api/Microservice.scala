@@ -18,24 +18,28 @@
 
 package io.renku.search.api
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.*
 
 import io.renku.logging.LoggingSetup
-import io.renku.search.http.HttpServer
 
 object Microservice extends IOApp:
   private val logger = scribe.cats.io
   private val loadConfig = SearchApiConfig.config.load[IO]
+  val pathPrefix = List("api", "search")
 
   override def run(args: List[String]): IO[ExitCode] =
+    createServer.useForever
+
+  def createServer =
     for {
-      config <- loadConfig
-      _ <- IO(LoggingSetup.doConfigure(config.verbosity))
-      _ <- Routes[IO](config.solrConfig, config.jwtVerifyConfig).makeRoutes
-        .flatMap(HttpServer.build(_, config.httpServerConfig))
-        .use { _ =>
-          logger.info(
-            s"Search microservice running: ${config.httpServerConfig}"
-          ) >> IO.never
-        }
-    } yield ExitCode.Success
+      config <- Resource.eval(loadConfig)
+      _ <- Resource.eval(IO(LoggingSetup.doConfigure(config.verbosity)))
+      logger <- Resource.pure(scribe.cats.io)
+      app <- ServiceRoutes[IO](config, pathPrefix)
+      server <- SearchServer.create[IO](config, app)
+      _ <- Resource.eval(
+        logger.info(
+          s"Search microservice running: ${config.httpServerConfig}"
+        )
+      )
+    } yield server

@@ -23,17 +23,25 @@ import fs2.io.net.Network
 import org.http4s.HttpRoutes
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
+import org.http4s.HttpApp
 
 object HttpServer:
 
-  def build[F[_]: Async: Network](
-      routes: HttpRoutes[F],
-      config: HttpServerConfig
-  ): Resource[F, Server] =
+  def apply[F[_]: Async: Network](config: HttpServerConfig): EmberServerBuilder[F] =
     EmberServerBuilder
       .default[F]
       .withHost(config.bindAddress)
       .withPort(config.port)
       .withShutdownTimeout(config.shutdownTimeout)
-      .withHttpApp(routes.orNotFound)
-      .build
+
+  def build[F[_]: Async: Network](
+      routes: HttpRoutes[F],
+      config: HttpServerConfig
+  ): Resource[F, Server] =
+    apply[F](config).withHttpApp(routes.orNotFound).build
+
+  def buildApp[F[_]: Async: Network](
+      app: HttpApp[F],
+      config: HttpServerConfig
+  ): Resource[F, Server] =
+    apply[F](config).withHttpApp(app).build

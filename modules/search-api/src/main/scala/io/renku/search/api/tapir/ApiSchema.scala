@@ -23,6 +23,7 @@ import java.time.Instant
 import io.renku.search.api.data.*
 import io.renku.search.api.data.SearchEntity.*
 import io.renku.search.api.tapir.SchemaSyntax.*
+import io.renku.search.common.CurrentVersion
 import io.renku.search.model.*
 import io.renku.search.query.Query
 import sttp.tapir.Schema.SName
@@ -105,6 +106,8 @@ trait ApiSchema extends ApiSchema.Primitives:
   given Schema[PageDef] = Schema.derived
   given Schema[PageWithTotals] = Schema.derived
   given Schema[SearchResult] = Schema.derived
+
+  given Schema[CurrentVersion] = Schema.derived
 end ApiSchema
 
 object ApiSchema:

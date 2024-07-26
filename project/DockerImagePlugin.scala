@@ -21,8 +21,8 @@ object DockerImagePlugin extends AutoPlugin {
     // dockerEntrypoint    := Seq(s"bin/${executableScriptName.value}", "-Duser.timezone=UTC", "$JAVA_OPTS"),
     dockerBaseImage := s"eclipse-temurin:21-jre",
     // deamon uuid 1000 required by renku pod security context
-    Docker / daemonUserUid := Some("1000"),
-    Docker / daemonUser := "searchuser",
+    Docker / daemonUserUid := None,
+    Docker / daemonUser := "ubuntu", // current eclipse-temurin:21-jre has ubuntu user with uid 1000 pre-installed :/
     // derive a package name
     Docker / packageName := (Compile / name).value,
     dockerRepository := Some("docker.io"),

@@ -26,6 +26,12 @@ final case class UrlPattern(
     port: Option[Segment],
     path: List[Segment]
 ):
+  def isMatchAll: Boolean =
+    scheme.forall(_.isMatchAll) &&
+      host.forall(_.isMatchAll) &&
+      port.forall(_.isMatchAll) &&
+      path.forall(_.isMatchAll)
+
   def matches(url: String): Boolean =
     val parts = UrlPattern.splitUrl(url)
     scheme.forall(s => parts.scheme.exists(s.matches)) &&
@@ -34,10 +40,12 @@ final case class UrlPattern(
     matchList(parts.path, path)
 
   def render: String =
-    scheme.map(s => s"${s.render}://").getOrElse("") +
-      host.map(_.render).mkString(".") +
-      port.map(p => s":${p.render}").getOrElse("") +
-      (if (path.isEmpty) "" else path.map(_.render).mkString("/", "/", ""))
+    if (isMatchAll) "*"
+    else
+      scheme.map(s => s"${s.render}://").getOrElse("") +
+        host.map(_.render).mkString(".") +
+        port.map(p => s":${p.render}").getOrElse("") +
+        (if (path.isEmpty) "" else path.map(_.render).mkString("/", "/", ""))
 
   private def matchList(values: List[String], pattern: List[Segment]): Boolean =
     pattern.isEmpty || {
@@ -120,6 +128,13 @@ object UrlPattern:
       case Literal(v)        => v.equalsIgnoreCase(value)
       case Prefix(v)         => value.startsWith(v)
       case Suffix(v)         => value.endsWith(v)
+      case MatchAll          => true
+      case MatchAllRemainder => true
+
+    private[common] def isMatchAll: Boolean = this match
+      case Literal(v)        => false
+      case Prefix(v)         => false
+      case Suffix(v)         => false
       case MatchAll          => true
       case MatchAllRemainder => true
 

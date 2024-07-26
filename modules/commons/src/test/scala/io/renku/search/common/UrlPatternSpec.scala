@@ -59,6 +59,8 @@ class UrlPatternSpec extends ScalaCheckSuite:
   }
 
   test("fromString successful") {
+    assertEquals(urlPattern("*"), UrlPattern.all)
+    assertEquals(urlPattern("**"), UrlPattern.all)
     assertEquals(
       urlPattern("http://"),
       UrlPattern.all.copy(scheme = Some(Segment.Literal("http")))
@@ -139,10 +141,20 @@ class UrlPatternSpec extends ScalaCheckSuite:
     assert(UrlPattern.fromString("**.com/a/b").isLeft)
   }
 
+  test("read selected valid url pattern") {
+    assert(urlPattern("*").isMatchAll)
+    assert(urlPattern("**").isMatchAll)
+  }
+
+  test("render patterns") {
+    assertEquals(UrlPattern.all.render, "*")
+    assertEquals(urlPattern("**").render, "*")
+  }
+
   property("read valid url pattern") {
     Prop.forAll(CommonGenerators.urlPatternGen) { pattern =>
       val parsed = urlPattern(pattern.render)
-      val result = parsed == pattern
+      val result = (parsed.isMatchAll && pattern.isMatchAll) || (parsed == pattern)
       if (!result) {
         println(s"Given: $pattern   Parsed: ${parsed}   Rendered: ${pattern.render}")
       }

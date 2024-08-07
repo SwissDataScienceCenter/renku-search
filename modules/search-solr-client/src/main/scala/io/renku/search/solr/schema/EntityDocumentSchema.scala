@@ -56,12 +56,42 @@ object EntityDocumentSchema:
     // virtual score field
     val score: FieldName = FieldName("score")
 
+  private object Analyzers {
+    val textIndex = Analyzer(
+      tokenizer = Tokenizer.uax29UrlEmail,
+      filters = Seq(
+        Filter.lowercase,
+        Filter.stop,
+        Filter.englishMinimalStem,
+        Filter.asciiFolding,
+        Filter.edgeNGram(Filter.EdgeNGramSettings(2, 8, true))
+      )
+    )
+    val textQuery = Analyzer(
+      tokenizer = Tokenizer.uax29UrlEmail,
+      filters = Seq(
+        Filter.lowercase,
+        Filter.stop,
+        Filter.englishMinimalStem,
+        Filter.asciiFolding
+      )
+    )
+  }
+
   object FieldTypes:
     val id: FieldType = FieldType.id(TypeName("SearchId")).makeDocValue
     val string: FieldType = FieldType.str(TypeName("SearchString")).makeDocValue
-    val text: FieldType = FieldType.text(TypeName("SearchText"), Analyzer.defaultSearch)
+    val text: FieldType =
+      FieldType
+        .text(TypeName("SearchText"))
+        .withIndexAnalyzer(Analyzers.textIndex)
+        .withQueryAnalyzer(Analyzers.textQuery)
     val textAll: FieldType =
-      FieldType.text(TypeName("SearchTextAll"), Analyzer.defaultSearch).makeMultiValued
+      FieldType
+        .text(TypeName("SearchTextAll"))
+        .withIndexAnalyzer(Analyzers.textIndex)
+        .withQueryAnalyzer(Analyzers.textQuery)
+        .makeMultiValued
     val dateTime: FieldType = FieldType.dateTimePoint(TypeName("SearchDateTime"))
 
   val initialEntityDocumentAdd: Seq[SchemaCommand] = Seq(
@@ -129,4 +159,9 @@ object EntityDocumentSchema:
     SchemaCommand.Add(CopyFieldRule(Fields.groupOwners, Fields.membersAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.groupEditors, Fields.membersAll)),
     SchemaCommand.Add(CopyFieldRule(Fields.groupViewers, Fields.membersAll))
+  )
+
+  val replaceTextTypes: Seq[SchemaCommand] = Seq(
+    SchemaCommand.Replace(FieldTypes.text),
+    SchemaCommand.Replace(FieldTypes.textAll)
   )

@@ -36,7 +36,9 @@ class SearchCaseInsensitiveSpec extends CatsEffectSuite with SolrClientBaseSuite
     List(solrServer, solrClient)
 
   private val migrations = Seq(
-    SchemaCommand.Add(FieldType.text(TypeName("my_text_field"), Analyzer.defaultSearch)),
+    SchemaCommand.Add(
+      FieldType.text(TypeName("my_text_field")).withAnalyzer(Analyzer.defaultSearch)
+    ),
     SchemaCommand.Add(Field(FieldName("my_name"), TypeName("my_text_field")))
   )
 

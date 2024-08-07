@@ -179,3 +179,35 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
       _ = assertEquals(memberResult.responseBody.docs.head.id, project.id)
       _ = assertEquals(adminResult.responseBody.docs.head.id, project.id)
     yield ()
+
+  test("search partial words"):
+    for
+      client <- IO(searchSolrClient())
+      project <- IO(
+        projectDocumentGen(
+          "NeuroDesk",
+          "This is a Neurodesk project",
+          Gen.const(None),
+          Gen.const(None),
+          Gen.const(Visibility.Public)
+        ).generateOne
+      )
+      _ <- client.upsertSuccess(Seq(project))
+      result1 <- client.queryEntity(
+        SearchRole.anonymous,
+        Query(Query.Segment.text("neuro")),
+        1,
+        0
+      )
+      _ = assertEquals(result1.responseBody.docs.size, 1)
+      _ = assertEquals(result1.responseBody.docs.head.id, project.id)
+
+      result2 <- client.queryEntity(
+        SearchRole.anonymous,
+        Query(Query.Segment.nameIs("neuro")),
+        1,
+        0
+      )
+      _ = assertEquals(result2.responseBody.docs.size, 1)
+      _ = assertEquals(result2.responseBody.docs.head.id, project.id)
+    yield ()

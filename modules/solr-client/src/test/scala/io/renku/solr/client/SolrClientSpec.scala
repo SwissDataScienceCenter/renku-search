@@ -78,7 +78,9 @@ class SolrClientSpec
 
   test("use schema for inserting and querying") {
     val cmds = Seq(
-      SchemaCommand.Add(FieldType.text(TypeName("roomText"), Analyzer.classic)),
+      SchemaCommand.Add(
+        FieldType.text(TypeName("roomText")).withAnalyzer(Analyzer.classic)
+      ),
       SchemaCommand.Add(FieldType.int(TypeName("roomInt"))),
       SchemaCommand.Add(Field(FieldName("roomName"), TypeName("roomText"))),
       SchemaCommand.Add(Field(FieldName("roomDescription"), TypeName("roomText"))),

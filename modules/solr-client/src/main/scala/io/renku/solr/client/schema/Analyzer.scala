@@ -19,31 +19,16 @@
 package io.renku.solr.client.schema
 
 // see https://solr.apache.org/guide/solr/latest/indexing-guide/analyzers.html
+// https://solr.apache.org/guide/solr/latest/indexing-guide/schema-api.html#add-a-new-field-type
 
 final case class Analyzer(
     tokenizer: Tokenizer,
-    `type`: Analyzer.AnalyzerType = Analyzer.AnalyzerType.None,
     filters: Seq[Filter] = Nil
 )
 
 object Analyzer:
-  enum AnalyzerType:
-    case Index
-    case Multiterm
-    case Query
-    case None
-
-  object AnalyzerType:
-    def fromString(str: String): Either[String, AnalyzerType] =
-      AnalyzerType.values
-        .find(_.productPrefix.equalsIgnoreCase(str))
-        .toRight(s"Invalid analyzer type: $str")
-
-  def index(tokenizer: Tokenizer, filters: Filter*): Analyzer =
-    Analyzer(tokenizer, AnalyzerType.Index, filters)
-
-  def query(tokenizer: Tokenizer, filters: Filter*): Analyzer =
-    Analyzer(tokenizer, AnalyzerType.Query, filters)
+  def create(tokenizer: Tokenizer, filters: Filter*): Analyzer =
+    Analyzer(tokenizer, filters)
 
   val classic: Analyzer = Analyzer(Tokenizer.classic, filters = List(Filter.classic))
 

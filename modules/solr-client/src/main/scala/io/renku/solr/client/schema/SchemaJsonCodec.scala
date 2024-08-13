@@ -19,6 +19,7 @@
 package io.renku.solr.client.schema
 
 import io.bullet.borer.NullOptions.given
+import io.bullet.borer.Reader
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.{Decoder, Encoder, Writer}
 import io.renku.solr.client.schema.SchemaCommand.Element
@@ -28,13 +29,24 @@ trait SchemaJsonCodec {
   given Encoder[Tokenizer] = MapBasedCodecs.deriveEncoder
   given Decoder[Tokenizer] = MapBasedCodecs.deriveDecoder
 
-  given Encoder[Filter] = MapBasedCodecs.deriveEncoder
-  given Decoder[Filter] = MapBasedCodecs.deriveDecoder
+  given Encoder[Filter] = { (w: Writer, value: Filter) =>
+    w.writeMapStart()
+    w.writeMapMember("name", value.name)
+    value.settings match {
+      case None => ()
+      case Some(s) =>
+        s.asMap.foreach { case (k, v) =>
+          w.writeMapMember(k, v)
+        }
+    }
+    w.writeMapClose()
+  }
 
-  given Encoder[Analyzer.AnalyzerType] =
-    Encoder.forString.contramap(_.productPrefix.toLowerCase)
-  given Decoder[Analyzer.AnalyzerType] =
-    Decoder.forString.mapEither(Analyzer.AnalyzerType.fromString)
+  given Decoder[Filter] = Decoder.forMap[String, String].mapOption { data =>
+    data.get("name").map { name =>
+      Filter(name, Filter.Settings.createFromMap(data.removed("name")))
+    }
+  }
 
   given Encoder[Analyzer] = MapBasedCodecs.deriveEncoder
   given Decoder[Analyzer] = MapBasedCodecs.deriveDecoder
@@ -71,6 +83,8 @@ trait SchemaJsonCodec {
       override def write(w: Writer, value: SchemaCommand) =
         value match
           case SchemaCommand.Add(v) =>
+            e.write(w, v)
+          case SchemaCommand.Replace(v) =>
             e.write(w, v)
           case SchemaCommand.DeleteType(tn) =>
             w.writeMap(Map("name" -> tn))

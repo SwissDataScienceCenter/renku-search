@@ -63,4 +63,20 @@ class BorerJsonCodecTest extends FunSuite with SchemaJsonCodec {
     assertEquals(result.schema.fieldTypes.size, 73)
     assert(result.schema.fields.exists(_.name == FieldName("_kind")))
     assert(result.schema.copyFields.exists(_.source == FieldName("description")))
+
+  test("encode filter with settings"):
+    val cfg = Filter.EdgeNGramSettings()
+    val ft = Filter.edgeNGram(cfg)
+    val json = Json.encode(ft).toUtf8String
+    assertEquals(
+      json,
+      s"""{"name":"edgeNGram","minGramSize":"${cfg.minGramSize}","maxGramSize":"${cfg.maxGramSize}","preserveOriginal":"${cfg.preserveOriginal}"}"""
+    )
+
+  test("decode filter with settings"):
+    val jsonStr =
+      """{"name":"edgeNGram","minGramSize":"3","maxGramSize":"6","preserveOriginal":"true"}"""
+    val result = Json.decode(jsonStr.getBytes()).to[Filter].value
+    val expect = Filter.edgeNGram(Filter.EdgeNGramSettings(3, 6, true))
+    assertEquals(result, expect)
 }

@@ -33,7 +33,10 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
     List(solrServer, solrClient)
 
   private val migrations = Seq(
-    SchemaMigration(-5, Add(FieldType.text(TypeName("testText"), Analyzer.classic))),
+    SchemaMigration(
+      -5,
+      Add(FieldType.text(TypeName("testText")).withAnalyzer(Analyzer.classic))
+    ),
     SchemaMigration(-4, Add(FieldType.int(TypeName("testInt")))),
     SchemaMigration(-3, Add(Field(FieldName("testName"), TypeName("testText")))),
     SchemaMigration(-2, Add(Field(FieldName("testDescription"), TypeName("testText")))),

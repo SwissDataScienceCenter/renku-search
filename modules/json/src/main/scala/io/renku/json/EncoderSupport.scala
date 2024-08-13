@@ -85,7 +85,28 @@ object EncoderSupport {
     val adds = AdditionalFields.const[A, V](field*)
     Macros.createEncoder[String, V, A](adds)
 
+  /** Derives an encoder that writes all members of the target type as map members. It
+    * assumes an already open map!
+    */
+  inline def deriveProductMemberEncoder[A <: Product](using
+      Mirror.ProductOf[A]
+  ): Encoder[A] =
+    Macros.membersEncoder[A]
+
   private object Macros {
+    final inline def membersEncoder[T](using
+        m: Mirror.ProductOf[T]
+    ): Encoder[T] =
+      new Encoder[T] {
+        def write(w: Writer, value: T): Writer =
+          val encoders = summonEncoder[m.MirroredElemTypes]
+          val names = LabelsMacro.findLabels[T].toList
+          val values = value.asInstanceOf[Product].productIterator.toList
+          names.zip(values).zip(encoders).foreach { case ((k, v), e) =>
+            w.writeMapMember(k, v)(using Encoder[String], e.asInstanceOf[Encoder[Any]])
+          }
+          w
+      }
 
     final inline def createEncoder[K: Encoder, V: Encoder, T](
         additionalFields: AdditionalFields[T, V]

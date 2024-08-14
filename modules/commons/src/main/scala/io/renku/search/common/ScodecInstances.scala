@@ -16,25 +16,23 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision.metrics
+package io.renku.search.common
 
-import cats.Monad
-import cats.data.NonEmptyList
-import cats.syntax.all.*
+import cats.Monoid
 
-import io.renku.queue.client.QueueClient
-import io.renku.redis.client.QueueName
+import scodec.bits.BitVector
+import scodec.bits.ByteVector
 
-private class UnprocessedCountGaugeUpdater[F[_]: Monad](
-    rc: QueueClient[F],
-    gauge: UnprocessedCountGauge
-) extends CollectorUpdater[F]:
+trait ScodecInstances:
 
-  override def update(queueName: QueueName): F[Unit] =
-    rc
-      .findLastProcessed(NonEmptyList.of(queueName))
-      .flatMap {
-        case None     => rc.getSize(queueName)
-        case Some(lm) => rc.getSize(queueName, lm)
-      }
-      .map(s => gauge.set(queueName, s.toDouble))
+  given Monoid[ByteVector] = new Monoid[ByteVector] {
+    def empty = ByteVector.empty
+    def combine(x: ByteVector, y: ByteVector) = x ++ y
+  }
+
+  given Monoid[BitVector] = new Monoid[BitVector] {
+    def empty = BitVector.empty
+    def combine(x: BitVector, y: BitVector) = x ++ y
+  }
+
+object ScodecInstances extends ScodecInstances

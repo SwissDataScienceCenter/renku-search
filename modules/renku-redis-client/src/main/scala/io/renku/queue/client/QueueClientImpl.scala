@@ -18,6 +18,7 @@
 
 package io.renku.queue.client
 
+import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
 import fs2.Stream
@@ -42,7 +43,7 @@ private class QueueClientImpl[F[_]: Async](
     redisQueueClient.enqueue(queueName, data.header, data.payload).map(MessageId.apply)
 
   override def acquireHeaderEventsStream(
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, QueueMessage] =
@@ -53,21 +54,21 @@ private class QueueClientImpl[F[_]: Async](
           Scribe[F]
             .error(s"Error decoding message header: $err")
             .as(Option.empty[MessageHeader])
-            .flatTap(_ => markProcessed(queueName, MessageId(rm.id)))
+            .flatTap(_ => markProcessed(queueNames, MessageId(rm.id)))
 
     redisQueueClient
-      .acquireEventsStream(queueName, chunkSize, maybeOffset.map(_.value))
+      .acquireEventsStream(queueNames, chunkSize, maybeOffset.map(_.value))
       .evalMap(rm =>
         decodeHeader(rm).map(_.map(QueueMessage(MessageId(rm.id), _, rm.payload)))
       )
       .collect { case Some(qm) => qm }
 
   def acquireMessageStream[T](
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   )(using d: EventMessageDecoder[T]): Stream[F, EventMessage[T]] =
-    acquireHeaderEventsStream(queueName, chunkSize, maybeOffset).evalMap { m =>
+    acquireHeaderEventsStream(queueNames, chunkSize, maybeOffset).evalMap { m =>
       d.decode(m) match
         case Right(em) =>
           Scribe[F].trace(s"Got message: $em").as(Some(em))
@@ -75,15 +76,20 @@ private class QueueClientImpl[F[_]: Async](
           Scribe[F]
             .warn(s"Error decoding redis payload in $m: $err")
             .as(None)
-            .flatTap(_ => markProcessed(queueName, MessageId(m.id.value)))
+            .flatTap(_ => markProcessed(queueNames, MessageId(m.id.value)))
 
     }.unNone
 
-  override def markProcessed(queueName: QueueName, messageId: MessageId): F[Unit] =
-    redisQueueClient.markProcessed(clientId, queueName, messageId.value)
+  override def markProcessed(
+      queueNames: NonEmptyList[QueueName],
+      messageId: MessageId
+  ): F[Unit] =
+    redisQueueClient.markProcessed(clientId, queueNames, messageId.value)
 
-  override def findLastProcessed(queueName: QueueName): F[Option[MessageId]] =
-    redisQueueClient.findLastProcessed(clientId, queueName).map(_.map(MessageId.apply))
+  override def findLastProcessed(
+      queueNames: NonEmptyList[QueueName]
+  ): F[Option[MessageId]] =
+    redisQueueClient.findLastProcessed(clientId, queueNames).map(_.map(MessageId.apply))
 
   override def getSize(queueName: QueueName): F[Long] =
     redisQueueClient.getSize(queueName)

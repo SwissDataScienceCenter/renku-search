@@ -19,6 +19,7 @@
 package io.renku.search.provision.handler
 
 import cats.Applicative
+import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.effect.Resource.ExitCase
 import cats.syntax.all.*
@@ -54,17 +55,18 @@ object MessageReader:
   ): MessageReader[F] =
     new MessageReader[F]:
       private val logger: Scribe[F] = scribe.cats.effect[F]
+      private val qnames = NonEmptyList.of(queue)
 
       def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]] =
         for {
           client <- queueClient
-          last <- Stream.eval(client.findLastProcessed(queue))
-          msg <- client.acquireMessageStream(queue, chunkSize, last)
+          last <- Stream.eval(client.findLastProcessed(qnames))
+          msg <- client.acquireMessageStream(qnames, chunkSize, last)
           _ <- Stream.eval(logMessage(msg))
         } yield msg
 
       override def markProcessed(id: MessageId): F[Unit] =
-        queueClient.evalMap(_.markProcessed(queue, id)).take(1).compile.drain
+        queueClient.evalMap(_.markProcessed(qnames, id)).take(1).compile.drain
 
       override def markProcessedError(err: Throwable, id: MessageId)(using
           logger: Scribe[F]

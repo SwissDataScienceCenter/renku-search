@@ -18,6 +18,7 @@
 
 package io.renku.search.provision.user
 
+import cats.data.NonEmptyList
 import cats.effect.IO
 
 import io.renku.events.EventsGenerators
@@ -90,7 +91,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
           "user is still in group members"
         )
 
-        last <- queueClient.findLastProcessed(queueConfig.userRemoved)
+        last <- queueClient.findLastProcessed(NonEmptyList.of(queueConfig.userRemoved))
         _ = assertEquals(last, Some(msgId))
       yield ()
   }

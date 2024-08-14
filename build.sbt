@@ -421,7 +421,7 @@ lazy val searchApi = project
 
 lazy val searchCli = project
   .in(file("modules/search-cli"))
-  .enablePlugins(AutomateHeaderPlugin)
+  .enablePlugins(AutomateHeaderPlugin, JavaAppPackaging, DockerImagePlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("search-cli")
   .settings(commonSettings)

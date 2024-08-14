@@ -70,3 +70,6 @@ object GroupAdded:
     }
 
   given Show[GroupAdded] = Show.show(_.fold(_.toString))
+
+  given MsgType.Mapping[GroupAdded] =
+    MsgType.Mapping.of(MsgType.GroupAdded)

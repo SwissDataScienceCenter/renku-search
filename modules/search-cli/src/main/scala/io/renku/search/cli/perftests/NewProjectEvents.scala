@@ -55,7 +55,7 @@ final private case class NewProjectEvents(
 
   private def createMessage[F[_], A <: RenkuEventPayload](
       pl: A
-  )(using Sync[F], ModelTypesGenerators[F]): F[EventMessage[A]] =
+  )(using Sync[F], ModelTypesGenerators[F], MsgType.Mapping[A]): F[EventMessage[A]] =
     ModelTypesGenerators[F].generateRequestId.flatMap { reqId =>
       EventMessage.create[F, A](
         messageSource,

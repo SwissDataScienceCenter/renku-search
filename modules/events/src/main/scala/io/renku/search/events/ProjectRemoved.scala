@@ -54,3 +54,5 @@ object ProjectRemoved:
           qm.toMessage[v2.ProjectRemoved](schema)
             .map(_.map(e => ProjectRemoved(Id(e.id))))
     }
+  given MsgType.Mapping[ProjectRemoved] =
+    MsgType.Mapping.of(MsgType.ProjectRemoved)

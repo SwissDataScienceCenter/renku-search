@@ -85,3 +85,5 @@ object ProjectMemberRemoved:
 
   given Show[ProjectMemberRemoved] =
     Show.show(_.fold(_.toString, _.toString))
+  given MsgType.Mapping[ProjectMemberRemoved] =
+    MsgType.Mapping.of(MsgType.ProjectMemberRemoved)

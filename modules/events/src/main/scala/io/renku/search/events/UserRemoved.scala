@@ -53,3 +53,5 @@ object UserRemoved:
           qm.toMessage[v2.UserRemoved](schema)
             .map(_.map(e => UserRemoved(Id(e.id))))
     }
+  given MsgType.Mapping[UserRemoved] =
+    MsgType.Mapping.of(MsgType.UserRemoved)

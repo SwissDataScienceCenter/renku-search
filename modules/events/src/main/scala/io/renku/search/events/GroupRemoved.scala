@@ -63,3 +63,5 @@ object GroupRemoved:
     }
 
   given Show[GroupRemoved] = Show.show(_.fold(_.toString))
+  given MsgType.Mapping[GroupRemoved] =
+    MsgType.Mapping.of(MsgType.GroupRemoved)

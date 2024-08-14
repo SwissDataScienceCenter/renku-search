@@ -35,7 +35,7 @@ final case class EventMessage[P](
   private lazy val payloadWriter = AvroWriter(payloadSchema)
 
   def toAvro(using AvroEncoder[P]): EventMessage.AvroPayload =
-    val h = header.toAvro(payload.getClass.getName)
+    val h = header.toAvro
     val b = header.dataContentType match
       case DataContentType.Binary => payloadWriter.write(payload)
       case DataContentType.Json   => payloadWriter.writeJson(payload)
@@ -55,8 +55,11 @@ object EventMessage:
       ct: DataContentType,
       reqId: RequestId,
       payload: A
-  ): F[EventMessage[A]] =
-    (MessageId.random[F], MessageHeader.create(src, ct, payload.version.head, reqId))
+  )(using mt: MsgType.Mapping[A]): F[EventMessage[A]] =
+    (
+      MessageId.random[F],
+      MessageHeader.create(src, mt.msgType, ct, payload.version.head, reqId)
+    )
       .mapN((id, h) => EventMessage(id, h, payload.schema, Seq(payload)))
 
   final case class AvroPayload(header: ByteVector, payload: ByteVector)

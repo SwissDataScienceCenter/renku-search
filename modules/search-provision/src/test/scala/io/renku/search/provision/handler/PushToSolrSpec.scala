@@ -47,7 +47,11 @@ class PushToSolrSpec extends CatsEffectSuite with SearchSolrSuite:
       userId <- idGen
       added = UserAdded(userId, Namespace("sdsc-ns"), None, None, None)
       doc = added.toModel(DocVersion.Off)
-      ev <- EventsGenerators.eventMessageGen(added.schema, Gen.const(Seq(doc)))
+      ev <- EventsGenerators.eventMessageGen(
+        added.schema,
+        MsgType.UserAdded,
+        Gen.const(Seq(doc))
+      )
     yield ev
 
   def pushData(solr: PushToSolr[IO], runBefore: IO[Unit])(

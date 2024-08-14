@@ -121,3 +121,5 @@ object ProjectCreated:
 
   given Show[ProjectCreated] =
     Show.show(v => s"slug '${v.fold(_.slug, _.slug)}'")
+  given MsgType.Mapping[ProjectCreated] =
+    MsgType.Mapping.of(MsgType.ProjectCreated)

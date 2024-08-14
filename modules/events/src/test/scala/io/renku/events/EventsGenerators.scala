@@ -57,26 +57,32 @@ object EventsGenerators:
 
   val requestIdGen: Gen[RequestId] = Gen.uuid.map(_.toString).map(RequestId(_))
 
-  def messageHeaderGen: Gen[MessageHeader] =
+  def messageHeaderGen(mt: MsgType): Gen[MessageHeader] =
     for
       src <- messageSourceGen
       dt <- dataContentTypeGen
       sv <- schemaVersionGen
       ts <- ModelGenerators.timestampGen
       req <- requestIdGen
-    yield MessageHeader(src, dt, sv, ts, req)
+    yield MessageHeader(src, mt, dt, sv, ts, req)
 
-  def eventMessageGen[A](schema: Schema, plgen: Gen[Seq[A]]): Gen[EventMessage[A]] =
+  def eventMessageGen[A](
+      schema: Schema,
+      mt: MsgType,
+      plgen: Gen[Seq[A]]
+  ): Gen[EventMessage[A]] =
     for
       id <- messageIdGen
-      mh <- messageHeaderGen
+      mh <- messageHeaderGen(mt)
       pl <- plgen
     yield EventMessage(id, mh, schema, pl)
 
-  def eventMessageGen[A <: RenkuEventPayload](plgen: Gen[A]): Gen[EventMessage[A]] =
+  def eventMessageGen[A <: RenkuEventPayload](
+      plgen: Gen[A]
+  )(using MsgType.Mapping[A]): Gen[EventMessage[A]] =
     Gen.listOfN(1, plgen).flatMap { pl =>
       val schema = pl.head.schema
-      eventMessageGen(schema, Gen.const(pl)).map(msg =>
+      eventMessageGen(schema, MsgType.Mapping[A].msgType, Gen.const(pl)).map(msg =>
         msg.copy(header = msg.header.withSchemaVersion(pl.head.version.head))
       )
     }

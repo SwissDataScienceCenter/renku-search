@@ -87,3 +87,6 @@ object UserAdded:
     }
 
   given Show[UserAdded] = Show.show(_.fold(_.toString, _.toString))
+
+  given MsgType.Mapping[UserAdded] =
+    MsgType.Mapping.of(MsgType.UserAdded)

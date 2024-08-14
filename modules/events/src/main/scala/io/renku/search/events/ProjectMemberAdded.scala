@@ -104,3 +104,5 @@ object ProjectMemberAdded:
 
   given Show[ProjectMemberAdded] =
     Show.show(_.fold(_.toString, _.toString))
+  given MsgType.Mapping[ProjectMemberAdded] =
+    MsgType.Mapping.of(MsgType.ProjectMemberAdded)

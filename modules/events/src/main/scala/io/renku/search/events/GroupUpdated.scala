@@ -72,3 +72,5 @@ object GroupUpdated:
     }
 
   given Show[GroupUpdated] = Show.show(_.fold(_.toString))
+  given MsgType.Mapping[GroupUpdated] =
+    MsgType.Mapping.of(MsgType.GroupUpdated)

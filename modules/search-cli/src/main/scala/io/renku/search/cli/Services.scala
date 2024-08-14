@@ -24,6 +24,8 @@ import io.renku.queue.client.QueueClient
 import io.renku.redis.client.ClientId
 import io.renku.search.config.ConfigValues
 import io.renku.search.events.*
+import io.renku.solr.client.SolrClient
+import io.renku.search.solr.client.SearchSolrClient
 
 object Services:
   private val millis = System.currentTimeMillis()
@@ -33,6 +35,15 @@ object Services:
   def queueClient: Resource[IO, QueueClient[IO]] =
     val redisCfg = ConfigValues.redisConfig.load[IO]
     Resource.eval(redisCfg).flatMap(QueueClient.make[IO](_, clientId))
+
+  def solrClient: Resource[IO, SolrClient[IO]] =
+    val solrCfg = ConfigValues.solrConfig.load[IO]
+    Resource.eval(solrCfg).flatMap(SolrClient[IO](_))
+
+  def solrSearchClient: Resource[IO, (SolrClient[IO], SearchSolrClient[IO])] =
+    solrClient.flatMap { solr =>
+      SearchSolrClient.from(solr).map((solr, _))
+    }
 
   private def makeRequestId: IO[RequestId] =
     counter.updateAndGet(_ + 1).map(n => RequestId(s"req_${millis}_$n"))

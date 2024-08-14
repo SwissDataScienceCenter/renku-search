@@ -49,3 +49,6 @@ object SearchSolrClient:
       solrConfig: SolrConfig
   ): Resource[F, SearchSolrClient[F]] =
     SolrClient[F](solrConfig).map(new SearchSolrClientImpl[F](_))
+
+  def from[F[_]: Async](solrClient: SolrClient[F]): Resource[F, SearchSolrClient[F]] =
+    Resource.pure(new SearchSolrClientImpl[F](solrClient))

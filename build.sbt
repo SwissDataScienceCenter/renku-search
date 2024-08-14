@@ -431,7 +431,8 @@ lazy val searchCli = project
     Compile / run / fork := true,
     libraryDependencies ++=
       Dependencies.decline ++
-        Dependencies.http4sClient
+        Dependencies.http4sClient ++
+        Dependencies.skunk
   )
   .dependsOn(
     commons % "compile->compile;test->test",

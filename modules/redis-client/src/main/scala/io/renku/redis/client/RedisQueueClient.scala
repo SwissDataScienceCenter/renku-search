@@ -71,6 +71,8 @@ object RedisQueueClient:
 class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
     extends RedisQueueClient[F] {
 
+  private val logger = scribe.cats.effect[F]
+
   override def enqueue(
       queueName: QueueName,
       header: ByteVector,
@@ -125,7 +127,12 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
       messageId: MessageId
   ): F[Unit] =
     createStringCommands.use {
-      _.set(formProcessedKey(clientId, queueName), messageId)
+      _.set(formProcessedKey(clientId, queueName), messageId).recoverWith { case ex =>
+        logger.warn(
+          s"Error setting last message-id '$messageId' for '${formProcessedKey(clientId, queueName)}'",
+          ex
+        )
+      }
     }
 
   override def findLastProcessed(

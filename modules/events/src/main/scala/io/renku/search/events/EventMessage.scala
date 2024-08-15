@@ -55,10 +55,10 @@ object EventMessage:
       ct: DataContentType,
       reqId: RequestId,
       payload: A
-  )(using mt: MsgType.Mapping[A]): F[EventMessage[A]] =
+  ): F[EventMessage[A]] =
     (
       MessageId.random[F],
-      MessageHeader.create(src, mt.msgType, ct, payload.version.head, reqId)
+      MessageHeader.create(src, payload.msgType, ct, payload.version.head, reqId)
     )
       .mapN((id, h) => EventMessage(id, h, payload.schema, Seq(payload)))
 

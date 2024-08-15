@@ -70,8 +70,9 @@ object FetchFromSolr:
         _.evalMap { m =>
           val namespaces =
             m.payload.flatMap {
-              case p: ProjectDocument => p.namespace
-              case _                  => None
+              case p: ProjectDocument               => p.namespace
+              case p: PartialEntityDocument.Project => p.namespace
+              case _                                => None
             }
           val query = List(
             SolrToken.entityTypeIs(EntityType.Group),

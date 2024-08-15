@@ -36,6 +36,7 @@ sealed trait GroupMemberAdded extends RenkuEventPayload:
   def schema: Schema = v2.GroupMemberAdded.SCHEMA$
   def userId: Id = fold(a => Id(a.userId))
   def role: MemberRole
+  val msgType: MsgType = MsgType.GroupMemberAdded
 
 object GroupMemberAdded:
   def apply(groupId: Id, userId: Id, role: MemberRole): GroupMemberAdded =
@@ -77,5 +78,3 @@ object GroupMemberAdded:
 
   given Show[GroupMemberAdded] =
     Show.show(_.fold(_.toString))
-
-  given MsgType.Mapping[GroupMemberAdded] = MsgType.Mapping.of(MsgType.GroupMemberAdded)

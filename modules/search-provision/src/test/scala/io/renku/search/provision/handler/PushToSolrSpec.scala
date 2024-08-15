@@ -116,6 +116,7 @@ object PushToSolrSpec:
     private val processedIds: Ref[IO, Set[MessageId]] = Ref.unsafe(Set.empty)
     def getProcessed: IO[Set[MessageId]] = processedIds.get
     def readEvents[A](using EventMessageDecoder[A]): Stream[IO, EventMessage[A]] = ???
+    def readSyncEvents: Stream[IO, SyncEventMessage] = ???
     def markProcessed(id: MessageId): IO[Unit] = processedIds.update(_ + id)
     def markProcessedError(err: Throwable, id: MessageId)(using
         logger: Scribe[IO]

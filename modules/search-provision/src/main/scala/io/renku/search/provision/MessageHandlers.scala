@@ -54,6 +54,14 @@ final class MessageHandlers[F[_]: Async](
 
   def getAll: Map[String, F[Unit]] = tasks
 
+  // this reads all messages from a single stream
+  val searchSync = add(
+    cfg.searchSync,
+    SyncMessageHandler(steps(cfg.searchSync), maxConflictRetries).create
+  )
+  // TODO: use code from SyncMessageHandler for the other streams, as they are
+  // going to be phased out
+
   val projectCreated: Stream[F, Unit] =
     add(cfg.projectCreated, makeProjectUpsert[ProjectCreated](cfg.projectCreated).drain)
 

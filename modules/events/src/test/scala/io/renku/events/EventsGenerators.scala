@@ -79,10 +79,11 @@ object EventsGenerators:
 
   def eventMessageGen[A <: RenkuEventPayload](
       plgen: Gen[A]
-  )(using MsgType.Mapping[A]): Gen[EventMessage[A]] =
+  ): Gen[EventMessage[A]] =
     Gen.listOfN(1, plgen).flatMap { pl =>
       val schema = pl.head.schema
-      eventMessageGen(schema, MsgType.Mapping[A].msgType, Gen.const(pl)).map(msg =>
+      val mt = pl.head.msgType
+      eventMessageGen(schema, mt, Gen.const(pl)).map(msg =>
         msg.copy(header = msg.header.withSchemaVersion(pl.head.version.head))
       )
     }

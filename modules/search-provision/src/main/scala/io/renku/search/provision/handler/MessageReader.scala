@@ -33,6 +33,7 @@ import scribe.Scribe
 
 trait MessageReader[F[_]]:
   def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]]
+  def readSyncEvents: Stream[F, SyncEventMessage]
   def markProcessed(id: MessageId): F[Unit]
   def markProcessedError(err: Throwable, id: MessageId)(using Scribe[F]): F[Unit]
   def markMessageOnDone[A](
@@ -56,6 +57,14 @@ object MessageReader:
     new MessageReader[F]:
       private val logger: Scribe[F] = scribe.cats.effect[F]
       private val qnames = NonEmptyList.of(queue)
+
+      def readSyncEvents: Stream[F, SyncEventMessage] =
+        for
+          client <- queueClient
+          last <- Stream.eval(client.findLastProcessed(qnames))
+          msg <- client.acquireSyncEventStream(qnames, chunkSize, last)
+          _ <- Stream.eval(logMessage(msg: EventMessage[?]))
+        yield msg
 
       def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]] =
         for {

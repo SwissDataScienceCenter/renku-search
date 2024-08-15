@@ -31,6 +31,7 @@ import io.renku.search.solr.client.SearchSolrClient
 trait DeleteFromSolr[F[_]]:
   def tryDeleteAll[A]: Pipe[F, EntityOrPartialMessage[A], DeleteResult[A]]
   def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[EventMessage[A]], Unit]
+  def deleteByIds[A](using IdExtractor[A]): Pipe[F, EventMessage[A], Unit]
   def whenSuccess[A](
       fb: EntityOrPartialMessage[A] => F[Unit]
   ): Pipe[F, DeleteResult[A], DeleteResult[A]]
@@ -84,8 +85,10 @@ object DeleteFromSolr:
           .through(markProcessed)
 
       def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[EventMessage[A]], Unit] =
-        _.flatMap(Stream.chunk)
-          .map(EntityOrPartialMessage.noDocuments[A])
+        _.flatMap(Stream.chunk).through(deleteByIds[A])
+
+      def deleteByIds[A](using IdExtractor[A]): Pipe[F, EventMessage[A], Unit] =
+        _.map(EntityOrPartialMessage.noDocuments[A])
           .through(tryDeleteAll)
           .through(markProcessed)
           .drain

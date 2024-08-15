@@ -37,9 +37,7 @@ object Services:
   private def makeRequestId: IO[RequestId] =
     counter.updateAndGet(_ + 1).map(n => RequestId(s"req_${millis}_$n"))
 
-  def createMessage[A <: RenkuEventPayload](
-      payload: A
-  )(using MsgType.Mapping[A]): IO[EventMessage[A]] =
+  def createMessage[A <: RenkuEventPayload](payload: A): IO[EventMessage[A]] =
     for
       reqId <- makeRequestId
       src = MessageSource("search-cli")

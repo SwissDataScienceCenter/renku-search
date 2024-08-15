@@ -34,6 +34,7 @@ sealed trait UserAdded extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v1.UserAdded.SCHEMA$, _ => v2.UserAdded.SCHEMA$)
+  val msgType: MsgType = MsgType.UserAdded
 
 object UserAdded:
   def apply(
@@ -87,6 +88,3 @@ object UserAdded:
     }
 
   given Show[UserAdded] = Show.show(_.fold(_.toString, _.toString))
-
-  given MsgType.Mapping[UserAdded] =
-    MsgType.Mapping.of(MsgType.UserAdded)

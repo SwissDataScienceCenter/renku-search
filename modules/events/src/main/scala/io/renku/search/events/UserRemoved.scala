@@ -30,6 +30,7 @@ final case class UserRemoved(id: Id) extends RenkuEventPayload:
   def withId(id: Id): UserRemoved = copy(id = id)
   def version: NonEmptyList[SchemaVersion] = SchemaVersion.all
   val schema: Schema = v2.UserRemoved.SCHEMA$
+  val msgType: MsgType = MsgType.UserRemoved
 
 object UserRemoved:
 
@@ -53,5 +54,3 @@ object UserRemoved:
           qm.toMessage[v2.UserRemoved](schema)
             .map(_.map(e => UserRemoved(Id(e.id))))
     }
-  given MsgType.Mapping[UserRemoved] =
-    MsgType.Mapping.of(MsgType.UserRemoved)

@@ -45,6 +45,12 @@ trait QueueClient[F[_]]:
       maybeOffset: Option[MessageId]
   )(using EventMessageDecoder[T]): Stream[F, EventMessage[T]]
 
+  def acquireSyncEventStream(
+      queueNames: NonEmptyList[QueueName],
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  ): Stream[F, SyncEventMessage]
+
   def markProcessed(
       queueNames: NonEmptyList[QueueName],
       messageId: MessageId

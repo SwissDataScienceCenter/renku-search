@@ -36,6 +36,7 @@ sealed trait ProjectUpdated extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v1.ProjectUpdated.SCHEMA$, _ => v2.ProjectUpdated.SCHEMA$)
+  val msgType: MsgType = MsgType.ProjectUpdated
 
 object ProjectUpdated:
   def apply(
@@ -113,5 +114,3 @@ object ProjectUpdated:
 
   given Show[ProjectUpdated] =
     Show.show(v => s"slug '${v.fold(_.slug, _.slug)}'")
-  given MsgType.Mapping[ProjectUpdated] =
-    MsgType.Mapping.of(MsgType.ProjectUpdated)

@@ -41,18 +41,3 @@ object MsgType:
     MsgType.values
       .find(e => e.name.equalsIgnoreCase(s) || e.productPrefix.equalsIgnoreCase(s))
       .toRight(s"Invalid msg type: $s")
-
-  trait Mapping[A <: RenkuEventPayload]:
-    type B <: MsgType
-    def msgType: B
-
-  object Mapping:
-    def apply[A <: RenkuEventPayload](using
-        m: Mapping[A]
-    ): Mapping[A] = m
-
-    def of[A <: RenkuEventPayload](mt: MsgType): Mapping[A] =
-      new Mapping {
-        type B = mt.type
-        val msgType = mt
-      }

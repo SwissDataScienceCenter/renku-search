@@ -41,6 +41,7 @@ sealed trait ProjectMemberRemoved extends RenkuEventPayload:
       _ => v2.ProjectMemberRemoved.SCHEMA$
     )
   def userId: Id = fold(a => Id(a.userId), b => Id(b.userId))
+  val msgType: MsgType = MsgType.ProjectMemberRemoved
 
 object ProjectMemberRemoved:
   def apply(projectId: Id, userId: Id): ProjectMemberRemoved =
@@ -85,5 +86,3 @@ object ProjectMemberRemoved:
 
   given Show[ProjectMemberRemoved] =
     Show.show(_.fold(_.toString, _.toString))
-  given MsgType.Mapping[ProjectMemberRemoved] =
-    MsgType.Mapping.of(MsgType.ProjectMemberRemoved)

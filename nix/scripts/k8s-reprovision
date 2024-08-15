@@ -57,7 +57,8 @@ drop_last_message_id() {
     echo "Run portforward in $pfw_pid"
 
     # https://github.com/SwissDataScienceCenter/renku/blob/5ed8427433aef82adfbf8ffc0a53cf6549b6df55/helm-chart/renku/values.yaml#L84
-    local queues="project.created project.updated project.removed projectAuth.added projectAuth.updated projectAuth.removed user.added user.updated user.removed"
+    #local queues="project.created project.updated project.removed projectAuth.added projectAuth.updated projectAuth.removed user.added user.updated user.removed group.added group.updated group.removed groupMember.added groupMember.updated groupMember.removed"
+    local queues=$(redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" scan 0 type stream | jq -r '.[1][]' | xargs)
     for qn in $queues; do
         local msg_id=$(redis-cli -e --json -h localhost -p 16379 -n 3 -a "$redis_secret" GET "$qn.search-provisioner" | jq -r)
         if [ "$msg_id" = "null" ] || [ -z "$msg_id" ]; then
@@ -71,8 +72,8 @@ drop_last_message_id() {
     kill $pfw_pid
 }
 
-echo "Dropping and creating solr core"
-recreate_solr_core
+# echo "Dropping and creating solr core"
+# recreate_solr_core
 
 echo "Dropping last processed message id"
 drop_last_message_id

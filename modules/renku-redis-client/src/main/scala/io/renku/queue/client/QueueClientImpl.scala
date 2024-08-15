@@ -26,14 +26,13 @@ import fs2.Stream
 import io.renku.avro.codec.AvroEncoder
 import io.renku.redis.client.{MessageId as _, *}
 import io.renku.search.events.*
-import scribe.Scribe
 
 private class QueueClientImpl[F[_]: Async](
     redisQueueClient: RedisQueueClient[F],
     clientId: ClientId
 ) extends QueueClient[F]:
 
-  private given Scribe[F] = scribe.cats[F]
+  private val logger = scribe.cats.effect[F]
 
   override def enqueue[P: AvroEncoder](
       queueName: QueueName,
@@ -51,7 +50,7 @@ private class QueueClientImpl[F[_]: Async](
       MessageHeader.fromByteVector(rm.header) match
         case Right(h) => Some(h).pure[F]
         case Left(err) =>
-          Scribe[F]
+          logger
             .error(s"Error decoding message header: $err")
             .as(Option.empty[MessageHeader])
             .flatTap(_ => markProcessed(queueNames, MessageId(rm.id)))
@@ -71,13 +70,28 @@ private class QueueClientImpl[F[_]: Async](
     acquireHeaderEventsStream(queueNames, chunkSize, maybeOffset).evalMap { m =>
       d.decode(m) match
         case Right(em) =>
-          Scribe[F].trace(s"Got message: $em").as(Some(em))
+          logger.trace(s"Got message: $em").as(Some(em))
         case Left(err) =>
-          Scribe[F]
+          logger
             .warn(s"Error decoding redis payload in $m: $err")
             .as(None)
             .flatTap(_ => markProcessed(queueNames, MessageId(m.id.value)))
 
+    }.unNone
+
+  def acquireSyncEventStream(
+      queueNames: NonEmptyList[QueueName],
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  ): Stream[F, SyncEventMessage] =
+    acquireHeaderEventsStream(queueNames, chunkSize, maybeOffset).evalMap { m =>
+      SyncEventMessage.decode(m) match
+        case Right(em) => logger.trace(s"Got message: $em").as(Some(em))
+        case Left(err) =>
+          logger
+            .warn(s"Error decoding redis payload in $m: $err")
+            .as(None)
+            .flatTap(_ => markProcessed(queueNames, MessageId(m.id.value)))
     }.unNone
 
   override def markProcessed(

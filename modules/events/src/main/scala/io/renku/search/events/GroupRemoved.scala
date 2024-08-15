@@ -34,6 +34,7 @@ sealed trait GroupRemoved extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v2.GroupRemoved.SCHEMA$)
+  val msgType: MsgType = MsgType.GroupRemoved
 
 object GroupRemoved:
   def apply(groupId: Id): GroupRemoved =
@@ -63,5 +64,3 @@ object GroupRemoved:
     }
 
   given Show[GroupRemoved] = Show.show(_.fold(_.toString))
-  given MsgType.Mapping[GroupRemoved] =
-    MsgType.Mapping.of(MsgType.GroupRemoved)

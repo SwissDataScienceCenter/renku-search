@@ -37,6 +37,7 @@ sealed trait ProjectMemberAdded extends RenkuEventPayload:
     fold(_ => v1.ProjectAuthorizationAdded.SCHEMA$, _ => v2.ProjectMemberAdded.SCHEMA$)
   def userId: Id = fold(a => Id(a.userId), b => Id(b.userId))
   def role: MemberRole
+  val msgType: MsgType = MsgType.ProjectMemberAdded
 
 object ProjectMemberAdded:
   def apply(projectId: Id, userId: Id, role: MemberRole): ProjectMemberAdded =
@@ -104,5 +105,3 @@ object ProjectMemberAdded:
 
   given Show[ProjectMemberAdded] =
     Show.show(_.fold(_.toString, _.toString))
-  given MsgType.Mapping[ProjectMemberAdded] =
-    MsgType.Mapping.of(MsgType.ProjectMemberAdded)

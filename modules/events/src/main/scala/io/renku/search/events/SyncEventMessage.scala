@@ -36,7 +36,12 @@ object SyncEventMessage:
       case mt: MsgType.ProjectCreated.type =>
         mt.decoder.decode(qm)
       case _ => ???
+      // TODO fill that boilerplate …
 
+  // maps each MsgType to its correspondin payload type by providing a
+  // cast method paired with the decoder that results in that payload
+  // type. so when using this decoder, it is safe to use the
+  // corresponding cast
   object syntax {
     extension (self: MsgType.ProjectCreated.type)
       @targetName("castProjectCreated")

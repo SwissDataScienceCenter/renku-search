@@ -36,6 +36,8 @@ import io.renku.solr.client.ResponseHeader
 import io.renku.solr.client.UpsertResponse
 
 trait PushToSolr[F[_]]:
+  def pushAll(msg: EventMessage[EntityOrPartial]): F[UpsertResponse]
+
   def push1(
       onConflict: => OptionT[F, Stream[F, UpsertResponse]],
       maxWait: FiniteDuration = 100.millis
@@ -54,6 +56,15 @@ object PushToSolr:
   ): PushToSolr[F] =
     new PushToSolr[F] {
       val logger = scribe.cats.effect[F]
+
+      def pushAll(msg: EventMessage[EntityOrPartial]): F[UpsertResponse] =
+        val docs = msg.payload
+        if (docs.isEmpty)
+          logger
+            .debug(s"Attempt to push a message with empty payload: ${msg.header}")
+            .as(UpsertResponse.Success(ResponseHeader.empty))
+        else solrClient.upsert(docs)
+
       private def pushChunk
           : Pipe[F, Chunk[EventMessage[EntityOrPartial]], UpsertResponse] =
         _.evalMap { docs =>

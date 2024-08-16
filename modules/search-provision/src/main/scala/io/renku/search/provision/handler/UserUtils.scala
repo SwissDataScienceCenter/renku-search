@@ -25,6 +25,7 @@ import fs2.{Pipe, Stream}
 
 import io.renku.search.events.*
 import io.renku.search.model.Id
+import io.renku.search.provision.handler.FetchFromSolr.EntityId
 import io.renku.search.solr.documents.{
   Group as GroupDocument,
   PartialEntityDocument,
@@ -34,6 +35,12 @@ import io.renku.solr.client.UpsertResponse
 
 trait UserUtils[F[_]]:
   def removeFromMembers: Pipe[F, EventMessage[Id], FetchFromSolr.EntityId]
+
+  /** For a message containing user ids, all entities where the user is a member of are
+    * obtained and the user is removed from any member properties. The ids of all affected
+    * entities is are returned
+    */
+  def removeMember[A](msg: EventMessage[A])(using IdExtractor[A]): Stream[F, EntityId]
 
 object UserUtils:
   def apply[F[_]: Sync](
@@ -58,30 +65,35 @@ object UserUtils:
           .unNone
           .through(pushToSolr.push1(onConflict = retry))
 
+      def removeMember[A](
+          msg: EventMessage[A]
+      )(using IdExtractor[A]): Stream[F, EntityId] =
+        val ids = msg.payload.map(IdExtractor[A].getId)
+        Stream
+          .emits(ids)
+          .flatMap(fetchFromSolr.fetchEntityForUser)
+          .evalTap { entityId =>
+            updateEntity(
+              entityId.id,
+              {
+                case p: ProjectDocument =>
+                  p.modifyEntityMembers(_.removeMembers(ids))
+                    .modifyGroupMembers(_.removeMembers(ids))
+                    .some
+                case p: PartialEntityDocument.Project =>
+                  p.modifyEntityMembers(_.removeMembers(ids))
+                    .modifyGroupMembers(_.removeMembers(ids))
+                    .some
+                case g: GroupDocument =>
+                  g.modifyEntityMembers(_.removeMembers(ids)).some
+
+                case _ => None
+              }
+            ).compile.drain
+          }
+
       def removeFromMembers: Pipe[F, EventMessage[Id], FetchFromSolr.EntityId] =
         _.flatMap { msg =>
-          Stream
-            .emits(msg.payload)
-            .flatMap(fetchFromSolr.fetchEntityForUser)
-            .evalTap { entityId =>
-              updateEntity(
-                entityId.id,
-                {
-                  case p: ProjectDocument =>
-                    p.modifyEntityMembers(_.removeMembers(msg.payload))
-                      .modifyGroupMembers(_.removeMembers(msg.payload))
-                      .some
-                  case p: PartialEntityDocument.Project =>
-                    p.modifyEntityMembers(_.removeMembers(msg.payload))
-                      .modifyGroupMembers(_.removeMembers(msg.payload))
-                      .some
-                  case g: GroupDocument =>
-                    g.modifyEntityMembers(_.removeMembers(msg.payload)).some
-
-                  case _ => None
-                }
-              ).compile.drain
-            }
-            .through(reader.markMessageOnDone(msg.id)(using logger))
+          removeMember(msg).through(reader.markMessageOnDone(msg.id)(using logger))
         }
     }

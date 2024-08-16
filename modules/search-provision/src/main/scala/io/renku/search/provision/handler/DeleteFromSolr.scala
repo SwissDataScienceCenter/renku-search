@@ -32,6 +32,7 @@ trait DeleteFromSolr[F[_]]:
   def tryDeleteAll[A]: Pipe[F, EntityOrPartialMessage[A], DeleteResult[A]]
   def deleteAll[A](using IdExtractor[A]): Pipe[F, Chunk[EventMessage[A]], Unit]
   def deleteByIds[A](using IdExtractor[A]): Pipe[F, EventMessage[A], Unit]
+  def deleteDocuments[A](msg: EventMessage[A])(using IdExtractor[A]): F[DeleteResult[A]]
   def whenSuccess[A](
       fb: EntityOrPartialMessage[A] => F[Unit]
   ): Pipe[F, DeleteResult[A], DeleteResult[A]]
@@ -70,6 +71,19 @@ object DeleteFromSolr:
 
             case None => Sync[F].pure(DeleteResult.NoIds(msg))
         }
+
+      def deleteDocuments[A](msg: EventMessage[A])(using
+          IdExtractor[A]
+      ): F[DeleteResult[A]] =
+        NonEmptyList.fromList(msg.payload.map(IdExtractor[A].getId).toList) match
+          case Some(nel) =>
+            logger.debug(s"Deleting documents with ids: $nel") >>
+              solrClient
+                .deleteIds(nel)
+                .attempt
+                .map(DeleteResult.from(EntityOrPartialMessage.noDocuments(msg)))
+          case None =>
+            Sync[F].pure(DeleteResult.NoIds(EntityOrPartialMessage.noDocuments(msg)))
 
       def whenSuccess[A](
           fb: EntityOrPartialMessage[A] => F[Unit]

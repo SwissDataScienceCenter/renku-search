@@ -44,7 +44,7 @@ object EventsGenerators:
     Gen.oneOf(v2.MemberRole.values().toList)
 
   def messageIdGen: Gen[MessageId] =
-    Gen.uuid.map(uid => MessageId(uid.toString))
+    Gen.delay(Gen.const(RedisIdGen.unsafeNextId))
 
   def messageSourceGen: Gen[MessageSource] =
     stringGen(max = 6).map(n => MessageSource(s"ms-$n"))

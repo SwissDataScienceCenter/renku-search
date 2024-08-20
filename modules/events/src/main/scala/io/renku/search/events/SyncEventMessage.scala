@@ -35,8 +35,34 @@ object SyncEventMessage:
     qm.header.msgType match
       case mt: MsgType.ProjectCreated.type =>
         mt.decoder.decode(qm)
-      case _ => ???
-      // TODO fill that boilerplate …
+      case mt: MsgType.ProjectUpdated.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.ProjectRemoved.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.ProjectMemberAdded.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.ProjectMemberUpdated.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.ProjectMemberRemoved.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.UserAdded.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.UserUpdated.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.UserRemoved.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.GroupAdded.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.GroupUpdated.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.GroupRemoved.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.GroupMemberAdded.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.GroupMemberUpdated.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.GroupMemberRemoved.type =>
+        mt.decoder.decode(qm)
 
   // maps each MsgType to its correspondin payload type by providing a
   // cast method paired with the decoder that results in that payload

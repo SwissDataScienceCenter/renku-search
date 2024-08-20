@@ -34,7 +34,7 @@ import io.renku.solr.client.UpsertResponse.syntax.*
   * moved to a "partial" entity. That way the data is still in the index, but it will not
   * be returned from the search api.
   */
-final class GroupRemove[F[_]: Async](ps: PipelineSteps[F]):
+final private[provision] class GroupRemove[F[_]: Async](ps: PipelineSteps[F]):
   private val logger = scribe.cats.effect[F]
 
   def process(
@@ -55,7 +55,7 @@ final class GroupRemove[F[_]: Async](ps: PipelineSteps[F]):
           }
         case _ =>
           ().pure[F]
-    yield ???
+    yield delRes
 
   private def convertProjectsToPartial(
       msg: EntityOrPartialMessage[GroupRemoved]

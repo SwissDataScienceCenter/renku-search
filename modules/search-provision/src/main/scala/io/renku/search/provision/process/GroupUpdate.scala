@@ -33,7 +33,7 @@ import io.renku.solr.client.UpsertResponse.syntax.*
   * necessary if a group has updated its namespace. Then all their projects must be
   * renamed.
   */
-final class GroupUpdate[F[_]: Async](ps: PipelineSteps[F]):
+final private[provision] class GroupUpdate[F[_]: Async](ps: PipelineSteps[F]):
 
   def process(
       msg: EventMessage[GroupUpdated],

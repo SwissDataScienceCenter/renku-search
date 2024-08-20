@@ -67,7 +67,7 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
         inChunkSize = 1
       )
       handlers = MessageHandlers[IO](steps, queueConfig)
-    yield TestServices(handlers, queue, solrClient)
+    yield TestServices(steps, handlers, queue, solrClient)
 
   val testServices = ResourceSuiteLocalFixture("test-services", testServicesR)
 

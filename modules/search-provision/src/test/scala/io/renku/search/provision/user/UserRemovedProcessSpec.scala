@@ -48,7 +48,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
     test(s"process user removed: $tc"):
       for
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.userRemoved)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
@@ -59,7 +59,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
           EventsGenerators.eventMessageGen(Gen.const(tc.userRemovedEvent)).generateOne
         )
 
-        _ <- handler.makeUserRemoved.take(1).compile.drain
+        _ <- handler.create.take(1).compile.drain
 
         users <- loadPartialOrEntity(solrClient, EntityType.User, tc.userId)
         _ = assert(users.isEmpty)

@@ -30,7 +30,7 @@ import io.renku.search.provision.handler.*
   * Deleting a user requires to update all affected entities to remove this user from
   * their members.
   */
-final class UserDelete[F[_]: Async](ps: PipelineSteps[F]):
+final private[provision] class UserDelete[F[_]: Async](ps: PipelineSteps[F]):
   private val logger = scribe.cats.effect[F]
 
   /** Delete all users the payload. */

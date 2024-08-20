@@ -16,21 +16,31 @@
  * limitations under the License.
  */
 
-package io.renku.search.provision
+package io.renku.events
 
 import cats.effect.*
+import java.util.concurrent.atomic.AtomicLong
+import io.renku.search.events.MessageId
 
-import io.renku.queue.client.QueueClient
-import io.renku.search.solr.client.SearchSolrClient
-import io.renku.redis.client.QueueName
-import io.renku.search.provision.handler.PipelineSteps
+// Just for testing, generate redis compatible ids
+object RedisIdGen:
 
-final case class TestServices(
-    pipelineSteps: QueueName => PipelineSteps[IO],
-    messageHandlers: MessageHandlers[IO],
-    queueClient: QueueClient[IO],
-    searchClient: SearchSolrClient[IO]
-):
+  private val millis = new AtomicLong(System.currentTimeMillis())
+  private val counter = new AtomicLong(0)
 
-  def syncHandler(qn: QueueName): SyncMessageHandler[IO] =
-    SyncMessageHandler[IO](pipelineSteps(qn))
+  def unsafeNextId: MessageId =
+    val c = counter.getAndIncrement()
+    val ms = System.currentTimeMillis()
+    val curMs = millis.get
+    if (millis.get == ms) {
+      MessageId(s"${ms}-${counter.getAndIncrement()}")
+    } else {
+      if (millis.compareAndSet(curMs, ms)) {
+        counter.set(0)
+        MessageId(s"${ms}-$c")
+      } else
+        unsafeNextId
+    }
+
+  def nextId: IO[MessageId] =
+    IO(unsafeNextId)

@@ -18,18 +18,10 @@
 
 package io.renku.search.events
 
-import java.util.UUID
-
-import cats.effect.Sync
-import cats.syntax.all.*
-
 opaque type MessageId = String
 
 object MessageId:
 
   def apply(id: String): MessageId = id
-
-  def random[F[_]: Sync]: F[MessageId] =
-    Sync[F].delay(UUID.randomUUID().toString()).map(MessageId(_))
 
   extension (self: MessageId) def value: String = self

@@ -51,15 +51,14 @@ final case class EventMessage[P](
 
 object EventMessage:
   def create[F[_]: Sync, A <: RenkuEventPayload](
+      id: MessageId,
       src: MessageSource,
       ct: DataContentType,
       reqId: RequestId,
       payload: A
   ): F[EventMessage[A]] =
-    (
-      MessageId.random[F],
-      MessageHeader.create(src, payload.msgType, ct, payload.version.head, reqId)
-    )
-      .mapN((id, h) => EventMessage(id, h, payload.schema, Seq(payload)))
+    MessageHeader
+      .create(src, payload.msgType, ct, payload.version.head, reqId)
+      .map(h => EventMessage(id, h, payload.schema, Seq(payload)))
 
   final case class AvroPayload(header: ByteVector, payload: ByteVector)

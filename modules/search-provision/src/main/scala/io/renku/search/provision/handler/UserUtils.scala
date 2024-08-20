@@ -18,10 +18,9 @@
 
 package io.renku.search.provision.handler
 
-import cats.data.OptionT
-import cats.effect.Sync
+import cats.effect.Async
 import cats.syntax.all.*
-import fs2.{Pipe, Stream}
+import fs2.Stream
 
 import io.renku.search.events.*
 import io.renku.search.model.Id
@@ -32,10 +31,10 @@ import io.renku.search.solr.documents.{
   Project as ProjectDocument
 }
 import io.renku.solr.client.UpsertResponse
+import io.renku.solr.client.UpsertResponse.syntax.*
+import io.renku.solr.client.ResponseHeader
 
 trait UserUtils[F[_]]:
-  def removeFromMembers: Pipe[F, EventMessage[Id], FetchFromSolr.EntityId]
-
   /** For a message containing user ids, all entities where the user is a member of are
     * obtained and the user is removed from any member properties. The ids of all affected
     * entities is are returned
@@ -43,7 +42,7 @@ trait UserUtils[F[_]]:
   def removeMember[A](msg: EventMessage[A])(using IdExtractor[A]): Stream[F, EntityId]
 
 object UserUtils:
-  def apply[F[_]: Sync](
+  def apply[F[_]: Async](
       fetchFromSolr: FetchFromSolr[F],
       pushToSolr: PushToSolr[F],
       reader: MessageReader[F],
@@ -54,16 +53,15 @@ object UserUtils:
 
       private def updateEntity(
           id: Id,
-          modify: EntityOrPartial => Option[EntityOrPartial],
-          retries: Int = maxConflictRetries
-      ): Stream[F, UpsertResponse] =
-        val retry = OptionT.when(retries > 0)(updateEntity(id, modify, retries - 1))
-        Stream
-          .eval(fetchFromSolr.fetchEntityOrPartialById(id))
-          .unNone
-          .map(modify)
-          .unNone
-          .through(pushToSolr.push1(onConflict = retry))
+          modify: EntityOrPartial => Option[EntityOrPartial]
+      ): F[UpsertResponse] =
+        for
+          entity <- fetchFromSolr.fetchEntityOrPartialById(id)
+          updated = entity.flatMap(modify)
+          r <- updated match
+            case Some(e) => pushToSolr.push1(e)
+            case None    => UpsertResponse.Success(ResponseHeader.empty).pure[F]
+        yield r
 
       def removeMember[A](
           msg: EventMessage[A]
@@ -89,11 +87,6 @@ object UserUtils:
 
                 case _ => None
               }
-            ).compile.drain
+            ).retryOnConflict(maxConflictRetries)
           }
-
-      def removeFromMembers: Pipe[F, EventMessage[Id], FetchFromSolr.EntityId] =
-        _.flatMap { msg =>
-          removeMember(msg).through(reader.markMessageOnDone(msg.id)(using logger))
-        }
     }

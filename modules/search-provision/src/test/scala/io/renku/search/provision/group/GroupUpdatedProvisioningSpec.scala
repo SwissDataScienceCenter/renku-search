@@ -43,7 +43,7 @@ class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
     test(s"can fetch events, decode them, and update group doc in Solr: $tc"):
       for
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.groupUpdated)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
@@ -54,9 +54,8 @@ class GroupUpdatedProvisioningSpec extends ProvisioningSuite:
           EventsGenerators.eventMessageGen(Gen.const(tc.groupUpdated)).generateOne
         )
 
-        _ <- handler
-          .makeGroupUpdated(queueConfig.groupUpdated)
-          .take(2)
+        _ <- handler.create
+          .take(1)
           .compile
           .toList
 

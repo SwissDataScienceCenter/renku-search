@@ -18,8 +18,8 @@
 
 package io.renku.search.provision
 
-import cats.data.OptionT
 import cats.effect.*
+import cats.syntax.all.*
 import fs2.{Pipe, Stream}
 
 import io.renku.search.events.*
@@ -27,117 +27,128 @@ import io.renku.search.events.SyncEventMessage.syntax.*
 import io.renku.search.provision.handler.*
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.process.*
+import scribe.Scribe
 import io.renku.solr.client.UpsertResponse
+import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
+import SyncMessageHandler.Result
 
 final class SyncMessageHandler[F[_]: Async](
     ps: PipelineSteps[F],
     maxConflictRetries: Int = 20
 ):
+
+  private given logger: Scribe[F] = scribe.cats.effect[F]
+
   private val genericUpsert = GenericUpsert[F](ps)
   private val genericDelete = GenericDelete[F](ps)
   private val projectUpsert = ProjectUpsert[F](ps)
   private val userDelete = UserDelete[F](ps)
   private val groupUpdate = GroupUpdate[F](ps)
   private val groupRemove = GroupRemove[F](ps)
+  private val groupMemberUpsert = GroupMemberUpsert[F](ps)
 
-  def create: Stream[F, Unit] = ps.reader.readSyncEvents.through(processEvent)
+  def create: Stream[F, Result] = ps.reader.readSyncEvents.through(processEvents)
 
-  // TODO: mark message as done, remove Stream.eval for evalMap, remove solr.push(conflict) and use UpsertResponse.syntax, update provision-tests
-  def processEvent: Pipe[F, SyncEventMessage, Unit] =
-    _.flatMap { m =>
-      m.header.msgType match
-        case mt: MsgType.ProjectCreated.type =>
-          Stream.eval(projectUpsert.process(mt.cast(m), maxConflictRetries))
+  def processEvents: Pipe[F, SyncEventMessage, Result] =
+    _.evalMap(processEvent)
 
-        case mt: MsgType.ProjectUpdated.type =>
-          Stream.eval(projectUpsert.process(mt.cast(m), maxConflictRetries))
+  def processEvent(m: SyncEventMessage): F[Result] =
+    m.header.msgType match
+      case mt: MsgType.ProjectCreated.type =>
+        markMessage(m)(
+          projectUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.ProjectRemoved.type =>
-          Stream.eval(genericDelete.process(mt.cast(m)))
+      case mt: MsgType.ProjectUpdated.type =>
+        markMessage(m)(
+          projectUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.ProjectMemberAdded.type =>
-          Stream.eval(genericUpsert.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.ProjectRemoved.type =>
+        markMessage(m)(genericDelete.process(mt.cast(m)).map(Result.Delete.apply))
 
-        case mt: MsgType.ProjectMemberUpdated.type =>
-          Stream.eval(genericUpsert.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.ProjectMemberAdded.type =>
+        markMessage(m)(
+          genericUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.ProjectMemberRemoved.type =>
-          Stream.eval(genericUpsert.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.ProjectMemberUpdated.type =>
+        markMessage(m)(
+          genericUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.UserAdded.type =>
-          Stream.eval(genericUpsert.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.ProjectMemberRemoved.type =>
+        markMessage(m)(
+          genericUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.UserUpdated.type =>
-          Stream.eval(genericUpsert.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.UserAdded.type =>
+        markMessage(m)(
+          genericUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.UserRemoved.type =>
-          Stream.eval(userDelete.process(mt.cast(m)))
+      case mt: MsgType.UserUpdated.type =>
+        markMessage(m)(
+          genericUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.GroupAdded.type =>
-          Stream.eval(genericUpsert.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.UserRemoved.type =>
+        markMessage(m)(userDelete.process(mt.cast(m)).map(Result.Delete.apply))
 
-        case mt: MsgType.GroupUpdated.type =>
-          Stream.eval(groupUpdate.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.GroupAdded.type =>
+        markMessage(m)(
+          genericUpsert.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.GroupRemoved.type =>
-          Stream.eval(groupRemove.process(mt.cast(m), maxConflictRetries))
+      case mt: MsgType.GroupUpdated.type =>
+        markMessage(m)(
+          groupUpdate.process(mt.cast(m), maxConflictRetries).map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.GroupMemberAdded.type =>
-          processGroupMemberUpsert(mt.cast(m))
+      case mt: MsgType.GroupRemoved.type =>
+        markMessage(m)(
+          groupRemove.process(mt.cast(m), maxConflictRetries).map(Result.Delete.apply)
+        )
 
-        case mt: MsgType.GroupMemberUpdated.type =>
-          processGroupMemberUpsert(mt.cast(m))
+      case mt: MsgType.GroupMemberAdded.type =>
+        markMessage(m)(
+          groupMemberUpsert
+            .process(mt.cast(m), maxConflictRetries)
+            .map(Result.Upsert.apply)
+        )
 
-        case mt: MsgType.GroupMemberRemoved.type =>
-          processGroupMemberUpsert(mt.cast(m))
-    }.drain
+      case mt: MsgType.GroupMemberUpdated.type =>
+        markMessage(m)(
+          groupMemberUpsert
+            .process(mt.cast(m), maxConflictRetries)
+            .map(Result.Upsert.apply)
+        )
 
-  private def processGroupMemberUpsert[A](msg: EventMessage[A])(using
-      EventMessageDecoder[A],
-      DocumentMerger[A],
-      IdExtractor[A]
-  ): Stream[F, UpsertResponse] = {
-    import cats.syntax.all.*
+      case mt: MsgType.GroupMemberRemoved.type =>
+        markMessage(m)(
+          groupMemberUpsert
+            .process(mt.cast(m), maxConflictRetries)
+            .map(Result.Upsert.apply)
+        )
 
-    def processMsg(retries: Int): Stream[F, UpsertResponse] =
-      lazy val retry = OptionT.when(retries > 0)(processMsg(retries - 1))
-      Stream
-        .emit(msg)
-        .through(ps.fetchFromSolr.fetchEntityOrPartial)
-        .map { m =>
-          val merger = DocumentMerger[A]
-          m.merge(merger.create, merger.merge)
-        }
-        .through(ps.pushToSolr.push(onConflict = retry))
+  private def markMessage[A](m: SyncEventMessage)(fa: F[A]): F[A] =
+    Resource
+      .onFinalizeCase[F] {
+        case Resource.ExitCase.Succeeded   => ps.reader.markProcessed(m.id)
+        case Resource.ExitCase.Canceled    => ps.reader.markProcessed(m.id)
+        case Resource.ExitCase.Errored(ex) => ps.reader.markProcessedError(ex, m.id)
+      }
+      .use(_ => fa)
 
-    def updateProjects(retries: Int): Stream[F, UpsertResponse] =
-      lazy val retry = OptionT.when(retries > 0)(updateProjects(retries - 1))
-      Stream
-        .emit(msg)
-        .through(ps.fetchFromSolr.fetchEntityOrPartial)
-        .through(ps.fetchFromSolr.fetchProjectsByGroup)
-        .map { m =>
-          val updatedProjects =
-            m.getGroups.flatMap { g =>
-              m.getProjectsByGroup(g).flatMap { p =>
-                msg.payload.flatMap {
-                  case gma: GroupMemberAdded if gma.id == g.id =>
-                    p.modifyGroupMembers(_.addMember(gma.userId, gma.role)).some
+object SyncMessageHandler:
 
-                  case gmu: GroupMemberUpdated if gmu.id == g.id =>
-                    p.modifyGroupMembers(_.addMember(gmu.userId, gmu.role)).some
+  enum Result:
+    case Upsert(value: UpsertResponse)
+    case Delete(value: DeleteFromSolr.DeleteResult[?])
 
-                  case gmr: GroupMemberRemoved if gmr.id == g.id =>
-                    p.modifyGroupMembers(_.removeMember(gmr.userId)).some
+    def fold[A](fu: UpsertResponse => A, fd: DeleteFromSolr.DeleteResult[?] => A): A =
+      this match
+        case Upsert(r) => fu(r)
+        case Delete(r) => fd(r)
 
-                  case _ => None
-                }
-              }
-            }
-
-          m.setDocuments(updatedProjects).asMessage
-        }
-        .through(ps.pushToSolr.push(onConflict = retry))
-
-    processMsg(maxConflictRetries) ++ updateProjects(maxConflictRetries)
-  }
+    def asUpsert: Option[UpsertResponse] = fold(Some(_), _ => None)

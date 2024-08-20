@@ -28,7 +28,7 @@ import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.handler.DocumentMerger
-import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{
@@ -44,7 +44,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
     test(s"processes message and update solr: $tc"):
       for {
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.projectCreated)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
@@ -58,8 +58,7 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
             .generateOne
         )
 
-        _ <- handler
-          .makeProjectUpsert[ProjectCreated](queueConfig.projectCreated)
+        _ <- handler.create
           .take(1)
           .compile
           .toList
@@ -75,11 +74,9 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
   test("can fetch events binary encoded, decode them, and send them to Solr"):
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.projectCreated)
       queueClient = services.queueClient
       solrClient = services.searchClient
-
-      provisioningFiber <- handler.projectCreated.compile.drain.start
 
       created = projectCreatedGen(prefix = "binary").generateOne
       _ <- queueClient.enqueue(
@@ -89,27 +86,24 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
           .map(_.modifyHeader(_.withContentType(DataContentType.Binary)))
           .generateOne
       )
-      collector <- BackgroundCollector(
-        solrClient
-          .findById[EntityDocument](CompoundId.projectEntity(created.id))
-          .map(_.toSet)
-      )
-      _ <- collector.start
-      _ <- collector.waitUntil(
-        _.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
-      )
 
-      _ <- provisioningFiber.cancel
+      _ <- handler.create.take(1).compile.drain
+
+      found <- solrClient
+        .findById[EntityDocument](CompoundId.projectEntity(created.id))
+        .map(_.toSet)
+
+      _ = assert(
+        found.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
+      )
     yield ()
 
   test("can fetch events JSON encoded, decode them, and send them to Solr"):
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.projectCreated)
       queueClient = services.queueClient
       solrClient = services.searchClient
-
-      provisioningFiber <- handler.projectCreated.compile.drain.start
 
       created = projectCreatedGen(prefix = "json").generateOne
       _ <- queueClient.enqueue(
@@ -119,17 +113,16 @@ class ProjectCreatedProvisioningSpec extends ProvisioningSuite:
           .map(_.modifyHeader(_.withContentType(DataContentType.Json)))
           .generateOne
       )
-      collector <- BackgroundCollector(
-        solrClient
-          .findById[EntityDocument](CompoundId.projectEntity(created.id))
-          .map(_.toSet)
-      )
-      _ <- collector.start
-      _ <- collector.waitUntil(
-        _.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
-      )
 
-      _ <- provisioningFiber.cancel
+      _ <- handler.create.take(1).compile.drain
+
+      found <- solrClient
+        .findById[EntityDocument](CompoundId.projectEntity(created.id))
+        .map(_.toSet)
+
+      _ = assert(
+        found.map(_.setVersion(DocVersion.Off)) contains created.toModel(DocVersion.Off)
+      )
     yield ()
 
 object ProjectCreatedProvisioningSpec:

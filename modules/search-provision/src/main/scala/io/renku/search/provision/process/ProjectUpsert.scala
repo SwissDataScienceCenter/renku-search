@@ -38,7 +38,7 @@ import io.renku.solr.client.UpsertResponse.syntax.*
   * to the [[GenericUpsert]], but it must also update the group members of any project
   * document that got newly inserted.
   */
-final class ProjectUpsert[F[_]: Async](ps: PipelineSteps[F]):
+final private[provision] class ProjectUpsert[F[_]: Async](ps: PipelineSteps[F]):
 
   def process[A](
       msg: EventMessage[A],

@@ -18,12 +18,10 @@
 
 package io.renku.search.provision.handler
 
-import cats.Applicative
 import cats.data.NonEmptyList
 import cats.effect.Async
-import cats.effect.Resource.ExitCase
 import cats.syntax.all.*
-import fs2.{Pipe, Stream}
+import fs2.Stream
 
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.QueueName
@@ -36,14 +34,6 @@ trait MessageReader[F[_]]:
   def readSyncEvents: Stream[F, SyncEventMessage]
   def markProcessed(id: MessageId): F[Unit]
   def markProcessedError(err: Throwable, id: MessageId)(using Scribe[F]): F[Unit]
-  def markMessageOnDone[A](
-      id: MessageId
-  )(using Scribe[F], Applicative[F]): Pipe[F, A, A] =
-    _.onFinalizeCaseWeak {
-      case ExitCase.Succeeded   => markProcessed(id)
-      case ExitCase.Errored(ex) => markProcessedError(ex, id)
-      case ExitCase.Canceled    => markProcessed(id)
-    }
 
 object MessageReader:
   /** MessageReader that dequeues messages attempt to decode it. If decoding fails, the

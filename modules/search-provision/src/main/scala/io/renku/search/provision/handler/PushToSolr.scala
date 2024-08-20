@@ -18,15 +18,9 @@
 
 package io.renku.search.provision.handler
 
-import java.util.concurrent.TimeUnit
-
-import scala.concurrent.duration.*
-
-import cats.data.OptionT
 import cats.effect.Async
-import cats.effect.std.Random
 import cats.syntax.all.*
-import fs2.{Chunk, Pipe, Stream}
+import fs2.{Chunk, Pipe}
 
 import io.renku.search.events.EventMessage
 import io.renku.search.provision.handler.Model$package.EntityOrPartial.given
@@ -37,16 +31,7 @@ import io.renku.solr.client.UpsertResponse
 
 trait PushToSolr[F[_]]:
   def pushAll(msg: EventMessage[EntityOrPartial]): F[UpsertResponse]
-
-  def push1(
-      onConflict: => OptionT[F, Stream[F, UpsertResponse]],
-      maxWait: FiniteDuration = 100.millis
-  ): Pipe[F, EntityOrPartial, UpsertResponse]
-
-  def push(
-      onConflict: => OptionT[F, Stream[F, UpsertResponse]],
-      maxWait: FiniteDuration = 100.millis
-  ): Pipe[F, EventMessage[EntityOrPartial], UpsertResponse]
+  def push1(e: EntityOrPartial): F[UpsertResponse]
 
 object PushToSolr:
 
@@ -82,48 +67,6 @@ object PushToSolr:
               Async[F].pure(r)
         }
 
-      def push1(
-          onConflict: => OptionT[F, Stream[F, UpsertResponse]],
-          maxWait: FiniteDuration = 100.millis
-      ): Pipe[F, EntityOrPartial, UpsertResponse] =
-        _.evalMap(doc => solrClient.upsert(Seq(doc)))
-          .through(runOnConflict(onConflict, maxWait))
-
-      override def push(
-          onConflict: => OptionT[F, Stream[F, UpsertResponse]],
-          maxWait: FiniteDuration
-      ): Pipe[F, EventMessage[EntityOrPartial], UpsertResponse] =
-        _.flatMap { msg =>
-          Stream
-            .emit(msg)
-            .map(Chunk.apply(_))
-            .through(pushChunk)
-            .through(runOnConflict(onConflict, maxWait))
-            .through(reader.markMessageOnDone(msg.id)(using logger))
-        }
-
-      private def runOnConflict(
-          action: => OptionT[F, Stream[F, UpsertResponse]],
-          maxWait: FiniteDuration
-      ): Pipe[F, UpsertResponse, UpsertResponse] =
-        _.flatMap {
-          case r @ UpsertResponse.Success(_) => Stream.emit(r)
-          case r @ UpsertResponse.VersionConflict =>
-            Stream.eval(action.value).flatMap {
-              case None =>
-                Stream
-                  .eval(logger.warn(s"Retries on version conflict exceeded"))
-                  .as(r)
-              case Some(run) =>
-                Stream
-                  .eval(Random.scalaUtilRandom[F])
-                  .evalMap(_.betweenLong(5, math.max(maxWait.toMillis, 10)))
-                  .map(FiniteDuration(_, TimeUnit.MILLISECONDS))
-                  .evalTap(n =>
-                    logger.debug(s"Version conflict updating solr, retry in $n")
-                  )
-                  .flatMap(Stream.sleep)
-                  .evalMap(_ => run.compile.lastOrError)
-            }
-        }
+      def push1(e: EntityOrPartial): F[UpsertResponse] =
+        solrClient.upsert(Seq(e))
     }

@@ -45,14 +45,14 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
       GroupMemberAdded(initialState.group.id, ModelGenerators.idGen.generateOne, role)
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.groupMemberAdded)
       queueClient = services.queueClient
       solrClient = services.searchClient
       _ <- initialState.setup(solrClient)
       msg = EventsGenerators.eventMessageGen(Gen.const(newMember)).generateOne
       _ <- queueClient.enqueue(queueConfig.groupMemberAdded, msg)
       _ <- handler
-        .makeGroupMemberUpsert[GroupMemberAdded](queueConfig.groupMemberAdded)
+        .create
         .take(2) // two updates, one for the single group and one for all its projects
         .compile
         .toList

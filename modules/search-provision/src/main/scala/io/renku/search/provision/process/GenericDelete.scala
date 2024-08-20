@@ -28,7 +28,7 @@ import io.renku.search.provision.handler.*
   * It uses the `IdExtractor` to obtain an ID for each payload entity and uses it to issue
   * a DELETE request at SOLR.
   */
-final class GenericDelete[F[_]: Async](ps: PipelineSteps[F]):
+final private[provision] class GenericDelete[F[_]: Async](ps: PipelineSteps[F]):
 
   /** Delete all documents in the payload. */
   def process[A](msg: EventMessage[A])(using

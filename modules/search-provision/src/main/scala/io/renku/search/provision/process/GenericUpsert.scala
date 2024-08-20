@@ -45,7 +45,7 @@ import io.renku.solr.client.UpsertResponse.syntax.*
   * This pattern works for some messages, other may require more logic and therefore a
   * separate implementation.
   */
-final class GenericUpsert[F[_]: Async](ps: PipelineSteps[F]):
+final private[provision] class GenericUpsert[F[_]: Async](ps: PipelineSteps[F]):
 
   /** Upsert all documents in the event payload */
   def process1[A](

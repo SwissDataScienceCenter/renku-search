@@ -6,6 +6,11 @@ on:
   pull_request:
     branches:
       - development
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci-matrix:
     runs-on: ubuntu-latest

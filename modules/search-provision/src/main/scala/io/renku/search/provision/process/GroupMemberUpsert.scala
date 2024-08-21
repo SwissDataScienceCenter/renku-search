@@ -46,7 +46,6 @@ final private[provision] class GroupMemberUpsert[F[_]: Async](ps: PipelineSteps[
       for
         withProjects <- ps.fetchFromSolr.loadProjectsByGroup(em)
         updated = updateProjectGroupMembers(withProjects, msg)
-//        _ <- Async[F].blocking(println(s"updated: $updated"))
         res <- ps.pushToSolr.pushAll(updated.asMessage)
       yield res
 

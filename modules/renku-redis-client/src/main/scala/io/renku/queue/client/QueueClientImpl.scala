@@ -51,7 +51,7 @@ private class QueueClientImpl[F[_]: Async](
         case Right(h) => Some(h).pure[F]
         case Left(err) =>
           logger
-            .error(s"Error decoding message header: $err")
+            .error(s"Error decoding message header: ${rm.header}", err)
             .as(Option.empty[MessageHeader])
             .flatTap(_ => markProcessed(queueNames, MessageId(rm.id)))
 
@@ -73,7 +73,7 @@ private class QueueClientImpl[F[_]: Async](
           logger.trace(s"Got message: $em").as(Some(em))
         case Left(err) =>
           logger
-            .warn(s"Error decoding redis payload in $m: $err")
+            .warn(s"Error decoding redis payload in $m", err)
             .as(None)
             .flatTap(_ => markProcessed(queueNames, MessageId(m.id.value)))
 
@@ -89,7 +89,7 @@ private class QueueClientImpl[F[_]: Async](
         case Right(em) => logger.trace(s"Got message: $em").as(Some(em))
         case Left(err) =>
           logger
-            .warn(s"Error decoding redis payload in $m: $err")
+            .warn(s"Error decoding redis payload in $m", err)
             .as(None)
             .flatTap(_ => markProcessed(queueNames, MessageId(m.id.value)))
     }.unNone

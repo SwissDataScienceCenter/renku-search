@@ -72,8 +72,8 @@ drop_last_message_id() {
     kill $pfw_pid
 }
 
-# echo "Dropping and creating solr core"
-# recreate_solr_core
+echo "Dropping and creating solr core"
+recreate_solr_core
 
 echo "Dropping last processed message id"
 drop_last_message_id

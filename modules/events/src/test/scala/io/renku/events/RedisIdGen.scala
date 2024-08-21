@@ -34,7 +34,7 @@ object RedisIdGen:
     val c = counter.getAndIncrement()
     val ms = System.currentTimeMillis()
     val curMs = millis.get
-    if (millis.get == ms) {
+    if (curMs == ms) {
       MessageId(s"${ms}-${counter.getAndIncrement()}")
     } else {
       if (millis.compareAndSet(curMs, ms)) {

@@ -40,6 +40,6 @@ object RemoveCmd extends CommonOpts:
       for
         queuesCfg <- QueuesConfig.config.load[IO]
         msg <- Services.createMessage(cfg.asPayload)
-        _ <- queue.enqueue(queuesCfg.projectRemoved, msg)
+        _ <- queue.enqueue(queuesCfg.searchSync, msg)
       yield ExitCode.Success
     }

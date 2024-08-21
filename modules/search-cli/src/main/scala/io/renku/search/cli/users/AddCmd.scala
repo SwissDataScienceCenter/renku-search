@@ -52,6 +52,6 @@ object AddCmd:
       for
         queuesCfg <- QueuesConfig.config.load[IO]
         msg <- Services.createMessage(cfg.asPayload)
-        _ <- queue.enqueue(queuesCfg.userAdded, msg)
+        _ <- queue.enqueue(queuesCfg.searchSync, msg)
       yield ExitCode.Success
     }

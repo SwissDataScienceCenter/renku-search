@@ -61,7 +61,10 @@ final private[provision] class GroupMemberUpsert[F[_]: Async](ps: PipelineSteps[
     }
   }
 
-  private def updateProjectGroupMembers[A](m: EntityOrPartialMessage[A], msg: EventMessage[A]) =
+  private def updateProjectGroupMembers[A](
+      m: EntityOrPartialMessage[A],
+      msg: EventMessage[A]
+  ) =
     val updated =
       m.getGroups.flatMap { g =>
         m.getProjectsByGroup(g).flatMap { p =>

@@ -59,11 +59,10 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
               CompoundId.userEntity(userAdded.id)
             )
 
-          _ = assertEquals(found.get, orig)
-          //   docs.map(_.setVersion(DocVersion.Off)) contains userUpdated
-          //     .toModel(orig)
-          //     .setVersion(DocVersion.Off)
-          //
+          _ = assertEquals(
+            found.get.setVersion(DocVersion.Off),
+            userUpdated.toModel(orig).setVersion(DocVersion.Off)
+          )
         yield ()
   }
 

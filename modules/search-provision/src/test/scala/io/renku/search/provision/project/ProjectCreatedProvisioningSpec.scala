@@ -26,9 +26,9 @@ import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.model.Id
 import io.renku.search.model.ModelGenerators
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.provision.handler.DocumentMerger
-import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.documents.{

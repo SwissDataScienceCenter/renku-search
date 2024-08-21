@@ -61,8 +61,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite:
           )
           .generateOne
       )
-      results <- handler
-        .create
+      results <- handler.create
         .take(2)
         .map(_.asUpsert)
         .unNone
@@ -89,8 +88,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite:
         EventsGenerators.eventMessageGen(Gen.const(groupAdded)).generateOne
       )
 
-      result <- handler
-        .create
+      result <- handler.create
         .take(10)
         .map(_.asUpsert)
         .unNone

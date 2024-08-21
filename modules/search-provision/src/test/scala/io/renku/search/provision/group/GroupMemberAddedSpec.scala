@@ -51,11 +51,10 @@ class GroupMemberAddedSpec extends ProvisioningSuite:
       _ <- initialState.setup(solrClient)
       msg = EventsGenerators.eventMessageGen(Gen.const(newMember)).generateOne
       _ <- queueClient.enqueue(queueConfig.groupMemberAdded, msg)
-      _ <- handler
-        .create
-        .take(2) // two updates, one for the single group and one for all its projects
+      _ <- handler.create
+        .take(1)
         .compile
-        .toList
+        .lastOrError
       currentGroup <- solrClient
         .findById[EntityDocument](
           CompoundId.groupEntity(initialState.group.id)

@@ -24,13 +24,13 @@ import fs2.{Pipe, Stream}
 
 import io.renku.search.events.*
 import io.renku.search.events.SyncEventMessage.syntax.*
+import io.renku.search.provision.SyncMessageHandler.Result
 import io.renku.search.provision.handler.*
+import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.process.*
-import scribe.Scribe
 import io.renku.solr.client.UpsertResponse
-import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
-import SyncMessageHandler.Result
+import scribe.Scribe
 
 final class SyncMessageHandler[F[_]: Async](
     ps: PipelineSteps[F],

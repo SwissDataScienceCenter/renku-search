@@ -54,8 +54,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
           EventsGenerators.eventMessageGen(Gen.const(tc.projectUpdated)).generateOne
         )
 
-        _ <- handler
-          .create
+        _ <- handler.create
           .take(1)
           .compile
           .toList

@@ -50,11 +50,10 @@ class GroupMemberRemovedSpec extends ProvisioningSuite:
       _ <- initialState.setup(solrClient)
       msg = EventsGenerators.eventMessageGen(Gen.const(removeMember)).generateOne
       _ <- queueClient.enqueue(queueConfig.groupMemberRemoved, msg)
-      _ <- handler
-        .create
-        .take(2) // two updates, one for the single group and one for all its projects
+      _ <- handler.create
+        .take(1)
         .compile
-        .toList
+        .lastOrError
       currentGroup <- solrClient
         .findById[EntityDocument](
           CompoundId.groupEntity(initialState.group.id)

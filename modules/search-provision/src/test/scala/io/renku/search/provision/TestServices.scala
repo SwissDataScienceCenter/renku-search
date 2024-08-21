@@ -21,9 +21,9 @@ package io.renku.search.provision
 import cats.effect.*
 
 import io.renku.queue.client.QueueClient
-import io.renku.search.solr.client.SearchSolrClient
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.handler.PipelineSteps
+import io.renku.search.solr.client.SearchSolrClient
 
 final case class TestServices(
     pipelineSteps: QueueName => PipelineSteps[IO],

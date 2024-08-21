@@ -30,9 +30,9 @@ import io.renku.search.solr.documents.{
   PartialEntityDocument,
   Project as ProjectDocument
 }
+import io.renku.solr.client.ResponseHeader
 import io.renku.solr.client.UpsertResponse
 import io.renku.solr.client.UpsertResponse.syntax.*
-import io.renku.solr.client.ResponseHeader
 
 trait UserUtils[F[_]]:
   /** For a message containing user ids, all entities where the user is a member of are

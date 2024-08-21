@@ -18,8 +18,10 @@
 
 package io.renku.events
 
-import cats.effect.*
 import java.util.concurrent.atomic.AtomicLong
+
+import cats.effect.*
+
 import io.renku.search.events.MessageId
 
 // Just for testing, generate redis compatible ids

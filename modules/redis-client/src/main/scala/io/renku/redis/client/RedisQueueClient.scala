@@ -18,6 +18,8 @@
 
 package io.renku.redis.client
 
+import cats.Monoid
+import cats.data.NonEmptyList
 import cats.effect.{Async, Resource}
 import cats.syntax.all.*
 import fs2.Stream
@@ -43,18 +45,21 @@ trait RedisQueueClient[F[_]] {
   ): F[MessageId]
 
   def acquireEventsStream(
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, RedisMessage]
 
   def markProcessed(
       clientId: ClientId,
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       messageId: MessageId
   ): F[Unit]
 
-  def findLastProcessed(clientId: ClientId, queueName: QueueName): F[Option[MessageId]]
+  def findLastProcessed(
+      clientId: ClientId,
+      queueNames: NonEmptyList[QueueName]
+  ): F[Option[MessageId]]
 
   def getSize(queueName: QueueName): F[Long]
 
@@ -72,6 +77,10 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
     extends RedisQueueClient[F] {
 
   private val logger = scribe.cats.effect[F]
+  given Monoid[ByteVector] = new Monoid[ByteVector] {
+    def empty = ByteVector.empty
+    def combine(x: ByteVector, y: ByteVector) = x ++ y
+  }
 
   override def enqueue(
       queueName: QueueName,
@@ -93,7 +102,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
       .map(_.head)
 
   override def acquireEventsStream(
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, RedisMessage] =
@@ -115,7 +124,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
     }
 
     makeStreamingConnection >>= {
-      _.read(Set(queueName.name), chunkSize, initialOffset)
+      _.read(queueNames.toList.toSet.map(_.name), chunkSize, initialOffset)
         .map(rm => rm -> toMessage(rm))
         .evalTap(logInfo)
         .collect { case (_, Some(m)) => m }
@@ -123,13 +132,13 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
 
   override def markProcessed(
       clientId: ClientId,
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       messageId: MessageId
   ): F[Unit] =
     createStringCommands.use {
-      _.set(formProcessedKey(clientId, queueName), messageId).recoverWith { case ex =>
+      _.set(formProcessedKey(clientId, queueNames), messageId).recoverWith { case ex =>
         logger.warn(
-          s"Error setting last message-id '$messageId' for '${formProcessedKey(clientId, queueName)}'",
+          s"Error setting last message-id '$messageId' for '${formProcessedKey(clientId, queueNames)}'",
           ex
         )
       }
@@ -137,14 +146,22 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
 
   override def findLastProcessed(
       clientId: ClientId,
-      queueName: QueueName
+      queueNames: NonEmptyList[QueueName]
   ): F[Option[MessageId]] =
     createStringCommands.use {
-      _.get(formProcessedKey(clientId, queueName))
+      _.get(formProcessedKey(clientId, queueNames))
     }
 
-  private def formProcessedKey(clientId: ClientId, queueName: QueueName) =
-    s"$queueName.$clientId"
+  private def formProcessedKey(clientId: ClientId, queueNames: NonEmptyList[QueueName]) =
+    queueNames match
+      case NonEmptyList(h, Nil) => s"$h.$clientId"
+      case _ =>
+        val names = queueNames.toList
+          .map(n => ByteVector.view(n.name.getBytes()))
+          .combineAll
+          .md5
+          .toHex
+        s"$clientId.$names"
 
   override def getSize(queueName: QueueName): F[Long] =
     val xlen: StatefulRedisConnection[String, ByteVector] => F[Long] =

@@ -43,18 +43,17 @@ class GroupMemberRemovedSpec extends ProvisioningSuite:
     val removeMember = GroupMemberRemoved(initialState.group.id, initialState.user)
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.groupMemberRemoved)
       queueClient = services.queueClient
       solrClient = services.searchClient
 
       _ <- initialState.setup(solrClient)
       msg = EventsGenerators.eventMessageGen(Gen.const(removeMember)).generateOne
       _ <- queueClient.enqueue(queueConfig.groupMemberRemoved, msg)
-      _ <- handler
-        .makeGroupMemberUpsert[GroupMemberRemoved](queueConfig.groupMemberRemoved)
-        .take(2) // two updates, one for the single group and one for all its projects
+      _ <- handler.create
+        .take(1)
         .compile
-        .toList
+        .lastOrError
       currentGroup <- solrClient
         .findById[EntityDocument](
           CompoundId.groupEntity(initialState.group.id)

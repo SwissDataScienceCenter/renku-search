@@ -58,6 +58,7 @@ final private case class NewProjectEvents(
   )(using Sync[F], ModelTypesGenerators[F]): F[EventMessage[A]] =
     ModelTypesGenerators[F].generateRequestId.flatMap { reqId =>
       EventMessage.create[F, A](
+        MessageId("*"),
         messageSource,
         DataContentType.Binary,
         reqId,

@@ -27,3 +27,4 @@ trait RenkuEventPayload:
   def id: Id
   def version: NonEmptyList[SchemaVersion]
   def schema: Schema
+  def msgType: MsgType

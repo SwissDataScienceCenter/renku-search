@@ -18,6 +18,7 @@
 
 package io.renku.search.provision.user
 
+import cats.data.NonEmptyList
 import cats.effect.IO
 
 import io.renku.events.EventsGenerators
@@ -47,7 +48,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
     test(s"process user removed: $tc"):
       for
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.userRemoved)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
@@ -58,7 +59,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
           EventsGenerators.eventMessageGen(Gen.const(tc.userRemovedEvent)).generateOne
         )
 
-        _ <- handler.makeUserRemoved.take(1).compile.drain
+        _ <- handler.create.take(1).compile.drain
 
         users <- loadPartialOrEntity(solrClient, EntityType.User, tc.userId)
         _ = assert(users.isEmpty)
@@ -90,7 +91,7 @@ class UserRemovedProcessSpec extends ProvisioningSuite:
           "user is still in group members"
         )
 
-        last <- queueClient.findLastProcessed(queueConfig.userRemoved)
+        last <- queueClient.findLastProcessed(NonEmptyList.of(queueConfig.userRemoved))
         _ = assertEquals(last, Some(msgId))
       yield ()
   }

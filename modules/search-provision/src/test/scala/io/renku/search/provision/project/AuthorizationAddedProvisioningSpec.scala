@@ -24,8 +24,8 @@ import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.ProjectMemberAdded
 import io.renku.search.model.*
+import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.project.AuthorizationAddedProvisioningSpec.testCases
-import io.renku.search.provision.{BackgroundCollector, ProvisioningSuite}
 import io.renku.search.solr.client.{SearchSolrClient, SolrDocumentGenerators}
 import io.renku.search.solr.documents.{
   PartialEntityDocument,
@@ -41,29 +41,22 @@ class AuthorizationAddedProvisioningSpec extends ProvisioningSuite:
     test(s"can fetch events, decode them, and update docs in Solr: $tc"):
       for {
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.projectAuthorizationAdded)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
         _ <- tc.dbState.create(solrClient)
 
-        collector <- BackgroundCollector[SolrDocument](
-          loadProjectPartialOrEntity(solrClient, tc.projectId)
-        )
-        _ <- collector.start
-
-        provisioningFiber <- handler.projectAuthAdded.compile.drain.start
-
         _ <- queueClient.enqueue(
           queueConfig.projectAuthorizationAdded,
           EventsGenerators.eventMessageGen(Gen.const(tc.authAdded)).generateOne
         )
-        _ <- collector.waitUntil(docs =>
-          scribe.debug(s"Check for ${tc.expectedProject}")
-          docs.exists(tc.checkExpected)
-        )
 
-        _ <- provisioningFiber.cancel
+        result <- handler.create.take(1).compile.lastOrError
+
+        found <- loadProjectPartialOrEntity(solrClient, tc.projectId)
+
+        _ = assert(found.exists(tc.checkExpected))
       } yield ()
   }
 

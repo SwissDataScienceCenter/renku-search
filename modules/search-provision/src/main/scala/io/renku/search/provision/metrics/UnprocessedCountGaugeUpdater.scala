@@ -19,6 +19,7 @@
 package io.renku.search.provision.metrics
 
 import cats.Monad
+import cats.data.NonEmptyList
 import cats.syntax.all.*
 
 import io.renku.queue.client.QueueClient
@@ -31,7 +32,7 @@ private class UnprocessedCountGaugeUpdater[F[_]: Monad](
 
   override def update(queueName: QueueName): F[Unit] =
     rc
-      .findLastProcessed(queueName)
+      .findLastProcessed(NonEmptyList.of(queueName))
       .flatMap {
         case None     => rc.getSize(queueName)
         case Some(lm) => rc.getSize(queueName, lm)

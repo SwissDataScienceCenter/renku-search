@@ -25,7 +25,6 @@ import io.renku.events.EventsGenerators
 import io.renku.events.{v1, v2}
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
-import io.renku.search.provision.BackgroundCollector
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.documents.{CompoundId, EntityDocument}
@@ -39,23 +38,12 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
       test(s"can fetch events, decode them, and update in Solr in case of $name"):
         for
           services <- IO(testServices())
-          handler = services.messageHandlers
+          handler = services.syncHandler(queueConfig.userUpdated)
           queueClient = services.queueClient
           solrClient = services.searchClient
 
-          collector <- BackgroundCollector[EntityDocument](
-            solrClient
-              .findById[EntityDocument](
-                CompoundId.userEntity(userAdded.id)
-              )
-              .map(_.toSet)
-          )
-          _ <- collector.start
-
-          provisioningFiber <- handler.userUpdated.compile.drain.start
-
           orig = userAdded.toModel(DocVersion.Off)
-          _ <- solrClient.upsert(Seq(orig.widen))
+          _ <- solrClient.upsertSuccess(Seq(orig.widen))
 
           userUpdated = updateF(userAdded)
           _ <- queueClient.enqueue(
@@ -63,13 +51,18 @@ class UserUpdatedProvisioningSpec extends ProvisioningSuite:
             EventsGenerators.eventMessageGen(Gen.const(userUpdated)).generateOne
           )
 
-          _ <- collector.waitUntil(docs =>
-            docs.map(_.setVersion(DocVersion.Off)) contains userUpdated
-              .toModel(orig)
-              .setVersion(DocVersion.Off)
-          )
+          result <- handler.create.take(1).compile.lastOrError
+          _ = assert(result.asUpsert.exists(_.isSuccess))
 
-          _ <- provisioningFiber.cancel
+          found <- solrClient
+            .findById[EntityDocument](
+              CompoundId.userEntity(userAdded.id)
+            )
+
+          _ = assertEquals(
+            found.get.setVersion(DocVersion.Off),
+            userUpdated.toModel(orig).setVersion(DocVersion.Off)
+          )
         yield ()
   }
 

@@ -44,7 +44,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
     test(s"can fetch events, decode them, and update in Solr: $tc"):
       for
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.projectUpdated)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
@@ -54,8 +54,7 @@ class ProjectUpdatedProvisioningSpec extends ProvisioningSuite:
           EventsGenerators.eventMessageGen(Gen.const(tc.projectUpdated)).generateOne
         )
 
-        _ <- handler
-          .makeProjectUpsert[ProjectUpdated](queueConfig.projectUpdated)
+        _ <- handler.create
           .take(1)
           .compile
           .toList

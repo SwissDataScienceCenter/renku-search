@@ -18,6 +18,7 @@
 
 package io.renku.queue.client
 
+import cats.data.NonEmptyList
 import cats.effect.IO
 import fs2.concurrent.SignallingRef
 
@@ -34,6 +35,7 @@ class QueueClientSpec extends CatsEffectSuite with QueueSuite:
 
   test("can enqueue and dequeue project-member-add events"):
     val qname = RedisClientGenerators.queueNameGen.generateOne
+    val qs = NonEmptyList.of(qname)
     val msg = EventsGenerators
       .eventMessageGen(EventsGenerators.projectMemberAddedGen)
       .generateOne
@@ -41,7 +43,7 @@ class QueueClientSpec extends CatsEffectSuite with QueueSuite:
       queue <- IO(queueClient())
       msgId <- queue.enqueue(qname, msg)
       res <- queue
-        .acquireMessageStream[ProjectMemberAdded](qname, 1, None)
+        .acquireMessageStream[ProjectMemberAdded](qs, 1, None)
         .take(1)
         .compile
         .toList
@@ -50,6 +52,7 @@ class QueueClientSpec extends CatsEffectSuite with QueueSuite:
 
   test("can enqueue and dequeue project-created events"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
+    val qs = NonEmptyList.of(queue)
     for
       queueClient <- IO(queueClient())
       dequeued <- SignallingRef.of[IO, List[EventMessage[ProjectCreated]]](Nil)
@@ -61,7 +64,7 @@ class QueueClientSpec extends CatsEffectSuite with QueueSuite:
       message1 = message0.copy(id = message1Id)
 
       streamingProcFiber <- queueClient
-        .acquireMessageStream[ProjectCreated](queue, chunkSize = 1, maybeOffset = None)
+        .acquireMessageStream[ProjectCreated](qs, chunkSize = 1, maybeOffset = None)
         .evalMap(event => dequeued.update(event :: _))
         .compile
         .drain

@@ -18,6 +18,7 @@
 
 package io.renku.redis.client
 
+import cats.data.NonEmptyList
 import cats.effect.IO
 import cats.syntax.all.*
 import fs2.*
@@ -40,6 +41,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
 
   test("can enqueue and dequeue events"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
+    val qs = NonEmptyList.of(queue)
     for
       client <- IO(redisClients().queueClient)
       dequeued <- SignallingRef.of[IO, List[(String, String)]](Nil)
@@ -49,7 +51,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
       _ <- client.enqueue(queue, toByteVector(message1Head), toByteVector(message1))
 
       streamingProcFiber <- client
-        .acquireEventsStream(queue, chunkSize = 1, maybeOffset = None)
+        .acquireEventsStream(qs, chunkSize = 1, maybeOffset = None)
         .evalMap(event =>
           dequeued.update(event.header.asString -> event.payload.asString :: _)
         )
@@ -69,6 +71,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
 
   test("can start enqueueing events from the given messageId excluding"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
+    val qs = NonEmptyList.of(queue)
     for
       client <- IO(redisClients().queueClient)
       dequeued <- SignallingRef.of[IO, List[String]](Nil)
@@ -77,7 +80,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
       message1Id <- client.enqueue(queue, toByteVector("head1"), toByteVector(message1))
 
       streamingProcFiber <- client
-        .acquireEventsStream(queue, chunkSize = 1, maybeOffset = message1Id.some)
+        .acquireEventsStream(qs, chunkSize = 1, maybeOffset = message1Id.some)
         .evalMap(event => dequeued.update(event.payload.asString :: _))
         .compile
         .drain
@@ -95,6 +98,8 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
 
   test("can skip events that are wrongly defined"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
+    val qs = NonEmptyList.of(queue)
+
     for
       clients <- IO(redisClients())
       redisClient = clients.lowLevel
@@ -104,7 +109,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
       _ <- enqueueWithoutHeader(redisClient, queue, toByteVector("message1"))
 
       streamingProcFiber <- queueClient
-        .acquireEventsStream(queue, chunkSize = 1, maybeOffset = None)
+        .acquireEventsStream(qs, chunkSize = 1, maybeOffset = None)
         .evalMap(event => dequeued.update(event.payload.asString :: _))
         .compile
         .drain
@@ -117,16 +122,34 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
 
   test("allow marking and retrieving a processed event"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
+    val qs = NonEmptyList.of(queue)
     val clientId = RedisClientGenerators.clientIdGen.generateOne
     val messageId = RedisClientGenerators.messageIdGen.generateOne
     for
       client <- IO(redisClients().queueClient)
-      _ <- client.findLastProcessed(clientId, queue).map(v => assert(v.isEmpty))
+      _ <- client.findLastProcessed(clientId, qs).map(v => assert(v.isEmpty))
 
-      _ <- client.markProcessed(clientId, queue, messageId)
+      _ <- client.markProcessed(clientId, qs, messageId)
 
       _ <- client
-        .findLastProcessed(clientId, queue)
+        .findLastProcessed(clientId, qs)
+        .map(v => assert(v contains messageId))
+    yield ()
+
+  test("allow marking and retrieving a processed event for multiple queues"):
+    val queue1 = RedisClientGenerators.queueNameGen.generateOne
+    val queue2 = RedisClientGenerators.queueNameGen.generateOne
+    val qs = NonEmptyList.of(queue1, queue2)
+    val clientId = RedisClientGenerators.clientIdGen.generateOne
+    val messageId = RedisClientGenerators.messageIdGen.generateOne
+    for
+      client <- IO(redisClients().queueClient)
+      _ <- client.findLastProcessed(clientId, qs).map(v => assert(v.isEmpty))
+
+      _ <- client.markProcessed(clientId, qs, messageId)
+
+      _ <- client
+        .findLastProcessed(clientId, qs)
         .map(v => assert(v contains messageId))
     yield ()
 

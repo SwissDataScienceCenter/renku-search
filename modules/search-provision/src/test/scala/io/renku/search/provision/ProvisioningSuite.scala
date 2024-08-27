@@ -51,7 +51,8 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
     groupRemoved = QueueName("groupRemoved"),
     groupMemberAdded = QueueName("groupMemberAdded"),
     groupMemberUpdated = QueueName("groupMemberUpdated"),
-    groupMemberRemoved = QueueName("groupMemberRemoved")
+    groupMemberRemoved = QueueName("groupMemberRemoved"),
+    searchSync = QueueName("searchSync")
   )
 
   override def munitIOTimeout: Duration = Duration(1, "min")
@@ -66,7 +67,7 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
         inChunkSize = 1
       )
       handlers = MessageHandlers[IO](steps, queueConfig)
-    yield TestServices(handlers, queue, solrClient)
+    yield TestServices(steps, handlers, queue, solrClient)
 
   val testServices = ResourceSuiteLocalFixture("test-services", testServicesR)
 

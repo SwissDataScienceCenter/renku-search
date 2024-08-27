@@ -35,6 +35,7 @@ sealed trait GroupUpdated extends RenkuEventPayload:
   lazy val schema: Schema =
     fold(_ => v2.GroupUpdated.SCHEMA$)
   def namespace: Namespace
+  val msgType: MsgType = MsgType.GroupUpdated
 
 object GroupUpdated:
   def apply(

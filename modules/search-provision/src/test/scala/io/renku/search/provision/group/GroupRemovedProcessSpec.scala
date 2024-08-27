@@ -50,7 +50,7 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
     val initialState = GroupRemovedProcessSpec.DbState.create.generateOne
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.groupRemoved)
       queueClient = services.queueClient
       solrClient = services.searchClient
 
@@ -65,7 +65,7 @@ class GroupRemovedProcessSpec extends ProvisioningSuite:
           .generateOne
       )
 
-      _ <- handler.makeGroupRemoved.take(1).compile.toList
+      _ <- handler.create.take(1).compile.lastOrError
 
       projects <- initialState.loadPartialProjects(solrClient)
       _ = assertEquals(projects.size, initialState.projects.size)

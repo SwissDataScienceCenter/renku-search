@@ -18,6 +18,7 @@
 
 package io.renku.queue.client
 
+import cats.data.NonEmptyList
 import cats.effect.{Async, Resource}
 import fs2.Stream
 
@@ -33,23 +34,29 @@ trait QueueClient[F[_]]:
   ): F[MessageId]
 
   def acquireHeaderEventsStream(
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   ): Stream[F, QueueMessage]
 
   def acquireMessageStream[T](
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       chunkSize: Int,
       maybeOffset: Option[MessageId]
   )(using EventMessageDecoder[T]): Stream[F, EventMessage[T]]
 
+  def acquireSyncEventStream(
+      queueNames: NonEmptyList[QueueName],
+      chunkSize: Int,
+      maybeOffset: Option[MessageId]
+  ): Stream[F, SyncEventMessage]
+
   def markProcessed(
-      queueName: QueueName,
+      queueNames: NonEmptyList[QueueName],
       messageId: MessageId
   ): F[Unit]
 
-  def findLastProcessed(queueName: QueueName): F[Option[MessageId]]
+  def findLastProcessed(queueNames: NonEmptyList[QueueName]): F[Option[MessageId]]
 
   def getSize(queueName: QueueName): F[Long]
 

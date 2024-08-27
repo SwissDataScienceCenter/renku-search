@@ -36,6 +36,7 @@ sealed trait GroupMemberUpdated extends RenkuEventPayload:
   def schema: Schema = v2.GroupMemberUpdated.SCHEMA$
   def userId: Id = fold(a => Id(a.userId))
   def role: MemberRole
+  val msgType: MsgType = MsgType.GroupMemberUpdated
 
 object GroupMemberUpdated:
   def apply(groupId: Id, userId: Id, role: MemberRole): GroupMemberUpdated =

@@ -37,7 +37,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite:
   test("overwrite data for duplicate events"):
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.groupAdded)
       queueClient = services.queueClient
       solrClient = services.searchClient
 
@@ -61,9 +61,10 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite:
           )
           .generateOne
       )
-      results <- handler
-        .makeUpsert[GroupAdded](queueConfig.groupAdded)
+      results <- handler.create
         .take(2)
+        .map(_.asUpsert)
+        .unNone
         .compile
         .toList
 
@@ -78,7 +79,7 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite:
     val groupAdded = EventsGenerators.groupAddedGen(prefix = "group-added").generateOne
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.groupAdded)
       queueClient = services.queueClient
       solrClient = services.searchClient
 
@@ -87,9 +88,10 @@ class GroupAddedProvisioningSpec extends ProvisioningSuite:
         EventsGenerators.eventMessageGen(Gen.const(groupAdded)).generateOne
       )
 
-      result <- handler
-        .makeUpsert[GroupAdded](queueConfig.groupAdded)
+      result <- handler.create
         .take(10)
+        .map(_.asUpsert)
+        .unNone
         .find(_.isSuccess)
         .compile
         .lastOrError

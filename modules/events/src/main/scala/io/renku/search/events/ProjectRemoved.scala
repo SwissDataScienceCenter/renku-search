@@ -30,6 +30,7 @@ import org.apache.avro.Schema
 final case class ProjectRemoved(id: Id) extends RenkuEventPayload:
   val version: NonEmptyList[SchemaVersion] = SchemaVersion.all
   val schema: Schema = v2.ProjectRemoved.SCHEMA$
+  val msgType: MsgType = MsgType.ProjectRemoved
 
 object ProjectRemoved:
   given Show[ProjectRemoved] = Show.fromToString

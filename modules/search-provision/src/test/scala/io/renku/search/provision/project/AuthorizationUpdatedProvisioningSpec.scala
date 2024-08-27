@@ -34,36 +34,30 @@ import io.renku.search.solr.documents.{
 }
 import io.renku.solr.client.DocVersion
 import org.scalacheck.Gen
+//import scala.concurrent.duration.*
 
 class AuthorizationUpdatedProvisioningSpec extends ProvisioningSuite:
   testCases.foreach { tc =>
     test(s"can fetch events, decode them, and update docs in Solr: $tc"):
-
       for {
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.projectAuthorizationUpdated)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
         _ <- tc.dbState.create(solrClient)
 
-        collector <- BackgroundCollector[SolrDocument](
-          loadProjectPartialOrEntity(solrClient, tc.projectId)
-        )
-        _ <- collector.start
-
-        provisioningFiber <- handler.projectAuthUpdated.compile.drain.start
-
         _ <- queueClient.enqueue(
           queueConfig.projectAuthorizationUpdated,
           EventsGenerators.eventMessageGen(Gen.const(tc.authUpdated)).generateOne
         )
-        _ <- collector.waitUntil(docs =>
-          scribe.debug(s"Check for ${tc.expectedProject}")
-          tc.checkExpected(docs)
-        )
+//        _ <- IO.sleep(100.millis)
+        result <- handler.create.take(1).compile.lastOrError
+        _ = assert(result.asUpsert.exists(_.isSuccess))
 
-        _ <- provisioningFiber.cancel
+        found <- loadProjectPartialOrEntity(solrClient, tc.projectId)
+
+        _ = assert(tc.checkExpected(found.toSet))
       } yield ()
   }
 
@@ -105,10 +99,18 @@ object AuthorizationUpdatedProvisioningSpec:
         Set(p.modifyEntityMembers(_.removeMember(user).addMember(user, role)))
 
     def checkExpected(d: Set[SolrDocument]): Boolean =
-      expectedProject
-        .map(_.setVersion(DocVersion.Off))
-        .diff(d.map(_.setVersion(DocVersion.Off)))
-        .isEmpty
+      if (d.isEmpty) sys.error("Empty document set passed to check")
+      if (d.size == 1 && expectedProject.size == 1)
+        munit.Assertions.assertEquals(
+          d.head.setVersion(DocVersion.Off),
+          expectedProject.head.setVersion(DocVersion.Off)
+        )
+        true
+      else
+        expectedProject
+          .map(_.setVersion(DocVersion.Off))
+          .diff(d.map(_.setVersion(DocVersion.Off)))
+          .isEmpty
 
     override def toString = s"$name: ${user.value.take(6)}… db=$dbState"
 

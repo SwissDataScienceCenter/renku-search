@@ -34,6 +34,7 @@ sealed trait UserUpdated extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v1.UserUpdated.SCHEMA$, _ => v2.UserUpdated.SCHEMA$)
+  val msgType: MsgType = MsgType.UserUpdated
 
 object UserUpdated:
   def apply(

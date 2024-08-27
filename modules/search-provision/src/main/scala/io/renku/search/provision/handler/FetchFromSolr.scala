@@ -20,7 +20,7 @@ package io.renku.search.provision.handler
 
 import cats.effect.Sync
 import cats.syntax.all.*
-import fs2.{Pipe, Stream}
+import fs2.Stream
 
 import io.bullet.borer.Decoder
 import io.bullet.borer.derivation.MapBasedCodecs
@@ -39,17 +39,14 @@ import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.{QueryData, QueryString}
 
 trait FetchFromSolr[F[_]]:
-  def fetchById[A: Decoder](id: CompoundId): Stream[F, A]
   def fetchEntityForUser(userId: Id): Stream[F, EntityId]
-  def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.EntityId]
-  def fetchProjectsByGroup[A]
-      : Pipe[F, EntityOrPartialMessage[A], EntityOrPartialMessage[A]]
-  def fetchEntityOrPartial[A](using
-      IdExtractor[A]
-  ): Pipe[F, EventMessage[A], EntityOrPartialMessage[A]]
-  def fetchProjectGroups
-      : Pipe[F, EventMessage[EntityOrPartial], EntityOrPartialMessage[EntityOrPartial]]
-
+  def loadProjectsByGroup[A](msg: EntityOrPartialMessage[A]): F[EntityOrPartialMessage[A]]
+  def loadEntityOrPartial[A](using IdExtractor[A])(
+      msg: EventMessage[A]
+  ): F[EntityOrPartialMessage[A]]
+  def loadProjectGroups(
+      msg: EventMessage[EntityOrPartial]
+  ): F[EntityOrPartialMessage[EntityOrPartial]]
   def fetchEntityOrPartialById[A](v: A)(using IdExtractor[A]): F[Option[EntityOrPartial]]
 
 object FetchFromSolr:
@@ -64,51 +61,46 @@ object FetchFromSolr:
     new FetchFromSolr[F] {
       val logger = scribe.cats.effect[F]
 
-      def fetchProjectGroups: Pipe[F, EventMessage[
-        EntityOrPartial
-      ], EntityOrPartialMessage[EntityOrPartial]] =
-        _.evalMap { m =>
-          val namespaces =
-            m.payload.flatMap {
-              case p: ProjectDocument => p.namespace
-              case _                  => None
-            }
-          val query = List(
-            SolrToken.entityTypeIs(EntityType.Group),
-            SolrToken.kindIs(DocumentKind.FullEntity),
-            namespaces.map(SolrToken.namespaceIs).foldOr
-          ).foldAnd
+      def loadProjectGroups(
+          msg: EventMessage[EntityOrPartial]
+      ): F[EntityOrPartialMessage[EntityOrPartial]] =
+        val namespaces =
+          msg.payload.flatMap {
+            case p: ProjectDocument               => p.namespace
+            case p: PartialEntityDocument.Project => p.namespace
+            case _                                => None
+          }
+        val query = List(
+          SolrToken.entityTypeIs(EntityType.Group),
+          SolrToken.kindIs(DocumentKind.FullEntity),
+          namespaces.map(SolrToken.namespaceIs).foldOr
+        ).foldAnd
 
-          solrClient
-            .queryAll[EntityDocument](QueryData(QueryString(query.value)))
-            .compile
-            .toList
-            .map(groups =>
-              EntityOrPartialMessage(m, (m.payload ++ groups).map(e => e.id -> e).toMap)
-            )
-        }
+        solrClient
+          .queryAll[EntityDocument](QueryData(QueryString(query.value)))
+          .compile
+          .toList
+          .map(groups =>
+            EntityOrPartialMessage(msg, (msg.payload ++ groups).map(e => e.id -> e).toMap)
+          )
 
-      def fetchProjectsByGroup[A]
-          : Pipe[F, EntityOrPartialMessage[A], EntityOrPartialMessage[A]] =
-        _.evalMap { msg =>
-          val namespaces = msg.documents.values.collect { case g: GroupDocument =>
-            g.namespace
-          }.toSeq
+      def loadProjectsByGroup[A](
+          msg: EntityOrPartialMessage[A]
+      ): F[EntityOrPartialMessage[A]] =
+        val namespaces = msg.documents.values.collect { case g: GroupDocument =>
+          g.namespace
+        }.toSeq
 
-          val query = List(
-            SolrToken.entityTypeIs(EntityType.Project),
-            SolrToken.kindIs(DocumentKind.FullEntity),
-            namespaces.map(SolrToken.namespaceIs).foldOr
-          ).foldAnd
-          solrClient
-            .queryAll[EntityDocument](QueryData(QueryString(query.value)))
-            .compile
-            .toList
-            .map(msg.appendDocuments)
-        }
-
-      def fetchById[A: Decoder](id: CompoundId): Stream[F, A] =
-        Stream.eval(solrClient.findById(id)).unNone
+        val query = List(
+          SolrToken.entityTypeIs(EntityType.Project),
+          SolrToken.kindIs(DocumentKind.FullEntity),
+          namespaces.map(SolrToken.namespaceIs).foldOr
+        ).foldAnd
+        solrClient
+          .queryAll[EntityDocument](QueryData(QueryString(query.value)))
+          .compile
+          .toList
+          .map(msg.appendDocuments)
 
       def fetchEntityForUser(userId: Id): Stream[F, EntityId] =
         val query = QueryString(SolrToken.anyMemberIs(userId).value)
@@ -116,28 +108,14 @@ object FetchFromSolr:
           QueryData(query).withFields(EntityDocumentSchema.Fields.id)
         )
 
-      def fetchProjectByNamespace(ns: Namespace): Stream[F, FetchFromSolr.EntityId] =
-        val query = QueryString(
-          List(
-            SolrToken.entityTypeIs(EntityType.Project),
-            SolrToken.namespaceIs(ns)
-          ).foldAnd.value
-        )
-        solrClient.queryAll[EntityId](
-          QueryData(query).withFields(EntityDocumentSchema.Fields.id)
-        )
-
-      def fetchEntityOrPartial[A](using
-          IdExtractor[A]
-      ): Pipe[F, EventMessage[A], EntityOrPartialMessage[A]] =
-        _.evalMap { msg =>
-          val loaded =
-            msg.payload
-              .traverse(fetchEntityOrPartialById)
-              .map(_.flatten.map(e => e.id -> e).toMap)
-
-          loaded.map(docs => EntityOrPartialMessage(msg, docs))
-        }
+      def loadEntityOrPartial[A](using IdExtractor[A])(
+          msg: EventMessage[A]
+      ): F[EntityOrPartialMessage[A]] =
+        val loaded =
+          msg.payload
+            .traverse(fetchEntityOrPartialById)
+            .map(_.flatten.map(e => e.id -> e).toMap)
+        loaded.map(docs => EntityOrPartialMessage(msg, docs))
 
       def fetchEntityOrPartialById[A](v: A)(using
           IdExtractor[A]

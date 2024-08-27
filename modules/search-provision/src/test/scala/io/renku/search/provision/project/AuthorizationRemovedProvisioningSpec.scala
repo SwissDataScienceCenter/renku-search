@@ -40,29 +40,22 @@ class AuthorizationRemovedProvisioningSpec extends ProvisioningSuite:
 
       for {
         services <- IO(testServices())
-        handler = services.messageHandlers
+        handler = services.syncHandler(queueConfig.projectAuthorizationRemoved)
         queueClient = services.queueClient
         solrClient = services.searchClient
 
         _ <- tc.dbState.create(solrClient)
 
-        collector <- BackgroundCollector[SolrDocument](
-          loadProjectPartialOrEntity(solrClient, tc.projectId)
-        )
-        _ <- collector.start
-
-        provisioningFiber <- handler.projectAuthRemoved.compile.drain.start
-
         _ <- queueClient.enqueue(
           queueConfig.projectAuthorizationRemoved,
           EventsGenerators.eventMessageGen(Gen.const(tc.authRemoved)).generateOne
         )
-        _ <- collector.waitUntil(docs =>
-          scribe.debug(s"Check for ${tc.expectedProject}")
-          tc.checkExpected(docs)
-        )
 
-        _ <- provisioningFiber.cancel
+        result <- handler.create.take(1).compile.lastOrError
+
+        found <- loadProjectPartialOrEntity(solrClient, tc.projectId)
+
+        _ = assert(tc.checkExpected(found.toSet))
       } yield ()
   }
 

@@ -34,6 +34,7 @@ sealed trait GroupAdded extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v2.GroupAdded.SCHEMA$)
+  val msgType = MsgType.GroupAdded
 
 object GroupAdded:
   def apply(

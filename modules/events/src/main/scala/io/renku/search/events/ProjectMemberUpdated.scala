@@ -43,6 +43,7 @@ sealed trait ProjectMemberUpdated extends RenkuEventPayload:
     )
   def userId: Id = fold(a => Id(a.userId), b => Id(b.userId))
   def role: MemberRole
+  val msgType: MsgType = MsgType.ProjectMemberUpdated
 
 object ProjectMemberUpdated:
   def apply(projectId: Id, userId: Id, role: MemberRole): ProjectMemberUpdated =

@@ -37,6 +37,7 @@ sealed trait ProjectCreated extends RenkuEventPayload:
     NonEmptyList.of(fold(_ => SchemaVersion.V1, _ => SchemaVersion.V2))
   def schema: Schema =
     fold(_ => v1.ProjectCreated.SCHEMA$, _ => v2.ProjectCreated.SCHEMA$)
+  val msgType = MsgType.ProjectCreated
 
 object ProjectCreated:
   def apply(

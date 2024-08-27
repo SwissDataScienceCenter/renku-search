@@ -36,14 +36,13 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
   test("overwrite data for duplicate events"):
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.userAdded)
       queueClient = services.queueClient
       solrClient = services.searchClient
 
       id <- IO(ModelGenerators.idGen.generateOne)
       _ <- solrClient.deleteIds(NonEmptyList.of(id))
-      add1 <- queueClient.enqueue(
-        queueConfig.userAdded,
+      results1 <- handler.processEvent(
         EventsGenerators
           .eventMessageGen(
             EventsGenerators
@@ -52,14 +51,8 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
           )
           .generateOne
       )
-      results1 <- handler
-        .makeUpsert[UserAdded](queueConfig.userAdded)
-        .take(1)
-        .compile
-        .toList
 
-      add2 <- queueClient.enqueue(
-        queueConfig.userAdded,
+      results2 <- handler.processEvent(
         EventsGenerators
           .eventMessageGen(
             EventsGenerators
@@ -68,12 +61,7 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
           )
           .generateOne
       )
-      results2 <- handler
-        .makeUpsert[UserAdded](queueConfig.userAdded)
-        .take(1)
-        .compile
-        .toList
-      results = results1 ++ results2
+      results = List(results1.asUpsert, results2.asUpsert).flatten
 
       _ = assert(results.nonEmpty && results.forall(_.isSuccess))
       doc <- solrClient.findById[EntityDocument](CompoundId.userEntity(id))
@@ -86,7 +74,7 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
     val userAdded = EventsGenerators.userAddedGen(prefix = "user-added").generateOne
     for
       services <- IO(testServices())
-      handler = services.messageHandlers
+      handler = services.syncHandler(queueConfig.userAdded)
       queueClient = services.queueClient
       solrClient = services.searchClient
 
@@ -95,9 +83,10 @@ class UserAddedProvisioningSpec extends ProvisioningSuite:
         EventsGenerators.eventMessageGen(Gen.const(userAdded)).generateOne
       )
 
-      result <- handler
-        .makeUpsert[UserAdded](queueConfig.userAdded)
+      result <- handler.create
         .take(10)
+        .map(_.asUpsert)
+        .unNone
         .find(_.isSuccess)
         .compile
         .lastOrError

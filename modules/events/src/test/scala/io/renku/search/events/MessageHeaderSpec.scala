@@ -34,13 +34,21 @@ class MessageHeaderSpec extends FunSuite:
   DataContentType.values.foreach { ct =>
     test(s"read v1 header: $ct"):
       val now = Instant.now
-      val hv1 = HeaderV1("the-source", "type2", ct.mimeType, "v1", now, "req1")
+      val hv1 = HeaderV1(
+        "the-source",
+        MsgType.ProjectCreated.name,
+        ct.mimeType,
+        "v1",
+        now,
+        "req1"
+      )
       val bv1 = AvroWriter(HeaderV1.SCHEMA$).writeData(ct, Seq(hv1))
       val h = MessageHeader.fromByteVector(bv1).fold(throw _, identity)
       assertEquals(
         h,
         MessageHeader(
           MessageSource("the-source"),
+          MsgType.ProjectCreated,
           ct,
           SchemaVersion.V1,
           Timestamp(now),
@@ -52,13 +60,15 @@ class MessageHeaderSpec extends FunSuite:
   DataContentType.values.foreach { ct =>
     test(s"read v2 header: $ct"):
       val now = Instant.now
-      val hv2 = HeaderV2("the-source", "type2", ct.mimeType, "v1", now, "req1")
+      val hv2 =
+        HeaderV2("the-source", MsgType.GroupAdded.name, ct.mimeType, "v1", now, "req1")
       val bv1 = AvroWriter(HeaderV2.SCHEMA$).writeData(ct, Seq(hv2))
       val h = MessageHeader.fromByteVector(bv1).fold(throw _, identity)
       assertEquals(
         h,
         MessageHeader(
           MessageSource("the-source"),
+          MsgType.GroupAdded,
           ct,
           SchemaVersion.V1,
           Timestamp(now),

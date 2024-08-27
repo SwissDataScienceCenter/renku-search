@@ -30,6 +30,7 @@ final case class UserRemoved(id: Id) extends RenkuEventPayload:
   def withId(id: Id): UserRemoved = copy(id = id)
   def version: NonEmptyList[SchemaVersion] = SchemaVersion.all
   val schema: Schema = v2.UserRemoved.SCHEMA$
+  val msgType: MsgType = MsgType.UserRemoved
 
 object UserRemoved:
 

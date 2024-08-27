@@ -41,5 +41,6 @@ object Services:
     for
       reqId <- makeRequestId
       src = MessageSource("search-cli")
-      msg <- EventMessage.create[IO, A](src, DataContentType.Binary, reqId, payload)
+      id = MessageId("*")
+      msg <- EventMessage.create[IO, A](id, src, DataContentType.Binary, reqId, payload)
     yield msg

@@ -18,11 +18,10 @@
 
 package io.renku.search.provision.handler
 
-import cats.Applicative
+import cats.data.NonEmptyList
 import cats.effect.Async
-import cats.effect.Resource.ExitCase
 import cats.syntax.all.*
-import fs2.{Pipe, Stream}
+import fs2.Stream
 
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.QueueName
@@ -32,16 +31,9 @@ import scribe.Scribe
 
 trait MessageReader[F[_]]:
   def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]]
+  def readSyncEvents: Stream[F, SyncEventMessage]
   def markProcessed(id: MessageId): F[Unit]
   def markProcessedError(err: Throwable, id: MessageId)(using Scribe[F]): F[Unit]
-  def markMessageOnDone[A](
-      id: MessageId
-  )(using Scribe[F], Applicative[F]): Pipe[F, A, A] =
-    _.onFinalizeCaseWeak {
-      case ExitCase.Succeeded   => markProcessed(id)
-      case ExitCase.Errored(ex) => markProcessedError(ex, id)
-      case ExitCase.Canceled    => markProcessed(id)
-    }
 
 object MessageReader:
   /** MessageReader that dequeues messages attempt to decode it. If decoding fails, the
@@ -54,17 +46,26 @@ object MessageReader:
   ): MessageReader[F] =
     new MessageReader[F]:
       private val logger: Scribe[F] = scribe.cats.effect[F]
+      private val qnames = NonEmptyList.of(queue)
+
+      def readSyncEvents: Stream[F, SyncEventMessage] =
+        for
+          client <- queueClient
+          last <- Stream.eval(client.findLastProcessed(qnames))
+          msg <- client.acquireSyncEventStream(qnames, chunkSize, last)
+          _ <- Stream.eval(logMessage(msg: EventMessage[?]))
+        yield msg
 
       def readEvents[A](using EventMessageDecoder[A]): Stream[F, EventMessage[A]] =
         for {
           client <- queueClient
-          last <- Stream.eval(client.findLastProcessed(queue))
-          msg <- client.acquireMessageStream(queue, chunkSize, last)
+          last <- Stream.eval(client.findLastProcessed(qnames))
+          msg <- client.acquireMessageStream(qnames, chunkSize, last)
           _ <- Stream.eval(logMessage(msg))
         } yield msg
 
       override def markProcessed(id: MessageId): F[Unit] =
-        queueClient.evalMap(_.markProcessed(queue, id)).take(1).compile.drain
+        queueClient.evalMap(_.markProcessed(qnames, id)).take(1).compile.drain
 
       override def markProcessedError(err: Throwable, id: MessageId)(using
           logger: Scribe[F]

@@ -30,6 +30,7 @@ import scodec.bits.ByteVector
 
 final case class MessageHeader(
     source: MessageSource,
+    msgType: MsgType,
     dataContentType: DataContentType,
     schemaVersion: SchemaVersion,
     time: Timestamp,
@@ -38,11 +39,11 @@ final case class MessageHeader(
   def withContentType(dt: DataContentType): MessageHeader = copy(dataContentType = dt)
   def withSchemaVersion(v: SchemaVersion): MessageHeader = copy(schemaVersion = v)
 
-  def toAvro(payloadType: String): ByteVector =
+  def toAvro: ByteVector =
     val h =
       Header(
         source.value,
-        payloadType,
+        msgType.name,
         dataContentType.mimeType,
         schemaVersion.name,
         time.toInstant,
@@ -55,11 +56,12 @@ final case class MessageHeader(
 object MessageHeader:
   def create[F[_]: Sync](
       src: MessageSource,
+      msgType: MsgType,
       ct: DataContentType,
       sv: SchemaVersion,
       reqId: RequestId
   ): F[MessageHeader] =
-    Timestamp.now[F].map(ts => MessageHeader(src, ct, sv, ts, reqId))
+    Timestamp.now[F].map(ts => MessageHeader(src, msgType, ct, sv, ts, reqId))
 
   private def readJsonOrBinary(
       bv: ByteVector
@@ -107,8 +109,11 @@ object MessageHeader:
             .leftMap(err =>
               DecodeFailure.FieldReadError("schemaVersion", h.schemaVersion, err)
             )
+          mst <- MsgType
+            .fromString(h.`type`)
+            .leftMap(err => DecodeFailure.FieldReadError("type", h.`type`, err))
           src = MessageSource(h.source)
           ts = Timestamp(h.time)
           rid = RequestId(h.requestId)
-        yield MessageHeader(src, ctReal, v, ts, rid)
+        yield MessageHeader(src, mst, ctReal, v, ts, rid)
       }

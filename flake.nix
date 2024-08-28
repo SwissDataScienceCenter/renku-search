@@ -66,7 +66,7 @@
         groupMemberAdded = "groupMemberAdded";
         groupMemberUpdated = "groupMemberUpdated";
         groupMemberRemoved = "groupMemberRemoved";
-        searchSync = "searchSync";
+        searchSync = "search.sync";
       };
 
       queueNameConfig = with nixpkgs.lib; mapAttrs' (key: qn: nameValuePair "RS_REDIS_QUEUE_${key}" qn) queueNames;

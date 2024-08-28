@@ -28,7 +28,7 @@ private object LabelsMacro:
   private def findLabelsImpl[T: Type](using q: Quotes): Expr[Seq[String]] = {
     import q.reflect.*
 
-    val keyAnno = TypeRepr.of[io.bullet.borer.derivation.key]
+    val keyAnno = TypeRepr.of[key]
 
     def keyAnnotation(s: Symbol): Expr[Option[String]] = {
       val key = s.annotations.find(_.tpe <:< keyAnno).map {

@@ -29,7 +29,6 @@ import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.solr.client.SolrDocumentGenerators
 import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.documents.{
   Group as GroupDocument,
   Project as ProjectDocument,

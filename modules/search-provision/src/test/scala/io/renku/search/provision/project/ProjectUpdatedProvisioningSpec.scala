@@ -22,7 +22,6 @@ import cats.effect.IO
 import cats.syntax.all.*
 
 import io.renku.events.EventsGenerators
-import io.renku.events.EventsGenerators.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.model.Id

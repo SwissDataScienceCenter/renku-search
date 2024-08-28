@@ -97,16 +97,21 @@ object EncoderSupport {
     final inline def membersEncoder[T](using
         m: Mirror.ProductOf[T]
     ): Encoder[T] =
-      new Encoder[T] {
-        def write(w: Writer, value: T): Writer =
-          val encoders = summonEncoder[m.MirroredElemTypes]
-          val names = LabelsMacro.findLabels[T].toList
-          val values = value.asInstanceOf[Product].productIterator.toList
-          names.zip(values).zip(encoders).foreach { case ((k, v), e) =>
-            w.writeMapMember(k, v)(using Encoder[String], e.asInstanceOf[Encoder[Any]])
-          }
-          w
-      }
+      val encoders = summonEncoder[m.MirroredElemTypes]
+      val names = LabelsMacro.findLabels[T].toList
+      new MemberEncoderImpl[T](names, encoders)
+
+    final private class MemberEncoderImpl[T](
+        names: List[String],
+        encoders: List[Encoder[?]]
+    ) extends Encoder[T] {
+      def write(w: Writer, value: T): Writer =
+        val values = value.asInstanceOf[Product].productIterator.toList
+        names.zip(values).zip(encoders).foreach { case ((k, v), e) =>
+          w.writeMapMember(k, v)(using Encoder[String], e.asInstanceOf[Encoder[Any]])
+        }
+        w
+    }
 
     final inline def createEncoder[K: Encoder, V: Encoder, T](
         additionalFields: AdditionalFields[T, V]

@@ -21,7 +21,6 @@ package io.renku.redis.client.util
 import cats.effect.*
 
 import dev.profunktor.redis4cats.Redis
-import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.Log as RedisLog

@@ -28,7 +28,6 @@ import io.renku.search.events.EventMessage
 import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.FetchFromSolr.*
 import io.renku.search.solr.client.SearchSolrClient
-import io.renku.search.solr.documents.DocumentKind
 import io.renku.search.solr.documents.{
   Group as GroupDocument,
   Project as ProjectDocument,

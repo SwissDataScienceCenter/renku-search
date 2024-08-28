@@ -20,7 +20,6 @@ package io.renku.search.provision.events
 
 import cats.syntax.all.*
 
-import io.renku.events.v1.UserUpdated
 import io.renku.events.{v1, v2}
 import io.renku.search.events.syntax.*
 import io.renku.search.solr.documents.User as UserDocument

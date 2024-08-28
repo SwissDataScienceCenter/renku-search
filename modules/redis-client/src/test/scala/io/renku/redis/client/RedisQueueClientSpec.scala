@@ -26,7 +26,6 @@ import fs2.concurrent.SignallingRef
 import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.streams.data.XAddMessage
 import dev.profunktor.redis4cats.streams.{RedisStream, Streaming}
-import io.renku.redis.client.RedisClientGenerators.*
 import io.renku.redis.client.util.RedisBaseSuite
 import io.renku.search.GeneratorSyntax.*
 import munit.CatsEffectSuite

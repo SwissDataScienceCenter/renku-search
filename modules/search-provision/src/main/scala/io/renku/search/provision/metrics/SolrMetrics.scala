@@ -19,7 +19,6 @@
 package io.renku.search.provision.metrics
 
 import io.renku.search.model.EntityType
-import io.renku.search.model.EntityType.*
 
 object SolrMetrics:
 

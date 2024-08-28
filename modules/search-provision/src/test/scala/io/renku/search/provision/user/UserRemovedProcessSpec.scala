@@ -21,7 +21,6 @@ package io.renku.search.provision.user
 import cats.effect.IO
 
 import io.renku.events.EventsGenerators
-import io.renku.events.EventsGenerators.*
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.*
 import io.renku.search.model.{EntityType, Id, ModelGenerators}

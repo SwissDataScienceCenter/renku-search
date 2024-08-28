@@ -26,7 +26,6 @@ import io.bullet.borer.{Decoder, Encoder}
 import io.renku.search.http.{ClientBuilder, ResponseLogging, RetryConfig}
 import io.renku.solr.client.schema.SchemaCommand
 import org.http4s.ember.client.EmberClientBuilder
-import org.http4s.ember.client.EmberClientBuilder.default
 
 trait SolrClient[F[_]]:
   def config: SolrConfig

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+host="${RS_REDIS_HOST:-localhost}"
+port="${RS_REDIS_PORT:-6379}"
+db_opt=""
+if [ -n "$RS_REDIS_DB" ]; then
+    db_opt="-n $RS_REDIS_DB"
+fi
+db_pass=""
+if [ -n "$RS_REDIS_PASSWORD" ]; then
+    db_pass="-a $RS_REDIS_PASSWORD"
+fi
+redis-cli -e --json -h "$host" -p "$port" $db_opt $db_pass XINFO STREAM "$1"

@@ -31,9 +31,11 @@ import io.renku.search.solr.client.SolrDocumentGenerators.*
 import io.renku.search.solr.documents.*
 import io.renku.search.solr.documents.EntityOps.*
 import io.renku.search.solr.schema.EntityDocumentSchema.Fields
+import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.QueryData
 import io.renku.solr.client.ResponseBody
+import io.renku.solr.client.migration.SchemaMigrator
 import munit.CatsEffectSuite
 import org.scalacheck.Gen
 
@@ -210,4 +212,33 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
       )
       _ = assertEquals(result2.responseBody.docs.size, 1)
       _ = assertEquals(result2.responseBody.docs.head.id, project.id)
+    yield ()
+
+  test("delete all entities"):
+    val project =
+      projectDocumentGen(
+        "solr-project",
+        "solr project description",
+        Gen.const(None),
+        Gen.const(None)
+      ).generateOne
+    val user = userDocumentGen.generateOne
+    val group = groupDocumentGen.generateOne
+    val role = SearchRole.admin(Id("admin"))
+    val query = Query(Query.Segment.idIs(user.id.value, group.id.value, project.id.value))
+    for
+      client <- IO(searchSolrClient())
+      _ <- client.upsert(Seq(project, user, group))
+
+      r0 <- client.queryEntity(role, query, 10, 0)
+      _ = assertEquals(r0.responseBody.docs.size, 3)
+
+      _ <- client.deletePublicData
+
+      r1 <- client.queryEntity(role, Query.empty, 10, 0)
+      _ = assertEquals(r1.responseBody.docs.size, 0)
+
+      // make sure the internal document is still there
+      v <- SchemaMigrator(client.underlying).currentVersion
+      _ = assertEquals(v, Migrations.all.map(_.version).max.some)
     yield ()

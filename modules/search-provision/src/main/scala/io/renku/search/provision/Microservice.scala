@@ -26,6 +26,7 @@ import cats.syntax.all.*
 import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 import io.renku.search.metrics.CollectorRegistryBuilder
+import io.renku.search.provision.BackgroundProcessManage.TaskName
 import io.renku.search.provision.metrics.*
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.SchemaMigrator
@@ -46,22 +47,23 @@ object Microservice extends IOApp:
         metrics = metricsUpdaterTask(services)
         httpServer = httpServerTask(registryBuilder, services.config)
         tasks = services.messageHandlers.getAll + metrics + httpServer
-        pm <- BackgroundProcessManage[IO](services.config.retryOnErrorDelay)
+        pm = services.backgroundManage
         _ <- tasks.toList.traverse_(pm.register.tupled)
         _ <- pm.startAll
+        _ <- IO.never
       } yield ExitCode.Success
     }
 
   private def httpServerTask(
       registryBuilder: CollectorRegistryBuilder[IO],
       config: SearchProvisionConfig
-  ) =
+  ): (TaskName, IO[Unit]) =
     val io = Routes[IO](registryBuilder)
       .flatMap(HttpServer.build(_, config.httpServerConfig))
       .use(_ => IO.never)
-    "http server" -> io
+    TaskName.fromString("http server") -> io
 
-  private def metricsUpdaterTask(services: Services[IO]) =
+  private def metricsUpdaterTask(services: Services[IO]): (TaskName, IO[Unit]) =
     val updateInterval = services.config.metricsUpdateInterval
     val io =
       if (updateInterval <= Duration.Zero)
@@ -76,7 +78,7 @@ object Microservice extends IOApp:
           services.queueClient,
           services.solrClient
         ).run()
-    "metrics updater" -> io
+    TaskName.fromString("metrics updater") -> io
 
   private def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =
     SchemaMigrator[IO](cfg.solrConfig)

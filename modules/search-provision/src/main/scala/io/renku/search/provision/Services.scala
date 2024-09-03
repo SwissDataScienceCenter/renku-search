@@ -30,7 +30,8 @@ final case class Services[F[_]](
     config: SearchProvisionConfig,
     solrClient: SearchSolrClient[F],
     queueClient: Stream[F, QueueClient[F]],
-    messageHandlers: MessageHandlers[F]
+    messageHandlers: MessageHandlers[F],
+    backgroundManage: BackgroundProcessManage[F]
 )
 
 object Services:
@@ -49,4 +50,6 @@ object Services:
         inChunkSize = 1
       )
       handlers = MessageHandlers[F](steps, cfg.queuesConfig)
-    } yield Services(cfg, solr, redis, handlers)
+
+      bm <- BackgroundProcessManage[F](cfg.retryOnErrorDelay)
+    } yield Services(cfg, solr, redis, handlers, bm)

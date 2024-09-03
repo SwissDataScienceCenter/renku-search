@@ -56,6 +56,11 @@ trait RedisQueueClient[F[_]] {
       messageId: MessageId
   ): F[Unit]
 
+  def removeLastProcessed(
+      clientId: ClientId,
+      queueNames: NonEmptyList[QueueName]
+  ): F[Unit]
+
   def findLastProcessed(
       clientId: ClientId,
       queueNames: NonEmptyList[QueueName]
@@ -142,6 +147,21 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
           ex
         )
       }
+    }
+
+  override def removeLastProcessed(
+      clientId: ClientId,
+      queueNames: NonEmptyList[QueueName]
+  ): F[Unit] =
+    val key = formProcessedKey(clientId, queueNames)
+    createStringCommands.use { cmd =>
+      logger.debug(s"Delete last message-id for: $key") >>
+        cmd.del(key).flatMap(n => logger.debug(s"Deleted $n")).recoverWith { case ex =>
+          logger.warn(
+            s"Error deleting last message-id '$key'",
+            ex
+          )
+        }
     }
 
   override def findLastProcessed(

@@ -58,6 +58,8 @@ trait QueueClient[F[_]]:
 
   def findLastProcessed(queueNames: NonEmptyList[QueueName]): F[Option[MessageId]]
 
+  def removeLastProcessed(queueNames: NonEmptyList[QueueName]): F[Unit]
+
   def getSize(queueName: QueueName): F[Long]
 
   def getSize(queueName: QueueName, from: MessageId): F[Long]

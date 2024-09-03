@@ -45,7 +45,7 @@ object Microservice extends IOApp:
           .add(RedisMetrics.unprocessedGauge)
           .addAll(SolrMetrics.allCollectors)
         metrics = metricsUpdaterTask(services)
-        httpServer = httpServerTask(registryBuilder, services.config)
+        httpServer = httpServerTask(registryBuilder, services)
         tasks = services.messageHandlers.getAll + metrics + httpServer
         pm = services.backgroundManage
         _ <- tasks.toList.traverse_(pm.register.tupled)
@@ -56,10 +56,10 @@ object Microservice extends IOApp:
 
   private def httpServerTask(
       registryBuilder: CollectorRegistryBuilder[IO],
-      config: SearchProvisionConfig
+      services: Services[IO]
   ): (TaskName, IO[Unit]) =
-    val io = Routes[IO](registryBuilder)
-      .flatMap(HttpServer.build(_, config.httpServerConfig))
+    val io = Routes[IO](registryBuilder, services)
+      .flatMap(HttpServer.build(_, services.config.httpServerConfig))
       .use(_ => IO.never)
     TaskName.fromString("http server") -> io
 

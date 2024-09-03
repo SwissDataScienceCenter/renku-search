@@ -152,6 +152,20 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
         .map(v => assert(v contains messageId))
     yield ()
 
+  test("remove last seen message id"):
+    val clientId = RedisClientGenerators.clientIdGen.generateOne
+    val queue = NonEmptyList.of(RedisClientGenerators.queueNameGen.generateOne)
+    val messageId = RedisClientGenerators.messageIdGen.generateOne
+    for
+      client <- IO(redisClients().queueClient)
+      _ <- client.markProcessed(clientId, queue, messageId)
+      mid <- client.findLastProcessed(clientId, queue)
+      _ = assertEquals(mid, Some(messageId))
+
+      _ <- client.removeLastProcessed(clientId, queue)
+      _ <- client.findLastProcessed(clientId, queue).map(v => assert(v.isEmpty))
+    yield ()
+
   test("can find out the total size of the given stream"):
     val queue = RedisClientGenerators.queueNameGen.generateOne
     val messages = (stringGen, stringGen).mapN(_ -> _).generateList(1, 30)

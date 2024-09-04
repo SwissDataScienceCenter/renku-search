@@ -38,7 +38,7 @@ final case class QueuesConfig(
     groupMemberAdded: QueueName,
     groupMemberUpdated: QueueName,
     groupMemberRemoved: QueueName,
-    searchSync: QueueName
+    dataServiceAllEvents: QueueName
 ):
   lazy val all: Set[QueueName] = Set(
     projectCreated,
@@ -56,7 +56,7 @@ final case class QueuesConfig(
     groupMemberAdded,
     groupMemberUpdated,
     groupMemberRemoved,
-    searchSync
+    dataServiceAllEvents
   )
 
 object QueuesConfig:
@@ -77,5 +77,5 @@ object QueuesConfig:
       ConfigValues.eventQueue("groupMemberAdded"),
       ConfigValues.eventQueue("groupMemberUpdated"),
       ConfigValues.eventQueue("groupMemberRemoved"),
-      ConfigValues.eventQueue("searchSync")
+      ConfigValues.eventQueue("dataServiceAllEvents")
     ).mapN(QueuesConfig.apply)

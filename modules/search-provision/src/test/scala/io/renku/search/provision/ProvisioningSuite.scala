@@ -52,7 +52,7 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
     groupMemberAdded = QueueName("groupMemberAdded"),
     groupMemberUpdated = QueueName("groupMemberUpdated"),
     groupMemberRemoved = QueueName("groupMemberRemoved"),
-    searchSync = QueueName("searchSync")
+    dataServiceAllEvents = QueueName("dataServiceAllEvents")
   )
 
   override def munitIOTimeout: Duration = Duration(1, "min")

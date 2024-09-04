@@ -73,6 +73,6 @@ object CreateCmd extends CommonOpts:
       for
         queuesCfg <- QueuesConfig.config.load[IO]
         msg <- Services.createMessage(cfg.asPayload)
-        _ <- queue.enqueue(queuesCfg.searchSync, msg)
+        _ <- queue.enqueue(queuesCfg.dataServiceAllEvents, msg)
       yield ExitCode.Success
     }

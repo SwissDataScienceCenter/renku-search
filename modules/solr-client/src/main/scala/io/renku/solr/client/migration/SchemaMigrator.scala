@@ -30,7 +30,7 @@ trait SchemaMigrator[F[_]] {
 
   def currentVersion: F[Option[Long]]
 
-  def migrate(migrations: Seq[SchemaMigration]): F[Unit]
+  def migrate(migrations: Seq[SchemaMigration]): F[MigrateResult]
 }
 
 object SchemaMigrator:
@@ -52,7 +52,7 @@ object SchemaMigrator:
         .query[VersionDocument](QueryString(s"id:$versionDocId"))
         .map(_.responseBody.docs.headOption.map(_.currentSchemaVersion))
 
-    override def migrate(migrations: Seq[SchemaMigration]): F[Unit] = for {
+    override def migrate(migrations: Seq[SchemaMigration]): F[MigrateResult] = for {
       current <- currentVersion
       _ <- logger.info(
         s"core ${client.config.core}: Found current schema version '$current' using id $versionDocId"
@@ -66,7 +66,14 @@ object SchemaMigrator:
         logger.info(s"core ${client.config.core}: Run migration ${m.version}") >>
           client.modifySchema(m.commands) >> upsertVersion(m.version)
       )
-    } yield ()
+
+      result = MigrateResult(
+        startVersion = current,
+        endVersion = remain.map(_.version).maxOption,
+        migrationsRun = remain.size,
+        reindexRequired = remain.exists(_.requiresReIndex)
+      )
+    } yield result
 
     private def initVersionDocument: F[Unit] =
       logger.info(

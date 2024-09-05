@@ -59,9 +59,10 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
       client <- IO(solrClient())
       migrator = SchemaMigrator[IO](client)
       _ <- truncate(client)
-      _ <- migrator.migrate(migrations)
+      res <- migrator.migrate(migrations)
       c <- migrator.currentVersion
       _ = assertEquals(c, Some(-1L))
+      _ = assertEquals(res, MigrateResult(None, Some(-1L), migrations.size, false))
     } yield ()
   }
 
@@ -72,11 +73,28 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
       first = migrations.take(2)
 
       _ <- truncate(client)
-      _ <- migrator.migrate(first)
+      res0 <- migrator.migrate(first)
       v0 <- migrator.currentVersion
       _ = assertEquals(v0, Some(-4L))
+      _ = assertEquals(res0, MigrateResult(None, Some(-4L), 2, false))
 
-      _ <- migrator.migrate(migrations)
+      res1 <- migrator.migrate(migrations)
       v1 <- migrator.currentVersion
       _ = assertEquals(v1, Some(-1L))
+      _ = assertEquals(res1, MigrateResult(Some(-4L), Some(-1L), 3, false))
     } yield ()
+
+  test("no require-reindex if migrations have been applied already"):
+    val migs = migrations.head.withRequiresReIndex +: migrations.tail
+    for
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      first = migs.take(2)
+      _ <- truncate(client)
+
+      res0 <- migrator.migrate(first)
+      _ = assertEquals(res0, MigrateResult(None, Some(-4L), 2, true))
+
+      res1 <- migrator.migrate(migs)
+      _ = assertEquals(res1, MigrateResult(Some(-4L), Some(-1L), 3, false))
+    yield ()

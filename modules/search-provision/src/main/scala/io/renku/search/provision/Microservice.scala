@@ -29,7 +29,7 @@ import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.BackgroundProcessManage.TaskName
 import io.renku.search.provision.metrics.*
 import io.renku.search.solr.schema.Migrations
-import io.renku.solr.client.migration.SchemaMigrator
+import io.renku.solr.client.migration.{MigrateResult, SchemaMigrator}
 
 object Microservice extends IOApp:
 
@@ -39,7 +39,7 @@ object Microservice extends IOApp:
     Services.make[IO].use { services =>
       for {
         _ <- IO(LoggingSetup.doConfigure(services.config.verbosity))
-        _ <- runSolrMigrations(services.config)
+        migrateResult <- runSolrMigrations(services.config)
         registryBuilder = CollectorRegistryBuilder[IO].withJVMMetrics
           .add(RedisMetrics.queueSizeGauge)
           .add(RedisMetrics.unprocessedGauge)
@@ -49,6 +49,12 @@ object Microservice extends IOApp:
         tasks = services.messageHandlers.getAll + metrics + httpServer
         pm = services.backgroundManage
         _ <- tasks.toList.traverse_(pm.register.tupled)
+        _ <-
+          if (migrateResult.reindexRequired)
+            logger.info(
+              "Re-Index is required after migrations have applied!"
+            ) >> services.reIndex.resetData(None)
+          else IO.unit
         _ <- pm.startAll
         _ <- IO.never
       } yield ExitCode.Success
@@ -80,7 +86,7 @@ object Microservice extends IOApp:
         ).run()
     TaskName.fromString("metrics updater") -> io
 
-  private def runSolrMigrations(cfg: SearchProvisionConfig): IO[Unit] =
+  private def runSolrMigrations(cfg: SearchProvisionConfig): IO[MigrateResult] =
     SchemaMigrator[IO](cfg.solrConfig)
       .use(_.migrate(Migrations.all))
       .handleErrorWith { err =>

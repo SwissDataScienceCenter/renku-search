@@ -23,68 +23,118 @@ import scala.concurrent.duration.FiniteDuration
 import cats.effect.*
 import cats.effect.kernel.Fiber
 import cats.effect.kernel.Ref
+import cats.effect.std.Supervisor
 import cats.syntax.all.*
 
+import io.renku.search.provision.BackgroundProcessManage.TaskName
+
 trait BackgroundProcessManage[F[_]]:
-  def register(name: String, process: F[Unit]): F[Unit]
+  def register(name: TaskName, task: F[Unit]): F[Unit]
 
-  /** Starts all registered tasks in the background, represented by `F[Unit]`. */
-  def background: Resource[F, F[Unit]]
+  /** Starts all registered tasks in the background. */
+  def background(taskFilter: TaskName => Boolean): F[Unit]
 
-  /** Same as `.background.useForever` */
-  def startAll: F[Nothing]
+  def startAll: F[Unit]
+
+  /** Stop all tasks by filtering on their registered name. */
+  def cancelProcesses(filter: TaskName => Boolean): F[Unit]
+
+  /** Get the names of all processses currently running. */
+  def currentProcesses: F[Set[TaskName]]
 
 object BackgroundProcessManage:
-  type Process[F[_]] = Fiber[F, Throwable, Unit]
+  private type Process[F[_]] = Fiber[F, Throwable, Unit]
 
-  private case class State[F[_]](tasks: Map[String, F[Unit]]):
-    def put(name: String, p: F[Unit]): State[F] =
-      State(tasks.updated(name, p))
+  trait TaskName:
+    def equals(x: Any): Boolean
+    def hashCode(): Int
 
-    def getTasks: List[F[Unit]] = tasks.values.toList
+  object TaskName:
+    final case class Name(value: String) extends TaskName
+    def fromString(name: String): TaskName = Name(name)
+
+  private case class State[F[_]](
+      tasks: Map[TaskName, F[Unit]],
+      processes: Map[TaskName, Process[F]]
+  ):
+    def put(name: TaskName, p: F[Unit]): State[F] =
+      State(tasks.updated(name, p), processes)
+
+    def getTasks(filter: TaskName => Boolean): Map[TaskName, F[Unit]] =
+      tasks.view.filterKeys(filter).toMap
+
+    def getProcesses(filter: TaskName => Boolean): Map[TaskName, Process[F]] =
+      processes.view.filterKeys(filter).toMap
+
+    def setProcesses(ps: Map[TaskName, Process[F]]): State[F] =
+      copy(processes = ps)
+
+    def removeProcesses(names: Set[TaskName]): State[F] =
+      copy(processes = processes.view.filterKeys(n => !names.contains(n)).toMap)
 
   private object State:
-    def empty[F[_]]: State[F] = State[F](Map.empty)
+    def empty[F[_]]: State[F] = State[F](Map.empty, Map.empty)
 
   def apply[F[_]: Async](
       retryDelay: FiniteDuration,
       maxRetries: Option[Int] = None
-  ): F[BackgroundProcessManage[F]] =
+  ): Resource[F, BackgroundProcessManage[F]] =
     val logger = scribe.cats.effect[F]
-    Ref.of[F, State[F]](State.empty[F]).map { state =>
-      new BackgroundProcessManage[F] {
-        def register(name: String, task: F[Unit]): F[Unit] =
-          state.update(_.put(name, wrapTask(name, task)))
+    Supervisor[F](await = false).flatMap { supervisor =>
+      Resource.eval(Ref.of[F, State[F]](State.empty[F])).map { state =>
+        new BackgroundProcessManage[F] {
+          def register(name: TaskName, task: F[Unit]): F[Unit] =
+            state.update(_.put(name, wrapTask(name, task)))
 
-        def startAll: F[Nothing] =
-          state.get
-            .flatMap(s => logger.info(s"Starting ${s.tasks.size} background tasks")) >>
-            background.useForever
+          def startAll: F[Unit] =
+            state.get
+              .flatMap(s => logger.info(s"Starting ${s.tasks.size} background tasks")) >>
+              background(_ => true)
 
-        def background: Resource[F, F[Unit]] =
-          for {
-            ts <- Resource.eval(state.get.map(_.getTasks))
-            x <- ts.traverse(t => Async[F].background(t))
-            y = x.traverse_(_.map(_.embed(logger.info(s"Got cancelled"))))
-          } yield y
+          def currentProcesses: F[Set[TaskName]] =
+            state.get.map(_.processes.keySet)
 
-        def wrapTask(name: String, task: F[Unit]): F[Unit] =
-          def run(c: Ref[F, Long]): F[Unit] =
-            logger.info(s"Starting process for: ${name}") >>
-              task.handleErrorWith { err =>
-                c.updateAndGet(_ + 1).flatMap {
-                  case n if maxRetries.exists(_ <= n) =>
-                    logger.error(
-                      s"Max retries ($maxRetries) for process ${name} exceeded"
-                    ) >> Async[F].raiseError(err)
-                  case n =>
-                    val maxRetriesLabel = maxRetries.map(m => s"/$m").getOrElse("")
-                    logger.error(
-                      s"Starting process for '${name}' failed ($n$maxRetriesLabel), retrying",
-                      err
-                    ) >> Async[F].delayBy(run(c), retryDelay)
+          def background(taskFilter: TaskName => Boolean): F[Unit] =
+            for {
+              ts <- state.get.map(_.getTasks(taskFilter))
+              _ <- ts.toList
+                .traverse { case (name, task) =>
+                  supervisor.supervise(task).map(t => name -> t)
                 }
+                .map(_.toMap)
+                .flatMap(ps => state.update(_.setProcesses(ps)))
+            } yield ()
+
+          /** Stop all tasks by filtering on their registered name. */
+          def cancelProcesses(filter: TaskName => Boolean): F[Unit] =
+            for
+              current <- state.get
+              ps = current.getProcesses(filter)
+              _ <- ps.toList.traverse_ { case (name, p) =>
+                logger.info(s"Cancel background process $name") >> p.cancel >> p.join
+                  .flatMap(out => logger.info(s"Task $name cancelled: $out"))
               }
-          Ref.of[F, Long](0).flatMap(run)
+              _ <- state.update(_.removeProcesses(ps.keySet))
+            yield ()
+
+          private def wrapTask(name: TaskName, task: F[Unit]): F[Unit] =
+            def run(c: Ref[F, Long]): F[Unit] =
+              logger.info(s"Starting process for: ${name}") >>
+                task.handleErrorWith { err =>
+                  c.updateAndGet(_ + 1).flatMap {
+                    case n if maxRetries.exists(_ <= n) =>
+                      logger.error(
+                        s"Max retries ($maxRetries) for process ${name} exceeded"
+                      ) >> Async[F].raiseError(err)
+                    case n =>
+                      val maxRetriesLabel = maxRetries.map(m => s"/$m").getOrElse("")
+                      logger.error(
+                        s"Starting process for '${name}' failed ($n$maxRetriesLabel), retrying",
+                        err
+                      ) >> Async[F].delayBy(run(c), retryDelay)
+                  }
+                }
+            Ref.of[F, Long](0).flatMap(run) >> state.update(_.removeProcesses(Set(name)))
+        }
       }
     }

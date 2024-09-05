@@ -8,6 +8,16 @@
     inherit system;
   };
 
+  redis-list-streams = devshell-tools.lib.installScript {
+    script = ./scripts/redis-list-streams;
+    inherit system;
+  };
+
+  redis-stream-info = devshell-tools.lib.installScript {
+    script = ./scripts/redis-stream-info;
+    inherit system;
+  };
+
   k8s-reprovision = devshell-tools.lib.installScript {
     script = ./scripts/k8s-reprovision;
     inherit system;

@@ -23,13 +23,16 @@ import cats.effect.*
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.handler.PipelineSteps
+import io.renku.search.provision.reindex.ReIndexService
 import io.renku.search.solr.client.SearchSolrClient
 
 final case class TestServices(
     pipelineSteps: QueueName => PipelineSteps[IO],
     messageHandlers: MessageHandlers[IO],
     queueClient: QueueClient[IO],
-    searchClient: SearchSolrClient[IO]
+    searchClient: SearchSolrClient[IO],
+    backgroundManage: BackgroundProcessManage[IO],
+    reindex: ReIndexService[IO]
 ):
 
   def syncHandler(qn: QueueName): SyncMessageHandler[IO] =

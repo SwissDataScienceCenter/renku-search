@@ -29,6 +29,7 @@ import io.renku.search.query.Query
 import io.renku.search.solr.SearchRole
 import io.renku.search.solr.documents.*
 import io.renku.search.solr.query.LuceneQueryInterpreter
+import io.renku.search.solr.query.SolrToken
 import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.*
 import io.renku.solr.client.facet.{Facet, Facets}
@@ -47,6 +48,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     EntityDocumentSchema.Fields.entityType,
     EntityDocumentSchema.Fields.entityType
   )
+  private[solr] val underlying: SolrClient[F] = solrClient
 
   override def upsert[D: Encoder](documents: Seq[D]): F[UpsertResponse] =
     solrClient.upsert(documents)
@@ -105,3 +107,6 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     solrClient
       .query(id.toQueryData)
       .map(_.responseBody.docs.headOption)
+
+  override def deletePublicData: F[Unit] =
+    solrClient.delete(QueryString(SolrToken.kindExists.value))

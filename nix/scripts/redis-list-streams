@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+host="${RS_REDIS_HOST:-localhost}"
+if [ -n "$1" ]; then
+    host="$1"
+fi
+port="${RS_REDIS_PORT:-6379}"
+if [ -n "$2" ]; then
+    port="$2"
+fi
+db_opt=""
+if [ -n "$RS_REDIS_DB" ]; then
+    db_opt="-n $RS_REDIS_DB"
+fi
+db_pass=""
+if [ -n "$RS_REDIS_PASSWORD" ]; then
+    db_pass="-a $RS_REDIS_PASSWORD"
+fi
+
+redis-cli -e --json -h "$host" -p "$port" $db_opt $db_pass scan 0 type stream | jq -r '.[1][]'

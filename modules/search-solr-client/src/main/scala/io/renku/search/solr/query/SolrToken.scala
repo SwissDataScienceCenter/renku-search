@@ -54,6 +54,9 @@ object SolrToken:
   def kindIs(kind: DocumentKind): SolrToken =
     fieldIs(SolrField.kind, kind.name)
 
+  def kindExists: SolrToken =
+    fieldIs(SolrField.kind, "*")
+
   def fromInstant(ts: Instant): SolrToken = StringEscape.escape(ts.toString, ":")
   def fromDateRange(min: Instant, max: Instant): SolrToken = s"[$min TO $max]"
 

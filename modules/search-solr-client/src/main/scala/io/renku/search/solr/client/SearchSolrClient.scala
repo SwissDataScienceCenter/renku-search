@@ -31,6 +31,7 @@ import io.renku.search.solr.documents.*
 import io.renku.solr.client.*
 
 trait SearchSolrClient[F[_]]:
+  private[solr] def underlying: SolrClient[F]
   def findById[D: Decoder](id: CompoundId): F[Option[D]]
   def upsert[D: Encoder](documents: Seq[D]): F[UpsertResponse]
   def upsertSuccess[D: Encoder](documents: Seq[D]): F[Unit]
@@ -43,6 +44,7 @@ trait SearchSolrClient[F[_]]:
       offset: Int
   ): F[QueryResponse[EntityDocument]]
   def queryAll[D: Decoder](query: QueryData): Stream[F, D]
+  def deletePublicData: F[Unit]
 
 object SearchSolrClient:
   def make[F[_]: Async: Network](

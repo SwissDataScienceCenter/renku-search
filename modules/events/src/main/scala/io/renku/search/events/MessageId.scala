@@ -18,6 +18,8 @@
 
 package io.renku.search.events
 
+import io.bullet.borer.*
+
 opaque type MessageId = String
 
 object MessageId:
@@ -25,3 +27,6 @@ object MessageId:
   def apply(id: String): MessageId = id
 
   extension (self: MessageId) def value: String = self
+
+  given Decoder[MessageId] = Decoder.forString
+  given Encoder[MessageId] = Encoder.forString

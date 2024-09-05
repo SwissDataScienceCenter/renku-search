@@ -26,22 +26,35 @@ import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
 import org.http4s.HttpRoutes
+import org.http4s.dsl.Http4sDsl
 import org.http4s.server.Router
 
 private object Routes:
 
   def apply[F[_]: Async: Network](
-      registryBuilder: CollectorRegistryBuilder[F]
+      registryBuilder: CollectorRegistryBuilder[F],
+      services: Services[F]
   ): Resource[F, HttpRoutes[F]] =
     MetricsRoutes[F](registryBuilder).makeRoutes
-      .map(new Routes[F](_).routes)
+      .map(new Routes[F](_, services).routes)
 
-final private class Routes[F[_]: Async](metricsRoutes: HttpRoutes[F]):
+final private class Routes[F[_]: Async](
+    metricsRoutes: HttpRoutes[F],
+    services: Services[F]
+) extends Http4sDsl[F]:
 
   private lazy val operationRoutes =
     Router[F](
+      "/reindex" -> reIndexRoutes,
       "/" -> OperationRoutes[F]
     )
 
   lazy val routes: HttpRoutes[F] =
     operationRoutes <+> metricsRoutes
+
+  def reIndexRoutes: HttpRoutes[F] = HttpRoutes.of { case POST -> Root =>
+    services.reIndex.startReIndex(None).flatMap {
+      case true  => NoContent()
+      case false => UnprocessableEntity()
+    }
+  }

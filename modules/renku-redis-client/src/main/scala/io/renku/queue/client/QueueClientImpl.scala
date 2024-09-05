@@ -105,6 +105,9 @@ private class QueueClientImpl[F[_]: Async](
   ): F[Option[MessageId]] =
     redisQueueClient.findLastProcessed(clientId, queueNames).map(_.map(MessageId.apply))
 
+  override def removeLastProcessed(queueNames: NonEmptyList[QueueName]): F[Unit] =
+    redisQueueClient.removeLastProcessed(clientId, queueNames)
+
   override def getSize(queueName: QueueName): F[Long] =
     redisQueueClient.getSize(queueName)
 

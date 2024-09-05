@@ -18,17 +18,13 @@
 
 package io.renku.solr.client.migration
 
-import io.renku.solr.client.schema.SchemaCommand
+final case class MigrateResult(
+    startVersion: Option[Long],
+    endVersion: Option[Long],
+    migrationsRun: Long,
+    reindexRequired: Boolean
+)
 
-final case class SchemaMigration(
-    version: Long,
-    commands: Seq[SchemaCommand],
-    requiresReIndex: Boolean = false
-):
-
-  def withRequiresReIndex: SchemaMigration =
-    copy(requiresReIndex = true)
-
-object SchemaMigration:
-  def apply(version: Long, cmd: SchemaCommand, more: SchemaCommand*): SchemaMigration =
-    SchemaMigration(version, cmd +: more)
+object MigrateResult:
+  val empty: MigrateResult =
+    MigrateResult(None, None, 0L, false)

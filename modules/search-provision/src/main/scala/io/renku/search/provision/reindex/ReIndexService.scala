@@ -31,7 +31,21 @@ import io.renku.search.provision.MessageHandlers.MessageHandlerKey
 import io.renku.search.solr.client.SearchSolrClient
 
 trait ReIndexService[F[_]]:
+  /** Stops background processes handling redis messages, drop the index and then restarts
+    * background processes. The `startMessage` can specify from which point to start
+    * reading the stream again. If it is `None` the stream is read from the beginning.
+    *
+    * This method ensures that only one re-indexing is initiated at a time.
+    */
   def startReIndex(startMessage: Option[MessageId]): F[Boolean]
+
+  /** Drops the SOLR index and marks the new start of the redis stream according to
+    * `startMessage`. If `startMessage` is `None`, the stream will be read from the
+    * beginning.
+    *
+    * NOTE: This method assumes no handlers currently reading from the redis streams.
+    */
+  def resetData(startMessage: Option[MessageId]): F[Unit]
 
 object ReIndexService:
 
@@ -56,16 +70,8 @@ object ReIndexService:
             else dropIndexAndRestart(syncDoc, startMessage)
         yield res
 
-      private def dropIndexAndRestart(
-          syncDoc: ReIndexDocument,
-          startMessage: Option[MessageId]
-      ) =
+      def resetData(startMessage: Option[MessageId]): F[Unit] =
         for
-          _ <- logger.info(
-            s"Starting re-indexing all data, since message ${syncDoc.messageId}"
-          )
-          _ <- bpm.cancelProcesses(MessageHandlerKey.isInstance)
-          _ <- logger.info("Background processes stopped")
           _ <- startMessage match
             case Some(msgId) =>
               logger.info("Set last seen message id to $msgId for $queueName") >>
@@ -93,6 +99,19 @@ object ReIndexService:
                   .drain
           _ <- logger.info("Delete SOLR index")
           _ <- solrClient.deletePublicData
+        yield ()
+
+      private def dropIndexAndRestart(
+          syncDoc: ReIndexDocument,
+          startMessage: Option[MessageId]
+      ) =
+        for
+          _ <- logger.info(
+            s"Starting re-indexing all data, since message ${syncDoc.messageId}"
+          )
+          _ <- bpm.cancelProcesses(MessageHandlerKey.isInstance)
+          _ <- logger.info("Background processes stopped")
+          _ <- resetData(startMessage)
           _ <- logger.info("Start background processes")
           _ <- bpm.background(MessageHandlerKey.isInstance)
           _ <- solrClient.deleteIds(NonEmptyList.of(syncDoc.id))

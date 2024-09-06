@@ -36,8 +36,6 @@ class RetryOnConflictSpec extends CatsEffectSuite with SolrClientBaseSuite:
   override def munitFixtures: Seq[munit.AnyFixture[?]] =
     List(solrServer, solrClient)
 
-  override def defaultVerbosity: Int = 2
-
   private val migrations = Seq(
     SchemaCommand.Add(
       FieldType.text(TypeName("my_text_field")).withAnalyzer(Analyzer.defaultSearch)

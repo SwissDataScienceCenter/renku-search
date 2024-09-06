@@ -34,10 +34,7 @@ import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.TestServices
 import io.renku.search.solr.documents.{EntityDocument, Project as ProjectDocument}
 import io.renku.search.solr.schema.EntityDocumentSchema
-import io.renku.solr.client.DocVersion
-import io.renku.solr.client.QueryData
-import io.renku.solr.client.QueryString
-import io.renku.solr.client.SolrSort
+import io.renku.solr.client.*
 import org.scalacheck.Gen
 
 class ReIndexServiceSpec extends ProvisioningSuite:
@@ -113,7 +110,8 @@ class ReIndexServiceSpec extends ProvisioningSuite:
     for
       services <- IO(testServices())
 
-      doc <- ReIndexDocument.createNew[IO](None)
+      lockDoc = ReIndexDocument.lockDocument[IO](None)
+      doc <- lockDoc.acquire(None, ReIndexService.lockId)
       _ <- services.searchClient.upsertSuccess(Seq(doc))
 
       r <- services.reindex.startReIndex(None)

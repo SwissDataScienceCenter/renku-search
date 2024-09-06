@@ -31,7 +31,7 @@ import io.renku.search.solr.documents.*
 import io.renku.solr.client.*
 
 trait SearchSolrClient[F[_]]:
-  private[solr] def underlying: SolrClient[F]
+  def underlying: SolrClient[F]
   def findById[D: Decoder](id: CompoundId): F[Option[D]]
   def upsert[D: Encoder](documents: Seq[D]): F[UpsertResponse]
   def upsertSuccess[D: Encoder](documents: Seq[D]): F[Unit]

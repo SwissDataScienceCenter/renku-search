@@ -29,6 +29,7 @@ import io.renku.search.events.MessageId
 import io.renku.search.provision.BackgroundProcessManage
 import io.renku.search.provision.MessageHandlers.MessageHandlerKey
 import io.renku.search.solr.client.SearchSolrClient
+import io.renku.solr.client.util.*
 
 trait ReIndexService[F[_]]:
   /** Stops background processes handling redis messages, drop the index and then restarts
@@ -48,6 +49,7 @@ trait ReIndexService[F[_]]:
   def resetData(startMessage: Option[MessageId]): F[Unit]
 
 object ReIndexService:
+  private[reindex] val lockId: String = "reindex_31baded5-9fc2-4935-9b07-80f7a3ecb13f"
 
   def apply[F[_]: Clock: Sync](
       bpm: BackgroundProcessManage[F],
@@ -60,15 +62,14 @@ object ReIndexService:
       private val logger = scribe.cats.effect[F]
 
       def startReIndex(startMessage: Option[MessageId]): F[Boolean] =
-        for
-          syncDoc <- ReIndexDocument.createNew[F](startMessage)
-          upsertResp <- solrClient.upsert(Seq(syncDoc))
-          _ <- logger.debug(s"Insert reindex sync document: $upsertResp")
-          res <-
-            if (upsertResp.isFailure)
-              logger.debug(s"Re-Index called while already in progress").as(false)
-            else dropIndexAndRestart(syncDoc, startMessage)
-        yield res
+        given LockDocument[F, ReIndexDocument] =
+          ReIndexDocument.lockDocument(startMessage)
+        val lock = solrClient.underlying.lockBy[ReIndexDocument](lockId)
+        lock.use {
+          case None =>
+            logger.debug(s"Re-Index called while already in progress").as(false)
+          case Some(d) => dropIndexAndRestart(d, startMessage)
+        }
 
       def resetData(startMessage: Option[MessageId]): F[Unit] =
         for
@@ -114,6 +115,5 @@ object ReIndexService:
           _ <- resetData(startMessage)
           _ <- logger.info("Start background processes")
           _ <- bpm.background(MessageHandlerKey.isInstance)
-          _ <- solrClient.deleteIds(NonEmptyList.of(syncDoc.id))
         yield true
     }

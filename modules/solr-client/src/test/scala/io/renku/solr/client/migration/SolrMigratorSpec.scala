@@ -20,6 +20,7 @@ package io.renku.solr.client.migration
 
 import cats.effect.IO
 
+import io.renku.solr.client.DocVersion
 import io.renku.solr.client.SolrClient
 import io.renku.solr.client.schema.*
 import io.renku.solr.client.schema.SchemaCommand.Add
@@ -97,4 +98,75 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
 
       res1 <- migrator.migrate(migs)
       _ = assertEquals(res1, MigrateResult(Some(-4L), Some(-1L), 3, false))
+    yield ()
+
+  test("convert previous version document to current, then migrate remaining"):
+    for
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      _ <- truncate(client)
+      _ <- client.modifySchema(
+        Seq(
+          Add(Field(FieldName("currentSchemaVersion"), TypeName("plong"))),
+          Add(FieldType.text(TypeName("testText")).withAnalyzer(Analyzer.classic)),
+          Add(FieldType.int(TypeName("testInt")))
+        )
+      )
+
+      oldDoc = VersionDocument.HistoricDocument1(
+        SchemaMigrator.versionDocId,
+        Some(-3),
+        DocVersion.NotExists
+      )
+      _ <- client.upsertSuccess(Seq(oldDoc))
+
+      res <- migrator.migrate(migrations)
+      _ = assert(res.migrationsRun > 0, s"migrationsRun: ${res.migrationsRun}")
+
+      doc <- client
+        .findById[VersionDocument](SchemaMigrator.versionDocId)
+        .map(_.responseBody.docs.head)
+      _ = assertEquals(doc.currentSchemaVersion, migrations.map(_.version).max)
+    yield ()
+
+  test("convert previous version document to current, no remaining migrations"):
+    for
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      _ <- truncate(client)
+      _ <- client.modifySchema(
+        Seq(Add(Field(FieldName("currentSchemaVersion"), TypeName("plong"))))
+      )
+
+      oldDoc = VersionDocument.HistoricDocument1(
+        SchemaMigrator.versionDocId,
+        migrations.map(_.version).maxOption,
+        DocVersion.NotExists
+      )
+      _ <- client.upsertSuccess(Seq(oldDoc))
+
+      res <- migrator.migrate(migrations)
+      _ = assertEquals(res.migrationsRun, 0L)
+      doc <- client
+        .findById[VersionDocument](SchemaMigrator.versionDocId)
+        .map(_.responseBody.docs.head)
+      _ = assertEquals(doc.currentSchemaVersion, migrations.map(_.version).max)
+    yield ()
+
+  test("no-op when new version document exists"):
+    for
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      _ <- truncate(client)
+
+      doc = VersionDocument(
+        SchemaMigrator.versionDocId,
+        migrations.map(_.version).max,
+        false,
+        DocVersion.NotExists
+      )
+      _ <- client.upsertSuccess(Seq(doc))
+
+      res <- migrator.migrate(migrations)
+      _ = assertEquals(res.migrationsRun, 0L)
     yield ()

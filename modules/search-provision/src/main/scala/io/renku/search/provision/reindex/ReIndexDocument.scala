@@ -20,32 +20,34 @@ package io.renku.search.provision.reindex
 
 import java.time.Instant
 
-import cats.Functor
 import cats.effect.*
 import cats.syntax.all.*
 
-import io.bullet.borer.Decoder
-import io.bullet.borer.Encoder
+import io.bullet.borer.*
+import io.bullet.borer.NullOptions.*
 import io.bullet.borer.derivation.{MapBasedCodecs, key}
 import io.renku.json.codecs.all.given
 import io.renku.search.events.MessageId
 import io.renku.search.model.Id
 import io.renku.solr.client.DocVersion
+import io.renku.solr.client.util.LockDocument
 
 final private case class ReIndexDocument(
     id: Id,
-    created: Instant,
-    messageId: Option[MessageId],
+    @key("created_dt") created: Instant,
+    @key("message_id_s") messageId: Option[MessageId] = None,
     @key("_version_") version: DocVersion
 )
 
 private object ReIndexDocument:
-  private val docId: Id = Id("reindex_31baded5-9fc2-4935-9b07-80f7a3ecb13f")
-
-  def createNew[F[_]: Clock: Functor](messageId: Option[MessageId]): F[ReIndexDocument] =
-    Clock[F].realTimeInstant.map { now =>
-      ReIndexDocument(docId, now, messageId, DocVersion.NotExists)
-    }
-
   given Encoder[ReIndexDocument] = MapBasedCodecs.deriveEncoder
   given Decoder[ReIndexDocument] = MapBasedCodecs.deriveDecoder
+
+  def lockDocument[F[_]: Sync: Clock](
+      messageId: Option[MessageId]
+  ): LockDocument[F, ReIndexDocument] =
+    LockDocument.whenExists(id =>
+      Clock[F].realTimeInstant.map { now =>
+        ReIndexDocument(Id(id), now, messageId, DocVersion.NotExists)
+      }
+    )

@@ -48,7 +48,7 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     EntityDocumentSchema.Fields.entityType,
     EntityDocumentSchema.Fields.entityType
   )
-  private[solr] val underlying: SolrClient[F] = solrClient
+  val underlying: SolrClient[F] = solrClient
 
   override def upsert[D: Encoder](documents: Seq[D]): F[UpsertResponse] =
     solrClient.upsert(documents)

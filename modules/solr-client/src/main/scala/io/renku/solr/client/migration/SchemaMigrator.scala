@@ -23,8 +23,8 @@ import cats.effect.{Async, Sync}
 import cats.syntax.all.*
 import fs2.io.net.Network
 
-import io.renku.solr.client.schema.*
-import io.renku.solr.client.{QueryString, SolrClient, SolrConfig}
+import io.renku.solr.client.*
+import io.renku.solr.client.util.DocumentLockResource
 
 trait SchemaMigrator[F[_]] {
 
@@ -34,6 +34,7 @@ trait SchemaMigrator[F[_]] {
 }
 
 object SchemaMigrator:
+  private[migration] val versionDocId = "VERSION_ID_EB779C6B-1D96-47CB-B304-BECF15E4A607"
 
   def apply[F[_]: Sync](client: SolrClient[F]): SchemaMigrator[F] = Impl[F](client)
 
@@ -44,55 +45,85 @@ object SchemaMigrator:
 
   private class Impl[F[_]: Sync](client: SolrClient[F]) extends SchemaMigrator[F] {
     private val logger = scribe.cats.effect[F]
-    private val versionDocId = "VERSION_ID_EB779C6B-1D96-47CB-B304-BECF15E4A607"
-    private val versionTypeName: TypeName = TypeName("plong")
+    private val migrateLock = DocumentLockResource[F, VersionDocument](client)
 
     override def currentVersion: F[Option[Long]] =
-      client
-        .query[VersionDocument](QueryString(s"id:$versionDocId"))
-        .map(_.responseBody.docs.headOption.map(_.currentSchemaVersion))
+      getVersionDoc.map(_.map(_.currentSchemaVersion))
 
-    override def migrate(migrations: Seq[SchemaMigration]): F[MigrateResult] = for {
-      current <- currentVersion
+    private def getVersionDoc: F[Option[VersionDocument]] =
+      client
+        .findById[VersionDocument](versionDocId)
+        .map(_.responseBody.docs.headOption)
+
+    def migrate(migrations: Seq[SchemaMigration]): F[MigrateResult] =
+      convertVersionDocument >>
+        migrateLock.make(versionDocId).use {
+          case None =>
+            logger.info("A migration is already running").as(MigrateResult.empty)
+          case Some(doc) => doMigrate(migrations, doc)
+        }
+
+    def doMigrate(
+        migrations: Seq[SchemaMigration],
+        initial: VersionDocument
+    ): F[MigrateResult] = for {
       _ <- logger.info(
-        s"core ${client.config.core}: Found current schema version '$current' using id $versionDocId"
+        s"core ${client.config.core}: Found current schema version '${initial.currentSchemaVersion}' using id $versionDocId"
       )
-      _ <- current.fold(initVersionDocument)(_ => ().pure[F])
-      remain = migrations.sortBy(_.version).dropWhile(m => current.exists(_ >= m.version))
+      remain = migrations
+        .sortBy(_.version)
+        .dropWhile(m => m.version <= initial.currentSchemaVersion)
       _ <- logger.info(
         s"core ${client.config.core}: There are ${remain.size} migrations to run"
       )
-      _ <- remain.traverse_(m =>
-        logger.info(s"core ${client.config.core}: Run migration ${m.version}") >>
-          client.modifySchema(m.commands) >> upsertVersion(m.version)
-      )
+
+      finalDoc <- remain.foldLeftM(initial) { (doc, m) =>
+        client.modifySchema(m.commands) >> upsertVersion(doc, m.version)
+      }
 
       result = MigrateResult(
-        startVersion = current,
+        startVersion = Option(initial.currentSchemaVersion).filter(_ > Long.MinValue),
         endVersion = remain.map(_.version).maxOption,
         migrationsRun = remain.size,
         reindexRequired = remain.exists(_.requiresReIndex)
       )
     } yield result
 
-    private def initVersionDocument: F[Unit] =
-      logger.info(
-        s"core ${client.config.core}: Initialize schema migration version document"
-      ) >>
-        client.modifySchema(
-          Seq(
-            SchemaCommand.Add(
-              Field(
-                FieldName("currentSchemaVersion"),
-                versionTypeName
-              )
-            )
+    private def requireVersionDoc =
+      getVersionDoc.flatMap {
+        case None =>
+          Sync[F].raiseError(
+            new Exception("No version document available during migration!")
           )
+        case Some(d) => d.pure[F]
+      }
+
+    private def upsertVersion(currentDoc: VersionDocument, nextVersion: Long) =
+      for
+        _ <- logger.info(
+          s"core ${client.config.core}: Set schema migration version to $nextVersion"
         )
+        _ <- client.upsertSuccess(
+          Seq(currentDoc.copy(currentSchemaVersion = nextVersion))
+        )
+        doc <- requireVersionDoc
+      yield doc
 
-    private def version(n: Long): VersionDocument = VersionDocument(versionDocId, n)
-
-    private def upsertVersion(n: Long) =
-      logger.info(s"core ${client.config.core}: Set schema migration version to $n") >>
-        client.upsert(Seq(version(n)))
+    private def convertVersionDocument =
+      val task = client.lockOn("fc72c840-67a8-4a42-8ce1-f9baa409ea84").use {
+        case true =>
+          client
+            .findById[VersionDocument.HistoricDocument1](versionDocId)
+            .map(_.responseBody.docs.headOption)
+            .map(_.flatMap(_.toCurrent))
+            .flatMap {
+              case None => ().pure[F]
+              case Some(d) =>
+                logger.info(s"Converting old version document $d") >> client
+                  .upsertSuccess(Seq(d))
+            }
+            .as(true)
+        case false => false.pure[F]
+      }
+      fs2.Stream.repeatEval(task).takeWhile(!_).compile.drain
   }

@@ -65,7 +65,13 @@ object Microservice extends IOApp:
       services: Services[IO]
   ): (TaskName, IO[Unit]) =
     val io = Routes[IO](registryBuilder, services)
-      .flatMap(HttpServer.build(_, services.config.httpServerConfig))
+      .flatMap(routes =>
+        HttpServer[IO](services.config.httpServerConfig)
+          .withDefaultErrorHandler(logger)
+          .withDefaultLogging(logger)
+          .withHttpRoutes(routes)
+          .build
+      )
       .use(_ => IO.never)
     TaskName.fromString("http server") -> io
 

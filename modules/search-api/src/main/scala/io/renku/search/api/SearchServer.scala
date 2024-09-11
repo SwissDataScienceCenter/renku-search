@@ -36,7 +36,9 @@ object SearchServer:
   def create[F[_]: Async: Network](config: SearchApiConfig, app: ServiceRoutes[F]) =
     for
       routes <- makeHttpRoutes(app)
+      logger = scribe.cats.effect[F]
       server <- HttpServer[F](config.httpServerConfig)
+        .withDefaultErrorHandler(logger)
         .withHttpApp(routes.orNotFound)
         .build
     yield server

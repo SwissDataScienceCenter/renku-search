@@ -31,16 +31,18 @@ trait PipelineSteps[F[_]]:
   def fetchFromSolr: FetchFromSolr[F]
   def deleteFromSolr: DeleteFromSolr[F]
   def userUtils: UserUtils[F]
+  def solrClient: SearchSolrClient[F]
 
 object PipelineSteps:
   def apply[F[_]: Async](
-      solrClient: SearchSolrClient[F],
+      searchSolrClient: SearchSolrClient[F],
       queueClient: Stream[F, QueueClient[F]],
       inChunkSize: Int
   )(
       queue: QueueName
   ): PipelineSteps[F] =
     new PipelineSteps[F] {
+      val solrClient = searchSolrClient
       val reader: MessageReader[F] =
         MessageReader[F](queueClient, queue, inChunkSize)
       val pushToSolr: PushToSolr[F] =

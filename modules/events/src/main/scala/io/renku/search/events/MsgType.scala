@@ -35,6 +35,8 @@ enum MsgType(val name: String):
   case GroupMemberAdded extends MsgType("memberGroup.added")
   case GroupMemberUpdated extends MsgType("memberGroup.updated")
   case GroupMemberRemoved extends MsgType("memberGroup.removed")
+  case ReprovisioningStarted extends MsgType("reprovisioning.started")
+  case ReprovisioningFinished extends MsgType("reprovisioning.finished")
 
 object MsgType:
   def fromString(s: String): Either[String, MsgType] =

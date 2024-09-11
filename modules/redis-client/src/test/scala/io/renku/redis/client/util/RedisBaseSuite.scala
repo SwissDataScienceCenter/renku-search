@@ -49,3 +49,6 @@ trait RedisBaseSuite
     yield RedisClients(config, lc, cmds, qc)
 
   val redisClients = ResourceSuiteLocalFixture("all-redis-clients", redisClientsR)
+
+  val redisClearAll: IO[Unit] =
+    IO(redisClients()).flatMap(_.commands.flushAll)

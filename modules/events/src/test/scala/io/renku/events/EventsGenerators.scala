@@ -383,6 +383,16 @@ object EventsGenerators:
   def groupUpdatedGen(prefix: String): Gen[GroupUpdated] =
     v2GroupUpdatedGen(prefix).map(GroupUpdated.V2.apply)
 
+  def reprovisionStarted(
+      id: Gen[Id] = stringGen(5).map(Id.apply)
+  ): Gen[ReprovisioningStarted] =
+    id.map(ReprovisioningStarted.apply)
+
+  def reprovisionFinished(
+      id: Gen[Id] = stringGen(5).map(Id.apply)
+  ): Gen[ReprovisioningFinished] =
+    id.map(ReprovisioningFinished.apply)
+
   def stringGen(max: Int): Gen[String] =
     Gen
       .chooseNum(3, max)

@@ -26,7 +26,8 @@ type SyncEventMessage = EventMessage[ProjectCreated] | EventMessage[ProjectUpdat
   EventMessage[UserAdded] | EventMessage[UserUpdated] | EventMessage[UserRemoved] |
   EventMessage[GroupAdded] | EventMessage[GroupUpdated] | EventMessage[GroupRemoved] |
   EventMessage[GroupMemberAdded] | EventMessage[GroupMemberUpdated] |
-  EventMessage[GroupMemberRemoved]
+  EventMessage[GroupMemberRemoved] | EventMessage[ReprovisioningStarted] |
+  EventMessage[ReprovisioningFinished]
 
 object SyncEventMessage:
 
@@ -62,6 +63,10 @@ object SyncEventMessage:
       case mt: MsgType.GroupMemberUpdated.type =>
         mt.decoder.decode(qm)
       case mt: MsgType.GroupMemberRemoved.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.ReprovisioningStarted.type =>
+        mt.decoder.decode(qm)
+      case mt: MsgType.ReprovisioningFinished.type =>
         mt.decoder.decode(qm)
 
   // maps each MsgType to its correspondin payload type by providing a
@@ -188,4 +193,20 @@ object SyncEventMessage:
       @targetName("decoderGroupMemberRemoved")
       def decoder: EventMessageDecoder[GroupMemberRemoved] =
         EventMessageDecoder[GroupMemberRemoved]
+
+    extension (self: MsgType.ReprovisioningStarted.type)
+      @targetName("castReprovisioningStarted")
+      def cast(x: SyncEventMessage): EventMessage[ReprovisioningStarted] =
+        x.asInstanceOf[EventMessage[ReprovisioningStarted]]
+      @targetName("decoderReprovisioningStarted")
+      def decoder: EventMessageDecoder[ReprovisioningStarted] =
+        EventMessageDecoder[ReprovisioningStarted]
+
+    extension (self: MsgType.ReprovisioningFinished.type)
+      @targetName("castReprovisioningFinished")
+      def cast(x: SyncEventMessage): EventMessage[ReprovisioningFinished] =
+        x.asInstanceOf[EventMessage[ReprovisioningFinished]]
+      @targetName("decoderReprovisioningFinished")
+      def decoder: EventMessageDecoder[ReprovisioningFinished] =
+        EventMessageDecoder[ReprovisioningFinished]
   }

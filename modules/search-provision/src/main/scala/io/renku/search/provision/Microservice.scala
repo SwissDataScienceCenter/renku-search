@@ -40,6 +40,8 @@ object Microservice extends IOApp:
       for {
         _ <- IO(LoggingSetup.doConfigure(services.config.verbosity))
         migrateResult <- runSolrMigrations(services.config)
+        // this is only safe for a single provisioning service
+        _ <- services.resetLockDocuments
         registryBuilder = CollectorRegistryBuilder[IO].withJVMMetrics
           .add(RedisMetrics.queueSizeGauge)
           .add(RedisMetrics.unprocessedGauge)
@@ -53,7 +55,7 @@ object Microservice extends IOApp:
           if (migrateResult.reindexRequired)
             logger.info(
               "Re-Index is required after migrations have applied!"
-            ) >> services.reIndex.resetData(None)
+            ) >> services.reprovision.recreateIndex
           else IO.unit
         _ <- pm.startAll
         _ <- IO.never

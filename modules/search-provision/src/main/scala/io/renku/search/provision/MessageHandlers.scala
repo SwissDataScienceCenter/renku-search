@@ -27,6 +27,7 @@ import io.renku.search.config.QueuesConfig
 import io.renku.search.provision.BackgroundProcessManage.TaskName
 import io.renku.search.provision.MessageHandlers.MessageHandlerKey
 import io.renku.search.provision.handler.*
+import io.renku.search.provision.reindex.ReprovisionService
 
 /** The entry point for defining all message handlers.
   *
@@ -35,7 +36,9 @@ import io.renku.search.provision.handler.*
   */
 final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
+    reprovisionService: ReprovisionService[F],
     cfg: QueuesConfig,
+    ctrl: SyncMessageHandler.Control[F],
     maxConflictRetries: Int = 20
 ):
   assert(maxConflictRetries >= 0, "maxConflictRetries must be >= 0")
@@ -47,105 +50,105 @@ final class MessageHandlers[F[_]: Async](
     task.void
 
   private[provision] def withMaxConflictRetries(n: Int): MessageHandlers[F] =
-    new MessageHandlers[F](steps, cfg, n)
+    new MessageHandlers[F](steps, reprovisionService, cfg, ctrl, n)
 
   def getAll: Map[TaskName, F[Unit]] = tasks
 
+  private[provision] def createHandler(qn: QueueName): SyncMessageHandler[F] =
+    new SyncMessageHandler(steps(qn), reprovisionService, ctrl, maxConflictRetries)
+
   val allEvents = add(
     MessageHandlerKey.DataServiceAllEvents,
-    SyncMessageHandler(steps(cfg.dataServiceAllEvents), maxConflictRetries).create
+    createHandler(cfg.dataServiceAllEvents).create
   )
 
   val projectCreated: Stream[F, Unit] =
     add(
       MessageHandlerKey.ProjectCreated,
-      SyncMessageHandler(steps(cfg.projectCreated), maxConflictRetries).create
+      createHandler(cfg.projectCreated).create
     )
 
   val projectUpdated: Stream[F, Unit] =
     add(
       MessageHandlerKey.ProjectUpdated,
-      SyncMessageHandler(steps(cfg.projectUpdated), maxConflictRetries).create
+      createHandler(cfg.projectUpdated).create
     )
 
   val projectRemoved: Stream[F, Unit] =
     add(
       MessageHandlerKey.ProjectRemoved,
-      SyncMessageHandler(steps(cfg.projectRemoved), maxConflictRetries).create
+      createHandler(cfg.projectRemoved).create
     )
 
   val projectAuthAdded: Stream[F, Unit] =
     add(
       MessageHandlerKey.ProjectAuthorizationAdded,
-      SyncMessageHandler(steps(cfg.projectAuthorizationAdded), maxConflictRetries).create
+      createHandler(cfg.projectAuthorizationAdded).create
     )
 
   val projectAuthUpdated: Stream[F, Unit] =
     add(
       MessageHandlerKey.ProjectAuthorizationUpdated,
-      SyncMessageHandler(
-        steps(cfg.projectAuthorizationUpdated),
-        maxConflictRetries
-      ).create
+      createHandler(cfg.projectAuthorizationUpdated).create
     )
 
   val projectAuthRemoved: Stream[F, Unit] = add(
     MessageHandlerKey.ProjectAuthorizationRemoved,
-    SyncMessageHandler(steps(cfg.projectAuthorizationRemoved), maxConflictRetries).create
+    createHandler(cfg.projectAuthorizationRemoved).create
   )
 
   val userAdded: Stream[F, Unit] =
     add(
       MessageHandlerKey.UserAdded,
-      SyncMessageHandler(steps(cfg.userAdded), maxConflictRetries).create
+      createHandler(cfg.userAdded).create
     )
 
   val userUpdated: Stream[F, Unit] =
     add(
       MessageHandlerKey.UserUpdated,
-      SyncMessageHandler(steps(cfg.userUpdated), maxConflictRetries).create
+      createHandler(cfg.userUpdated).create
     )
 
   val userRemoved: Stream[F, Unit] =
     add(
       MessageHandlerKey.UserRemoved,
-      SyncMessageHandler(steps(cfg.userRemoved), maxConflictRetries).create
+      createHandler(cfg.userRemoved).create
     )
 
   val groupAdded: Stream[F, Unit] =
     add(
       MessageHandlerKey.GroupAdded,
-      SyncMessageHandler(steps(cfg.groupAdded), maxConflictRetries).create
+      createHandler(cfg.groupAdded).create
     )
 
   val groupUpdated: Stream[F, Unit] =
     add(
       MessageHandlerKey.GroupUpdated,
-      SyncMessageHandler(steps(cfg.groupUpdated), maxConflictRetries).create
+      createHandler(cfg.groupUpdated).create
     )
 
   val groupRemove: Stream[F, Unit] =
     add(
       MessageHandlerKey.GroupRemoved,
-      SyncMessageHandler(steps(cfg.groupRemoved), maxConflictRetries).create
+      createHandler(cfg.groupRemoved).create
     )
 
   val groupMemberAdded: Stream[F, Unit] =
     add(
       MessageHandlerKey.GroupMemberAdded,
-      SyncMessageHandler(steps(cfg.groupMemberAdded), maxConflictRetries).create
+      createHandler(cfg.groupMemberAdded).create
     )
 
   val groupMemberUpdated: Stream[F, Unit] =
     add(
       MessageHandlerKey.GroupMemberUpdated,
-      SyncMessageHandler(steps(cfg.groupMemberUpdated), maxConflictRetries).create
+      createHandler(cfg.groupMemberUpdated).create
     )
 
   val groupMemberRemoved: Stream[F, Unit] =
     add(
       MessageHandlerKey.GroupMemberRemoved,
-      SyncMessageHandler(steps(cfg.groupMemberRemoved), maxConflictRetries).create
+      createHandler(cfg.groupMemberRemoved).create
     )
 
 object MessageHandlers:

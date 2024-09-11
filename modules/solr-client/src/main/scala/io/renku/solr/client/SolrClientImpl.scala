@@ -18,6 +18,8 @@
 
 package io.renku.solr.client
 
+import scala.concurrent.duration.*
+
 import cats.data.NonEmptyList
 import cats.effect.Async
 import cats.syntax.all.*
@@ -96,6 +98,27 @@ private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Cl
           new Exception(s"Inserting $docs failed due to version conflict")
         )
     }
+
+  def upsertLoop[D: Decoder: Encoder, R](
+      id: String,
+      timeout: FiniteDuration,
+      interval: FiniteDuration
+  )(
+      update: Option[D] => (Option[D], R)
+  ): F[R] =
+    val task =
+      findById[D](id).map(_.responseBody.docs.headOption).map(update).flatMap {
+        case (None, r)      => (UpsertResponse.Success(ResponseHeader.empty), r).pure[F]
+        case (Some(doc), r) => upsert(Seq(doc)).map(_ -> r)
+      }
+    fs2.Stream
+      .repeatEval(task)
+      .meteredStartImmediately(interval)
+      .takeThrough(_._1.isFailure)
+      .map(_._2)
+      .timeout(timeout)
+      .compile
+      .lastOrError
 
   def getSchema: F[SchemaResponse] =
     val url = solrUrl / "schema"

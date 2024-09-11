@@ -30,6 +30,7 @@ import io.renku.search.config.QueuesConfig
 import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.reindex.ReIndexService
+import io.renku.search.provision.reindex.ReprovisionService
 import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
 import io.renku.search.solr.documents.{Group as GroupDocument, User as UserDocument, *}
 import io.renku.search.solr.query.SolrToken
@@ -50,7 +51,6 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
         Stream[IO, QueueClient[IO]](queue),
         inChunkSize = 1
       )
-      handlers = MessageHandlers[IO](steps, queueConfig)
       bpm <- BackgroundProcessManage[IO](50.millis)
       reindex = ReIndexService[IO](
         bpm,
@@ -58,11 +58,14 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
         solrClient,
         queueConfig
       )
+      rps = ReprovisionService(reindex, solrClient.underlying)
+      ctrl <- Resource.eval(SyncMessageHandler.Control[IO])
+      handlers = MessageHandlers[IO](steps, rps, queueConfig, ctrl)
     yield TestServices(steps, handlers, queue, solrClient, bpm, reindex)
 
   val testServices = ResourceSuiteLocalFixture("test-services", testServicesR)
 
-  override def munitFixtures = List(solrServer, redisServer, testServices)
+  override def munitFixtures = List(solrServer, redisServer, testServices, redisClients)
 
   def loadProjectsByNs(solrClient: SearchSolrClient[IO])(
       ns: Namespace
@@ -108,6 +111,29 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
         CompoundId.partial(id, entityType.some)
       )
     ).mapN((a, b) => a.toSet ++ b.toSet)
+
+  def waitForSolrDocs(
+      services: TestServices,
+      query: QueryData,
+      until: List[EntityDocument] => Boolean,
+      timeout: FiniteDuration = 30.seconds
+  ): IO[List[EntityDocument]] =
+    Stream
+      .repeatEval(
+        scribe.cats.io.trace(s"Searching $query…") >>
+          services.searchClient
+            .queryAll[EntityDocument](query)
+            .compile
+            .toList
+      )
+      .takeThrough(d => !until(d))
+      .meteredStartImmediately(50.millis)
+      .interruptWhen(
+        IO.sleep(timeout)
+          .as(Left(new Exception(s"Query timed out after $timeout: $query")))
+      )
+      .compile
+      .lastOrError
 
 object ProvisioningSuite:
   val queueConfig: QueuesConfig = QueuesConfig(

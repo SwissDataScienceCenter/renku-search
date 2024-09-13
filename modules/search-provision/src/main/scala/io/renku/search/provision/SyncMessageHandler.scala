@@ -59,7 +59,9 @@ final class SyncMessageHandler[F[_]: Async](
     _.evalMap { msg =>
       for
         _ <- control.await
+        _ <- MessageMetrics.countReceived(msg)
         r <- processEvent(msg)
+        _ <- MessageMetrics.countResult(msg, r)
       yield r
     }
 

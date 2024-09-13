@@ -61,4 +61,7 @@ final private[provision] class Reprovisioning[F[_]: Async](
       case None =>
         logger.info(s"Received reprovision-finish message without payload: $msg").as(None)
       case Some(req) =>
-        reprovisionService.reprovision(req).as(req.reprovisionId.some)
+        reprovisionService.reprovision(req).map {
+          case true  => Some(req.reprovisionId)
+          case false => None
+        }

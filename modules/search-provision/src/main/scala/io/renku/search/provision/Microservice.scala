@@ -45,6 +45,7 @@ object Microservice extends IOApp:
         registryBuilder = CollectorRegistryBuilder[IO].withJVMMetrics
           .add(RedisMetrics.queueSizeGauge)
           .add(RedisMetrics.unprocessedGauge)
+          .addAll(MessageMetrics.all)
           .addAll(SolrMetrics.allCollectors)
         metrics = metricsUpdaterTask(services)
         httpServer = httpServerTask(registryBuilder, services)

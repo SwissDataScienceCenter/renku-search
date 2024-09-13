@@ -60,9 +60,8 @@ final class ReprovisionServiceImpl[F[_]: Sync](
         .map(_.responseBody.docs.headOption)
         .flatMap {
           case None =>
-            logger.info("Reprovsion index from the beginning!") >> reIndex.startReIndex(
-              None
-            )
+            logger.info("Reprovsion index from the beginning!") >>
+              reIndex.startReIndex(None)
           case Some(doc) =>
             logger.info(
               s"Reprovision index from stored message-id ${doc.messageId}"
@@ -95,11 +94,12 @@ final class ReprovisionServiceImpl[F[_]: Sync](
                   .as(false)
 
               case Some(doc) =>
-                logger
-                  .info(
+                for
+                  _ <- logger.info(
                     s"Handling reprovision-started message by triggering re-index from message ${data.messageId}"
                   )
-                  .as(true)
+                  _ <- reIndex.startReIndex(Some(data.messageId))
+                yield true
 
             }
         }

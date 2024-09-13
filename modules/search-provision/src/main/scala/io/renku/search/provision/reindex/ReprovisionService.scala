@@ -28,21 +28,8 @@ import io.renku.solr.client.SolrClient
 
 trait ReprovisionService[F[_]]:
   def reprovision(req: ReprovisionRequest): F[Result]
-
   def recreateIndex: F[Result] = reprovision(ReprovisionRequest.lastStart)
   def resetLockDocument: F[Unit]
-
-/*
-
-re-index is the unconditional reset, reprovision is more controled
-
-reprovisioning can happen in these cases:
- - manual request: get the latest "beginning" message id and do reindex(messageId)
- - manual request with a messageId: just call reindex(messageId) - or leave this to reindex?
- - reprovsion-start message: validate + store and do reset_index(newMessageId)
- - reprovision-finish message: validate + set flag to false
-
- */
 
 object ReprovisionService:
   def apply[F[_]: Sync](

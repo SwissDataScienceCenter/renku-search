@@ -122,7 +122,7 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
 
     lazy val logInfo: ((XReadMessage[?, ?], Option[RedisMessage])) => F[Unit] = {
       case (m, None) =>
-        Log[F].info(
+        logger.warn(
           s"Message '${m.id}' skipped as it has no '${MessageBodyKeys.headers}' or '${MessageBodyKeys.payload}'"
         )
       case _ => ().pure[F]
@@ -216,7 +216,6 @@ class RedisQueueClientImpl[F[_]: Async: Log](client: RedisClient)
         client.underlying.connectAsync[K, V](codec.underlying, client.uri.underlying)
       )
 
-    client.underlying.connect
     val release: StatefulRedisConnection[K, V] => F[Unit] = c =>
       FutureLift[F].lift(c.closeAsync()) *>
         Log[F].info(s"Releasing Streaming connection: ${client.uri.underlying}")

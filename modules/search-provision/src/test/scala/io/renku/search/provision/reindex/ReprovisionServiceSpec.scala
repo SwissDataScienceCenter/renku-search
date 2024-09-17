@@ -38,7 +38,6 @@ class ReprovisionServiceSpec extends ProvisioningSuite:
   type ManagementDoc = ReprovisionServiceImpl.ReprovisionManageDoc
   val mgmtDocId = ReprovisionServiceImpl.docId
 
-  override def defaultVerbosity: Int = 2
   override val queueConfig: QueuesConfig =
     ProvisioningSuite.queueConfig.copy(dataServiceAllEvents =
       RedisClientGenerators.queueNameGen.generateOne

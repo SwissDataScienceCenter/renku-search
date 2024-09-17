@@ -19,6 +19,7 @@
             ./nix/services.nix
             {
               virtualisation.memorySize = 2048;
+              networking.hostName = "rsdev-vm";
             }
           ];
         };
@@ -27,6 +28,9 @@
           system = flake-utils.lib.system.x86_64-linux;
           modules = [
             ./nix/services.nix
+            {
+              networking.hostName = "rsdev-cnt";
+            }
           ];
         };
       };

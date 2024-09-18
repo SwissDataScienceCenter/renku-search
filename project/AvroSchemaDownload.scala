@@ -58,7 +58,8 @@ object AvroSchemaDownload extends AutoPlugin {
         schemaTargetDirectory.value / "v2" / "common",
         schemaTargetDirectory.value / "v2" / "user",
         schemaTargetDirectory.value / "v2" / "project",
-        schemaTargetDirectory.value / "v2" / "group"
+        schemaTargetDirectory.value / "v2" / "group",
+        schemaTargetDirectory.value / "v2" / "notify"
       ),
     Compile / sourceGenerators += Def
       .sequential(

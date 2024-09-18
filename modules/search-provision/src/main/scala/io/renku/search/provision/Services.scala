@@ -18,13 +18,16 @@
 
 package io.renku.search.provision
 
+import cats.NonEmptyParallel
 import cats.effect.kernel.{Async, Resource}
+import cats.syntax.all.*
 import fs2.Stream
 import fs2.io.net.Network
 
 import io.renku.queue.client.QueueClient
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.reindex.ReIndexService
+import io.renku.search.provision.reindex.ReprovisionService
 import io.renku.search.solr.client.SearchSolrClient
 
 final case class Services[F[_]](
@@ -33,8 +36,12 @@ final case class Services[F[_]](
     queueClient: Stream[F, QueueClient[F]],
     messageHandlers: MessageHandlers[F],
     backgroundManage: BackgroundProcessManage[F],
-    reIndex: ReIndexService[F]
-)
+    reprovision: ReprovisionService[F],
+    reindex: ReIndexService[F]
+):
+
+  def resetLockDocuments(using NonEmptyParallel[F]): F[Unit] =
+    (reprovision.resetLockDocument, reindex.resetLockDocument).parMapN((_, _) => ())
 
 object Services:
 
@@ -51,9 +58,9 @@ object Services:
         redis,
         inChunkSize = 1
       )
-      handlers = MessageHandlers[F](steps, cfg.queuesConfig)
-
       bm <- BackgroundProcessManage[F](cfg.retryOnErrorDelay)
-
       ris = ReIndexService[F](bm, redis, solr, cfg.queuesConfig)
-    } yield Services(cfg, solr, redis, handlers, bm, ris)
+      rps = ReprovisionService(ris, solr.underlying)
+      ctrl <- Resource.eval(SyncMessageHandler.Control[F])
+      handlers = MessageHandlers[F](steps, rps, cfg.queuesConfig, ctrl)
+    } yield Services(cfg, solr, redis, handlers, bm, rps, ris)

@@ -18,33 +18,29 @@
 
 package io.renku.search.cli
 
-import cats.effect.{ExitCode, IO}
+import cats.effect.*
 
 import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import io.renku.search.cli.perftests.PerfTestsRunner
+import io.renku.search.cli.reprovision.*
 
-object SearchCli
-    extends CommandIOApp(
-      name = "search-cli",
-      header = "A set of tools to work with the search services",
-      version = "0.0.1"
-    ):
+object ReprovisionCmd:
 
-  override def main: Opts[IO[ExitCode]] =
-    SubCommands.opts.map {
-      case SubCommands.PerfTests(opts) =>
-        PerfTestsRunner.run(opts).as(ExitCode.Success)
+  enum SubCmdOpts:
+    case Start(opts: StartCmd.Options)
+    case Finish(opts: FinishCmd.Options)
 
-      case SubCommands.Group(opts) =>
-        GroupCmd(opts)
+  private val startOpts: Opts[StartCmd.Options] =
+    Opts.subcommand("start", "Send reprovisioning-started message")(StartCmd.opts)
 
-      case SubCommands.Project(opts) =>
-        ProjectCmd(opts)
+  private val finishOpts: Opts[FinishCmd.Options] =
+    Opts.subcommand("finish", "Send reprovisioning-finished message")(FinishCmd.opts)
 
-      case SubCommands.User(opts) =>
-        UserCmd(opts)
+  val opts: Opts[SubCmdOpts] =
+    startOpts
+      .map(SubCmdOpts.Start.apply)
+      .orElse(finishOpts.map(SubCmdOpts.Finish.apply))
 
-      case SubCommands.Reprovision(opts) =>
-        ReprovisionCmd(opts)
-    }
+  def apply(opts: SubCmdOpts): IO[ExitCode] =
+    opts match
+      case SubCmdOpts.Start(c)  => StartCmd(c)
+      case SubCmdOpts.Finish(c) => FinishCmd(c)

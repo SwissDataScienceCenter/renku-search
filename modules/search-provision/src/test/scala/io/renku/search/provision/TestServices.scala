@@ -24,6 +24,7 @@ import io.renku.queue.client.QueueClient
 import io.renku.redis.client.QueueName
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.reindex.ReIndexService
+import io.renku.search.provision.reindex.ReprovisionService
 import io.renku.search.solr.client.SearchSolrClient
 
 final case class TestServices(
@@ -34,6 +35,8 @@ final case class TestServices(
     backgroundManage: BackgroundProcessManage[IO],
     reindex: ReIndexService[IO]
 ):
+  val reprovision: ReprovisionService[IO] =
+    ReprovisionService(reindex, searchClient.underlying)
 
   def syncHandler(qn: QueueName): SyncMessageHandler[IO] =
-    SyncMessageHandler[IO](pipelineSteps(qn))
+    messageHandlers.createHandler(qn)

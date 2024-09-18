@@ -18,10 +18,7 @@
 
 package io.renku.search.provision.reindex
 
-import scala.concurrent.duration.*
-
 import cats.effect.*
-import fs2.Stream
 
 import io.renku.events.EventsGenerators
 import io.renku.redis.client.QueueName
@@ -31,7 +28,6 @@ import io.renku.search.config.QueuesConfig
 import io.renku.search.model.Name
 import io.renku.search.provision.MessageHandlers.MessageHandlerKey
 import io.renku.search.provision.ProvisioningSuite
-import io.renku.search.provision.TestServices
 import io.renku.search.solr.documents.{EntityDocument, Project as ProjectDocument}
 import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.*
@@ -48,20 +44,6 @@ class ReIndexServiceSpec extends ProvisioningSuite:
     QueryData(QueryString("_kind:*", 10, 0))
       .withSort(SolrSort(EntityDocumentSchema.Fields.id -> SolrSort.Direction.Asc))
 
-  def waitForSolrDocs(services: TestServices, size: Int): IO[List[EntityDocument]] =
-    Stream
-      .repeatEval(
-        services.searchClient
-          .queryAll[EntityDocument](allQuery)
-          .compile
-          .toList
-      )
-      .takeThrough(_.size != size)
-      .meteredStartImmediately(15.millis)
-      .timeout(5.minutes)
-      .compile
-      .lastOrError
-
   test("re-index restores data from redis stream"):
     for
       services <- IO(testServices())
@@ -77,7 +59,7 @@ class ReIndexServiceSpec extends ProvisioningSuite:
       mId1 <- services.queueClient.enqueue(queueConfig.dataServiceAllEvents, msg1)
       mId2 <- services.queueClient.enqueue(queueConfig.dataServiceAllEvents, msg2)
 
-      docs <- waitForSolrDocs(services, 2)
+      docs <- waitForSolrDocs(services, allQuery, _.size == 2)
       _ = assertEquals(docs.size, 2)
 
       // corrupt the data at solr
@@ -96,7 +78,7 @@ class ReIndexServiceSpec extends ProvisioningSuite:
       // re-indexing has been initiated, meaning that solr has been
       // cleared and background processes restarted. So only need to
       // wait for the 2 documents to reappear
-      docs2 <- waitForSolrDocs(services, 2)
+      docs2 <- waitForSolrDocs(services, allQuery, _.size == 2)
       _ = assertEquals(docs2.size, 2)
 
       // afterwards, the initial state should be re-created

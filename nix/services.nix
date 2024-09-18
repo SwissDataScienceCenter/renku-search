@@ -10,8 +10,6 @@
     heap = 1024;
   };
 
-  networking.hostName = "rsdev";
-
   services.dev-redis = {
     enable = true;
     instance = "search";

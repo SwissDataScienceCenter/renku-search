@@ -18,6 +18,8 @@
 
 package io.renku.solr.client
 
+import scala.concurrent.duration.*
+
 import cats.MonadThrow
 import cats.data.NonEmptyList
 import cats.effect.{Async, Resource}
@@ -45,6 +47,13 @@ trait SolrClient[F[_]]:
 
   def upsert[A: Encoder](docs: Seq[A]): F[UpsertResponse]
   def upsertSuccess[A: Encoder](docs: Seq[A]): F[Unit]
+  def upsertLoop[D: Decoder: Encoder, R](
+      id: String,
+      timeout: FiniteDuration = 1.seconds,
+      interval: FiniteDuration = 15.millis
+  )(
+      update: Option[D] => (Option[D], R)
+  ): F[R]
 
   def findById[A: Decoder](id: String, other: String*): F[GetByIdResponse[A]]
 

@@ -28,6 +28,7 @@ enum SubCommands:
   case Group(opts: GroupCmd.SubCmdOpts)
   case Project(opts: ProjectCmd.SubCmdOpts)
   case User(opts: UserCmd.SubCmdOpts)
+  case Reprovision(opts: ReprovisionCmd.SubCmdOpts)
 
 private object SubCommands:
 
@@ -43,9 +44,13 @@ private object SubCommands:
   private val userOpts: Opts[UserCmd.SubCmdOpts] =
     Opts.subcommand("user", "Manage user events")(UserCmd.opts)
 
+  private val reprovisionOpts: Opts[ReprovisionCmd.SubCmdOpts] =
+    Opts.subcommand("reprovision", "Send reprovisioning messages")(ReprovisionCmd.opts)
+
   val opts: Opts[SubCommands] =
     perfTestOpts
       .map(SubCommands.PerfTests.apply)
       .orElse(groupOpts.map(SubCommands.Group.apply))
       .orElse(projectOpts.map(SubCommands.Project.apply))
       .orElse(userOpts.map(SubCommands.User.apply))
+      .orElse(reprovisionOpts.map(SubCommands.Reprovision.apply))

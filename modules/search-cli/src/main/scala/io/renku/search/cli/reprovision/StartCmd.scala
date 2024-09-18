@@ -16,35 +16,30 @@
  * limitations under the License.
  */
 
-package io.renku.search.cli
+package io.renku.search.cli.reprovision
 
-import cats.effect.{ExitCode, IO}
+import cats.effect.*
+import cats.syntax.all.*
 
 import com.monovore.decline.Opts
-import com.monovore.decline.effect.CommandIOApp
-import io.renku.search.cli.perftests.PerfTestsRunner
+import io.renku.search.cli.{CommonOpts, Services}
+import io.renku.search.config.QueuesConfig
+import io.renku.search.events.ReprovisioningStarted
+import io.renku.search.model.*
 
-object SearchCli
-    extends CommandIOApp(
-      name = "search-cli",
-      header = "A set of tools to work with the search services",
-      version = "0.0.1"
-    ):
+object StartCmd:
 
-  override def main: Opts[IO[ExitCode]] =
-    SubCommands.opts.map {
-      case SubCommands.PerfTests(opts) =>
-        PerfTestsRunner.run(opts).as(ExitCode.Success)
+  final case class Options(id: Id):
+    def asPayload: ReprovisioningStarted = ReprovisioningStarted(id)
 
-      case SubCommands.Group(opts) =>
-        GroupCmd(opts)
+  val opts: Opts[Options] =
+    CommonOpts.idOpt.map(Options.apply)
 
-      case SubCommands.Project(opts) =>
-        ProjectCmd(opts)
-
-      case SubCommands.User(opts) =>
-        UserCmd(opts)
-
-      case SubCommands.Reprovision(opts) =>
-        ReprovisionCmd(opts)
+  def apply(cfg: Options): IO[ExitCode] =
+    Services.queueClient.use { queue =>
+      for
+        queuesCfg <- QueuesConfig.config.load[IO]
+        msg <- Services.createMessage(cfg.asPayload)
+        _ <- queue.enqueue(queuesCfg.dataServiceAllEvents, msg)
+      yield ExitCode.Success
     }

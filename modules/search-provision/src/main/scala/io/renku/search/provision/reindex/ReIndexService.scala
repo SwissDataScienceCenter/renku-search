@@ -48,10 +48,12 @@ trait ReIndexService[F[_]]:
     */
   def resetData(startMessage: Option[MessageId]): F[Unit]
 
+  def resetLockDocument: F[Unit]
+
 object ReIndexService:
   private[reindex] val lockId: String = "reindex_31baded5-9fc2-4935-9b07-80f7a3ecb13f"
 
-  def apply[F[_]: Clock: Sync](
+  def apply[F[_]: Clock: Async](
       bpm: BackgroundProcessManage[F],
       redisClient: Stream[F, QueueClient[F]],
       solrClient: SearchSolrClient[F],
@@ -61,6 +63,10 @@ object ReIndexService:
       private val queueName = NonEmptyList.of(queueCfg.dataServiceAllEvents)
       private val logger = scribe.cats.effect[F]
 
+      def resetLockDocument: F[Unit] =
+        logger.info(s"Reset reindex lock document $lockId") >>
+          solrClient.underlying.deleteIds(NonEmptyList.of(lockId))
+
       def startReIndex(startMessage: Option[MessageId]): F[Boolean] =
         given LockDocument[F, ReIndexDocument] =
           ReIndexDocument.lockDocument(startMessage)
@@ -68,14 +74,14 @@ object ReIndexService:
         lock.use {
           case None =>
             logger.debug(s"Re-Index called while already in progress").as(false)
-          case Some(d) => dropIndexAndRestart(d, startMessage)
+          case Some(d) => dropIndexAndRestart(d, startMessage).as(true)
         }
 
       def resetData(startMessage: Option[MessageId]): F[Unit] =
         for
           _ <- startMessage match
             case Some(msgId) =>
-              logger.info("Set last seen message id to $msgId for $queueName") >>
+              logger.info(s"Set last seen message id to $msgId for $queueName") >>
                 redisClient
                   .evalMap(_.markProcessed(queueName, msgId))
                   .take(1)
@@ -115,5 +121,5 @@ object ReIndexService:
           _ <- resetData(startMessage)
           _ <- logger.info("Start background processes")
           _ <- bpm.background(MessageHandlerKey.isInstance)
-        yield true
+        yield ()
     }

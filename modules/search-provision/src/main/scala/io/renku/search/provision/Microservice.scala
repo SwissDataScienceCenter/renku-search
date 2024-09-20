@@ -40,6 +40,10 @@ object Microservice extends IOApp:
       for {
         _ <- IO(LoggingSetup.doConfigure(services.config.verbosity))
         migrateResult <- runSolrMigrations(services.config)
+        _ <- IO.whenA(migrateResult.migrationsSkipped > 0)(
+          logger
+            .warn(s"There were ${migrateResult.migrationsSkipped} skipped migrations!")
+        )
         // this is only safe for a single provisioning service
         _ <- services.resetLockDocuments
         registryBuilder = CollectorRegistryBuilder[IO].withJVMMetrics

@@ -18,6 +18,7 @@
 
 package io.renku.solr.client.migration
 
+import cats.data.NonEmptyList
 import cats.effect.IO
 
 import io.renku.solr.client.DocVersion
@@ -63,7 +64,7 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
       res <- migrator.migrate(migrations)
       c <- migrator.currentVersion
       _ = assertEquals(c, Some(-1L))
-      _ = assertEquals(res, MigrateResult(None, Some(-1L), migrations.size, false))
+      _ = assertEquals(res, MigrateResult(None, Some(-1L), migrations.size, 0, false))
     } yield ()
   }
 
@@ -77,12 +78,12 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
       res0 <- migrator.migrate(first)
       v0 <- migrator.currentVersion
       _ = assertEquals(v0, Some(-4L))
-      _ = assertEquals(res0, MigrateResult(None, Some(-4L), 2, false))
+      _ = assertEquals(res0, MigrateResult(None, Some(-4L), 2, 0, false))
 
       res1 <- migrator.migrate(migrations)
       v1 <- migrator.currentVersion
       _ = assertEquals(v1, Some(-1L))
-      _ = assertEquals(res1, MigrateResult(Some(-4L), Some(-1L), 3, false))
+      _ = assertEquals(res1, MigrateResult(Some(-4L), Some(-1L), 3, 0, false))
     } yield ()
 
   test("no require-reindex if migrations have been applied already"):
@@ -94,10 +95,10 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
       _ <- truncate(client)
 
       res0 <- migrator.migrate(first)
-      _ = assertEquals(res0, MigrateResult(None, Some(-4L), 2, true))
+      _ = assertEquals(res0, MigrateResult(None, Some(-4L), 2, 0, true))
 
       res1 <- migrator.migrate(migs)
-      _ = assertEquals(res1, MigrateResult(Some(-4L), Some(-1L), 3, false))
+      _ = assertEquals(res1, MigrateResult(Some(-4L), Some(-1L), 3, 0, false))
     yield ()
 
   test("convert previous version document to current, then migrate remaining"):
@@ -169,4 +170,30 @@ class SolrMigratorSpec extends CatsEffectSuite with SolrClientBaseSuite:
 
       res <- migrator.migrate(migrations)
       _ = assertEquals(res.migrationsRun, 0L)
+    yield ()
+
+  test("skip all migrations if already applied"):
+    for
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      _ <- truncate(client)
+
+      _ <- migrator.migrate(migrations).assert(_.migrationsRun == migrations.size)
+      _ <- client.deleteIds(NonEmptyList.of(SchemaMigrator.versionDocId))
+      _ <- migrator.migrate(migrations).assert(_.migrationsSkipped == migrations.size)
+    yield ()
+
+  test("skip some migrations if already applied"):
+    for
+      client <- IO(solrClient())
+      migrator = SchemaMigrator(client)
+      _ <- truncate(client)
+
+      _ <- migrator.migrate(migrations).assert(_.migrationsRun == migrations.size)
+      _ <- client.upsertLoop[VersionDocument, Unit](SchemaMigrator.versionDocId) {
+        case Some(doc) =>
+          (Some(doc.copy(currentSchemaVersion = doc.currentSchemaVersion - 2)), ())
+        case None => (None, ())
+      }
+      _ <- migrator.migrate(migrations).assert(_.migrationsSkipped == 2)
     yield ()

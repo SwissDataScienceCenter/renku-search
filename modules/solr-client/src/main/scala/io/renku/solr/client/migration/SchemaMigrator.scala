@@ -24,6 +24,7 @@ import cats.syntax.all.*
 import fs2.io.net.Network
 
 import io.renku.solr.client.*
+import io.renku.solr.client.schema.CoreSchema
 import io.renku.solr.client.util.DocumentLockResource
 
 trait SchemaMigrator[F[_]] {
@@ -42,6 +43,17 @@ object SchemaMigrator:
       solrConfig: SolrConfig
   ): Resource[F, SchemaMigrator[F]] =
     SolrClient[F](solrConfig).map(apply[F])
+
+  final private case class MigrationState(
+      schema: CoreSchema,
+      doc: VersionDocument,
+      skippedMigrations: Int = 0
+  ) {
+    def withDocument(d: VersionDocument): MigrationState =
+      copy(doc = d)
+
+    def incSkippedMigration = copy(skippedMigrations = skippedMigrations + 1)
+  }
 
   private class Impl[F[_]: Sync](client: SolrClient[F]) extends SchemaMigrator[F] {
     private val logger = scribe.cats.effect[F]
@@ -65,29 +77,40 @@ object SchemaMigrator:
 
     def doMigrate(
         migrations: Seq[SchemaMigration],
-        initial: VersionDocument
+        initialDoc: VersionDocument
     ): F[MigrateResult] = for {
       _ <- logger.info(
-        s"core ${client.config.core}: Found current schema version '${initial.currentSchemaVersion}' using id $versionDocId"
+        s"core ${client.config.core}: Found current schema version '${initialDoc.currentSchemaVersion}' using id $versionDocId"
       )
       remain = migrations
         .sortBy(_.version)
-        .dropWhile(m => m.version <= initial.currentSchemaVersion)
+        .dropWhile(m => m.version <= initialDoc.currentSchemaVersion)
       _ <- logger.info(
         s"core ${client.config.core}: There are ${remain.size} migrations to run"
       )
 
-      finalDoc <- remain.foldLeftM(initial) { (doc, m) =>
-        client.modifySchema(m.commands) >> upsertVersion(doc, m.version)
-      }
+      initial <- client.getSchema.map(_.schema).map(MigrationState(_, initialDoc))
+      finalState <- remain.foldLeftM(initial)(applyMigration)
 
       result = MigrateResult(
-        startVersion = Option(initial.currentSchemaVersion).filter(_ > Long.MinValue),
+        startVersion = Option(initialDoc.currentSchemaVersion).filter(_ > Long.MinValue),
         endVersion = remain.map(_.version).maxOption,
         migrationsRun = remain.size,
+        migrationsSkipped = finalState.skippedMigrations.toLong,
         reindexRequired = remain.exists(_.requiresReIndex)
       )
     } yield result
+
+    def applyMigration(state: MigrationState, m: SchemaMigration): F[MigrationState] =
+      val cmds = m.alignWith(state.schema).commands
+      if (cmds.isEmpty)
+        logger.info(s"Migration ${m.version} seems already applied. Skipping it.") >>
+          upsertVersion(state.doc, m.version).map(state.incSkippedMigration.withDocument)
+      else
+        client.modifySchema(cmds) >> (
+          client.getSchema.map(_.schema),
+          upsertVersion(state.doc, m.version)
+        ).mapN(MigrationState(_, _))
 
     private def requireVersionDoc =
       getVersionDoc.flatMap {

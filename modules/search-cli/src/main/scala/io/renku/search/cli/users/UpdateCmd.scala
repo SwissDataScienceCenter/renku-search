@@ -23,7 +23,6 @@ import cats.syntax.all.*
 
 import com.monovore.decline.Opts
 import io.renku.search.cli.{CommonOpts, Services}
-import io.renku.search.config.QueuesConfig
 import io.renku.search.events.UserUpdated
 import io.renku.search.model.*
 
@@ -50,7 +49,7 @@ object UpdateCmd:
   def apply(cfg: Options): IO[ExitCode] =
     Services.queueClient.use { queue =>
       for
-        queuesCfg <- QueuesConfig.config.load[IO]
+        queuesCfg <- Services.queueConfig.load[IO]
         msg <- Services.createMessage(cfg.asPayload)
         _ <- queue.enqueue(queuesCfg.dataServiceAllEvents, msg)
       yield ExitCode.Success

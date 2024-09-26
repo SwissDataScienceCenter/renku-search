@@ -27,9 +27,16 @@ import io.renku.search.common.CurrentVersion
 import io.renku.search.http.borer.TapirBorerJson
 
 object OperationRoutes extends TapirBorerJson {
+  enum Paths {
+    case Ping
+    case Version
+
+    lazy val name: String = productPrefix.toLowerCase()
+  }
+
   def pingEndpoint[F[_]: Async] =
     endpoint.get
-      .in("ping")
+      .in(Paths.Ping.name)
       .out(stringBody)
       .description("Ping")
       .serverLogicSuccess[F](_ => "pong".pure[F])
@@ -38,7 +45,7 @@ object OperationRoutes extends TapirBorerJson {
 
   def versionEndpoint[F[_]: Async] =
     endpoint.get
-      .in("version")
+      .in(Paths.Version.name)
       .out(borerJsonBody[CurrentVersion])
       .description("Return version information")
       .serverLogicSuccess[F](_ => CurrentVersion.get.pure[F])

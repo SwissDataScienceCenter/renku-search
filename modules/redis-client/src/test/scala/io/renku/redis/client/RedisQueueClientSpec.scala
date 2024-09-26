@@ -207,7 +207,7 @@ class RedisQueueClientSpec extends CatsEffectSuite with RedisBaseSuite:
     val message = Stream.emit[IO, XAddMessage[String, ByteVector]](
       XAddMessage(
         queueName.name,
-        Map(MessageBodyKeys.payload -> payload)
+        Map(MessageBodyKeys.Payload.name -> payload)
       )
     )
     makeStreamingConnection(client)

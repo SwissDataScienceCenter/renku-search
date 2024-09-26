@@ -44,8 +44,12 @@ object Microservice extends IOApp:
           logger
             .warn(s"There were ${migrateResult.migrationsSkipped} skipped migrations!")
         )
-        // this is only safe for a single provisioning service
-        _ <- services.resetLockDocuments
+        // this is really only safe for a single provisioning service,
+        // but for the immediate future that is the situation. So do
+        // this to recover from crashes during a lock is held
+        _ <- services.resetLockDocuments.handleErrorWith { ex =>
+          logger.warn(s"Resetting locks on start failed", ex)
+        }
         registryBuilder = CollectorRegistryBuilder[IO].withJVMMetrics
           .add(RedisMetrics.queueSizeGauge)
           .add(RedisMetrics.unprocessedGauge)

@@ -8,7 +8,7 @@ pull_request_rules:
   - name: automatically merge renku-bot PRs on CI success
     conditions:
       - author=RenkuBot
-      - base=development
+      - base=main
       - status-success=ci
     actions:
       merge:

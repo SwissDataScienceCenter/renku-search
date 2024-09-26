@@ -135,6 +135,13 @@
               commonPackages
               ++ (builtins.attrValues devshell-tools.legacyPackages.${system}.vm-scripts);
           });
+
+        ci = pkgs.mkShellNoCC {
+          buildInputs = [
+            devshellToolsPkgs.sbt17
+          ];
+          SBT_OPTS = "-Xmx2G";
+        };
       };
     });
 }

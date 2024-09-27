@@ -23,7 +23,7 @@ jobs:
       - uses: cachix/install-nix-action@v27
       - name: sbt ci ${{ github.ref }}
         env:
-          README_BASE_REF: origin/${{ github.base_ref }}
+          README_BASE_REF: ${{ github.base_ref && format('origin/{0}', github.base_ref) || '_skip_' }}
         run: nix develop .#ci --command sbt ci
   ci:
     runs-on: ubuntu-latest

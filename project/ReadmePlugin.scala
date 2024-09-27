@@ -12,7 +12,8 @@ object ReadmePlugin extends AutoPlugin {
   override def requires = MdocPlugin && GitPlugin
   object autoImport {
     val readmeUpdate = inputKey[Unit]("Update the root README.md")
-    val readmeBaseRef = settingKey[String]("The base ref to check modification against")
+    val readmeBaseRef =
+      settingKey[Option[String]]("The base ref to check modification against")
     val readmeCheckModification = taskKey[Unit](
       "Check the diff against the target branch for modifications to generated files"
     )
@@ -30,6 +31,15 @@ object ReadmePlugin extends AutoPlugin {
     mdocOut := (LocalRootProject / baseDirectory).value / "README.md",
     fork := true,
     readmeAdditionalFiles := Map.empty,
+    readmeBaseRef := sys.env
+      .get("README_BASE_REF")
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .orElse(Some("HEAD"))
+      .flatMap {
+        case "_skip_" => None
+        case ref      => Some(s"${ref}^{tree}")
+      },
     readmeCheckModification := {
       val bref = readmeBaseRef.value
       val dir = (LocalRootProject / baseDirectory).value
@@ -37,14 +47,20 @@ object ReadmePlugin extends AutoPlugin {
       val readmeIn = mdocIn.value
       val readmeOut = mdocOut.value
       val logger = streams.value.log
-      checkModification(logger, bref, dir, readmeIn, readmeOut, additional, dir / "docs")
+      bref match {
+        case Some(ref) =>
+          checkModification(
+            logger,
+            ref,
+            dir,
+            readmeIn,
+            readmeOut,
+            additional,
+            dir / "docs"
+          )
+        case None => logger.info("Skipping readme modification checks")
+      }
     },
-    readmeBaseRef := sys.env
-      .get("README_BASE_REF")
-      .map(_.trim)
-      .filter(_.nonEmpty)
-      .map(ref => s"${ref}^{tree}")
-      .getOrElse("HEAD^{tree}"),
     readmeUpdate := {
       mdoc.evaluated
       val logger = streams.value.log

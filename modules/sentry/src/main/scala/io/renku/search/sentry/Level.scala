@@ -16,23 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search
+package io.renku.search.sentry
 
-import io.renku.search.logging.LoggingSetup
+import io.sentry.SentryLevel
 
-trait LoggingConfigure extends munit.Suite:
+enum Level:
+  case Error
+  case Warn
+  case Info
+  case Debug
 
-  def defaultVerbosity: Int = 0
-
-  override def beforeAll(): Unit =
-    setLoggingVerbosity(defaultVerbosity)
-    super.beforeAll()
-
-  def setLoggingVerbosity(level: Int): Unit =
-    LoggingSetup.doConfigure(level)
-
-  def withVerbosity[T](level: Int)(body: => T): T =
-    val verbosity = defaultVerbosity
-    LoggingSetup.doConfigure(level)
-    try body
-    finally LoggingSetup.doConfigure(verbosity)
+  private[sentry] def toSentry: SentryLevel = this match
+    case Error => SentryLevel.ERROR
+    case Warn  => SentryLevel.WARNING
+    case Info  => SentryLevel.INFO
+    case Debug => SentryLevel.DEBUG

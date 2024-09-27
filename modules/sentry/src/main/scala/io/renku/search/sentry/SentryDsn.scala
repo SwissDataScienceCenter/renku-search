@@ -16,23 +16,18 @@
  * limitations under the License.
  */
 
-package io.renku.search
+package io.renku.search.sentry
 
-import io.renku.search.logging.LoggingSetup
+opaque type SentryDsn = String
 
-trait LoggingConfigure extends munit.Suite:
+object SentryDsn:
+  def fromString(str: String): Either[String, SentryDsn] =
+    val sn = str.trim
+    if (sn.isEmpty) Left("Empty sentry DSN provided")
+    else Right(sn)
 
-  def defaultVerbosity: Int = 0
+  def unsafeFromString(str: String): SentryDsn =
+    fromString(str).fold(sys.error, identity)
 
-  override def beforeAll(): Unit =
-    setLoggingVerbosity(defaultVerbosity)
-    super.beforeAll()
-
-  def setLoggingVerbosity(level: Int): Unit =
-    LoggingSetup.doConfigure(level)
-
-  def withVerbosity[T](level: Int)(body: => T): T =
-    val verbosity = defaultVerbosity
-    LoggingSetup.doConfigure(level)
-    try body
-    finally LoggingSetup.doConfigure(verbosity)
+  extension(self: SentryDsn)
+    def value: String = self

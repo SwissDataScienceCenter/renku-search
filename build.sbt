@@ -63,6 +63,7 @@ lazy val root = project
     json,
     commons,
     jwt,
+    sentry,
     openidKeycloak,
     httpClient,
     events,
@@ -120,6 +121,18 @@ lazy val commons = project
   .dependsOn(json % "compile->compile;test->test")
   .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
+
+lazy val sentry = project.in(file("modules/sentry"))
+  .enablePlugins(AutomateHeaderPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "sentry",
+    description := "sentry integration with scribe",
+    libraryDependencies ++= Dependencies.sentry ++
+      Dependencies.scribe
+  )
+  .dependsOn(commons)
 
 lazy val jwt = project
   .in(file("modules/jwt"))

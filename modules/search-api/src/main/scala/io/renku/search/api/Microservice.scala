@@ -20,7 +20,7 @@ package io.renku.search.api
 
 import cats.effect.*
 
-import io.renku.logging.LoggingSetup
+import io.renku.search.logging.LoggingSetup
 
 object Microservice extends IOApp:
   private val logger = scribe.cats.io

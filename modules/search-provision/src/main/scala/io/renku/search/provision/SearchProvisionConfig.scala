@@ -42,14 +42,22 @@ final case class SearchProvisionConfig(
 
 object SearchProvisionConfig:
 
+  private val configKeys = {
+    val cv = ConfigValues()
+    cv -> (
+      cv.redisConfig,
+      cv.solrConfig,
+      cv.retryOnErrorDelay,
+      cv.metricsUpdateInterval,
+      cv.logLevel,
+      QueuesConfig.config(cv),
+      cv.httpServerConfig("PROVISION", defaultPort = port"8081"),
+      cv.clientId(ClientId("search-provisioner"))
+    )
+  }
+
+  val configValues = configKeys._1
+
   val config: ConfigValue[Effect, SearchProvisionConfig] =
-    (
-      ConfigValues.redisConfig,
-      ConfigValues.solrConfig,
-      ConfigValues.retryOnErrorDelay,
-      ConfigValues.metricsUpdateInterval,
-      ConfigValues.logLevel,
-      QueuesConfig.config,
-      ConfigValues.httpServerConfig("PROVISION", defaultPort = port"8081"),
-      ConfigValues.clientId(ClientId("search-provisioner"))
-    ).mapN(SearchProvisionConfig.apply)
+    val (_, keys) = configKeys
+    keys.mapN(SearchProvisionConfig.apply)

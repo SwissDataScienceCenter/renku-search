@@ -55,30 +55,29 @@
         ++ (builtins.attrValues selfPkgs);
 
       queueNames = {
-        projectCreated = "project.created";
-        projectUpdated = "project.updated";
-        projectRemoved = "project.removed";
-        projectAuthAdded = "projectAuth.added";
-        projectAuthUpdated = "projectAuth.updated";
-        projectAuthRemoved = "projectAuth.removed";
-        userAdded = "user.added";
-        userUpdated = "user.updated";
-        userRemoved = "user.removed";
-        groupAdded = "group.added";
-        groupUpdated = "group.updated";
-        groupRemoved = "groupRemoved";
-        groupMemberAdded = "groupMemberAdded";
-        groupMemberUpdated = "groupMemberUpdated";
-        groupMemberRemoved = "groupMemberRemoved";
-        dataServiceAllEvents = "data_service.all_events";
+        PROJECT_CREATED = "project.created";
+        PROJECT_UPDATED = "project.updated";
+        PROJECT_REMOVED = "project.removed";
+        PROJECTAUTH_ADDED = "projectAuth.added";
+        PROJECTAUTH_UPDATED = "projectAuth.updated";
+        PROJECTAUTH_REMOVED = "projectAuth.removed";
+        USER_ADDED = "user.added";
+        USER_UPDATED = "user.updated";
+        USER_REMOVED = "user.removed";
+        GROUP_ADDED = "group.added";
+        GROUP_UPDATED = "group.updated";
+        GROUP_REMOVED = "groupRemoved";
+        GROUPMEMBER_ADDED = "groupMemberAdded";
+        GROUPMEMBER_UPDATED = "groupMemberUpdated";
+        GROUPMEMBER_REMOVED = "groupMemberRemoved";
+        DATASERVICE_ALLEVENTS = "data_service.all_events";
       };
 
       queueNameConfig = with nixpkgs.lib; mapAttrs' (key: qn: nameValuePair "RS_REDIS_QUEUE_${key}" qn) queueNames;
     in {
       formatter = pkgs.alejandra;
 
-      devShells = rec {
-        default = container;
+      devShells = {
         container = pkgs.mkShellNoCC (queueNameConfig
           // {
             RS_SOLR_HOST = "rsdev-cnt";
@@ -136,6 +135,13 @@
               commonPackages
               ++ (builtins.attrValues devshell-tools.legacyPackages.${system}.vm-scripts);
           });
+
+        ci = pkgs.mkShellNoCC {
+          buildInputs = [
+            devshellToolsPkgs.sbt17
+          ];
+          SBT_OPTS = "-Xmx2G";
+        };
       };
     });
 }

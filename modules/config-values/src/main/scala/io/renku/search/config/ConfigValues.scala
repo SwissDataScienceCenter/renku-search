@@ -29,79 +29,92 @@ import io.renku.solr.client.{SolrConfig, SolrUser}
 import org.http4s.Uri
 
 import scala.concurrent.duration.*
+import java.util.concurrent.atomic.AtomicReference
 
-object ConfigValues extends ConfigDecoders:
+final class ConfigValues(prefix: String = "RS") extends ConfigDecoders:
+  private val values = new AtomicReference[Map[String, Option[String]]](Map.empty)
 
-  private val prefix = "RS"
+  private def config(
+      name: String,
+      default: Option[String]
+  ): ConfigValue[Effect, String] = {
+    val fullName = s"${prefix}_${name.toUpperCase}"
+    values.updateAndGet(m => m.updated(fullName, default))
+    val propName = fullName.toLowerCase.replace('_', '.')
+    val cv = prop(propName).or(env(fullName))
+    default.map(cv.default(_)).getOrElse(cv)
+  }
+  private def config(name: String): ConfigValue[Effect, String] = config(name, None)
+  private def config(name: String, defval: String): ConfigValue[Effect, String] =
+    config(name, Some(defval))
 
-  private def renv(name: String) =
-    env(s"${prefix}_$name")
+  def getAll: Map[String, Option[String]] = values.get()
 
-  val logLevel: ConfigValue[Effect, Int] =
-    renv("LOG_LEVEL").default("2").as[Int]
+  lazy val logLevel: ConfigValue[Effect, Int] =
+    config("LOG_LEVEL", "2").as[Int]
 
-  val redisConfig: ConfigValue[Effect, RedisConfig] = {
-    val host = renv("REDIS_HOST").default("localhost").as[RedisHost]
-    val port = renv("REDIS_PORT").default("6379").as[RedisPort]
-    val sentinel = renv("REDIS_SENTINEL").as[Boolean].default(false)
-    val maybeDB = renv("REDIS_DB").as[RedisDB].option
-    val maybePass = renv("REDIS_PASSWORD").as[RedisPassword].option
-    val maybeMasterSet = renv("REDIS_MASTER_SET").as[RedisMasterSet].option
+  lazy val redisConfig: ConfigValue[Effect, RedisConfig] = {
+    val host = config("REDIS_HOST", "localhost").as[RedisHost]
+    val port = config("REDIS_PORT", "6379").as[RedisPort]
+    val sentinel = config("REDIS_SENTINEL").as[Boolean].default(false)
+    val maybeDB = config("REDIS_DB").as[RedisDB].option
+    val maybePass = config("REDIS_PASSWORD").as[RedisPassword].option
+    val maybeMasterSet = config("REDIS_MASTER_SET").as[RedisMasterSet].option
     val connectionRefresh =
-      renv("REDIS_CONNECTION_REFRESH_INTERVAL").as[FiniteDuration].default(30 minutes)
+      config("REDIS_CONNECTION_REFRESH_INTERVAL", "30 minutes").as[FiniteDuration]
 
     (host, port, sentinel, maybeDB, maybePass, maybeMasterSet, connectionRefresh)
       .mapN(RedisConfig.apply)
   }
 
   def eventQueue(eventType: String): ConfigValue[Effect, QueueName] =
-    renv(s"REDIS_QUEUE_$eventType").as[QueueName]
+    config(s"REDIS_QUEUE_$eventType").as[QueueName]
 
-  val retryOnErrorDelay: ConfigValue[Effect, FiniteDuration] =
-    renv("RETRY_ON_ERROR_DELAY").default("10 seconds").as[FiniteDuration]
+  lazy val retryOnErrorDelay: ConfigValue[Effect, FiniteDuration] =
+    config("RETRY_ON_ERROR_DELAY", "10 seconds").as[FiniteDuration]
 
-  val metricsUpdateInterval: ConfigValue[Effect, FiniteDuration] =
-    renv("METRICS_UPDATE_INTERVAL").default("15 seconds").as[FiniteDuration]
+  lazy val metricsUpdateInterval: ConfigValue[Effect, FiniteDuration] =
+    config("METRICS_UPDATE_INTERVAL", "15 seconds").as[FiniteDuration]
 
   def clientId(default: ClientId): ConfigValue[Effect, ClientId] =
-    renv("CLIENT_ID").default(default.value).as[ClientId]
+    config("CLIENT_ID", default.value).as[ClientId]
 
-  val solrConfig: ConfigValue[Effect, SolrConfig] = {
-    val url = renv("SOLR_URL").default("http://localhost:8983").as[Uri]
-    val core = renv("SOLR_CORE").default("search-core-test")
+  lazy val solrConfig: ConfigValue[Effect, SolrConfig] = {
+    val url = config("SOLR_URL", "http://localhost:8983").as[Uri]
+    val core = config("SOLR_CORE", "search-core-test")
     val maybeUser =
-      (renv("SOLR_USER").default("admin"), renv("SOLR_PASS"))
+      (config("SOLR_USER", "admin"), config("SOLR_PASS"))
         .mapN(SolrUser.apply)
         .option
     val logMessageBodies =
-      renv("SOLR_LOG_MESSAGE_BODIES").default("false").as[Boolean]
+      config("SOLR_LOG_MESSAGE_BODIES", "false").as[Boolean]
     (url, core, maybeUser, logMessageBodies).mapN(SolrConfig.apply)
   }
 
   def httpServerConfig(
-      prefix: String,
+      serviceName: String,
       defaultPort: Port
   ): ConfigValue[Effect, HttpServerConfig] =
     val bindAddress =
-      renv(s"${prefix}_HTTP_SERVER_BIND_ADDRESS").default("0.0.0.0").as[Ipv4Address]
+      config(s"${serviceName.toUpperCase}_HTTP_SERVER_BIND_ADDRESS", "0.0.0.0").as[Ipv4Address]
     val port =
-      renv(s"${prefix}_HTTP_SERVER_PORT").default(defaultPort.value.toString).as[Port]
+      config(s"${serviceName.toUpperCase}_HTTP_SERVER_PORT", defaultPort.value.toString).as[Port]
     val shutdownTimeout =
-      renv(s"${prefix}_HTTP_SHUTDOWN_TIMEOUT").default("30s").as[Duration]
+      config("HTTP_SHUTDOWN_TIMEOUT", "30s").as[Duration]
     (bindAddress, port, shutdownTimeout).mapN(HttpServerConfig.apply)
 
-  val jwtVerifyConfig: ConfigValue[Effect, JwtVerifyConfig] = {
+  lazy val jwtVerifyConfig: ConfigValue[Effect, JwtVerifyConfig] = {
     val defaults = JwtVerifyConfig.default
-    val enableSigCheck = renv("JWT_ENABLE_SIGNATURE_CHECK")
-      .as[Boolean]
-      .default(defaults.enableSignatureValidation)
-    val requestDelay = renv("JWT_KEYCLOAK_REQUEST_DELAY")
-      .as[FiniteDuration]
-      .default(defaults.minRequestDelay)
+    val enableSigCheck =
+      config("JWT_ENABLE_SIGNATURE_CHECK", defaults.enableSignatureValidation.toString)
+        .as[Boolean]
+    val requestDelay =
+      config("JWT_KEYCLOAK_REQUEST_DELAY", defaults.minRequestDelay.toString)
+        .as[FiniteDuration]
     val openIdConfigPath =
-      renv("JWT_OPENID_CONFIG_PATH").default(defaults.openIdConfigPath)
+      config("JWT_OPENID_CONFIG_PATH", defaults.openIdConfigPath)
     val allowedIssuers =
-      renv("JWT_ALLOWED_ISSUER_URL_PATTERNS")
+      config("JWT_ALLOWED_ISSUER_URL_PATTERNS")
         .as[List[UrlPattern]]
     (requestDelay, enableSigCheck, openIdConfigPath, allowedIssuers).mapN(
       JwtVerifyConfig.apply

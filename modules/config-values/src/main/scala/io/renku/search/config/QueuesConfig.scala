@@ -60,22 +60,22 @@ final case class QueuesConfig(
   )
 
 object QueuesConfig:
-  val config: ConfigValue[Effect, QueuesConfig] =
+  def config(cv: ConfigValues): ConfigValue[Effect, QueuesConfig] =
     (
-      ConfigValues.eventQueue("projectCreated"),
-      ConfigValues.eventQueue("projectUpdated"),
-      ConfigValues.eventQueue("projectRemoved"),
-      ConfigValues.eventQueue("projectAuthAdded"),
-      ConfigValues.eventQueue("projectAuthUpdated"),
-      ConfigValues.eventQueue("projectAuthRemoved"),
-      ConfigValues.eventQueue("userAdded"),
-      ConfigValues.eventQueue("userUpdated"),
-      ConfigValues.eventQueue("userRemoved"),
-      ConfigValues.eventQueue("groupAdded"),
-      ConfigValues.eventQueue("groupUpdated"),
-      ConfigValues.eventQueue("groupRemoved"),
-      ConfigValues.eventQueue("groupMemberAdded"),
-      ConfigValues.eventQueue("groupMemberUpdated"),
-      ConfigValues.eventQueue("groupMemberRemoved"),
-      ConfigValues.eventQueue("dataServiceAllEvents")
+      cv.eventQueue("project_created"),
+      cv.eventQueue("project_updated"),
+      cv.eventQueue("project_removed"),
+      cv.eventQueue("projectauth_added"),
+      cv.eventQueue("projectauth_updated"),
+      cv.eventQueue("projectauth_removed"),
+      cv.eventQueue("user_added"),
+      cv.eventQueue("user_updated"),
+      cv.eventQueue("user_removed"),
+      cv.eventQueue("group_added"),
+      cv.eventQueue("group_updated"),
+      cv.eventQueue("group_removed"),
+      cv.eventQueue("groupmember_added"),
+      cv.eventQueue("groupmember_updated"),
+      cv.eventQueue("groupmember_removed"),
+      cv.eventQueue("dataservice_allevents")
     ).mapN(QueuesConfig.apply)

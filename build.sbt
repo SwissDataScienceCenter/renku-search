@@ -28,7 +28,10 @@ releaseVersionBump := sbtrelease.Version.Bump.Minor
 releaseIgnoreUntrackedFiles := true
 releaseTagName := (ThisBuild / version).value
 
-addCommandAlias("ci", "; lint; compile; Test/compile; dbTests; publishLocal")
+addCommandAlias(
+  "ci",
+  "readme/readmeCheckModification; lint; compile; Test/compile; dbTests; readme/readmeUpdate; publishLocal; search-provision/Docker/publishLocal; search-api/Docker/publishLocal"
+)
 addCommandAlias(
   "lint",
   "; scalafmtSbtCheck; scalafmtCheckAll; scalafixAll --check"
@@ -439,6 +442,33 @@ lazy val searchCli = project
     renkuRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
+  )
+
+lazy val readme = project
+  .in(file("modules/readme"))
+  .enablePlugins(ReadmePlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "search-readme",
+    scalacOptions :=
+      Seq(
+        "-feature",
+        "-deprecation",
+        "-unchecked",
+        "-encoding",
+        "UTF-8",
+        "-language:higherKinds",
+        "-Xkind-projector:underscores"
+      ),
+    readmeAdditionalFiles := Map(
+      // copy query manual into source tree for easier discovery on github
+      (searchQueryDocs / Docs / outputDirectory).value / "manual.md" -> "query-manual.md"
+    )
+  )
+  .dependsOn(
+    renkuRedisClient % "compile->compile;compile->test",
+    searchProvision,
+    searchApi
   )
 
 lazy val commonSettings = Seq(

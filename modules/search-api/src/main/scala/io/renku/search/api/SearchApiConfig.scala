@@ -35,10 +35,18 @@ final case class SearchApiConfig(
 )
 
 object SearchApiConfig:
+  private val configKeys = {
+    val cv = ConfigValues()
+    cv -> (
+      cv.solrConfig,
+      cv.httpServerConfig("SEARCH", port"8080"),
+      cv.jwtVerifyConfig,
+      cv.logLevel
+    )
+  }
+
+  val configValues = configKeys._1
+
   val config: ConfigValue[Effect, SearchApiConfig] =
-    (
-      ConfigValues.solrConfig,
-      ConfigValues.httpServerConfig("SEARCH", port"8080"),
-      ConfigValues.jwtVerifyConfig,
-      ConfigValues.logLevel
-    ).mapN(SearchApiConfig.apply)
+    val (_, keys) = configKeys
+    keys.mapN(SearchApiConfig.apply)

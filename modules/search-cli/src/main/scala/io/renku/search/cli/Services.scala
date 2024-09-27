@@ -23,6 +23,7 @@ import cats.effect.*
 import io.renku.queue.client.QueueClient
 import io.renku.redis.client.ClientId
 import io.renku.search.config.ConfigValues
+import io.renku.search.config.QueuesConfig
 import io.renku.search.events.*
 
 object Services:
@@ -30,8 +31,11 @@ object Services:
   private val clientId: ClientId = ClientId("search-provision")
   private val counter = Ref.unsafe[IO, Long](0)
 
+  val configValues = ConfigValues()
+  val queueConfig = QueuesConfig.config(configValues)
+
   def queueClient: Resource[IO, QueueClient[IO]] =
-    val redisCfg = ConfigValues.redisConfig.load[IO]
+    val redisCfg = ConfigValues().redisConfig.load[IO]
     Resource.eval(redisCfg).flatMap(QueueClient.make[IO](_, clientId))
 
   private def makeRequestId: IO[RequestId] =

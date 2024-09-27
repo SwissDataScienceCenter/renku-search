@@ -40,11 +40,16 @@ _either_ `public` _or_ `private`.
 
 The following fields are available:
 
-```scala mdoc:passthrough
-import io.renku.search.model.*
-import io.renku.search.query.*
-println(Field.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", ""))
-```
+- `id`
+- `name`
+- `slug`
+- `visibility`
+- `created`
+- `createdBy`
+- `type`
+- `role`
+- `keyword`
+- `namespace`
 
 Each field allows to specify one or more values, separated by comma.
 The value must be separated by a `:`. For date fields, additional `<`
@@ -55,27 +60,22 @@ and `>` is supported.
 The field `type` allows to search for specific entity types. If it is
 missing, all entity types are included in the result. Entity types are:
 
-```scala mdoc:passthrough
-println(
-  EntityType.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
-)
-```
+- `Project`
+- `User`
+- `Group`
 
 Example:
-```scala mdoc:passthrough
-println(s" `${Field.Type.name}:${EntityType.Project.name}`")
-```
+ `type:Project`
 
 ### Roles
 
 The field `role` allows to search for projects the current user has
 the given role. Other entities are excluded from the results.
 
-```scala mdoc:passthrough
-println(
-  MemberRole.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
-)
-```
+- `owner`
+- `editor`
+- `viewer`
+- `member`
 
 ### Visibility
 
@@ -83,11 +83,8 @@ The `visibility` field can be used to restrict to entities with a
 certain visibility. Users have a default visibility of `public`.
 Possbile values are:
 
-```scala mdoc:passthrough
-println(
-  Visibility.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
-)
-```
+- `public`
+- `private`
 
 
 
@@ -95,9 +92,7 @@ println(
 
 Date fields, like
 
-```scala mdoc:passthrough
-println(List(Field.Created).map(e => s"`${e.name}`").mkString("- ", "\n- ", ""))
-```
+- `created`
 
 accept date strings which can be specified in various ways. There are
 
@@ -110,11 +105,8 @@ accept date strings which can be specified in various ways. There are
 
 There are the following keywords for relative dates:
 
-```scala mdoc:passthrough
-println(
-  RelativeDate.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
-)
-```
+- `today`
+- `yesterday`
 
 #### Partial Timestamps
 
@@ -175,11 +167,9 @@ The above means to match entities created in March 2023 or June 2023.
 The query allows to define terms for sorting. Sorting is limited to
 specific fields, which are:
 
-```scala mdoc:passthrough
-println(
-  SortableField.values.map(e => s"`${e.name}`").mkString("- ", "\n- ", "")
-)
-```
+- `name`
+- `created`
+- `score`
 
 Sorting by a field is defined by writing the field name, followed by a
 dash and the sort direction. Multiple such definitions can be
@@ -188,13 +178,6 @@ specified, using a comma separated list. Alternatively, multiple
 appear.
 
 Example:
-```scala mdoc:passthrough
-val str = Order(SortableField.Score -> Order.Direction.Desc, SortableField.Created -> Order.Direction.Asc).render
-println(s"`$str`")
-```
+`sort:score-desc,created-asc`
 is equivalent to
-```scala mdoc:passthrough
-val str1 = Order(SortableField.Score -> Order.Direction.Desc).render
-val str2 = Order(SortableField.Created -> Order.Direction.Asc).render
-println(s"`$str1 $str2`")
-```
+`sort:score-desc sort:created-asc`

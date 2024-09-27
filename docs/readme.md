@@ -1,6 +1,8 @@
 <!-- -*- fill-column: 80 -*- -->
 # Renku Search
 
+mod
+
 ```scala mdoc:invisible
 import io.renku.search.provision.Routes
 import io.renku.search.http.routes.OperationRoutes

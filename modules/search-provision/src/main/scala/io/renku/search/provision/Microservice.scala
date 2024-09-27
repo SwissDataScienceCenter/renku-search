@@ -23,7 +23,7 @@ import scala.concurrent.duration.Duration
 import cats.effect.*
 import cats.syntax.all.*
 
-import io.renku.logging.LoggingSetup
+import io.renku.search.logging.LoggingSetup
 import io.renku.search.http.HttpServer
 import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.BackgroundProcessManage.TaskName

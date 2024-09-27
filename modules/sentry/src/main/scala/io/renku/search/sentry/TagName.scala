@@ -16,23 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.search
+package io.renku.search.sentry
 
-import io.renku.search.logging.LoggingSetup
+opaque type TagName = String
 
-trait LoggingConfigure extends munit.Suite:
+object TagName:
+  def from(str: String): Either[String, TagName] =
+    if (str.length() > 32) Left(s"Tag name is too long (>32): ${str.length}")
+    else if (str.matches("[a-zA-Z0-9_\\.:\\-]+")) Right(str)
+    else Left(s"Invalid tag name: $str")
 
-  def defaultVerbosity: Int = 0
+  def unsafe(str: String): TagName =
+    from(str).fold(sys.error, identity)
 
-  override def beforeAll(): Unit =
-    setLoggingVerbosity(defaultVerbosity)
-    super.beforeAll()
-
-  def setLoggingVerbosity(level: Int): Unit =
-    LoggingSetup.doConfigure(level)
-
-  def withVerbosity[T](level: Int)(body: => T): T =
-    val verbosity = defaultVerbosity
-    LoggingSetup.doConfigure(level)
-    try body
-    finally LoggingSetup.doConfigure(verbosity)
+  extension (self: TagName) def value: String = self

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package io.renku.logging
+package io.renku.search.logging
 
 import scribe.Level
 import scribe.format.Formatter

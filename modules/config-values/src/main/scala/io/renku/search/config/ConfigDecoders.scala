@@ -27,6 +27,8 @@ import org.http4s.Uri
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import io.renku.search.common.UrlPattern
+import io.renku.search.sentry.SentryDsn
+import io.renku.search.sentry.SentryEnv
 
 trait ConfigDecoders:
   extension [A, B](self: ConfigDecoder[A, B])
@@ -72,3 +74,9 @@ trait ConfigDecoders:
     ConfigDecoder[String].emap("UrlPattern") { str =>
       str.split(',').toList.traverse(UrlPattern.fromString)
     }
+
+  given ConfigDecoder[String, SentryDsn] =
+    ConfigDecoder[String].emap("SentryDsn")(SentryDsn.fromString)
+
+  given ConfigDecoder[String, SentryEnv] =
+    ConfigDecoder[String].emap("SentryEnv")(SentryEnv.fromString)

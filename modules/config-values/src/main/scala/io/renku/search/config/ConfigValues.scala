@@ -30,6 +30,7 @@ import org.http4s.Uri
 
 import scala.concurrent.duration.*
 import java.util.concurrent.atomic.AtomicReference
+import io.renku.search.sentry.{SentryConfig, SentryDsn, SentryEnv}
 
 final class ConfigValues(prefix: String = "RS") extends ConfigDecoders:
   private val values = new AtomicReference[Map[String, Option[String]]](Map.empty)
@@ -96,9 +97,11 @@ final class ConfigValues(prefix: String = "RS") extends ConfigDecoders:
       defaultPort: Port
   ): ConfigValue[Effect, HttpServerConfig] =
     val bindAddress =
-      config(s"${serviceName.toUpperCase}_HTTP_SERVER_BIND_ADDRESS", "0.0.0.0").as[Ipv4Address]
+      config(s"${serviceName.toUpperCase}_HTTP_SERVER_BIND_ADDRESS", "0.0.0.0")
+        .as[Ipv4Address]
     val port =
-      config(s"${serviceName.toUpperCase}_HTTP_SERVER_PORT", defaultPort.value.toString).as[Port]
+      config(s"${serviceName.toUpperCase}_HTTP_SERVER_PORT", defaultPort.value.toString)
+        .as[Port]
     val shutdownTimeout =
       config("HTTP_SHUTDOWN_TIMEOUT", "30s").as[Duration]
     (bindAddress, port, shutdownTimeout).mapN(HttpServerConfig.apply)
@@ -120,3 +123,12 @@ final class ConfigValues(prefix: String = "RS") extends ConfigDecoders:
       JwtVerifyConfig.apply
     )
   }
+
+  lazy val sentryConfig: ConfigValue[Effect, SentryConfig] =
+    val dsn = config("SENTRY_DSN").as[SentryDsn]
+    val env = config("SENTRY_ENV").as[SentryEnv]
+    val enabled = config("SENTRY_ENABLED", "false").as[Boolean]
+    enabled.flatMap {
+      case false => ConfigValue.loaded(ConfigKey("sentry-config"), SentryConfig.disabled)
+      case true => (dsn, env).mapN(SentryConfig.enabled)
+    }

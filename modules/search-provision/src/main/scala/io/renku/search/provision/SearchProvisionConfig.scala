@@ -28,6 +28,7 @@ import io.renku.redis.client.{ClientId, RedisConfig}
 import io.renku.search.config.{ConfigValues, QueuesConfig}
 import io.renku.search.http.HttpServerConfig
 import io.renku.solr.client.SolrConfig
+import io.renku.search.sentry.SentryConfig
 
 final case class SearchProvisionConfig(
     redisConfig: RedisConfig,
@@ -37,6 +38,7 @@ final case class SearchProvisionConfig(
     verbosity: Int,
     queuesConfig: QueuesConfig,
     httpServerConfig: HttpServerConfig,
+    sentryConfig: SentryConfig,
     clientId: ClientId
 )
 
@@ -52,6 +54,7 @@ object SearchProvisionConfig:
       cv.logLevel,
       QueuesConfig.config(cv),
       cv.httpServerConfig("PROVISION", defaultPort = port"8081"),
+      cv.sentryConfig,
       cv.clientId(ClientId("search-provisioner"))
     )
   }

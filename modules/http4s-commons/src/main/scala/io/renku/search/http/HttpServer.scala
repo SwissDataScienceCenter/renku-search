@@ -28,6 +28,7 @@ import org.http4s.server.Server
 import org.http4s.HttpApp
 import scribe.Scribe
 import org.typelevel.ci.*
+import io.renku.search.sentry.*
 
 final class HttpServer[F[_]: Async](
     builder: EmberServerBuilder[F],
@@ -45,16 +46,24 @@ final class HttpServer[F[_]: Async](
         .withShutdownTimeout(config.shutdownTimeout)
     )
 
-  def withDefaultErrorHandler(logger: Scribe[F]) =
+  def withDefaultErrorHandler(logger: Scribe[F], sentry: Sentry[F]) =
     modify(_.withErrorHandler {
       case ex: DecodeFailure =>
-        logger
-          .warn("Error decoding message!", ex)
-          .as(ex.toHttpResponse(HttpVersion.`HTTP/1.1`))
+        val event = SentryEvent
+          .create[F](Level.Warn, "Error decoding message!")
+          .map(_.withError(ex).withLogger(logger.))
+        event.flatMap(sentry.capture) >>
+          logger
+            .warn("Error decoding message!", ex)
+            .as(ex.toHttpResponse(HttpVersion.`HTTP/1.1`))
       case ex =>
-        logger
-          .error("Service raised an error!", ex)
-          .as(Response(status = Status.InternalServerError))
+        val event = SentryEvent
+          .create[F](Level.Error, "Internal server error!")
+          .map(_.withError(ex).withLogger("SearchApi"))
+        event.flatMap(sentry.capture) >>
+          logger
+            .error("Service raised an error!", ex)
+            .as(Response(status = Status.InternalServerError))
     })
 
   def withMiddleware(m: HttpApp[F] => HttpApp[F]): HttpServer[F] =

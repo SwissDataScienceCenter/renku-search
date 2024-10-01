@@ -31,14 +31,19 @@ import org.http4s.HttpRoutes
 import org.http4s.server.middleware.ResponseLogger
 import org.http4s.server.middleware.{RequestId, RequestLogger}
 import scribe.Scribe
+import io.renku.search.sentry.Sentry
 
 object SearchServer:
-  def create[F[_]: Async: Network](config: SearchApiConfig, app: ServiceRoutes[F]) =
+  def create[F[_]: Async: Network](
+      config: SearchApiConfig,
+      app: ServiceRoutes[F],
+      sentry: Sentry[F]
+  ) =
     for
       routes <- makeHttpRoutes(app)
       logger = scribe.cats.effect[F]
       server <- HttpServer[F](config.httpServerConfig)
-        .withDefaultErrorHandler(logger)
+        .withDefaultErrorHandler(logger, sentry)
         .withHttpApp(routes.orNotFound)
         .build
     yield server

@@ -78,7 +78,7 @@ object Microservice extends IOApp:
     val io = Routes[IO](registryBuilder, services)
       .flatMap(routes =>
         HttpServer[IO](services.config.httpServerConfig)
-          .withDefaultErrorHandler(logger)
+          .withDefaultErrorHandler(logger, services.sentry)
           .withDefaultLogging(logger)
           .withHttpRoutes(routes)
           .build

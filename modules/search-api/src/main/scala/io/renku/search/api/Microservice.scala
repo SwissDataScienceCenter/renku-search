@@ -21,9 +21,10 @@ package io.renku.search.api
 import cats.effect.*
 
 import io.renku.search.logging.LoggingSetup
+import io.renku.search.sentry.*
 
 object Microservice extends IOApp:
-  private val logger = scribe.cats.io
+  private val logger = _root_.scribe.cats.io
   private val loadConfig = SearchApiConfig.config.load[IO]
   val pathPrefix = List("api", "search")
 
@@ -33,13 +34,15 @@ object Microservice extends IOApp:
   def createServer =
     for {
       config <- Resource.eval(loadConfig)
+      sentry <- Sentry[IO](
+        config.sentryConfig.withTag(TagName.service, TagValue.searchApi)
+      )
       _ <- Resource.eval(IO(LoggingSetup.doConfigure(config.verbosity)))
-      logger <- Resource.pure(scribe.cats.io)
       app <- ServiceRoutes[IO](config, pathPrefix)
-      server <- SearchServer.create[IO](config, app)
+      server <- SearchServer.create[IO](config, app, sentry)
       _ <- Resource.eval(
         logger.info(
-          s"Search microservice running: ${config.httpServerConfig}"
+          s"Search microservice running: ${config.httpServerConfig}/${config.sentryConfig}"
         )
       )
     } yield server

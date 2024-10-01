@@ -29,6 +29,9 @@ import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.reindex.ReIndexService
 import io.renku.search.provision.reindex.ReprovisionService
 import io.renku.search.solr.client.SearchSolrClient
+import io.renku.search.sentry.Sentry
+import io.renku.search.sentry.TagName
+import io.renku.search.sentry.TagValue
 
 final case class Services[F[_]](
     config: SearchProvisionConfig,
@@ -37,7 +40,8 @@ final case class Services[F[_]](
     messageHandlers: MessageHandlers[F],
     backgroundManage: BackgroundProcessManage[F],
     reprovision: ReprovisionService[F],
-    reindex: ReIndexService[F]
+    reindex: ReIndexService[F],
+    sentry: Sentry[F]
 ):
 
   def resetLockDocuments(using NonEmptyParallel[F]): F[Unit] =
@@ -62,5 +66,8 @@ object Services:
       ris = ReIndexService[F](bm, redis, solr, cfg.queuesConfig)
       rps = ReprovisionService(ris, solr.underlying)
       ctrl <- Resource.eval(SyncMessageHandler.Control[F])
+      sentry <- Sentry[F](
+        cfg.sentryConfig.withTag(TagName.service, TagValue.searchProvision)
+      )
       handlers = MessageHandlers[F](steps, rps, cfg.queuesConfig, ctrl)
-    } yield Services(cfg, solr, redis, handlers, bm, rps, ris)
+    } yield Services(cfg, solr, redis, handlers, bm, rps, ris, sentry)

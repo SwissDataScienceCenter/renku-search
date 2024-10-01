@@ -21,6 +21,9 @@ package io.renku.search.sentry
 opaque type TagValue = String
 
 object TagValue:
+  val searchApi: TagValue = unsafe("search-api")
+  val searchProvision: TagValue = unsafe("search-provision")
+
   def from(str: String): Either[String, TagValue] =
     if (str.length() > 200) Left(s"Tag name is too long (>200): ${str.length}")
     else if (str.matches("[a-zA-Z0-9_\\.:\\-]+")) Right(str)

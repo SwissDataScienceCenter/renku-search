@@ -32,5 +32,4 @@ object TagValue:
   def unsafe(str: String): TagValue =
     from(str).fold(sys.error, identity)
 
-  extension(self: TagValue)
-    def value: String = self
+  extension (self: TagValue) def value: String = self

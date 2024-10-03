@@ -29,6 +29,7 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
 import io.renku.search.common.UrlPattern
 import io.renku.search.sentry.SentryDsn
 import io.renku.search.sentry.SentryEnv
+import io.renku.solr.client.SolrConfig
 
 trait ConfigDecoders:
   extension [A, B](self: ConfigDecoder[A, B])
@@ -46,6 +47,9 @@ trait ConfigDecoders:
     ConfigDecoder[String].mapOption("duration") { s =>
       Duration.unapply(s).map(Duration.apply.tupled).filter(_.isFinite)
     }
+
+  given ConfigDecoder[String, SolrConfig.SolrPassword] =
+    ConfigDecoder[String].map(SolrConfig.SolrPassword.apply)
 
   given ConfigDecoder[String, RedisHost] =
     ConfigDecoder[String].map(RedisHost.apply)

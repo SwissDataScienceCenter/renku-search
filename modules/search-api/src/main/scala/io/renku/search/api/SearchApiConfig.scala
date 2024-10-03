@@ -25,8 +25,8 @@ import com.comcast.ip4s.port
 import io.renku.openid.keycloak.JwtVerifyConfig
 import io.renku.search.config.ConfigValues
 import io.renku.search.http.HttpServerConfig
-import io.renku.solr.client.SolrConfig
 import io.renku.search.sentry.SentryConfig
+import io.renku.solr.client.SolrConfig
 
 final case class SearchApiConfig(
     solrConfig: SolrConfig,

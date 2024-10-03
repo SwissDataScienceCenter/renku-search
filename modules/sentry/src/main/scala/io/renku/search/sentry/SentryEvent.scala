@@ -18,12 +18,14 @@
 
 package io.renku.search.sentry
 
+import java.time.Instant
+
+import cats.Functor
+import cats.effect.*
 import cats.syntax.all.*
+
 import io.sentry.SentryEvent as JSentryEvent
 import io.sentry.protocol.Message
-import java.time.Instant
-import cats.effect.*
-import cats.Functor
 
 final case class SentryEvent(
     timestamp: Instant,

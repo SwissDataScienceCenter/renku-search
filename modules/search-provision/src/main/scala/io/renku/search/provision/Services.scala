@@ -28,10 +28,10 @@ import io.renku.queue.client.QueueClient
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.reindex.ReIndexService
 import io.renku.search.provision.reindex.ReprovisionService
-import io.renku.search.solr.client.SearchSolrClient
 import io.renku.search.sentry.Sentry
 import io.renku.search.sentry.TagName
 import io.renku.search.sentry.TagValue
+import io.renku.search.solr.client.SearchSolrClient
 
 final case class Services[F[_]](
     config: SearchProvisionConfig,
@@ -69,5 +69,5 @@ object Services:
       sentry <- Sentry[F](
         cfg.sentryConfig.withTag(TagName.service, TagValue.searchProvision)
       )
-      handlers = MessageHandlers[F](steps, rps, cfg.queuesConfig, ctrl)
+      handlers = MessageHandlers[F](steps, rps, sentry, cfg.queuesConfig, ctrl)
     } yield Services(cfg, solr, redis, handlers, bm, rps, ris, sentry)

@@ -28,6 +28,7 @@ import io.renku.search.provision.BackgroundProcessManage.TaskName
 import io.renku.search.provision.MessageHandlers.MessageHandlerKey
 import io.renku.search.provision.handler.*
 import io.renku.search.provision.reindex.ReprovisionService
+import io.renku.search.sentry.Sentry
 
 /** The entry point for defining all message handlers.
   *
@@ -37,6 +38,7 @@ import io.renku.search.provision.reindex.ReprovisionService
 final class MessageHandlers[F[_]: Async](
     steps: QueueName => PipelineSteps[F],
     reprovisionService: ReprovisionService[F],
+    sentry: Sentry[F],
     cfg: QueuesConfig,
     ctrl: SyncMessageHandler.Control[F],
     maxConflictRetries: Int = 20
@@ -50,12 +52,18 @@ final class MessageHandlers[F[_]: Async](
     task.void
 
   private[provision] def withMaxConflictRetries(n: Int): MessageHandlers[F] =
-    new MessageHandlers[F](steps, reprovisionService, cfg, ctrl, n)
+    new MessageHandlers[F](steps, reprovisionService, sentry, cfg, ctrl, n)
 
   def getAll: Map[TaskName, F[Unit]] = tasks
 
   private[provision] def createHandler(qn: QueueName): SyncMessageHandler[F] =
-    new SyncMessageHandler(steps(qn), reprovisionService, ctrl, maxConflictRetries)
+    new SyncMessageHandler(
+      steps(qn),
+      reprovisionService,
+      ctrl,
+      sentry,
+      maxConflictRetries
+    )
 
   val allEvents = add(
     MessageHandlerKey.DataServiceAllEvents,

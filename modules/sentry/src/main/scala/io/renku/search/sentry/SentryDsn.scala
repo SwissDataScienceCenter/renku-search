@@ -29,5 +29,4 @@ object SentryDsn:
   def unsafeFromString(str: String): SentryDsn =
     fromString(str).fold(sys.error, identity)
 
-  extension(self: SentryDsn)
-    def value: String = self
+  extension (self: SentryDsn) def value: String = self

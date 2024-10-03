@@ -31,6 +31,7 @@ import io.renku.search.model.{EntityType, Id, Namespace}
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.reindex.ReIndexService
 import io.renku.search.provision.reindex.ReprovisionService
+import io.renku.search.sentry.Sentry
 import io.renku.search.solr.client.{SearchSolrClient, SearchSolrSuite}
 import io.renku.search.solr.documents.{Group as GroupDocument, User as UserDocument, *}
 import io.renku.search.solr.query.SolrToken
@@ -60,7 +61,7 @@ trait ProvisioningSuite extends CatsEffectSuite with SearchSolrSuite with QueueS
       )
       rps = ReprovisionService(reindex, solrClient.underlying)
       ctrl <- Resource.eval(SyncMessageHandler.Control[IO])
-      handlers = MessageHandlers[IO](steps, rps, queueConfig, ctrl)
+      handlers = MessageHandlers[IO](steps, rps, Sentry.noop[IO], queueConfig, ctrl)
     yield TestServices(steps, handlers, queue, solrClient, bpm, reindex)
 
   val testServices = ResourceSuiteLocalFixture("test-services", testServicesR)

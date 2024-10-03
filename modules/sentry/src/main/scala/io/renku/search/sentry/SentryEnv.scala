@@ -32,5 +32,4 @@ object SentryEnv:
   val production: SentryEnv = "production"
   val dev: SentryEnv = "dev"
 
-  extension (self: SentryEnv)
-    def value: String = self
+  extension (self: SentryEnv) def value: String = self

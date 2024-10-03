@@ -27,11 +27,11 @@ import io.renku.search.http.HttpServer
 import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
+import io.renku.search.sentry.Sentry
 import org.http4s.HttpRoutes
 import org.http4s.server.middleware.ResponseLogger
 import org.http4s.server.middleware.{RequestId, RequestLogger}
 import scribe.Scribe
-import io.renku.search.sentry.Sentry
 
 object SearchServer:
   def create[F[_]: Async: Network](
@@ -43,7 +43,7 @@ object SearchServer:
       routes <- makeHttpRoutes(app)
       logger = scribe.cats.effect[F]
       server <- HttpServer[F](config.httpServerConfig)
-        .withDefaultErrorHandler(logger, sentry)
+        .withDefaultErrorHandler(logger)
         .withHttpApp(routes.orNotFound)
         .build
     yield server

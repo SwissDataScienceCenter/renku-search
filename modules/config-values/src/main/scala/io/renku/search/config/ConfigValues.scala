@@ -25,7 +25,8 @@ import io.renku.search.common.UrlPattern
 import io.renku.openid.keycloak.JwtVerifyConfig
 import io.renku.redis.client.*
 import io.renku.search.http.HttpServerConfig
-import io.renku.solr.client.{SolrConfig, SolrUser}
+import io.renku.solr.client.SolrConfig
+import io.renku.solr.client.SolrConfig.SolrPassword
 import org.http4s.Uri
 
 import scala.concurrent.duration.*
@@ -83,10 +84,9 @@ final class ConfigValues(prefix: String = "RS") extends ConfigDecoders:
   lazy val solrConfig: ConfigValue[Effect, SolrConfig] = {
     val url = config("SOLR_URL", "http://localhost:8983").as[Uri]
     val core = config("SOLR_CORE", "search-core-test")
-    val maybeUser =
-      (config("SOLR_USER", "admin"), config("SOLR_PASS"))
-        .mapN(SolrUser.apply)
-        .option
+    val user = config("SOLR_USER", "admin")
+    val pass = config("SOLR_PASS").as[SolrConfig.SolrPassword]
+    val maybeUser = (user, pass).mapN(SolrConfig.SolrUser.apply).option
     val logMessageBodies =
       config("SOLR_LOG_MESSAGE_BODIES", "false").as[Boolean]
     (url, core, maybeUser, logMessageBodies).mapN(SolrConfig.apply)
@@ -130,5 +130,5 @@ final class ConfigValues(prefix: String = "RS") extends ConfigDecoders:
     val enabled = config("SENTRY_ENABLED", "false").as[Boolean]
     enabled.flatMap {
       case false => ConfigValue.loaded(ConfigKey("sentry-config"), SentryConfig.disabled)
-      case true => (dsn, env).mapN(SentryConfig.enabled)
+      case true  => (dsn, env).mapN(SentryConfig.enabled)
     }

@@ -27,8 +27,8 @@ import com.comcast.ip4s.port
 import io.renku.redis.client.{ClientId, RedisConfig}
 import io.renku.search.config.{ConfigValues, QueuesConfig}
 import io.renku.search.http.HttpServerConfig
-import io.renku.solr.client.SolrConfig
 import io.renku.search.sentry.SentryConfig
+import io.renku.solr.client.SolrConfig
 
 final case class SearchProvisionConfig(
     redisConfig: RedisConfig,

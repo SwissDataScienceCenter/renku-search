@@ -18,10 +18,11 @@
 
 package io.renku.search.sentry
 
+import cats.Applicative
 import cats.effect.*
 import cats.effect.std.Console
 import cats.syntax.all.*
-import cats.Applicative
+
 import io.sentry.Sentry as JSentry
 
 trait Sentry[F[_]]:

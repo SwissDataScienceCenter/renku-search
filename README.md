@@ -206,7 +206,7 @@ should be consulted.
         "lastName": "Einstein",
         "score": 2.1
       },
-      "creationDate": "2024-10-01T13: 43: 07.415701670Z",
+      "creationDate": "2024-10-04T13: 30: 43.533463284Z",
       "keywords": [
         "data",
         "science"
@@ -262,6 +262,9 @@ RS_JWT_OPENID_CONFIG_PATH=.well-known/openid-configuration
 RS_LOG_LEVEL=2
 RS_SEARCH_HTTP_SERVER_BIND_ADDRESS=0.0.0.0
 RS_SEARCH_HTTP_SERVER_PORT=8080
+RS_SENTRY_DSN=
+RS_SENTRY_ENABLED=false
+RS_SENTRY_ENV=
 RS_SOLR_CORE=search-core-test
 RS_SOLR_LOG_MESSAGE_BODIES=false
 RS_SOLR_PASS=

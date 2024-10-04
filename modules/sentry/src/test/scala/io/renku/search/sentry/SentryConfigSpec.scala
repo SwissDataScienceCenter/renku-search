@@ -18,8 +18,9 @@
 
 package io.renku.search.sentry
 
-import munit.*
 import scala.jdk.CollectionConverters.*
+
+import munit.*
 
 class SentryConfigSpec extends FunSuite:
   val dsn: SentryDsn = SentryDsn.unsafeFromString("some-dsn")

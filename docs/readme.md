@@ -116,7 +116,6 @@ CodeBlock.plainLines(
 )
 ```
 
-
 ### Configuration
 
 The service is configured via environment variables. Each variable is prefixed

@@ -27,6 +27,7 @@ import org.http4s.server.middleware.Logger as Http4sLogger
 import org.http4s.server.Server
 import org.http4s.HttpApp
 import scribe.Scribe
+import org.typelevel.ci.*
 
 final class HttpServer[F[_]: Async](
     builder: EmberServerBuilder[F],
@@ -64,7 +65,8 @@ final class HttpServer[F[_]: Async](
       Http4sLogger.httpApp(
         logHeaders = true,
         logBody = false,
-        logAction = Some(msg => logger.debug(msg))
+        logAction = Some(msg => logger.debug(msg)),
+        redactHeadersWhen = HttpServer.sensitiveHeaders.contains
       )
     )
 
@@ -76,6 +78,9 @@ final class HttpServer[F[_]: Async](
     withHttpApp(routes.orNotFound)
 
 object HttpServer:
+  val sensitiveHeaders: Set[CIString] =
+    Headers.SensitiveHeaders + ci"Renku-Auth-Id-Token"
+
   def default[F[_]: Async: Network]: HttpServer[F] =
     new HttpServer[F](EmberServerBuilder.default[F], Nil)
 

@@ -26,8 +26,8 @@ object TagValue:
 
   def from(str: String): Either[String, TagValue] =
     if (str.length() > 200) Left(s"Tag name is too long (>200): ${str.length}")
-    else if (str.matches("[a-zA-Z0-9_\\.:\\-]+")) Right(str)
-    else Left(s"Invalid tag name: $str")
+    else if (str.matches("[^\n]+")) Right(str)
+    else Left(s"Invalid tag value: $str")
 
   def unsafe(str: String): TagValue =
     from(str).fold(sys.error, identity)

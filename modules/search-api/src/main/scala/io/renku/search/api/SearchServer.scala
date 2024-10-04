@@ -69,14 +69,20 @@ object SearchServer:
   private def middleWares[F[_]: Async](
       logger: Scribe[F]
   ): List[HttpRoutes[F] => HttpRoutes[F]] =
-    val log = (str: String) => logger.info(str)
+    val log = (str: String) => logger.debug(str)
     List(
       RequestLogger
-        .httpRoutes(logHeaders = true, logBody = false, logAction = log.some),
+        .httpRoutes(
+          logHeaders = true,
+          logBody = false,
+          logAction = log.some,
+          redactHeadersWhen = HttpServer.sensitiveHeaders.contains
+        ),
       RequestId.httpRoutes[F],
       ResponseLogger.httpRoutes(
         logHeaders = true,
         logBody = false,
-        logAction = log.some
+        logAction = log.some,
+        redactHeadersWhen = HttpServer.sensitiveHeaders.contains
       )
     )

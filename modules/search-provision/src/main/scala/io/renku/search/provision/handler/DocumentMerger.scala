@@ -117,6 +117,8 @@ object DocumentMerger:
 
   given DocumentMerger[GroupAdded] =
     instance[GroupAdded](_.toModel(DocVersion.NotExists).some) {
+      case (ga, p: PartialEntityDocument.Group) =>
+        p.applyTo(ga.toModel(p.version)).some
       case (ga, u: GroupDocument) =>
         ga.toModel(u.version).some
       case _ => None

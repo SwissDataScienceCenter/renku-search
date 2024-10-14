@@ -18,6 +18,8 @@
 
 package io.renku.search.api
 
+import scala.util.Try
+
 import cats.effect.IO
 import cats.syntax.all.*
 
@@ -27,7 +29,11 @@ import io.renku.search.model.*
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
+import io.renku.search.solr.documents.{
+  EntityDocument,
+  Group as SolrGroup,
+  User as SolrUser
+}
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.ResponseBody
 import munit.CatsEffectSuite
@@ -45,14 +51,24 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
       "matching",
       "matching description",
       Gen.const(None),
-      Gen.const(None),
+      Gen.const(
+        Some(SolrUser.of(id = Id("nsId1"), namespace = Some(Namespace("namespace1"))))
+      ),
       Gen.const(Visibility.Public)
     ).generateOne
     val project2 = projectDocumentGen(
       "disparate",
       "disparate description",
       Gen.const(None),
-      Gen.const(None),
+      Gen.const(
+        Some(
+          SolrGroup.of(
+            id = Id("nsId2"),
+            name = Name("some-group"),
+            namespace = Namespace("namespace2")
+          )
+        )
+      ),
       Gen.const(Visibility.Public)
     ).generateOne
     for {
@@ -64,7 +80,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
         .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
 
       expected = toApiEntities(project1).toSet
-      obtained = results.items.map(scoreToNone).toSet
+      obtained = results.items.map(scoreToNone).map(Try.apply).toSet
     } yield assert(
       expected.diff(obtained).isEmpty,
       s"Expected $expected, bot got $obtained"
@@ -77,7 +93,9 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
       "exclusive",
       "exclusive description",
       Gen.const(None),
-      Gen.const(None),
+      Gen.const(
+        Some(SolrUser.of(id = Id("nsId1"), namespace = Some(Namespace("namespace1"))))
+      ),
       Gen.const(Visibility.Public)
     ).generateOne.copy(createdBy = userId)
     for {
@@ -92,7 +110,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
         project.copy(creatorDetails = ResponseBody.single(user).some),
         user
       ).toSet
-      obtained = results.items.map(scoreToNone).toSet
+      obtained = results.items.map(scoreToNone).map(Try.apply).toSet
     } yield assert(
       expected.diff(obtained).isEmpty,
       s"Expected $expected, bot got $obtained"

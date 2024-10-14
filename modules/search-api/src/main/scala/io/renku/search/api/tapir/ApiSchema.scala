@@ -149,7 +149,7 @@ object ApiSchema:
 
   val exampleUser: SearchEntity.User = User(
     Id("1CAF4C73F50D4514A041C9EDDB025A36"),
-    Some(Namespace("renku/renku")),
+    Namespace("renku/renku"),
     Some(FirstName("Albert")),
     Some(LastName("Einstein")),
     Some(2.1)
@@ -167,7 +167,7 @@ object ApiSchema:
     id = Id("01HRA7AZ2Q234CDQWGA052F8MK"),
     name = Name("renku"),
     slug = Slug("renku"),
-    namespace = Some(exampleGroup),
+    namespace = exampleGroup,
     repositories = Seq(Repository("https://github.com/renku")),
     visibility = Visibility.Public,
     description = Some(Description("Renku project")),

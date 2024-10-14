@@ -18,6 +18,8 @@
 
 package io.renku.search.api.data
 
+import scala.util.{Success, Try}
+
 import io.renku.search.solr.documents.{
   Group as GroupDocument,
   Project as ProjectDocument,
@@ -26,39 +28,48 @@ import io.renku.search.solr.documents.{
 }
 
 trait EntityConverter:
-  def project(p: ProjectDocument): SearchEntity.Project =
-    SearchEntity.Project(
-      id = p.id,
-      name = p.name,
-      slug = p.slug,
-      namespace = p.namespaceDetails.flatMap(_.docs.headOption).flatMap {
-        case u: UserDocument  => Some(user(u))
-        case g: GroupDocument => Some(group(g))
-        case v =>
-          scribe.error(
-            s"Error converting project namespace due to incorrect data. A user or group was expected as the project namespace of ${p.id}/${p.slug}, but found: $v"
-          )
-          None
-      },
-      repositories = p.repositories,
-      visibility = p.visibility,
-      description = p.description,
-      createdBy = p.creatorDetails
-        .flatMap(_.docs.headOption)
-        .map(user)
-        .orElse(Some(SearchEntity.User(p.createdBy))),
-      creationDate = p.creationDate,
-      keywords = p.keywords,
-      score = p.score
+  def project(p: ProjectDocument): Try[SearchEntity.Project] =
+    Try(
+      SearchEntity.Project(
+        id = p.id,
+        name = p.name,
+        slug = p.slug,
+        namespace = p.namespaceDetails.flatMap(_.docs.headOption) match {
+          case Some(u: UserDocument)  => user(u).get
+          case Some(g: GroupDocument) => group(g)
+          case _ =>
+            scribe.error(
+              s"Error converting project namespace due to incorrect data. A user or group was expected as the project namespace of ${p.id}/${p.slug}, but found nothing"
+            )
+            throw new Exception(
+              s"Missing namespace for project with id ${p.id} and slug ${p.slug}"
+            )
+        },
+        repositories = p.repositories,
+        visibility = p.visibility,
+        description = p.description,
+        createdBy =
+          p.creatorDetails.flatMap(_.docs.headOption).flatMap(u => Some(user(u).get)),
+        creationDate = p.creationDate,
+        keywords = p.keywords,
+        score = p.score
+      )
     )
 
-  def user(u: UserDocument): SearchEntity.User =
-    SearchEntity.User(
-      id = u.id,
-      namespace = u.namespace,
-      firstName = u.firstName,
-      lastName = u.lastName,
-      score = u.score
+  def user(u: UserDocument): Try[SearchEntity.User] =
+    Try(
+      SearchEntity.User(
+        id = u.id,
+        namespace = u.namespace match {
+          case Some(x) => x
+          case None =>
+            scribe.error(s"Missing namespace for user with id ${u.id}")
+            throw new Exception(s"Missing namespace for user with id ${u.id}")
+        },
+        firstName = u.firstName,
+        lastName = u.lastName,
+        score = u.score
+      )
     )
 
   def group(g: GroupDocument): SearchEntity.Group =
@@ -70,11 +81,11 @@ trait EntityConverter:
       score = g.score
     )
 
-  def entity(e: EntityDocument): SearchEntity = e match
+  def entity(e: EntityDocument): Try[SearchEntity] = e match
     case p: ProjectDocument => project(p)
     case u: UserDocument    => user(u)
-    case g: GroupDocument   => group(g)
+    case g: GroupDocument   => Success(group(g))
 end EntityConverter
 
 object EntityConverter extends EntityConverter:
-  def apply(e: EntityDocument): SearchEntity = entity(e)
+  def apply(e: EntityDocument): Try[SearchEntity] = entity(e)

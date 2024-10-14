@@ -78,6 +78,10 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
         FacetData(all)
       }
       .getOrElse(FacetData.empty)
-    val items = solrResult.responseBody.docs.map(EntityConverter.apply)
-    if (hasMore) SearchResult(items.init, facets, pageInfo)
-    else SearchResult(items, facets, pageInfo)
+    val allItems = solrResult.responseBody.docs.map(EntityConverter.apply)
+    // NOTE: Any entities which could not be converted to the response body properly
+    // are skipped and never returned. This is because the internal logic and models of the data service
+    // allows for some documents to be missing parts that are needed by the UI.
+    val successItems = allItems.filter(_.isSuccess).map(_.get)
+    if (hasMore) SearchResult(successItems.init, facets, pageInfo)
+    else SearchResult(successItems, facets, pageInfo)

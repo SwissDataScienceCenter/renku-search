@@ -46,7 +46,7 @@ object SearchEntity:
       id: Id,
       name: Name,
       slug: Slug,
-      namespace: Option[UserOrGroup],
+      namespace: UserOrGroup,
       repositories: Seq[Repository],
       visibility: Visibility,
       description: Option[Description] = None,
@@ -64,7 +64,7 @@ object SearchEntity:
 
   final case class User(
       id: Id,
-      namespace: Option[Namespace] = None,
+      namespace: Namespace,
       firstName: Option[FirstName] = None,
       lastName: Option[LastName] = None,
       score: Option[Double] = None

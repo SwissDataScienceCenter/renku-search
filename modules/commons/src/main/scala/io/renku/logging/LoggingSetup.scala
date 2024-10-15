@@ -25,9 +25,11 @@ import scribe.writer.SystemOutWriter
 object LoggingSetup:
 
   def doConfigure(verbosity: Int): Unit =
+    val newVerbosity = 5
     println(s">> Setting up logging with verbosity=$verbosity")
+    println(s">> Setting up logging with verbosity=${newVerbosity}")
     val root = scribe.Logger.root.clearHandlers().clearModifiers()
-    verbosity match
+    newVerbosity match
       case n if n < 0 =>
         ()
 

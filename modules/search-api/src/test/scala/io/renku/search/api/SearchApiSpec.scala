@@ -47,34 +47,28 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
   private given Scribe[IO] = scribe.cats[IO]
 
   test("do a lookup in Solr to find entities matching the given phrase"):
+    val user1Id = ModelGenerators.idGen.generateOne 
+    val groupId = ModelGenerators.idGen.generateOne
+    val user1Doc = SolrUser(user1Id, DocVersion.NotExists, FirstName("user1").some, namespace=Namespace("user1").some)
+    val groupDoc = SolrGroup(groupId, DocVersion.NotExists, Name("group1"), namespace=Namespace("group1"))
     val project1 = projectDocumentGen(
       "matching",
       "matching description",
       Gen.const(None),
-      Gen.const(
-        Some(SolrUser.of(id = Id("nsId1"), namespace = Some(Namespace("namespace1"))))
-      ),
+      Gen.const(Some(user1Doc)),
       Gen.const(Visibility.Public)
     ).generateOne
     val project2 = projectDocumentGen(
       "disparate",
       "disparate description",
       Gen.const(None),
-      Gen.const(
-        Some(
-          SolrGroup.of(
-            id = Id("nsId2"),
-            name = Name("some-group"),
-            namespace = Namespace("namespace2")
-          )
-        )
-      ),
+      Gen.const(Some(groupDoc)),
       Gen.const(Visibility.Public)
     ).generateOne
     for {
       client <- IO(searchSolrClient())
       searchApi = new SearchApiImpl[IO](client)
-      _ <- client.upsert((project1 :: project2 :: Nil).map(_.widen))
+      _ <- client.upsert((project1 :: project2 :: user1Doc :: groupDoc :: Nil).map(_.widen))
       results <- searchApi
         .query(AuthContext.anonymous)(mkQuery("matching"))
         .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
@@ -88,14 +82,13 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
 
   test("return Project and User entities"):
     val userId = ModelGenerators.idGen.generateOne
-    val user = SolrUser(userId, DocVersion.NotExists, FirstName("exclusive").some)
+    val namespace = Namespace(userId.toString())
+    val user = SolrUser(userId, DocVersion.NotExists, FirstName("exclusive").some, namespace = namespace.some)
     val project = projectDocumentGen(
       "exclusive",
       "exclusive description",
       Gen.const(None),
-      Gen.const(
-        Some(SolrUser.of(id = Id("nsId1"), namespace = Some(Namespace("namespace1"))))
-      ),
+      Gen.const(Some(user)),
       Gen.const(Visibility.Public)
     ).generateOne.copy(createdBy = userId)
     for {

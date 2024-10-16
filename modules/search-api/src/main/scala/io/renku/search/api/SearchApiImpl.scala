@@ -49,6 +49,29 @@ private class SearchApiImpl[F[_]: Async](solrClient: SearchSolrClient[F])
           query.page.offset
         )
         .map(toApiResult(query.page))
+        .map(all =>
+          (
+            all,
+            all.copy(items =
+              all.items.mapFilter(
+                _ match
+                  case pr: SearchEntity.Project           => pr.maybeCompleteProject
+                  case gr: SearchEntity.Group             => Some(gr)
+                  case us: SearchEntity.User              => us.maybeCompleteUser
+                  case prns: SearchEntity.CompleteProject => Some(prns)
+                  case usns: SearchEntity.CompleteUser    => Some(usns)
+              )
+            )
+          )
+        )
+        .flatTap { (all, complete) =>
+          val incomplete = all.items.length - complete.items.length
+          if (incomplete > 0)
+            logger.error(s"$incomplete/${all.items.length} items were incomplete $all")
+          else
+            logger.trace(s"all: $all, complete: $complete")
+        }
+        .map((_, complete) => complete)
         .map(_.asRight[String])
         .handleErrorWith(errorResponse(query.query.render))
         .widen

@@ -16,19 +16,17 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.sentry
 
-import org.http4s.Uri
+opaque type SentryDsn = String
 
-final case class SolrConfig(
-    baseUrl: Uri,
-    core: String,
-    maybeUser: Option[SolrConfig.SolrUser],
-    logMessageBodies: Boolean
-)
+object SentryDsn:
+  def fromString(str: String): Either[String, SentryDsn] =
+    val sn = str.trim
+    if (sn.isEmpty) Left("Empty sentry DSN provided")
+    else Right(sn)
 
-object SolrConfig:
-  final case class SolrPassword(value: String) {
-    override def toString(): String = "***"
-  }
-  final case class SolrUser(username: String, password: SolrPassword)
+  def unsafeFromString(str: String): SentryDsn =
+    fromString(str).fold(sys.error, identity)
+
+  extension (self: SentryDsn) def value: String = self

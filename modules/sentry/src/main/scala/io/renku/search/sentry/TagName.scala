@@ -16,19 +16,19 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.sentry
 
-import org.http4s.Uri
+opaque type TagName = String
 
-final case class SolrConfig(
-    baseUrl: Uri,
-    core: String,
-    maybeUser: Option[SolrConfig.SolrUser],
-    logMessageBodies: Boolean
-)
+object TagName:
+  val service: TagName = unsafe("service")
 
-object SolrConfig:
-  final case class SolrPassword(value: String) {
-    override def toString(): String = "***"
-  }
-  final case class SolrUser(username: String, password: SolrPassword)
+  def from(str: String): Either[String, TagName] =
+    if (str.length() > 32) Left(s"Tag name is too long (>32): ${str.length}")
+    else if (str.matches("[a-zA-Z0-9_\\.:\\-]+")) Right(str)
+    else Left(s"Invalid tag name: $str")
+
+  def unsafe(str: String): TagName =
+    from(str).fold(sys.error, identity)
+
+  extension (self: TagName) def value: String = self

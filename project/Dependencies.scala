@@ -26,8 +26,13 @@ object Dependencies {
     val scribe = "3.15.0"
     val sttpApiSpec = "0.11.3"
     val tapir = "1.11.5"
-    val jwtScala = "10.0.1";
+    val jwtScala = "10.0.1"
+    val sentry = "7.14.0"
   }
+
+  val sentry = Seq(
+    "io.sentry" % "sentry" % V.sentry
+  )
 
   val jwtScala = Seq(
     "com.github.jwt-scala" %% "jwt-core" % V.jwtScala

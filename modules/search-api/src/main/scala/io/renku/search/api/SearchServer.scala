@@ -27,13 +27,18 @@ import io.renku.search.http.HttpServer
 import io.renku.search.http.metrics.MetricsRoutes
 import io.renku.search.http.routes.OperationRoutes
 import io.renku.search.metrics.CollectorRegistryBuilder
+import io.renku.search.sentry.Sentry
 import org.http4s.HttpRoutes
 import org.http4s.server.middleware.ResponseLogger
 import org.http4s.server.middleware.{RequestId, RequestLogger}
 import scribe.Scribe
 
 object SearchServer:
-  def create[F[_]: Async: Network](config: SearchApiConfig, app: ServiceRoutes[F]) =
+  def create[F[_]: Async: Network](
+      config: SearchApiConfig,
+      app: ServiceRoutes[F],
+      sentry: Sentry[F]
+  ) =
     for
       routes <- makeHttpRoutes(app)
       logger = scribe.cats.effect[F]

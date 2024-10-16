@@ -27,6 +27,7 @@ import io.renku.openid.keycloak.JwtVerifyConfig
 import io.renku.search.http.HttpClientDsl
 import io.renku.search.http.HttpServerConfig
 import io.renku.search.http.borer.BorerEntityJsonCodec
+import io.renku.search.sentry.SentryConfig
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.solr.client.SolrConfig
 import org.http4s.HttpRoutes
@@ -101,5 +102,6 @@ object SearchRoutesSuite:
       openIdConfigPath = "/",
       allowedIssuerUrls = Nil
     ),
+    sentryConfig = SentryConfig.disabled,
     verbosity = 1
   )

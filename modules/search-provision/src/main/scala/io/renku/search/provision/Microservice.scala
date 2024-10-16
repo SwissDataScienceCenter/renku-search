@@ -23,11 +23,14 @@ import scala.concurrent.duration.Duration
 import cats.effect.*
 import cats.syntax.all.*
 
-import io.renku.logging.LoggingSetup
 import io.renku.search.http.HttpServer
+import io.renku.search.logging.LoggingSetup
 import io.renku.search.metrics.CollectorRegistryBuilder
 import io.renku.search.provision.BackgroundProcessManage.TaskName
 import io.renku.search.provision.metrics.*
+import io.renku.search.sentry.Level
+import io.renku.search.sentry.SentryEvent
+import io.renku.search.sentry.scribe.SentryHandler
 import io.renku.search.solr.schema.Migrations
 import io.renku.solr.client.migration.{MigrateResult, SchemaMigrator}
 
@@ -38,7 +41,14 @@ object Microservice extends IOApp:
   override def run(args: List[String]): IO[ExitCode] =
     Services.make[IO].use { services =>
       for {
-        _ <- IO(LoggingSetup.doConfigure(services.config.verbosity))
+        startupEvent <- makeStartupEvent(services.config)
+        _ <- services.sentry.capture(startupEvent)
+        _ <- IO(
+          LoggingSetup.doConfigure(
+            services.config.verbosity,
+            Some(SentryHandler(services.sentry)(using runtime))
+          )
+        )
         migrateResult <- runSolrMigrations(services.config)
         _ <- IO.whenA(migrateResult.migrationsSkipped > 0)(
           logger
@@ -110,3 +120,6 @@ object Microservice extends IOApp:
         logger.error("Running solr migrations failure, retrying", err) >>
           Temporal[IO].delayBy(runSolrMigrations(cfg), cfg.retryOnErrorDelay)
       }
+
+  private def makeStartupEvent(config: SearchProvisionConfig): IO[SentryEvent] =
+    SentryEvent.create[IO](Level.Info, s"Search Provisioner starting up with $config")

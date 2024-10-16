@@ -16,19 +16,25 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.sentry
 
-import org.http4s.Uri
+import _root_.scribe.Level as ScribeLevel
+import io.sentry.SentryLevel
 
-final case class SolrConfig(
-    baseUrl: Uri,
-    core: String,
-    maybeUser: Option[SolrConfig.SolrUser],
-    logMessageBodies: Boolean
-)
+enum Level:
+  case Error
+  case Warn
+  case Info
+  case Debug
 
-object SolrConfig:
-  final case class SolrPassword(value: String) {
-    override def toString(): String = "***"
-  }
-  final case class SolrUser(username: String, password: SolrPassword)
+  private[sentry] def toSentry: SentryLevel = this match
+    case Error => SentryLevel.ERROR
+    case Warn  => SentryLevel.WARNING
+    case Info  => SentryLevel.INFO
+    case Debug => SentryLevel.DEBUG
+
+  private[sentry] def toScribe: ScribeLevel = this match
+    case Error => ScribeLevel.Error
+    case Warn  => ScribeLevel.Warn
+    case Info  => ScribeLevel.Info
+    case Debug => ScribeLevel.Debug

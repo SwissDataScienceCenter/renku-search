@@ -26,6 +26,7 @@ import io.renku.search.api.data.*
 import io.renku.search.api.tapir.*
 import io.renku.search.query.docs.SearchQueryManual
 import org.http4s.HttpRoutes
+import sttp.model.StatusCode
 import sttp.tapir.*
 
 final class SearchRoutes[F[_]: Async](
@@ -43,6 +44,7 @@ final class SearchRoutes[F[_]: Async](
       .in(Params.queryInput)
       .securityIn(Params.renkuAuth)
       .errorOut(borerJsonBody[String])
+      .errorOut(statusCode(StatusCode.UnprocessableEntity))
       .out(Params.searchResult)
       .description(SearchQueryManual.markdown)
 

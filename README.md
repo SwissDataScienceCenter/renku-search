@@ -2,7 +2,7 @@
 # Renku Search
 
 
-This provides the renku search services for efficientlyf searching across
+This provides the renku search services for efficiently searching across
 entities in the Renku platform.
 
 The engine backing the search functionality is [SOLR](https://solr.apache.org)
@@ -16,14 +16,12 @@ started.
 
 ## Search Provision
 
-Responsible for maintaining the index. This service is pulling elements out of
-the Redis stream, transforming it into solr documents and the updates the index.
-It also creates the SOLR schema and provides endpoints to trigger re-indexing.
+Responsible for maintaining the index. This service is reading elements off the
+Redis stream, transforming it into documents and then updates the index. It also
+creates the SOLR schema and provides endpoints to trigger re-indexing.
 
-This service is internal only and can be used by other service to publish data
-that should be search- and discoverable.
-
-The data in the index is received as a Redis message pulled from a Redis stream.
+This service is internal only and can be used by other services in the Renku
+platform to publish data that should be search- and discoverable.
 
 ### Messages
 
@@ -39,9 +37,10 @@ A redis message is expected to contain two keys:
 Where the header denotes properties that control how a payload is processed. The
 important properties are `type`, `dataContentType` and `schemaVersion`.
 
-**type** specifies what kind of payload is transported and how it can be
-decoded. There are currently these message types, each denoting a specific
-payload structure:
+**type** specifies the payload type and how it can be decoded. There are
+currently these message types, each denoting a specific payload structure
+defined in
+[renku-schema](https://github.com/SwissDataScienceCenter/renku-schema):
 
 - `project.created`
 - `project.updated`
@@ -89,7 +88,8 @@ Doing a re-index works by dropping the SOLR index completely and then re-reading
 the Redis stream. The `reindex` endpoint requires POST request with a JSON
 payload. It can optionally specify a redis message-id from where to start
 reading. If it is omitted, it will start from the last known message that
-initiated the index.
+initiated the index. In this case, an empty JSON object must be sent in the
+request.
 
 Example:
 
@@ -150,6 +150,9 @@ RS_REDIS_QUEUE_USER_REMOVED=
 RS_REDIS_QUEUE_USER_UPDATED=
 RS_REDIS_SENTINEL=
 RS_RETRY_ON_ERROR_DELAY=10 seconds
+RS_SENTRY_DSN=
+RS_SENTRY_ENABLED=false
+RS_SENTRY_ENV=
 RS_SOLR_CORE=search-core-test
 RS_SOLR_LOG_MESSAGE_BODIES=false
 RS_SOLR_PASS=
@@ -203,7 +206,7 @@ should be consulted.
         "lastName": "Einstein",
         "score": 2.1
       },
-      "creationDate": "2024-09-26T14: 11: 40.901532046Z",
+      "creationDate": "2024-10-04T13: 30: 43.533463284Z",
       "keywords": [
         "data",
         "science"
@@ -259,6 +262,9 @@ RS_JWT_OPENID_CONFIG_PATH=.well-known/openid-configuration
 RS_LOG_LEVEL=2
 RS_SEARCH_HTTP_SERVER_BIND_ADDRESS=0.0.0.0
 RS_SEARCH_HTTP_SERVER_PORT=8080
+RS_SENTRY_DSN=
+RS_SENTRY_ENABLED=false
+RS_SENTRY_ENV=
 RS_SOLR_CORE=search-core-test
 RS_SOLR_LOG_MESSAGE_BODIES=false
 RS_SOLR_PASS=

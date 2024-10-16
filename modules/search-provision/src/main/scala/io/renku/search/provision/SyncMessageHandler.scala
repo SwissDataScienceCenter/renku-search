@@ -32,6 +32,7 @@ import io.renku.search.provision.handler.DeleteFromSolr.DeleteResult
 import io.renku.search.provision.handler.PipelineSteps
 import io.renku.search.provision.process.*
 import io.renku.search.provision.reindex.ReprovisionService
+import io.renku.search.sentry.{Level, Sentry, SentryEvent}
 import io.renku.solr.client.UpsertResponse
 import scribe.Scribe
 
@@ -39,6 +40,7 @@ final class SyncMessageHandler[F[_]: Async](
     ps: PipelineSteps[F],
     reprovisionService: ReprovisionService[F],
     control: SyncMessageHandler.Control[F],
+    sentry: Sentry[F],
     maxConflictRetries: Int = 20
 ):
 
@@ -79,6 +81,11 @@ final class SyncMessageHandler[F[_]: Async](
 
       case mt: MsgType.ProjectRemoved.type =>
         markMessage(m)(genericDelete.process(mt.cast(m)).map(Result.Delete.apply))
+          .flatTap(res =>
+            SentryEvent
+              .create[F](Level.Debug, s"$mt => $res")
+              .flatMap(sentry.capture)
+          )
 
       case mt: MsgType.ProjectMemberAdded.type =>
         markMessage(m)(
@@ -106,7 +113,13 @@ final class SyncMessageHandler[F[_]: Async](
         )
 
       case mt: MsgType.UserRemoved.type =>
-        markMessage(m)(userDelete.process(mt.cast(m)).map(Result.Delete.apply))
+        val msg = mt.cast(m)
+        markMessage(m)(userDelete.process(msg).map(Result.Delete.apply))
+          .flatTap(res =>
+            SentryEvent
+              .create[F](Level.Debug, s"$mt => $res")
+              .flatMap(sentry.capture)
+          )
 
       case mt: MsgType.GroupAdded.type =>
         markMessage(m)(
@@ -122,6 +135,11 @@ final class SyncMessageHandler[F[_]: Async](
         markMessage(m)(
           groupRemove.process(mt.cast(m), maxConflictRetries).map(Result.Delete.apply)
         )
+          .flatTap(res =>
+            SentryEvent
+              .create[F](Level.Debug, s"$mt => $res")
+              .flatMap(sentry.capture)
+          )
 
       case mt: MsgType.GroupMemberAdded.type =>
         markMessage(m)(
@@ -153,6 +171,9 @@ final class SyncMessageHandler[F[_]: Async](
         // `resetIndex` instead of `startReIndex`
         control.whilePaused.use { _ =>
           for
+            _ <- SentryEvent
+              .create[F](Level.Debug, s"Received $mt message")
+              .flatMap(sentry.capture)
             res <- Deferred[F, Option[Id]]
             _ <- reprovisioning.processStart(
               mt.cast(m),
@@ -182,10 +203,11 @@ object SyncMessageHandler:
   def apply[F[_]: Async](
       ps: PipelineSteps[F],
       reprovisionService: ReprovisionService[F],
+      sentry: Sentry[F],
       maxConflictRetries: Int = 20
   ): F[SyncMessageHandler[F]] =
     Control[F].map(c =>
-      new SyncMessageHandler[F](ps, reprovisionService, c, maxConflictRetries)
+      new SyncMessageHandler[F](ps, reprovisionService, c, sentry, maxConflictRetries)
     )
 
   final class Control[F[_]: Sync](s: Semaphore[F]) {

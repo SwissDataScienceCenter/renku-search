@@ -43,7 +43,7 @@ final private[provision] class Reprovisioning[F[_]: Async](
       ReprovisionRequest.started(msg) match
         case None =>
           logger
-            .info(s"Received reprovision-started message without payload: $msg")
+            .warn(s"Received reprovision-started message without payload: $msg")
             .flatTap(_ => result(None))
             .as(None)
         case Some(req) =>
@@ -59,7 +59,7 @@ final private[provision] class Reprovisioning[F[_]: Async](
   def processFinish(msg: EventMessage[ReprovisioningFinished]): F[Option[Id]] =
     ReprovisionRequest.finished(msg) match
       case None =>
-        logger.info(s"Received reprovision-finish message without payload: $msg").as(None)
+        logger.warn(s"Received reprovision-finish message without payload: $msg").as(None)
       case Some(req) =>
         reprovisionService.reprovision(req).map {
           case true  => Some(req.reprovisionId)

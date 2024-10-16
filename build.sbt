@@ -63,6 +63,7 @@ lazy val root = project
     json,
     commons,
     jwt,
+    sentry,
     openidKeycloak,
     httpClient,
     events,
@@ -120,6 +121,20 @@ lazy val commons = project
   .dependsOn(json % "compile->compile;test->test")
   .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
+
+lazy val sentry = project
+  .in(file("modules/sentry"))
+  .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
+  .disablePlugins(DbTestPlugin, RevolverPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "sentry",
+    description := "sentry integration with scribe",
+    libraryDependencies ++= Dependencies.sentry ++
+      Dependencies.scribe,
+    buildInfoKeys := Seq(name, version, gitHeadCommit, gitDescribedVersion),
+    buildInfoPackage := "io.renku.search.sentry"
+  )
 
 lazy val jwt = project
   .in(file("modules/jwt"))
@@ -216,6 +231,7 @@ lazy val http4sCommons = project
   )
   .dependsOn(
     commons % "compile->compile;test->test",
+    sentry % "compile->compile;test->test",
     http4sBorer % "compile->compile;test->test"
   )
 
@@ -347,6 +363,7 @@ lazy val configValues = project
   )
   .dependsOn(
     commons % "compile->compile;test->test",
+    sentry % "compile->compile;test->test",
     events % "compile->compile;test->test",
     http4sCommons % "compile->compile;test->test",
     renkuRedisClient % "compile->compile;test->test",
@@ -390,6 +407,7 @@ lazy val searchProvision = project
   )
   .dependsOn(
     commons % "compile->compile;test->test",
+    sentry % "compile->compile;test->test",
     events % "compile->compile;test->test",
     http4sCommons % "compile->compile;test->test",
     http4sMetrics % "compile->compile;test->test",
@@ -411,6 +429,7 @@ lazy val searchApi = project
   )
   .dependsOn(
     commons % "compile->compile;test->test",
+    sentry % "compile->compile;test->test",
     http4sBorer % "compile->compile;test->test",
     http4sCommons % "compile->compile;test->test",
     http4sMetrics % "compile->compile;test->test",

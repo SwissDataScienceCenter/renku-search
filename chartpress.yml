@@ -1,0 +1,18 @@
+charts:
+  - name: helm-chart/renku-search
+    resetTag: latest
+    imagePrefix: renku/
+    repo:
+      git: SwissDataScienceCenter/helm-charts
+      published: https://swissdatasciencecenter.github.io/helm-charts
+    paths:
+      - .
+    images:
+      search-provision:
+        contextPath: .
+        dockerfilePath: Dockerfile # todo: use proper dockerfile
+        valuesPath: search.searchProvision.image
+      search-api:
+        contextPath: .
+        dockerfilePath: Dockerfile # todo: use proper dockerfile
+        valuesPath: search.searchApi.image

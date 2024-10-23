@@ -25,6 +25,7 @@ opaque type FieldName = String
 object FieldName:
   val all: FieldName = "*"
   val score: FieldName = "score"
+  val id: FieldName = "id"
 
   def apply(name: String): FieldName = name
 

@@ -18,21 +18,23 @@
 
 package io.renku.solr.client
 
-import io.bullet.borer.Decoder
-import io.bullet.borer.NullOptions.given
-import io.bullet.borer.derivation.MapBasedCodecs
-import io.bullet.borer.derivation.key
-import io.renku.solr.client.facet.FacetResponse
+import io.bullet.borer.{Decoder, Encoder}
 
-final case class QueryResponse[A](
-    responseHeader: ResponseHeader,
-    @key("response") responseBody: ResponseBody[A],
-    @key("facets") facetResponse: Option[FacetResponse] = None,
-    @key("nextCursorMark") nextCursor: Option[CursorMark] = None
-):
-  def map[B](f: A => B): QueryResponse[B] =
-    copy(responseBody = responseBody.map(f))
+/** Allow paged results using a cursor as described here:
+  * https://solr.apache.org/guide/solr/latest/query-guide/pagination-of-results.html#fetching-a-large-number-of-sorted-results-cursors
+  */
+enum CursorMark:
+  case Start
+  case Mark(value: String)
 
-object QueryResponse:
-  given [A](using Decoder[A]): Decoder[QueryResponse[A]] =
-    MapBasedCodecs.deriveDecoder
+  def render: String = this match
+    case Start   => "*"
+    case Mark(v) => v
+
+object CursorMark:
+
+  given Encoder[CursorMark] =
+    Encoder.forString.contramap(_.render)
+
+  given Decoder[CursorMark] =
+    Decoder.forString.map(s => if ("*" == s) CursorMark.Start else CursorMark.Mark(s))

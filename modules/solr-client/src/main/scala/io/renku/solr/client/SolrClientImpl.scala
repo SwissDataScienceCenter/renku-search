@@ -31,6 +31,7 @@ import io.renku.solr.client.schema.{SchemaCommand, SchemaJsonCodec}
 import org.http4s.Status
 import org.http4s.client.Client
 import org.http4s.{BasicCredentials, Method, Uri}
+import io.bullet.borer.Json
 
 private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Client[F])
     extends SolrClient[F]
@@ -52,9 +53,10 @@ private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Cl
 
   def query[A: Decoder](query: QueryData): F[QueryResponse[A]] =
     val req = Method.POST(query, solrUrl / "query").withBasicAuth(credentials)
-    underlying
-      .expectOr[QueryResponse[A]](req)(ResponseLogging.Error(logger, req))
-      .flatTap(r => logger.trace(s"Query response: $r"))
+    logger.debug(s"SOLR Query: ${Json.encode(query).toUtf8String}") >>
+      underlying
+        .expectOr[QueryResponse[A]](req)(ResponseLogging.Error(logger, req))
+        .flatTap(r => logger.trace(s"Query response: $r"))
 
   def delete(q: QueryString): F[Unit] =
     val req = Method.POST(DeleteRequest(q.q), makeUpdateUrl).withBasicAuth(credentials)

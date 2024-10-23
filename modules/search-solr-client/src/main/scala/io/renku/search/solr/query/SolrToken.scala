@@ -79,6 +79,11 @@ object SolrToken:
   def namespaceIs(ns: Namespace): SolrToken =
     fieldIs(SolrField.namespace, fromNamespace(ns))
 
+  def namespaceExists: SolrToken = fieldExists(SolrField.namespace)
+
+  def createdByExists: SolrToken =
+    "(createdBy:[* TO *] OR (*:* AND -_type:Project))"
+
   def createdDateIs(date: Instant): SolrToken =
     fieldIs(SolrField.creationDate, fromInstant(date))
   def createdDateGt(date: Instant): SolrToken =
@@ -119,7 +124,7 @@ object SolrToken:
     s"${field.name}:$value"
 
   def fieldExists(field: FieldName): SolrToken =
-    fieldIs(field, "*")
+    fieldIs(field, "[* TO *]")
 
   def unsafeFromString(s: String): SolrToken = s
 

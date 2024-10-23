@@ -36,29 +36,34 @@ final case class SolrQuery(
 
   def asAnonymous: SolrQuery =
     SolrQuery(
-      List(
+      (List(
         query.parens,
-        SolrToken.publicOnly,
-        SolrToken.kindIs(DocumentKind.FullEntity)
-      ).foldAnd,
+        SolrToken.publicOnly
+      ) ::: SolrQuery.mandatoryConstraints).foldAnd,
       sort
     )
 
   def asUser(id: Id): SolrQuery =
     SolrQuery(
-      List(
-        query.parens,
-        SolrToken.forUser(id),
-        SolrToken.kindIs(DocumentKind.FullEntity)
-      ).foldAnd,
+      (List(query.parens, SolrToken.forUser(id))
+        ::: SolrQuery.mandatoryConstraints).foldAnd,
       sort
     )
 
   def asAdmin: SolrQuery =
-    SolrQuery(List(query, SolrToken.kindIs(DocumentKind.FullEntity)).foldAnd, sort)
+    SolrQuery(
+      (query :: SolrQuery.mandatoryConstraints).foldAnd,
+      sort
+    )
 
 object SolrQuery:
   val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)
+
+  private val mandatoryConstraints = List(
+    SolrToken.kindIs(DocumentKind.FullEntity),
+    SolrToken.namespaceExists,
+    SolrToken.createdByExists
+  )
 
   def apply(e: SolrToken): SolrQuery =
     SolrQuery(e, SolrSort.empty)

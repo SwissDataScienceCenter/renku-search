@@ -50,6 +50,10 @@ object SolrSort:
     def nonEmpty: Boolean = !self.isEmpty
     def ++(next: SolrSort): SolrSort =
       Monoid[SolrSort].combine(self, next)
+
+    def +(n: (FieldName, Direction)): SolrSort =
+      self ++ Seq(n)
+
     private[client] def toSolr: String =
       self.map { case (f, d) => s"${f.name} ${d.name}" }.mkString(",")
 

@@ -54,31 +54,45 @@
         ]
         ++ (builtins.attrValues selfPkgs);
 
-      queueNames = {
-        PROJECT_CREATED = "project.created";
-        PROJECT_UPDATED = "project.updated";
-        PROJECT_REMOVED = "project.removed";
-        PROJECTAUTH_ADDED = "projectAuth.added";
-        PROJECTAUTH_UPDATED = "projectAuth.updated";
-        PROJECTAUTH_REMOVED = "projectAuth.removed";
-        USER_ADDED = "user.added";
-        USER_UPDATED = "user.updated";
-        USER_REMOVED = "user.removed";
-        GROUP_ADDED = "group.added";
-        GROUP_UPDATED = "group.updated";
-        GROUP_REMOVED = "groupRemoved";
-        GROUPMEMBER_ADDED = "groupMemberAdded";
-        GROUPMEMBER_UPDATED = "groupMemberUpdated";
-        GROUPMEMBER_REMOVED = "groupMemberRemoved";
-        DATASERVICE_ALLEVENTS = "data_service.all_events";
-      };
+      commonDevSettings = {
+        RS_SENTRY_ENABLED = "false";
+        RS_SENTRY_ENV = "dev";
+        RS_SEARCH_HTTP_SHUTDOWN_TIMEOUT = "0ms";
+        RS_SEARCH_HTTP_SERVER_PORT = "8080";
+        RS_PROVISION_HTTP_SERVER_PORT = "8082";
+        RS_PROVISION_HTTP_SHUTDOWN_TIMEOUT = "0ms";
+        RS_METRICS_UPDATE_INTERVAL = "0s";
+        RS_JWT_ALLOWED_ISSUER_URL_PATTERNS = "renku.ch,*.renku.ch,*.*.renku.ch";
+        RS_LOG_LEVEL = "2";
 
-      queueNameConfig = with nixpkgs.lib; mapAttrs' (key: qn: nameValuePair "RS_REDIS_QUEUE_${key}" qn) queueNames;
+        #don't start docker container for dbTests
+        NO_SOLR = "true";
+        NO_REDIS = "true";
+
+        SBT_OPTS = "-Xmx2G";
+
+        RS_REDIS_QUEUE_PROJECT_CREATED = "project.created";
+        RS_REDIS_QUEUE_PROJECT_UPDATED = "project.updated";
+        RS_REDIS_QUEUE_PROJECT_REMOVED = "project.removed";
+        RS_REDIS_QUEUE_PROJECTAUTH_ADDED = "projectAuth.added";
+        RS_REDIS_QUEUE_PROJECTAUTH_UPDATED = "projectAuth.updated";
+        RS_REDIS_QUEUE_PROJECTAUTH_REMOVED = "projectAuth.removed";
+        RS_REDIS_QUEUE_USER_ADDED = "user.added";
+        RS_REDIS_QUEUE_USER_UPDATED = "user.updated";
+        RS_REDIS_QUEUE_USER_REMOVED = "user.removed";
+        RS_REDIS_QUEUE_GROUP_ADDED = "group.added";
+        RS_REDIS_QUEUE_GROUP_UPDATED = "group.updated";
+        RS_REDIS_QUEUE_GROUP_REMOVED = "group.removed";
+        RS_REDIS_QUEUE_GROUPMEMBER_ADDED = "groupMember.added";
+        RS_REDIS_QUEUE_GROUPMEMBER_UPDATED = "groupMember.updated";
+        RS_REDIS_QUEUE_GROUPMEMBER_REMOVED = "groupMember.removed";
+        RS_REDIS_QUEUE_DATASERVICE_ALLEVENTS = "data_service.all_events";
+      };
     in {
       formatter = pkgs.alejandra;
 
       devShells = {
-        container = pkgs.mkShellNoCC (queueNameConfig
+        container = pkgs.mkShellNoCC (commonDevSettings
           // {
             RS_SOLR_HOST = "rsdev-cnt";
             RS_SOLR_URL = "http://rsdev-cnt:8983";
@@ -86,27 +100,16 @@
             RS_REDIS_HOST = "rsdev-cnt";
             RS_REDIS_PORT = "6379";
             RS_CONTAINER = "rsdev";
-            RS_LOG_LEVEL = "3";
-            RS_SEARCH_HTTP_SERVER_PORT = "8080";
-            RS_SEARCH_HTTP_SHUTDOWN_TIMEOUT = "0ms";
-            RS_PROVISION_HTTP_SERVER_PORT = "8082";
-            RS_PROVISION_HTTP_SHUTDOWN_TIMEOUT = "0ms";
-            RS_METRICS_UPDATE_INTERVAL = "0s";
             RS_SOLR_CREATE_CORE_CMD = "cnt-solr-create-core %s";
             RS_SOLR_DELETE_CORE_CMD = "cnt-solr-delete-core %s";
-            RS_JWT_ALLOWED_ISSUER_URL_PATTERNS = "renku.ch,*.renku.ch,*.*.renku.ch";
 
-            #don't start docker container for dbTests
-            NO_SOLR = "true";
-            NO_REDIS = "true";
             DEV_CONTAINER = "rsdev-cnt";
-            SBT_OPTS = "-Xmx2G";
 
             buildInputs =
               commonPackages
               ++ (builtins.attrValues devshell-tools.legacyPackages.${system}.cnt-scripts);
           });
-        vm = pkgs.mkShellNoCC (queueNameConfig
+        vm = pkgs.mkShellNoCC (commonDevSettings
           // {
             RS_SOLR_HOST = "localhost";
             RS_SOLR_PORT = "18983";
@@ -115,21 +118,10 @@
             RS_REDIS_HOST = "localhost";
             RS_REDIS_PORT = "16379";
             VM_SSH_PORT = "10022";
-            RS_LOG_LEVEL = "3";
-            RS_SEARCH_HTTP_SERVER_PORT = "8080";
-            RS_SEARCH_HTTP_SHUTDOWN_TIMEOUT = "0ms";
-            RS_PROVISION_HTTP_SERVER_PORT = "8082";
-            RS_PROVISION_HTTP_SHUTDOWN_TIMEOUT = "0ms";
-            RS_METRICS_UPDATE_INTERVAL = "0s";
             RS_SOLR_CREATE_CORE_CMD = "vm-solr-create-core %s";
             RS_SOLR_DELETE_CORE_CMD = "vm-solr-delete-core %s";
-            RS_JWT_ALLOWED_ISSUER_URL_PATTERNS = "renku.ch,*.renku.ch,*.*.renku.ch";
 
-            #don't start docker container for dbTests
-            NO_SOLR = "true";
-            NO_REDIS = "true";
             DEV_VM = "rsdev-vm";
-            SBT_OPTS = "-Xmx2G";
 
             buildInputs =
               commonPackages

@@ -170,4 +170,4 @@ private class SolrClientImpl[F[_]: Async](val config: SolrConfig, underlying: Cl
     (solrUrl / "get").withQueryParam("ids", ids.toList)
 
   private lazy val credentials: Option[BasicCredentials] =
-    config.maybeUser.map(u => BasicCredentials(u.username, u.password))
+    config.maybeUser.map(u => BasicCredentials(u.username, u.password.value))

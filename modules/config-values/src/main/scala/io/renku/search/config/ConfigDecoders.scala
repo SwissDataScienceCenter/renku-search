@@ -27,6 +27,9 @@ import org.http4s.Uri
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import io.renku.search.common.UrlPattern
+import io.renku.search.sentry.SentryDsn
+import io.renku.search.sentry.SentryEnv
+import io.renku.solr.client.SolrConfig
 
 trait ConfigDecoders:
   extension [A, B](self: ConfigDecoder[A, B])
@@ -44,6 +47,9 @@ trait ConfigDecoders:
     ConfigDecoder[String].mapOption("duration") { s =>
       Duration.unapply(s).map(Duration.apply.tupled).filter(_.isFinite)
     }
+
+  given ConfigDecoder[String, SolrConfig.SolrPassword] =
+    ConfigDecoder[String].map(SolrConfig.SolrPassword.apply)
 
   given ConfigDecoder[String, RedisHost] =
     ConfigDecoder[String].map(RedisHost.apply)
@@ -72,3 +78,9 @@ trait ConfigDecoders:
     ConfigDecoder[String].emap("UrlPattern") { str =>
       str.split(',').toList.traverse(UrlPattern.fromString)
     }
+
+  given ConfigDecoder[String, SentryDsn] =
+    ConfigDecoder[String].emap("SentryDsn")(SentryDsn.fromString)
+
+  given ConfigDecoder[String, SentryEnv] =
+    ConfigDecoder[String].emap("SentryEnv")(SentryEnv.fromString)

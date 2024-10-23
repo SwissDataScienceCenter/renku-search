@@ -16,19 +16,20 @@
  * limitations under the License.
  */
 
-package io.renku.solr.client
+package io.renku.search.sentry
 
-import org.http4s.Uri
+opaque type TagValue = String
 
-final case class SolrConfig(
-    baseUrl: Uri,
-    core: String,
-    maybeUser: Option[SolrConfig.SolrUser],
-    logMessageBodies: Boolean
-)
+object TagValue:
+  val searchApi: TagValue = unsafe("search-api")
+  val searchProvision: TagValue = unsafe("search-provision")
 
-object SolrConfig:
-  final case class SolrPassword(value: String) {
-    override def toString(): String = "***"
-  }
-  final case class SolrUser(username: String, password: SolrPassword)
+  def from(str: String): Either[String, TagValue] =
+    if (str.length() > 200) Left(s"Tag name is too long (>200): ${str.length}")
+    else if (str.matches("[^\n]+")) Right(str)
+    else Left(s"Invalid tag value: $str")
+
+  def unsafe(str: String): TagValue =
+    from(str).fold(sys.error, identity)
+
+  extension (self: TagValue) def value: String = self

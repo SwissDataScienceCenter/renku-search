@@ -18,7 +18,7 @@
 
 package io.renku.search
 
-import io.renku.logging.LoggingSetup
+import io.renku.search.logging.LoggingSetup
 
 trait LoggingConfigure extends munit.Suite:
 

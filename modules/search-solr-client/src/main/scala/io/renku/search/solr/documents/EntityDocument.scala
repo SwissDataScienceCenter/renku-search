@@ -111,6 +111,11 @@ final case class Project(
   def modifyGroupMembers(f: EntityMembers => EntityMembers): Project =
     setGroupMembers(f(toGroupMembers))
 
+  // Needed because a document that has this fields with Some(...) value will not be able
+  // to be inserted in Solr.
+  def stripDetails: Project =
+    copy(creatorDetails = None, namespaceDetails = None)
+
 object Project:
   given Encoder[Project] =
     EncoderSupport.deriveWith(

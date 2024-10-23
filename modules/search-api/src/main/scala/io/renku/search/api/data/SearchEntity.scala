@@ -42,6 +42,12 @@ object SearchEntity:
   given Decoder[SearchEntity] = MapBasedCodecs.deriveDecoder[SearchEntity]
   given Encoder[SearchEntity] = EncoderSupport.derive[SearchEntity]
 
+  sealed trait ProjectNamespace:
+    def namespace: UserOrGroup
+
+  sealed trait UserNamespace:
+    def namespace: Namespace
+
   final case class Project(
       id: Id,
       name: Name,
@@ -54,13 +60,55 @@ object SearchEntity:
       creationDate: CreationDate,
       keywords: List[Keyword] = Nil,
       score: Option[Double] = None
-  ) extends SearchEntity
+  ) extends SearchEntity {
+    def maybeCompleteProject: Option[CompleteProject] =
+      (namespace, createdBy.flatMap(_.maybeCompleteUser)) match
+        case (Some(namespace), Some(createdBy)) =>
+          Some(
+            CompleteProject(
+              id = id,
+              name = name,
+              slug = slug,
+              namespace = namespace,
+              repositories = repositories,
+              visibility = visibility,
+              description = description,
+              createdBy = createdBy,
+              creationDate = creationDate,
+              keywords = keywords,
+              score = score
+            )
+          )
+        case (None, _) => None
+        case (_, None) => None
+  }
 
   object Project:
     given Encoder[Project] =
       EncoderSupport.deriveWithDiscriminator[Project](discriminatorField)
     given Decoder[Project] = MapBasedCodecs.deriveDecoder
   end Project
+
+  final case class CompleteProject(
+      id: Id,
+      name: Name,
+      namespace: UserOrGroup,
+      slug: Slug,
+      repositories: Seq[Repository],
+      visibility: Visibility,
+      description: Option[Description] = None,
+      createdBy: CompleteUser,
+      creationDate: CreationDate,
+      keywords: List[Keyword] = Nil,
+      score: Option[Double] = None
+  ) extends SearchEntity
+      with ProjectNamespace
+
+  object CompleteProject:
+    given Encoder[CompleteProject] =
+      EncoderSupport.deriveWithDiscriminator[CompleteProject](discriminatorField)
+    given Decoder[CompleteProject] = MapBasedCodecs.deriveDecoder
+  end CompleteProject
 
   final case class User(
       id: Id,
@@ -69,12 +117,43 @@ object SearchEntity:
       lastName: Option[LastName] = None,
       score: Option[Double] = None
   ) extends SearchEntity
-      with UserOrGroup
+      with UserOrGroup {
+    def maybeCompleteUser: Option[CompleteUser] =
+      namespace match {
+        case Some(ns: Namespace) =>
+          Some(
+            CompleteUser(
+              id = id,
+              namespace = ns,
+              firstName = firstName,
+              lastName = lastName,
+              score = score
+            )
+          )
+        case None => None
+      }
+  }
 
   object User:
     given Encoder[User] = EncoderSupport.deriveWithDiscriminator(discriminatorField)
     given Decoder[User] = MapBasedCodecs.deriveDecoder
   end User
+
+  final case class CompleteUser(
+      id: Id,
+      namespace: Namespace,
+      firstName: Option[FirstName] = None,
+      lastName: Option[LastName] = None,
+      score: Option[Double] = None
+  ) extends SearchEntity
+      with UserOrGroup
+      with UserNamespace
+
+  object CompleteUser:
+    given Encoder[CompleteUser] =
+      EncoderSupport.deriveWithDiscriminator(discriminatorField)
+    given Decoder[CompleteUser] = MapBasedCodecs.deriveDecoder
+  end CompleteUser
 
   final case class Group(
       id: Id,

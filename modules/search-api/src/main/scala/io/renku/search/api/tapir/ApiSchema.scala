@@ -40,12 +40,16 @@ trait ApiSchema extends ApiSchema.Primitives:
     .derived[User]
     .jsonExample(ApiSchema.exampleUser.widen)
 
+  given Schema[CompleteUser] = Schema
+    .derived[CompleteUser]
+    .jsonExample(ApiSchema.exampleCompleteUser.widen)
+
   given Schema[Group] = Schema
     .derived[Group]
     .jsonExample(ApiSchema.exampleGroup.widen)
 
   given (using
-      userSchema: Schema[User],
+      userSchema: Schema[CompleteUser],
       groupSchema: Schema[Group]
   ): Schema[UserOrGroup] =
     Schema
@@ -56,29 +60,29 @@ trait ApiSchema extends ApiSchema.Primitives:
       )
       .jsonExample(ApiSchema.exampleGroup: UserOrGroup)
 
-  given (using userSchema: Schema[User]): Schema[Project] = Schema
-    .derived[Project]
+  given (using userSchema: Schema[CompleteUser]): Schema[CompleteProject] = Schema
+    .derived[CompleteProject]
     .modify(_.createdBy) { schemaOptUser =>
       // this is necessary to include the `type` property into the schema of the createdBy property
       // It is not added automagically, because we use the concrete type `User` and not `SearchEntity`
       // (the sealed trait).
       // Using `SearchEntity` results in a deadlock when evaluating the magnolia macros from tapir. I
       // tried to make all components lazy, but didn't manage to solve it
-      val userType = userSchema.schemaType.asInstanceOf[SProduct[User]]
-      val df = SProductField[User, String](
+      val userType = userSchema.schemaType.asInstanceOf[SProduct[CompleteUser]]
+      val df = SProductField[CompleteUser, String](
         FieldName("type"),
         Schema.string,
         _ => Some("User")
       )
-      val nextUserSchema: Schema[User] =
+      val nextUserSchema: Schema[CompleteUser] =
         userSchema.copy(schemaType = userType.copy(fields = df :: userType.fields))
-      schemaOptUser.copy(schemaType = SOption(nextUserSchema)(identity))
+      schemaOptUser.copy(schemaType = nextUserSchema.schemaType)
     }
     .jsonExample(ApiSchema.exampleProject.widen)
 
   given (using
-      projectSchema: Schema[Project],
-      userSchema: Schema[User],
+      projectSchema: Schema[CompleteProject],
+      userSchema: Schema[CompleteUser],
       groupSchema: Schema[Group],
       ug: Schema[UserOrGroup]
   ): Schema[SearchEntity] =
@@ -150,6 +154,14 @@ object ApiSchema:
   val exampleUser: SearchEntity.User = User(
     Id("1CAF4C73F50D4514A041C9EDDB025A36"),
     Some(Namespace("renku/renku")),
+    Some(FirstName("Albert")),
+    Some(LastName("Einstein")),
+    Some(2.1)
+  )
+
+  val exampleCompleteUser: SearchEntity.CompleteUser = CompleteUser(
+    Id("1CAF4C73F50D4514A041C9EDDB025A36"),
+    Namespace("renku/renku"),
     Some(FirstName("Albert")),
     Some(LastName("Einstein")),
     Some(2.1)

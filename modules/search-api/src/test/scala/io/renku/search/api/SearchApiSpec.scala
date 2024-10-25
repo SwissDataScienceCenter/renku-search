@@ -27,11 +27,10 @@ import io.renku.search.model.*
 import io.renku.search.query.Query
 import io.renku.search.solr.client.SearchSolrSuite
 import io.renku.search.solr.client.SolrDocumentGenerators.*
-import io.renku.search.solr.documents.{EntityDocument, User as SolrUser}
+import io.renku.search.solr.documents.EntityDocument
 import io.renku.solr.client.DocVersion
 import io.renku.solr.client.ResponseBody
 import munit.CatsEffectSuite
-import org.scalacheck.Gen
 import scribe.Scribe
 
 class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
@@ -41,20 +40,29 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
   private given Scribe[IO] = scribe.cats[IO]
 
   test("do a lookup in Solr to find entities matching the given phrase"):
-    val project1 = projectDocumentGen(
-      "matching",
-      "matching description",
-      Gen.const(None),
-      Gen.const(None),
-      Gen.const(Visibility.Public)
-    ).generateOne
-    val project2 = projectDocumentGen(
-      "disparate",
-      "disparate description",
-      Gen.const(None),
-      Gen.const(None),
-      Gen.const(Visibility.Public)
-    ).generateOne
+    val user = userDocumentGen.generateOne
+    val project1 = projectDocumentGenForInsert
+      .map(p =>
+        p.copy(
+          name = Name("matching"),
+          description = Description("matching description").some,
+          createdBy = user.id,
+          namespace = user.namespace,
+          visibility = Visibility.Public
+        )
+      )
+      .generateOne
+    val project2 = projectDocumentGenForInsert
+      .map(p =>
+        p.copy(
+          name = Name("disparate"),
+          description = Description("disparate description").some,
+          createdBy = user.id,
+          namespace = user.namespace,
+          visibility = Visibility.Public
+        )
+      )
+      .generateOne
     for {
       client <- IO(searchSolrClient())
       searchApi = new SearchApiImpl[IO](client)
@@ -72,14 +80,21 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
 
   test("return Project and User entities"):
     val userId = ModelGenerators.idGen.generateOne
-    val user = SolrUser(userId, DocVersion.NotExists, FirstName("exclusive").some)
-    val project = projectDocumentGen(
-      "exclusive",
-      "exclusive description",
-      Gen.const(None),
-      Gen.const(None),
-      Gen.const(Visibility.Public)
-    ).generateOne.copy(createdBy = userId)
+    val user = userDocumentGen
+      .map(u => u.copy(id = userId, firstName = FirstName("exclusive").some))
+      .generateOne
+    val project = projectDocumentGenForInsert
+      .map(p =>
+        p.copy(
+          name = Name("exclusive"),
+          description = Description("exclusive description").some,
+          createdBy = userId,
+          namespace = user.namespace,
+          visibility = Visibility.Public
+        )
+      )
+      .generateOne
+      .copy(createdBy = userId)
     for {
       client <- IO(searchSolrClient())
       searchApi = new SearchApiImpl[IO](client)
@@ -89,7 +104,10 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
         .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
 
       expected = toApiEntities(
-        project.copy(creatorDetails = ResponseBody.single(user).some),
+        project.copy(
+          creatorDetails = ResponseBody.single(user).some,
+          namespaceDetails = ResponseBody.single(user).some
+        ),
         user
       ).toSet
       obtained = results.items.map(scoreToNone).toSet

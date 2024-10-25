@@ -43,12 +43,70 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
   override def munitFixtures: Seq[munit.AnyFixture[?]] =
     List(solrServer, searchSolrClient)
 
+  // test("ignore entities with non-resolvable namespace"):
+  //   val user = userDocumentGen.generateOne
+  //   val group = groupDocumentGen.generateOne
+  //   val project0 = projectDocumentGen(
+  //     "project-test0",
+  //     "project-test0 description",
+  //     Gen.const(None),
+  //     Gen.const(None)
+  //   ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
+  //   val project1 = projectDocumentGen(
+  //     "project-test1",
+  //     "project-test1 description",
+  //     Gen.const(None),
+  //     Gen.const(None)
+  //   ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
+
+  //   for
+  //     client <- IO(searchSolrClient())
+  //     _ <- client.upsert(Seq(project0.widen, project1.widen, user.widen, group.widen))
+
+  //     qr <- client.queryEntity(
+  //       SearchRole.admin(Id("admin")),
+  //       Query.parse("test0").toOption.get,
+  //       10,
+  //       0
+  //     )
+  //     _ = assertEquals(qr.responseBody.docs.size, 1)
+  //   yield ()
+
+  test("ignore entities with non-existing namespace"):
+    val user = userDocumentGen.generateOne
+    val group = groupDocumentGen.generateOne
+    val project0 = projectDocumentGen(
+      "project-test0uae",
+      "project-test0uae description",
+      Gen.const(None),
+      Gen.const(None)
+    ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
+    val project1 = projectDocumentGen(
+      "project-test1",
+      "project-test1 description",
+      Gen.const(None),
+      Gen.const(None)
+    ).generateOne.copy(createdBy = user.id, namespace = None)
+
+    for
+      client <- IO(searchSolrClient())
+      _ <- client.upsert(Seq(project0.widen, project1.widen, user.widen, group.widen))
+
+      qr <- client.queryEntity(
+        SearchRole.admin(Id("admin")),
+        Query.parse("test0uae").toOption.get,
+        10,
+        0
+      )
+      _ = assertEquals(qr.responseBody.docs.size, 1)
+    yield ()
+
   test("load project with resolved namespace and creator"):
     val user = userDocumentGen.generateOne
     val group = groupDocumentGen.generateOne
     val project = projectDocumentGen(
-      "project-test0",
-      "project-test0 description",
+      "project-test1trfg",
+      "project-test1trfg description",
       Gen.const(None),
       Gen.const(None)
     ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
@@ -59,7 +117,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
 
       qr <- client.queryEntity(
         SearchRole.admin(Id("admin")),
-        Query.parse("test0").toOption.get,
+        Query.parse("test1trfg").toOption.get,
         10,
         0
       )
@@ -77,16 +135,18 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
     yield ()
 
   test("be able to insert and fetch a Project document"):
-    val project =
-      projectDocumentGen(
-        "solr-project",
-        "solr project description",
-        Gen.const(None),
-        Gen.const(None)
-      ).generateOne
     for {
       client <- IO(searchSolrClient())
-      _ <- client.upsert(Seq(project.widen))
+      user <- IO(userDocumentGen.generateOne)
+      project <- IO(
+        projectDocumentGenForInsert.generateOne
+          .copy(
+            createdBy = user.id,
+            namespace = user.namespace,
+            name = Name("solr project")
+          )
+      )
+      _ <- client.upsert(Seq(project.widen, user.widen))
       qr <- client.queryEntity(
         SearchRole.admin(Id("admin")),
         Query.parse("solr").toOption.get,
@@ -160,10 +220,12 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
     for
       client <- IO(searchSolrClient())
       entityMembers <- IO(entityMembersGen.suchThat(_.nonEmpty).generateOne)
+      user <- IO(userDocumentGen.generateOne)
       project <- IO(
         projectDocumentGenForInsert
           .map(p => p.setMembers(entityMembers).copy(visibility = Visibility.Private))
           .generateOne
+          .copy(createdBy = user.id, namespace = user.namespace)
       )
       _ <- client.upsertSuccess(Seq(project))
       member = entityMembers.allIds.head
@@ -185,6 +247,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
   test("search partial words"):
     for
       client <- IO(searchSolrClient())
+      user <- IO(userDocumentGen.generateOne)
       project <- IO(
         projectDocumentGen(
           "NeuroDesk",
@@ -192,12 +255,12 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
           Gen.const(None),
           Gen.const(None),
           Gen.const(Visibility.Public)
-        ).generateOne
+        ).generateOne.copy(createdBy = user.id, namespace = user.namespace)
       )
-      _ <- client.upsertSuccess(Seq(project))
+      _ <- client.upsertSuccess(Seq(project, user))
       result1 <- client.queryEntity(
         SearchRole.anonymous,
-        Query(Query.Segment.text("neuro")),
+        Query(Query.Segment.text("neuro"), Query.Segment.idIs(project.id.value)),
         1,
         0
       )
@@ -206,7 +269,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
 
       result2 <- client.queryEntity(
         SearchRole.anonymous,
-        Query(Query.Segment.nameIs("neuro")),
+        Query(Query.Segment.nameIs("neuro"), Query.Segment.idIs(project.id.value)),
         1,
         0
       )
@@ -215,15 +278,12 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
     yield ()
 
   test("delete all entities"):
-    val project =
-      projectDocumentGen(
-        "solr-project",
-        "solr project description",
-        Gen.const(None),
-        Gen.const(None)
-      ).generateOne
     val user = userDocumentGen.generateOne
     val group = groupDocumentGen.generateOne
+    val project = projectDocumentGenForInsert.generateOne.copy(
+      createdBy = user.id,
+      namespace = group.namespace.some
+    )
     val role = SearchRole.admin(Id("admin"))
     val query = Query(Query.Segment.idIs(user.id.value, group.id.value, project.id.value))
     for

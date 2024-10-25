@@ -44,7 +44,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
     val project1 = projectDocumentGen(
       "matching",
       "matching description",
-      Gen.const(None),
+      userDocumentGen.asOption,
       Gen.const(None),
       Gen.const(Visibility.Public)
     ).generateOne
@@ -76,7 +76,7 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
     val project = projectDocumentGen(
       "exclusive",
       "exclusive description",
-      Gen.const(None),
+      userDocumentGen.asOption,
       Gen.const(None),
       Gen.const(Visibility.Public)
     ).generateOne.copy(createdBy = userId)

@@ -43,6 +43,29 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
   override def munitFixtures: Seq[munit.AnyFixture[?]] =
     List(solrServer, searchSolrClient)
 
+  test("ignore entities with non-existing namespace"):
+    val user = userDocumentGen.generateOne
+    val group = groupDocumentGen.generateOne
+    val project0 = projectDocumentGen(
+      "project-test0",
+      "project-test0 description",
+      Gen.const(None),
+      Gen.const(None)
+    ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
+    val project1 = projectDocumentGen(
+      "project-test1",
+      "project-test1 description",
+      Gen.const(None),
+      Gen.const(None)
+    ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
+
+    for
+      client <- IO(searchSolrClient())
+      _ <- IO.println(client)
+      _ <- IO.println(project0)
+      _ <- IO.println(project1)
+    yield ()
+
   test("load project with resolved namespace and creator"):
     val user = userDocumentGen.generateOne
     val group = groupDocumentGen.generateOne

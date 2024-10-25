@@ -41,9 +41,11 @@ object RenkuEntityQuery:
   def apply(role: SearchRole, sq: SolrQuery, limit: Int, offset: Int): QueryData =
     QueryData(QueryString(sq.query.value, limit, offset))
       .addFilter(
-        SolrToken.kindIs(DocumentKind.FullEntity).value,
-        SolrToken.namespaceExists.value,
-        SolrToken.createdByExists.value
+        SolrToken
+          .kindIs(DocumentKind.FullEntity)
+          .value
+//        SolrToken.namespaceExists.value,
+//        SolrToken.createdByExists.value
       )
       .addFilter(constrainRole(role).map(_.value)*)
       .withSort(sq.sort)

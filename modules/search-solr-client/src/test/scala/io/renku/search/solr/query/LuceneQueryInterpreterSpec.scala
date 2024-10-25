@@ -63,31 +63,6 @@ class LuceneQueryInterpreterSpec extends SearchSolrSuite with ScalaCheckEffectSu
     val q = LuceneQueryInterpreter[Id].run(ctx, userQuery)
     QueryData(QueryString(q.query.value, 10, 0)).withSort(q.sort)
 
-  test("amend query with auth data"):
-    assertEquals(
-      query("help", SearchRole.user(model.Id("13"))).query,
-      "((content_all:help~) AND (visibility:public OR members_all:13) AND _kind:fullentity)"
-    )
-    assertEquals(
-      query("help", SearchRole.Anonymous).query,
-      "((content_all:help~) AND visibility:public AND _kind:fullentity)"
-    )
-    assertEquals(
-      query("help", adminRole).query,
-      "(content_all:help~ AND _kind:fullentity)"
-    )
-
-  test("amend empty query with auth data"):
-    assertEquals(
-      query("", SearchRole.user(model.Id("13"))).query,
-      "((visibility:public OR members_all:13) AND _kind:fullentity)"
-    )
-    assertEquals(
-      query("", SearchRole.Anonymous).query,
-      "(visibility:public AND _kind:fullentity)"
-    )
-    assertEquals(query("", adminRole).query, "(_kind:fullentity)")
-
   test("valid content_all query") {
     IO(solrClientWithSchema()).flatMap { client =>
       List("hello world", "bla:test")

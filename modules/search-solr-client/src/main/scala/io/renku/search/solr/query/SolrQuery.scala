@@ -21,9 +21,7 @@ package io.renku.search.solr.query
 import cats.Monoid
 import cats.syntax.all.*
 
-import io.renku.search.model.Id
 import io.renku.search.query.Order
-import io.renku.search.solr.documents.DocumentKind
 import io.renku.solr.client.SolrSort
 
 final case class SolrQuery(
@@ -34,36 +32,8 @@ final case class SolrQuery(
   def ++(next: SolrQuery): SolrQuery =
     SolrQuery(query && next.query, sort ++ next.sort)
 
-  def asAnonymous: SolrQuery =
-    SolrQuery(
-      (List(
-        query.parens,
-        SolrToken.publicOnly
-      ) ::: SolrQuery.mandatoryConstraints).foldAnd,
-      sort
-    )
-
-  def asUser(id: Id): SolrQuery =
-    SolrQuery(
-      (List(query.parens, SolrToken.forUser(id))
-        ::: SolrQuery.mandatoryConstraints).foldAnd,
-      sort
-    )
-
-  def asAdmin: SolrQuery =
-    SolrQuery(
-      (query :: SolrQuery.mandatoryConstraints).foldAnd,
-      sort
-    )
-
 object SolrQuery:
   val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)
-
-  private val mandatoryConstraints = List(
-    SolrToken.kindIs(DocumentKind.FullEntity),
-    SolrToken.namespaceExists,
-    SolrToken.createdByExists
-  )
 
   def apply(e: SolrToken): SolrQuery =
     SolrQuery(e, SolrSort.empty)

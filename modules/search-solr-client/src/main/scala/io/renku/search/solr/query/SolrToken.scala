@@ -119,7 +119,7 @@ object SolrToken:
     s"${field.name}:$value"
 
   def fieldExists(field: FieldName): SolrToken =
-    fieldIs(field, "*")
+    fieldIs(field, "[* TO *]")
 
   def unsafeFromString(s: String): SolrToken = s
 

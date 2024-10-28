@@ -48,6 +48,44 @@ class SolrClientSpec
   override def munitFixtures: Seq[munit.AnyFixture[?]] =
     List(solrServer, solrClient)
 
+  test("use cursor for pagination") {
+    val courses = List.unfold(0) { n =>
+      if (n > 10) None
+      else Some((Course(f"c-$n%03d", s"fp in scala $n", DocVersion.NotExists), n + 1))
+    }
+    for
+      client <- IO(solrClient())
+      _ <- client.deleteIds(NonEmptyList.fromListUnsafe(courses.map(_.id)))
+      r0 <- client.upsert(courses)
+      _ = assert(r0.isSuccess, clue = "Expected successful insert")
+
+      query = QueryData(QueryString("*:*"))
+        .withCursor(CursorMark.Start, FieldName.id)
+        .appendSort(FieldName("name_s"))
+        .withLimit(4)
+
+      r1 <- client.query[Course](query)
+      _ = assert(r1.nextCursor.isDefined)
+      _ = assertEquals(r1.responseBody.docs.map(_.id), courses.take(4).map(_.id))
+
+      r2 <- client.query[Course](query.withCursor(r1.nextCursor.get))
+      _ = assert(r2.nextCursor.isDefined)
+      _ = assertEquals(r2.responseBody.docs.map(_.id), courses.drop(4).take(4).map(_.id))
+
+      r3 <- client.query[Course](query.withCursor(r2.nextCursor.get))
+      _ = assert(r3.nextCursor.isDefined)
+      _ = assertEquals(r3.responseBody.docs.map(_.id), courses.drop(8).take(4).map(_.id))
+
+      r4 <- client.query[Course](query.withCursor(r3.nextCursor.get))
+      _ = assert(r4.nextCursor.isDefined)
+      _ = assertEquals(r4.responseBody.docs, Nil)
+
+      r5 <- client.query[Course](query.withCursor(r4.nextCursor.get))
+      _ = assert(r5.nextCursor.isDefined)
+      _ = assertEquals(r5.nextCursor, r4.nextCursor)
+    yield ()
+  }
+
   test("optimistic locking: fail if exists") {
     val c0 = Course("c1", "fp in scala", DocVersion.NotExists)
     for {

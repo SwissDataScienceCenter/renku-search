@@ -30,10 +30,7 @@ import io.renku.search.solr.SearchRole
 import io.renku.search.solr.documents.*
 import io.renku.search.solr.query.LuceneQueryInterpreter
 import io.renku.search.solr.query.SolrToken
-import io.renku.search.solr.schema.EntityDocumentSchema
 import io.renku.solr.client.*
-import io.renku.solr.client.facet.{Facet, Facets}
-import io.renku.solr.client.schema.FieldName
 
 private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
     extends SearchSolrClient[F]:
@@ -41,13 +38,6 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   private val logger = scribe.cats.effect[F]
   private val interpreter = LuceneQueryInterpreter.forSync[F]
 
-  private val creatorDetails: FieldName = FieldName("creatorDetails")
-  private val namespaceDetails: FieldName = FieldName("namespaceDetails")
-
-  private val typeTerms = Facet.Terms(
-    EntityDocumentSchema.Fields.entityType,
-    EntityDocumentSchema.Fields.entityType
-  )
   val underlying: SolrClient[F] = solrClient
 
   override def upsert[D: Encoder](documents: Seq[D]): F[UpsertResponse] =
@@ -67,30 +57,9 @@ private class SearchSolrClientImpl[F[_]: Async](solrClient: SolrClient[F])
   ): F[QueryResponse[EntityDocument]] =
     for {
       solrQuery <- interpreter(role).run(query)
+      queryData = RenkuEntityQuery(role, solrQuery, limit, offset)
       _ <- logger.info(s"Query: '${query.render}' -> Solr: '$solrQuery'")
-      res <- solrClient
-        .query[EntityDocument](
-          QueryData(QueryString(solrQuery.query.value, limit, offset))
-            .withSort(solrQuery.sort)
-            .withFacet(Facets(typeTerms))
-            .withFields(FieldName.all, FieldName.score)
-            .addSubQuery(
-              creatorDetails,
-              SubQuery(
-                "{!terms f=id v=$row.createdBy}",
-                "{!terms f=_kind v=fullentity}",
-                1
-              ).withFields(FieldName.all)
-            )
-            .addSubQuery(
-              namespaceDetails,
-              SubQuery(
-                "{!terms f=namespace v=$row.namespace}",
-                "(_type:User OR _type:Group) AND _kind:fullentity",
-                1
-              ).withFields(FieldName.all)
-            )
-        )
+      res <- solrClient.query[EntityDocument](queryData)
     } yield res
 
   override def query[D: Decoder](query: QueryData): F[QueryResponse[D]] =

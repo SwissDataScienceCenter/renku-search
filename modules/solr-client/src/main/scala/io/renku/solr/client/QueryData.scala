@@ -41,7 +41,8 @@ final case class QueryData(
   def appendSort(field: FieldName, dir: Direction = Direction.Asc): QueryData =
     copy(sort = sort + (field -> dir))
   def withFields(field: FieldName*) = copy(fields = field)
-  def addFilter(q: String): QueryData = copy(filter = filter :+ q)
+  def withFilter(fq: Seq[String]): QueryData = copy(filter = fq)
+  def addFilter(q: String*): QueryData = copy(filter = filter ++ q)
   def withFacet(facet: Facets): QueryData = copy(facet = facet)
   def withLimit(limit: Int): QueryData = copy(limit = limit)
   def withOffset(offset: Int): QueryData = copy(offset = offset)

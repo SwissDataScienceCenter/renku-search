@@ -66,12 +66,17 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
     for {
       client <- IO(searchSolrClient())
       searchApi = new SearchApiImpl[IO](client)
-      _ <- client.upsert((project1 :: project2 :: Nil).map(_.widen))
+      _ <- client.upsert((project1 :: project2 :: user :: Nil).map(_.widen))
       results <- searchApi
-        .query(AuthContext.anonymous)(mkQuery("matching"))
+        .query(AuthContext.anonymous)(mkQuery("matching type:Project"))
         .map(_.fold(err => fail(s"Calling Search API failed with $err"), identity))
 
-      expected = toApiEntities(project1).toSet
+      expected = toApiEntities(
+        project1.copy(
+          creatorDetails = ResponseBody.single(user).some,
+          namespaceDetails = ResponseBody.single(user).some
+        )
+      ).toSet
       obtained = results.items.map(scoreToNone).toSet
     } yield assert(
       expected.diff(obtained).isEmpty,
@@ -122,6 +127,6 @@ class SearchApiSpec extends CatsEffectSuite with SearchSolrSuite:
     case e: SearchEntity.Group   => e.copy(score = None)
 
   private def mkQuery(phrase: String): QueryInput =
-    QueryInput.pageOne(Query.parse(s"Fields $phrase").fold(sys.error, identity))
+    QueryInput.pageOne(Query.parse(phrase).fold(sys.error, identity))
 
   private def toApiEntities(e: EntityDocument*) = e.map(EntityConverter.apply)

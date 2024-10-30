@@ -43,34 +43,35 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
   override def munitFixtures: Seq[munit.AnyFixture[?]] =
     List(solrServer, searchSolrClient)
 
-  // test("ignore entities with non-resolvable namespace"):
-  //   val user = userDocumentGen.generateOne
-  //   val group = groupDocumentGen.generateOne
-  //   val project0 = projectDocumentGen(
-  //     "project-test0",
-  //     "project-test0 description",
-  //     Gen.const(None),
-  //     Gen.const(None)
-  //   ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
-  //   val project1 = projectDocumentGen(
-  //     "project-test1",
-  //     "project-test1 description",
-  //     Gen.const(None),
-  //     Gen.const(None)
-  //   ).generateOne.copy(createdBy = user.id, namespace = group.namespace.some)
+  test("ignore entities with non-resolvable namespace"):
+    val user = userDocumentGen.generateOne
+    val group = groupDocumentGen.generateOne
+    val randomNs = ModelGenerators.namespaceGen.generateOne
+    val project0 = projectDocumentGenForInsert.generateOne.copy(
+      createdBy = user.id,
+      namespace = group.namespace.some
+    )
+    val project1 = projectDocumentGenForInsert.generateOne.copy(
+      createdBy = user.id,
+      namespace = randomNs.some
+    )
 
-  //   for
-  //     client <- IO(searchSolrClient())
-  //     _ <- client.upsert(Seq(project0.widen, project1.widen, user.widen, group.widen))
+    for
+      client <- IO(searchSolrClient())
+      _ <- client.upsert(Seq(project0.widen, project1.widen, user.widen, group.widen))
 
-  //     qr <- client.queryEntity(
-  //       SearchRole.admin(Id("admin")),
-  //       Query.parse("test0").toOption.get,
-  //       10,
-  //       0
-  //     )
-  //     _ = assertEquals(qr.responseBody.docs.size, 1)
-  //   yield ()
+      qr <- client.queryEntity(
+        SearchRole.admin(Id("admin")),
+        Query.empty,
+        10,
+        0
+      )
+      _ = assert(
+        !qr.responseBody.docs.map(_.id).contains(project1.id),
+        "project with non-existing namespace was in the result set"
+      )
+      _ = assertEquals(qr.responseBody.docs.size, 3)
+    yield ()
 
   test("ignore entities with non-existing namespace"):
     val user = userDocumentGen.generateOne
@@ -227,7 +228,7 @@ class SearchSolrClientSpec extends CatsEffectSuite with SearchSolrSuite:
           .generateOne
           .copy(createdBy = user.id, namespace = user.namespace)
       )
-      _ <- client.upsertSuccess(Seq(project))
+      _ <- client.upsertSuccess(Seq(project, user))
       member = entityMembers.allIds.head
       nonMember <- IO(ModelGenerators.idGen.generateOne)
       query = Query(Query.Segment.idIs(project.id.value))

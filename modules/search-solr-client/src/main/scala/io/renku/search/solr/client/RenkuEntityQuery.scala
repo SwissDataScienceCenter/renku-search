@@ -43,7 +43,8 @@ object RenkuEntityQuery:
       .addFilter(
         SolrToken.kindIs(DocumentKind.FullEntity).value,
         SolrToken.namespaceExists.value,
-        SolrToken.createdByExists.value
+        SolrToken.createdByExists.value,
+        "{!join from=namespace to=namespace}(_type:User OR _type:Group)"
       )
       .addFilter(constrainRole(role).map(_.value)*)
       .withSort(sq.sort)

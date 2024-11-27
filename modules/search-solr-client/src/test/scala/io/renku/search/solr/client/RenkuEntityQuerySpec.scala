@@ -67,3 +67,15 @@ class RenkuEntityQuerySpec extends FunSuite:
       query("bla", adminRole),
       SolrToken.kindIs(DocumentKind.FullEntity).value
     )
+
+  test("only entities with existing namespace property"):
+    assertFilter(
+      query("bla", adminRole),
+      SolrToken.namespaceExists.value
+    )
+
+  test("only projects with createdBy property"):
+    assertFilter(
+      query("bla", adminRole),
+      SolrToken.createdByExists.value
+    )

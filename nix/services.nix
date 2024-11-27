@@ -12,7 +12,9 @@
 
   services.dev-redis = {
     enable = true;
-    instance = "search";
+    instances = {
+      search = { port = 6379; };
+    };
   };
 
   services.openapi-docs = {

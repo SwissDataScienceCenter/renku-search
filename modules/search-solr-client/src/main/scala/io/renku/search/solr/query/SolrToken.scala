@@ -40,6 +40,8 @@ object SolrToken:
   def fromVisibility(v: Visibility): SolrToken = v.name
   private def fromEntityType(et: EntityType): SolrToken = et.name
 
+  val all: SolrToken = "*:*"
+
   def fromKeyword(kw: Keyword): SolrToken =
     StringEscape.queryChars(kw.value)
 
@@ -78,6 +80,11 @@ object SolrToken:
 
   def namespaceIs(ns: Namespace): SolrToken =
     fieldIs(SolrField.namespace, fromNamespace(ns))
+
+  def namespaceExists: SolrToken = fieldExists(SolrField.namespace)
+
+  def createdByExists: SolrToken =
+    "(createdBy:[* TO *] OR (*:* AND -_type:Project))"
 
   def createdDateIs(date: Instant): SolrToken =
     fieldIs(SolrField.creationDate, fromInstant(date))

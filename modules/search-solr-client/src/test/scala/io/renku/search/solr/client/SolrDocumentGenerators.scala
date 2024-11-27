@@ -95,7 +95,7 @@ trait SolrDocumentGenerators:
       idGen,
       Gen.option(userFirstNameGen),
       Gen.option(userLastNameGen),
-      Gen.option(ModelGenerators.namespaceGen)
+      Gen.some(ModelGenerators.namespaceGen)
     )
       .flatMapN { case (id, f, l, ns) =>
         User.of(id, ns, f, l)

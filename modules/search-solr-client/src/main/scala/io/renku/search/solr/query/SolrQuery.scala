@@ -32,6 +32,10 @@ final case class SolrQuery(
   def ++(next: SolrQuery): SolrQuery =
     SolrQuery(query && next.query, sort ++ next.sort)
 
+  def emptyToAll: SolrQuery =
+    if (query.isEmpty) SolrQuery(SolrToken.all, sort)
+    else this
+
 object SolrQuery:
   val empty: SolrQuery = SolrQuery(SolrToken.empty, SolrSort.empty)
 

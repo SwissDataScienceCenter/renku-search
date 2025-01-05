@@ -10,7 +10,7 @@ object Dependencies {
     val catsCore = "2.12.0"
     val catsEffect = "3.5.4"
     val munitCatsEffect = "2.0.0"
-    val catsParse = "1.0.0"
+    val catsParse = "1.1.0"
     val catsScalaCheck = "0.3.2"
     val ciris = "3.6.0"
     val decline = "2.4.1"

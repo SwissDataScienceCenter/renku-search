@@ -13,7 +13,7 @@ object Dependencies {
     val catsParse = "1.0.0"
     val catsScalaCheck = "0.3.2"
     val ciris = "3.6.0"
-    val decline = "2.4.1"
+    val decline = "2.5.0"
     val fs2 = "3.11.0"
     val http4s = "0.23.28"
     val http4sPrometheusMetrics = "0.24.6"

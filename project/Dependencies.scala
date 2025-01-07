@@ -15,7 +15,7 @@ object Dependencies {
     val ciris = "3.6.0"
     val decline = "2.5.0"
     val fs2 = "3.11.0"
-    val http4s = "0.23.28"
+    val http4s = "0.23.30"
     val http4sPrometheusMetrics = "0.24.6"
     val redis4Cats = "1.7.1"
     val sbtMdoc = "2.5.2"

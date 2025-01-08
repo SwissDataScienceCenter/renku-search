@@ -16,16 +16,16 @@
  * limitations under the License.
  */
 
-addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.12.1")
-addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.12.0")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.13.0")
+addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.13.1")
 addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.0.1")
-addSbtPlugin("com.github.sbt" % "sbt-git" % "2.0.1")
-addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.10.4")
+addSbtPlugin("com.github.sbt" % "sbt-git" % "2.1.0")
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.0")
 addSbtPlugin("com.github.sbt" % "sbt-release" % "1.4.0")
-addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.8.3")
+addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.8.4")
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.10.0")
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.10.0")
-addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.5.3")
+addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.5.4")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
 
 // sbt-git comes with quite old jgit version

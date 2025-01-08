@@ -6,7 +6,7 @@ object Dependencies {
   object V {
     val avro = "1.12.0"
     val avro4s = "5.0.9"
-    val borer = "1.14.1"
+    val borer = "1.15.0"
     val catsCore = "2.12.0"
     val catsEffect = "3.5.7"
     val munitCatsEffect = "2.0.0"
@@ -17,17 +17,17 @@ object Dependencies {
     val fs2 = "3.11.0"
     val http4s = "0.23.30"
     val http4sPrometheusMetrics = "0.24.6"
-    val redis4Cats = "1.7.1"
+    val redis4Cats = "1.7.2"
     val sbtMdoc = "2.5.2"
     val scala = "3.5.2"
     val scalacheckEffectMunit = "2.0.0-M2"
     val scodec = "2.2.2"
     val scodecBits = "1.2.1"
-    val scribe = "3.15.0"
+    val scribe = "3.15.3"
     val sttpApiSpec = "0.11.3"
-    val tapir = "1.11.5"
+    val tapir = "1.11.11"
     val jwtScala = "10.0.1"
-    val sentry = "7.14.0"
+    val sentry = "7.20.0"
   }
 
   val sentry = Seq(

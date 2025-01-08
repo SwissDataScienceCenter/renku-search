@@ -25,7 +25,7 @@ private object ReIndexDocument:
   given Encoder[ReIndexDocument] = MapBasedCodecs.deriveEncoder
   given Decoder[ReIndexDocument] = MapBasedCodecs.deriveDecoder
 
-  def lockDocument[F[_]: Sync: Clock](
+  def lockDocument[F[_]: Sync](
       messageId: Option[MessageId]
   ): LockDocument[F, ReIndexDocument] =
     LockDocument.whenExists(id =>

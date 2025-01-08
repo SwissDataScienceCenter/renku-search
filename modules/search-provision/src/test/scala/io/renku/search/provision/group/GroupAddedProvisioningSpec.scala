@@ -7,7 +7,7 @@ import io.renku.events.EventsGenerators
 import io.renku.search.GeneratorSyntax.*
 import io.renku.search.events.{GroupAdded, GroupUpdated}
 import io.renku.search.model.ModelGenerators
-import io.renku.search.model.{Id, Name, Namespace}
+import io.renku.search.model.{Name, Namespace}
 import io.renku.search.provision.ProvisioningSuite
 import io.renku.search.provision.events.syntax.*
 import io.renku.search.solr.documents.{Group as GroupDocument, *}

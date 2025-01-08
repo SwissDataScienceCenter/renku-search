@@ -86,7 +86,6 @@ lazy val json = project
     libraryDependencies ++= Dependencies.borer,
     description := "Utilities around working with borer"
   )
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
 
 lazy val commons = project
@@ -119,12 +118,12 @@ lazy val commons = project
     buildInfoPackage := "io.renku.search"
   )
   .dependsOn(json % "compile->compile;test->test")
-  .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
+  .enablePlugins(BuildInfoPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
 
 lazy val sentry = project
   .in(file("modules/sentry"))
-  .enablePlugins(AutomateHeaderPlugin, BuildInfoPlugin)
+  .enablePlugins(BuildInfoPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .settings(commonSettings)
   .settings(
@@ -138,7 +137,6 @@ lazy val sentry = project
 
 lazy val jwt = project
   .in(file("modules/jwt"))
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .settings(commonSettings)
   .settings(
@@ -151,7 +149,6 @@ lazy val jwt = project
 
 lazy val http4sBorer = project
   .in(file("modules/http4s-borer"))
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("http4s-borer")
   .settings(commonSettings)
@@ -168,7 +165,6 @@ lazy val http4sBorer = project
 lazy val httpClient = project
   .in(file("modules/http-client"))
   .withId("http-client")
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .settings(commonSettings)
   .settings(
@@ -185,7 +181,6 @@ lazy val httpClient = project
 
 lazy val openidKeycloak = project
   .in(file("modules/openid-keycloak"))
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .settings(commonSettings)
   .settings(
@@ -202,7 +197,6 @@ lazy val openidKeycloak = project
 
 lazy val http4sMetrics = project
   .in(file("modules/http4s-metrics"))
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("http4s-metrics")
   .settings(commonSettings)
@@ -216,7 +210,6 @@ lazy val http4sMetrics = project
 
 lazy val http4sCommons = project
   .in(file("modules/http4s-commons"))
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("http4s-commons")
   .settings(commonSettings)
@@ -248,7 +241,6 @@ lazy val redisClient = project
         Dependencies.redis4CatsStreams ++
         Dependencies.scribe
   )
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(RevolverPlugin)
   .dependsOn(
     commons % "test->test"
@@ -265,7 +257,6 @@ lazy val renkuRedisClient = project
         Dependencies.redis4Cats ++
         Dependencies.redis4CatsStreams
   )
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(RevolverPlugin)
   .dependsOn(
     events % "compile->compile;test->test",
@@ -275,7 +266,7 @@ lazy val renkuRedisClient = project
 lazy val solrClient = project
   .in(file("modules/solr-client"))
   .withId("solr-client")
-  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .enablePlugins(AvroCodeGen)
   .disablePlugins(RevolverPlugin)
   .settings(commonSettings)
   .settings(
@@ -294,7 +285,7 @@ lazy val solrClient = project
 lazy val searchSolrClient = project
   .in(file("modules/search-solr-client"))
   .withId("search-solr-client")
-  .enablePlugins(AvroCodeGen, AutomateHeaderPlugin)
+  .enablePlugins(AvroCodeGen)
   .disablePlugins(RevolverPlugin)
   .settings(commonSettings)
   .settings(
@@ -324,7 +315,6 @@ lazy val avroCodec = project
 
 lazy val http4sAvro = project
   .in(file("modules/http4s-avro"))
-  .enablePlugins(AutomateHeaderPlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("http4s-avro")
   .settings(commonSettings)
@@ -349,7 +339,7 @@ lazy val events = project
     commons % "compile->compile;test->test",
     avroCodec % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin, AvroSchemaDownload)
+  .enablePlugins(AvroSchemaDownload)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
 
 lazy val configValues = project
@@ -384,7 +374,6 @@ lazy val searchQuery = project
   .dependsOn(
     commons % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin)
 
 lazy val searchQueryDocs = project
   .in(file("modules/search-query-docs"))
@@ -415,7 +404,7 @@ lazy val searchProvision = project
     searchSolrClient % "compile->compile;test->test",
     configValues % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
+  .enablePlugins(DockerImagePlugin, RevolverPlugin)
 
 lazy val searchApi = project
   .in(file("modules/search-api"))
@@ -439,11 +428,11 @@ lazy val searchApi = project
     jwt % "compile->compile;test->test",
     openidKeycloak % "compile->compile;test->test"
   )
-  .enablePlugins(AutomateHeaderPlugin, DockerImagePlugin, RevolverPlugin)
+  .enablePlugins(DockerImagePlugin, RevolverPlugin)
 
 lazy val searchCli = project
   .in(file("modules/search-cli"))
-  .enablePlugins(AutomateHeaderPlugin, JavaAppPackaging, DockerImagePlugin)
+  .enablePlugins(JavaAppPackaging, DockerImagePlugin)
   .disablePlugins(DbTestPlugin, RevolverPlugin)
   .withId("search-cli")
   .settings(commonSettings)
@@ -498,6 +487,9 @@ lazy val commonSettings = Seq(
   ),
   Compile / packageDoc / publishArtifact := false,
   Compile / packageSrc / publishArtifact := false,
+  licenses := Seq(
+    "Apache-2.0" -> url("https://spdx.org/licenses/Apache-2.0.html")
+  ),
   // format: off
   scalacOptions ++= Seq(
     "-language:postfixOps", // enabling postfixes
@@ -526,32 +518,4 @@ lazy val commonSettings = Seq(
         Dependencies.catsScalaCheck ++
         Dependencies.scribe
     ).map(_ % Test),
-  // Format: on
-  organizationName := "Swiss Data Science Center (SDSC)",
-  startYear := Some(java.time.LocalDate.now().getYear),
-  licenses += (
-    "Apache-2.0",
-    new URI(
-      "https://www.apache.org/licenses/LICENSE-2.0.txt"
-    ).toURL
-  ),
-  headerLicense := Some(
-    HeaderLicense.Custom(
-      s"""|Copyright ${java.time.LocalDate.now().getYear} Swiss Data Science Center (SDSC)
-          |A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
-          |Eidgenössische Technische Hochschule Zürich (ETHZ).
-          |
-          |Licensed under the Apache License, Version 2.0 (the "License");
-          |you may not use this file except in compliance with the License.
-          |You may obtain a copy of the License at
-          |
-          |    http://www.apache.org/licenses/LICENSE-2.0
-          |
-          |Unless required by applicable law or agreed to in writing, software
-          |distributed under the License is distributed on an "AS IS" BASIS,
-          |WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-          |See the License for the specific language governing permissions and
-          |limitations under the License.""".stripMargin
-    )
-  )
 )

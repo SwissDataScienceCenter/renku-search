@@ -8,3 +8,6 @@
 57e3d43ba8025acd521d2e65de80ba9c13fbdb13
 # Scala Steward: Reformat with scalafmt 3.8.2
 9cc3dd838b39afa97ddb76987d070f35f9bd36b8
+
+# eikek: remove header from all sources
+eefe534f36aceb8b9b73176d968fb9eaff2a71d7

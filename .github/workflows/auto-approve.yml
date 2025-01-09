@@ -4,7 +4,7 @@ on:
   pull_request_target
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: auto-approve-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.actor == 'RenkuBot[bot]'
     steps:
+      - name: some output
+        run: echo "${{ github.actor }}"
       - name: Auto approve ${{ github.actor }}
         uses: hmarr/auto-approve-action@v4
         with:

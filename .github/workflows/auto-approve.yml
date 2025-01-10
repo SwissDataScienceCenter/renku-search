@@ -14,7 +14,7 @@ jobs:
       - name: Info output
         run: echo '${{ github.actor }}'
       - name: Auto approve ${{ github.actor }}
-        if: github.actor == 'RenkuBot[bot]'
+        if: github.actor == 'RenkuBot'
         uses: hmarr/auto-approve-action@v4
         with:
           github-token: ${{ secrets.PAT_EIKEK }}

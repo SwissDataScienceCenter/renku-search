@@ -19,6 +19,5 @@ object JwtVerify:
       def verify(token: String): F[Either[JwtError, RenkuToken]] =
         Applicative[F].pure(result match
           case a: JwtError   => Left(a)
-          case b: RenkuToken => Right(b)
-        )
+          case b: RenkuToken => Right(b))
     }

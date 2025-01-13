@@ -67,7 +67,7 @@ private object RedisConfigOpts:
   private val refreshInterval: Opts[FiniteDuration] =
     Opts
       .option[FiniteDuration]("redis-connection-refresh", "Redis connection refresh")
-      .withDefault(1 hour)
+      .withDefault(1.hour)
 
   val configOpts: Opts[RedisConfig] =
     (host, port, sentinel, db.map(Option(_)), password, masterSet, refreshInterval)

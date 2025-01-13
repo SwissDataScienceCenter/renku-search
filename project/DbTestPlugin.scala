@@ -16,7 +16,7 @@ object DbTestPlugin extends AutoPlugin {
   override def trigger = PluginTrigger.AllRequirements
 
   override def projectSettings: Seq[Def.Setting[_]] = Seq(
-    Test / dbTests := {
+    Test / dbTests :=
       Def
         .sequential(
           Def.task {
@@ -36,8 +36,7 @@ object DbTestPlugin extends AutoPlugin {
             RedisServer.forceStop()
           }
         )
-        .value
-    },
+        .value,
     // We need to disable running the `dbTests` on all aggregates,
     // otherwise it would try starting/stopping servers again and
     // again. The `all(ScopeFilter(inAggregates(ThisProject)))` makes

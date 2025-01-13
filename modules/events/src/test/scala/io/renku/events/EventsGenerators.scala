@@ -65,9 +65,8 @@ object EventsGenerators:
     Gen.listOfN(1, plgen).flatMap { pl =>
       val schema = pl.head.schema
       val mt = pl.head.msgType
-      eventMessageGen(schema, mt, Gen.const(pl)).map(msg =>
-        msg.copy(header = msg.header.withSchemaVersion(pl.head.version.head))
-      )
+      eventMessageGen(schema, mt, Gen.const(pl))
+        .map(msg => msg.copy(header = msg.header.withSchemaVersion(pl.head.version.head)))
     }
 
   def v1ProjectCreatedGen(prefix: String): Gen[v1.ProjectCreated] =

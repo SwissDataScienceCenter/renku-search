@@ -31,7 +31,7 @@ final case class QueryData(
   def withCursor(cursorMark: CursorMark): QueryData =
     copy(params = params.updated("cursorMark", cursorMark.render))
 
-  /** When using a cursor, it is required to add a `uniqueKey`field to the sort clause to
+  /** When using a cursor, it is required to add a `uniqueKey` field to the sort clause to
     * guarantee a deterministic order.
     */
   def withCursor(cursorMark: CursorMark, keyField: FieldName): QueryData =

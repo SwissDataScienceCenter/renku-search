@@ -28,14 +28,13 @@ object DocumentMerger:
     }
 
   given DocumentMerger[ProjectMemberAdded] =
-    instance[ProjectMemberAdded](_.toModel(DocVersion.NotExists).some) {
-      (paa, existing) =>
-        existing match
-          case p: PartialEntityDocument.Project =>
-            p.modifyEntityMembers(_.addMember(paa.userId, paa.role)).some
-          case p: ProjectDocument =>
-            p.modifyEntityMembers(_.addMember(paa.userId, paa.role)).some
-          case _: PartialEntityDocument.Group | _: GroupDocument | _: UserDocument => None
+    instance[ProjectMemberAdded](_.toModel(DocVersion.NotExists).some) { (paa, existing) =>
+      existing match
+        case p: PartialEntityDocument.Project =>
+          p.modifyEntityMembers(_.addMember(paa.userId, paa.role)).some
+        case p: ProjectDocument =>
+          p.modifyEntityMembers(_.addMember(paa.userId, paa.role)).some
+        case _: PartialEntityDocument.Group | _: GroupDocument | _: UserDocument => None
     }
 
   given DocumentMerger[ProjectMemberUpdated] =
@@ -127,15 +126,14 @@ object DocumentMerger:
     }
 
   given DocumentMerger[GroupMemberUpdated] =
-    instance[GroupMemberUpdated](_.toModel(DocVersion.NotExists).some) {
-      (gmu, existing) =>
-        existing match
-          case g: PartialEntityDocument.Group =>
-            g.modifyEntityMembers(_.addMember(gmu.userId, gmu.role)).some
-          case g: GroupDocument =>
-            g.modifyEntityMembers(_.addMember(gmu.userId, gmu.role)).some
-          case _: PartialEntityDocument.Project | _: UserDocument | _: ProjectDocument =>
-            None
+    instance[GroupMemberUpdated](_.toModel(DocVersion.NotExists).some) { (gmu, existing) =>
+      existing match
+        case g: PartialEntityDocument.Group =>
+          g.modifyEntityMembers(_.addMember(gmu.userId, gmu.role)).some
+        case g: GroupDocument =>
+          g.modifyEntityMembers(_.addMember(gmu.userId, gmu.role)).some
+        case _: PartialEntityDocument.Project | _: UserDocument | _: ProjectDocument =>
+          None
     }
 
   given DocumentMerger[GroupMemberRemoved] =

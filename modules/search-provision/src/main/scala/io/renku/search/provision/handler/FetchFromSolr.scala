@@ -22,7 +22,9 @@ import io.renku.solr.client.{QueryData, QueryString}
 trait FetchFromSolr[F[_]]:
   def fetchEntityForUser(userId: Id): Stream[F, EntityId]
   def loadProjectsByGroup[A](msg: EntityOrPartialMessage[A]): F[EntityOrPartialMessage[A]]
-  def loadEntityOrPartial[A](using IdExtractor[A])(
+  def loadEntityOrPartial[A](using
+      IdExtractor[A]
+  )(
       msg: EventMessage[A]
   ): F[EntityOrPartialMessage[A]]
   def loadProjectGroups(
@@ -89,7 +91,9 @@ object FetchFromSolr:
           QueryData(query).withFields(EntityDocumentSchema.Fields.id)
         )
 
-      def loadEntityOrPartial[A](using IdExtractor[A])(
+      def loadEntityOrPartial[A](using
+          IdExtractor[A]
+      )(
           msg: EventMessage[A]
       ): F[EntityOrPartialMessage[A]] =
         val loaded =

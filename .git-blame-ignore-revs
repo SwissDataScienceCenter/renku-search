@@ -11,3 +11,5 @@
 
 # eikek: remove header from all sources
 eefe534f36aceb8b9b73176d968fb9eaff2a71d7
+# Scala Steward: Reformat with scalafmt 3.8.4
+d69f2b9ad270b60b31fb1be20913f7b3fde799f4

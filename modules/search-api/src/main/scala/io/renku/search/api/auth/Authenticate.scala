@@ -21,7 +21,7 @@ object Authenticate:
           case AuthToken.AnonymousId(id) =>
             Right(AuthContext.anonymousId(id.value)).pure[F]
           case AuthToken.JwtToken(token) =>
-            EitherT(verify.verify(token).map(ClaimToContext.from)).leftSemiflatMap {
-              err => logger.warn(err.sanitized, err.cause).as(err.sanitized)
+            EitherT(verify.verify(token).map(ClaimToContext.from)).leftSemiflatMap { err =>
+              logger.warn(err.sanitized, err.cause).as(err.sanitized)
             }.value
     }

@@ -8,16 +8,14 @@ object AvroCodeGen extends AutoPlugin {
 
   def avroHuggerSettings = Seq(
     libraryDependencies ++= Dependencies.avro,
-    Compile / avroScalaCustomTypes := {
+    Compile / avroScalaCustomTypes :=
+      avrohugger.format.SpecificRecord.defaultTypes.copy(
+        record = avrohugger.types.ScalaCaseClassWithSchema
+      ),
+    Compile / avroScalaSpecificCustomTypes :=
       avrohugger.format.SpecificRecord.defaultTypes.copy(
         record = avrohugger.types.ScalaCaseClassWithSchema
       )
-    },
-    Compile / avroScalaSpecificCustomTypes := {
-      avrohugger.format.SpecificRecord.defaultTypes.copy(
-        record = avrohugger.types.ScalaCaseClassWithSchema
-      )
-    }
   )
 
   override def projectSettings = avroHuggerSettings ++ Seq(

@@ -49,6 +49,7 @@
           coreutils
           scala-cli
           kubectl
+          spicedb-zed
           devshellToolsPkgs.sbt17
           devshellToolsPkgs.openapi-docs
         ]

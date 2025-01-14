@@ -17,6 +17,10 @@
     };
   };
 
+  services.dev-spicedb = {
+    enable = true;
+  };
+
   services.openapi-docs = {
     enable = true;
     openapi-spec = "http://localhost:8080/api/search/spec.json";

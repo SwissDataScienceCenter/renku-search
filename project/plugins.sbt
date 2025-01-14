@@ -25,7 +25,7 @@ addSbtPlugin("com.github.sbt" % "sbt-release" % "1.4.0")
 addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.8.4")
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.10.0")
 addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.6.2")
-addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.3")
 
 // sbt-git comes with quite old jgit version
 libraryDependencies ++= Seq(

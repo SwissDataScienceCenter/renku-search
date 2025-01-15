@@ -359,7 +359,8 @@ lazy val configValues = project
     http4sCommons % "compile->compile;test->test",
     renkuRedisClient % "compile->compile;test->test",
     searchSolrClient % "compile->compile;test->test",
-    openidKeycloak % "compile->compile;test->test"
+    openidKeycloak % "compile->compile;test->test",
+    authzed % "compile->compile"
   )
 
 lazy val searchQuery = project
@@ -438,7 +439,8 @@ lazy val searchApi = project
     configValues % "compile->compile;test->test",
     searchQueryDocs % "compile->compile;test->test",
     jwt % "compile->compile;test->test",
-    openidKeycloak % "compile->compile;test->test"
+    openidKeycloak % "compile->compile;test->test",
+    authzed % "compile->compile;test->test"
   )
   .enablePlugins(DockerImagePlugin, RevolverPlugin)
 

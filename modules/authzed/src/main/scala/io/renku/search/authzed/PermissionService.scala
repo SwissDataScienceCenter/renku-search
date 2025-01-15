@@ -16,7 +16,6 @@ import com.authzed.grpcutil.BearerToken as GrpcBearerToken
 
 trait PermissionService[F[_]]:
   def checkPermission(req: CheckPermissionRequest): F[String]
-
   def lookupResources(req: LookupResourceRequest): Stream[F, String]
 
 object PermissionService:

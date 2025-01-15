@@ -3,6 +3,7 @@ package io.renku.search.config
 import cats.syntax.all.*
 import ciris.*
 import com.comcast.ip4s.{Ipv4Address, Port}
+import io.renku.search.authzed.{ChannelConfig, ChannelConfigz}
 import io.renku.search.common.UrlPattern
 import io.renku.openid.keycloak.JwtVerifyConfig
 import io.renku.redis.client.*
@@ -114,3 +115,9 @@ final class ConfigValues(prefix: String = "RS") extends ConfigDecoders:
       case false => ConfigValue.loaded(ConfigKey("sentry-config"), SentryConfig.disabled)
       case true  => (dsn, env).mapN(SentryConfig.enabled)
     }
+
+  lazy val authzConfig: ConfigValue[Effect, ChannelConfig] =
+    val address = env("AUTHZ_SERVICE_HOST")
+    val port = env("AUTHZ_SERVICE_PORT_GRPC")
+    val token = env("AUTHZ_DB_KEY")
+    ???

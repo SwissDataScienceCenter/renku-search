@@ -71,6 +71,7 @@ lazy val root = project
     renkuRedisClient,
     solrClient,
     searchQuery,
+    authzed,
     searchSolrClient,
     searchProvision,
     searchApi,
@@ -373,6 +374,17 @@ lazy val searchQuery = project
   )
   .dependsOn(
     commons % "compile->compile;test->test"
+  )
+
+lazy val authzed = project
+  .in(file("modules/authzed"))
+  .disablePlugins(RevolverPlugin)
+  .settings(commonSettings)
+  .settings(
+    name := "search-authzed",
+    Compile / run / fork := true,
+    libraryDependencies ++= Dependencies.catsCore ++
+      Dependencies.catsEffect ++ Dependencies.fs2Core ++ Dependencies.authzedJava
   )
 
 lazy val searchQueryDocs = project

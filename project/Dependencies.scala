@@ -4,6 +4,7 @@ import sbt.*
 object Dependencies {
 
   object V {
+    val authzed = "1.1.1"
     val avro = "1.12.0"
     val avro4s = "5.0.9"
     val borer = "1.15.0"
@@ -29,6 +30,10 @@ object Dependencies {
     val jwtScala = "10.0.1"
     val sentry = "7.20.0"
   }
+
+  val authzedJava = Seq(
+    "com.authzed.api" % "authzed" % V.authzed
+  )
 
   val sentry = Seq(
     "io.sentry" % "sentry" % V.sentry
@@ -97,6 +102,10 @@ object Dependencies {
 
   val fs2Core = Seq(
     "co.fs2" %% "fs2-core" % V.fs2
+  )
+
+  val fs2Io = Seq(
+    "co.fs2" %% "fs2-io" % V.fs2
   )
 
   val http4sCore = Seq(

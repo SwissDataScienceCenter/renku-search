@@ -24,7 +24,7 @@ addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.0")
 addSbtPlugin("com.github.sbt" % "sbt-release" % "1.4.0")
 addSbtPlugin("com.julianpeeters" % "sbt-avrohugger" % "2.11.2")
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.10.0")
-addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.6.2")
+addSbtPlugin("org.scalameta" % "sbt-mdoc" % "2.6.3")
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.4")
 
 // sbt-git comes with quite old jgit version

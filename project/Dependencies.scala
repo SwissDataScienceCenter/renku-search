@@ -27,7 +27,7 @@ object Dependencies {
     val sttpApiSpec = "0.11.9"
     val tapir = "1.11.20"
     val jwtScala = "10.0.4"
-    val sentry = "8.11.0"
+    val sentry = "8.11.1"
   }
 
   val sentry = Seq(

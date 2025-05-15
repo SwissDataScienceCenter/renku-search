@@ -29,5 +29,5 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.4")
 
 // sbt-git comes with quite old jgit version
 libraryDependencies ++= Seq(
-  "org.eclipse.jgit" % "org.eclipse.jgit" % "7.2.0.202503040940-r"
+  "org.eclipse.jgit" % "org.eclipse.jgit" % "7.2.1.202505142326-r"
 )
